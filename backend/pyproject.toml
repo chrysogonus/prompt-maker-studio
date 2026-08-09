@@ -49,7 +49,7 @@ dev = [
     # 7.6.0 (its latest release) imports whenever it reads a config file — so
     # every pip-compile run against a pyproject.toml dies on ImportError.
     # Drop this pin once a pip-tools release supports pip >= 26.2.
-    "pip<26.2",
+    "pip<26.3",
 ]
 
 [tool.setuptools.packages.find]
