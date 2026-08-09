@@ -113,9 +113,10 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    # SHA pins carry no semver classification, so `semver-*-days` is rejected
+    # here — only `default-days` applies.
     cooldown:
       default-days: 7
-      semver-major-days: 30
     labels:
       - "dependencies"
       - "ci/cd"
@@ -146,9 +147,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    # Digest pins, so `semver-*-days` is rejected here too.
     cooldown:
       default-days: 7
-      semver-major-days: 30
     labels:
       - "dependencies"
       - "docker"
