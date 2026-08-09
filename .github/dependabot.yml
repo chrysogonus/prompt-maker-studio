@@ -1,5 +1,13 @@
 # Dependabot Configuration
-# Automatically creates PRs to update dependencies
+# Automatically creates PRs to update dependencies.
+#
+# Every ecosystem batches its updates through `groups`, so a run produces one PR
+# per group rather than one per dependency. The groups are deliberately
+# exhaustive — anything matching no group is opened as its own PR again.
+#
+# Security updates are alert-driven: they fire immediately and ignore `schedule`
+# and `cooldown`. The `*-security` groups keep an alert storm to one PR per
+# ecosystem without delaying it.
 
 version: 2
 updates:
@@ -10,9 +18,29 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "chrysogonus"
+    open-pull-requests-limit: 3
+    groups:
+      backend-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      backend-major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+      backend-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    # Let a release settle before batching it, so a package that ships three
+    # times in a fortnight produces one bump instead of a PR that keeps getting
+    # force-pushed.
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
     labels:
       - "dependencies"
       - "backend"
@@ -33,9 +61,26 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "chrysogonus"
+    open-pull-requests-limit: 3
+    groups:
+      frontend-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      frontend-major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+      frontend-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
     labels:
       - "dependencies"
       - "frontend"
@@ -49,16 +94,28 @@ updates:
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
 
-  # GitHub Actions
+  # GitHub Actions, pinned by commit SHA in the workflows. A SHA refresh carries
+  # no semver classification, so this uses one catch-all group without an
+  # `update-types` filter — a filtered group would let those updates fall
+  # outside every group and go back to one PR each.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 3
-    reviewers:
-      - "chrysogonus"
+    open-pull-requests-limit: 2
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
     labels:
       - "dependencies"
       - "ci/cd"
@@ -69,18 +126,29 @@ updates:
   # Base images, pinned by digest in the Dockerfiles and Compose file. Without
   # this, a digest pin silently freezes those images at whatever was current when
   # the pin was made — including its vulnerabilities.
+  #
+  # Digest-pinned, so grouped catch-all for the same reason as github-actions.
   - package-ecosystem: "docker"
     directories:
       - "/backend"
       - "/frontend"
       - "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "chrysogonus"
+    open-pull-requests-limit: 2
+    groups:
+      docker:
+        patterns:
+          - "*"
+      docker-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
     labels:
       - "dependencies"
       - "docker"

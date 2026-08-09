@@ -329,6 +329,12 @@ Consequences worth knowing:
 - Base images are pinned by digest in the Dockerfiles and `docker-compose.yml`,
   with the readable tag kept in a comment. Dependabot's `docker` ecosystem
   updates both together.
+- Dependabot's `pip` ecosystem cannot do the same for these locks — it only
+  recognises `.txt` and `.in` lockfiles, so it bumps the pins in
+  `backend/pyproject.toml` and leaves `requirements*.lock` stale. Every
+  Dependabot pip PR therefore fails `make check-locks` until someone checks the
+  branch out, runs `make lock`, and pushes the regenerated locks. Grouping keeps
+  that to one fixup per batch rather than one per dependency.
 
 ## Code Style
 
