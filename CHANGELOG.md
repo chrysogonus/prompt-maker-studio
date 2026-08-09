@@ -10,9 +10,12 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
-Prompt Maker Studio was developed privately; nothing has been published yet.
-This section describes the initial release and stays here until the `v0.1.0`
-tag is public, at which point it gets its date and its links.
+Nothing yet.
+
+## [0.1.0] - 2026-08-09
+
+The first public release. Prompt Maker Studio was developed privately, so this
+entry covers the whole of that initial release rather than a delta.
 
 It was preceded by a round of security, licensing, and data-protection
 hardening — same-origin API routing, cascading account deletion, an SSRF egress
@@ -234,4 +237,5 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/commits/main
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.0
