@@ -32,7 +32,7 @@ job that can replace the project's public images — Dependabot's
 | `docker-build` | `Docker - Build Validation` | Build-context secret exclusions, matrix builds, license-material checks, LGPL-bundle exclusion, no-baked-API-origin and no-package-manager checks, a Trivy vulnerability scan, and a live backend smoke check |
 | `browser-e2e` | `Browser - End-to-End Tests` | Playwright Chromium journeys against an isolated Compose stack |
 | `compose-validate` | `Docker Compose - Config Validation` | Base, local, E2E, and GHCR production Compose combinations plus non-root backup ownership/integrity |
-| `codeql` | `Static Analysis - CodeQL` | CodeQL `security-and-quality` queries over the TypeScript/React sources — the counterpart to Bandit, which covers only the backend |
+| `codeql` | `Static Analysis - CodeQL` | CodeQL `security-extended` queries over the TypeScript/React sources — the counterpart to Bandit, which covers only the backend. Runs on public repositories only (see below) |
 | `all-checks-passed` | `All Quality Gates Passed` | Stable aggregate result for all required quality jobs |
 | `publish` | `Publish - <service> → GHCR` | On a `v*` tag, publishes backend/frontend images tagged by semver and `sha-<short>`, with build provenance and an SBOM attached. No `latest` tag: it made an unready or poisoned artifact the default pull |
 
@@ -60,6 +60,21 @@ silently changing branch rules.
 `codeql.yml` GitHub offers by default, so it feeds that aggregate too. It holds
 `security-events: write` scoped to itself; the workflow default stays
 `contents: read`.
+
+It is also gated on `github.event.repository.private == false`. CodeQL is free
+on public repositories but needs GitHub Advanced Security on private ones, where
+the upload fails outright — so on a private repository the job is skipped and
+the aggregate accepts that, reporting it in the run summary. Nothing needs to be
+switched on when the repository is published; the job starts running by itself.
+Two consequences worth knowing:
+
+- Do **not** also enable GitHub's *default setup* for code scanning. This
+  workflow is an advanced-setup configuration, and running both produces
+  duplicate or conflicting analyses.
+- `publish` lists `codeql` among its `needs`, so a skipped CodeQL also skips
+  publishing. Tagging a release while the repository is private therefore
+  produces no images. That is deliberate: images are not published from a
+  codebase whose static analysis never ran.
 
 See [`.github/BRANCH_PROTECTION.md`](BRANCH_PROTECTION.md) for the recommended
 repository ruleset. That document describes a desired configuration; repository

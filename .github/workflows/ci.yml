@@ -387,9 +387,17 @@ jobs:
   # every mandatory job to feed. There is no cron: it runs on every pull
   # request and every push to main, and a weekly schedule here would re-run the
   # entire pipeline rather than just this job.
+  #
+  # Gated on repository visibility. CodeQL is free on public repositories but
+  # requires GitHub Advanced Security on private ones, where the analysis upload
+  # fails with "Advanced Security must be enabled for this repository". Without
+  # this condition the job — and with it the required aggregate — goes red on
+  # every run made before the repository is published. It activates itself on
+  # the flip to public; there is no setting to remember to change.
   codeql:
     name: Static Analysis - CodeQL
     runs-on: ubuntu-latest
+    if: github.event.repository.private == false
     permissions:
       contents: read
       # Scoped to this job alone; the workflow default stays contents: read.
@@ -405,7 +413,10 @@ jobs:
           languages: javascript-typescript
           # No compilation step for TypeScript; CodeQL reads the sources.
           build-mode: none
-          queries: security-and-quality
+          # security-extended, not security-and-quality: the latter adds
+          # maintainability queries whose findings are not security findings,
+          # and a required gate that reports style opinions gets ignored.
+          queries: security-extended
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@c4dd10e44af883a891fe31ced449bcb4a6728b9b # v3.37.6
@@ -457,9 +468,16 @@ jobs:
             echo "❌ Docker Compose validation failed"
             exit 1
           fi
-          if [[ "${{ needs.codeql.result }}" != "success" ]]; then
+          # "skipped" is the private-repository case, where CodeQL cannot run
+          # without Advanced Security — see the codeql job's visibility guard.
+          # Any other non-success result is a real failure and must block.
+          if [[ "${{ needs.codeql.result }}" != "success" \
+             && "${{ needs.codeql.result }}" != "skipped" ]]; then
             echo "❌ CodeQL static analysis failed"
             exit 1
+          fi
+          if [[ "${{ needs.codeql.result }}" == "skipped" ]]; then
+            echo "⚠️  CodeQL skipped — repository is private (no Advanced Security)"
           fi
           echo "✅ All quality gates passed successfully"
 
@@ -471,7 +489,11 @@ jobs:
           echo "- ✅ Repository: Full-history and working-tree secret scan" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Backend: Lock consistency, Linting, Security, Tests (90%+ coverage)" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Frontend: Linting, Security, Build, Tests (coverage floors)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Static analysis: CodeQL (javascript-typescript)" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.codeql.result }}" == "skipped" ]]; then
+            echo "- ⏭️ Static analysis: CodeQL skipped (private repository)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ✅ Static analysis: CodeQL (javascript-typescript)" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "- ✅ Docker: Build validation" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Browser: End-to-end tests" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Compose: Config validation" >> $GITHUB_STEP_SUMMARY
