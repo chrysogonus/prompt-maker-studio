@@ -1,0 +1,29 @@
+# Code owners for Prompt Maker Studio
+#
+# Owners are requested for review automatically on any PR touching a matching
+# path. The last matching pattern wins, so ordering matters.
+#
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repository.
+*                       @chrysogonus
+
+# Release, licensing, and security-sensitive metadata.
+/LICENSE                @chrysogonus
+/NOTICE                 @chrysogonus
+/SECURITY.md            @chrysogonus
+/CODE_OF_CONDUCT.md     @chrysogonus
+/CHANGELOG.md           @chrysogonus
+
+# CI, automation, and repository configuration.
+/.github/               @chrysogonus
+
+# Deployment and infrastructure surfaces.
+/Caddyfile              @chrysogonus
+/docker-compose*.yml    @chrysogonus
+/monitoring/            @chrysogonus
+/scripts/               @chrysogonus
+
+# Database migration runner — schema changes need maintainer review.
+/backend/app/database/  @chrysogonus
+/backend/migrations/    @chrysogonus

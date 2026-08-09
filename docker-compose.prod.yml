@@ -1,0 +1,18 @@
+# Production overrides — pull pre-built images from GHCR instead of building locally.
+#
+# Usage on the production server:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+#
+# Required env var:
+#   GHCR_OWNER   — your GitHub username or organisation (e.g. "chrysogonus")
+# Required env var:
+#   IMAGE_TAG    — image tag to deploy: a published version (1.2.3) or a
+#                  sha-<short> tag from the publish job. There is no `latest`.
+
+services:
+  backend:
+    image: ghcr.io/${GHCR_OWNER}/prompt-maker-studio-backend:${IMAGE_TAG:?IMAGE_TAG must be set to a published version or sha-<short> tag}
+
+  frontend:
+    image: ghcr.io/${GHCR_OWNER}/prompt-maker-studio-frontend:${IMAGE_TAG:?IMAGE_TAG must be set to a published version or sha-<short> tag}

@@ -1,0 +1,228 @@
+.panel {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-6);
+  background: var(--color-panel);
+  overflow-y: auto;
+}
+
+.title {
+  margin: 0 0 var(--space-6) 0;
+  font-size: var(--text-lg-size);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  letter-spacing: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.fieldContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-panel);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+}
+
+.fieldContainer:focus-within {
+  border-color: var(--color-accent-tag);
+  box-shadow: var(--shadow-panel-hover);
+}
+
+.fieldHeader {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.fieldNameInput {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm-size);
+  font-weight: var(--weight-semibold);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-raised);
+  color: var(--text-primary);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), background var(--motion-fast);
+  font-family: inherit;
+}
+
+.fieldNameInput::placeholder {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.fieldNameInput:focus {
+  border-color: var(--color-accent-tag);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent-tag) 18%, transparent);
+  background: var(--color-panel);
+}
+
+.moveButtonGroup {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.moveButton {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.moveButton:hover:not(:disabled) {
+  color: var(--accent-text);
+  border-color: var(--color-accent-tag);
+  background: color-mix(in srgb, var(--color-accent-tag) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+.moveButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.removeButton {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 1rem;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.removeButton:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+.fieldActionsRow {
+  display: flex;
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.addButton {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm-size);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px dashed var(--border-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+  font-family: inherit;
+}
+
+.addButton:hover {
+  border-color: var(--color-accent-tag);
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--color-accent-tag) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+.starterKitSelect {
+  padding: var(--space-3);
+  font-size: var(--text-sm-size);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  background: var(--color-panel-raised);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color var(--motion-fast), color var(--motion-fast);
+}
+
+.starterKitSelect:hover {
+  border-color: var(--color-accent-tag);
+  color: var(--accent-text);
+}
+
+.textarea {
+  padding: var(--space-3);
+  font-size: var(--text-base-size);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-raised);
+  color: var(--text-primary);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), background var(--motion-fast);
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.textarea:focus {
+  border-color: var(--color-accent-tag);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent-tag) 18%, transparent);
+  background: var(--color-panel);
+}
+
+.textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.button {
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base-size);
+  font-weight: var(--weight-semibold);
+  color: var(--on-accent);
+  background: var(--color-accent-tag);
+  border: 1px solid var(--color-accent-tag);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  font-family: inherit;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--color-accent-tag-hover);
+  border-color: var(--color-accent-tag-hover);
+  box-shadow: var(--shadow-panel-hover);
+  transform: translateY(-1px);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.validationMessage {
+  margin: calc(var(--space-1) * -1) 0 0;
+  color: var(--danger);
+  font-size: 0.8125rem;
+}

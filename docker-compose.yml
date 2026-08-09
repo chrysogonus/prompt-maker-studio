@@ -1,0 +1,183 @@
+# Pinned so the project name — and therefore the `prompt-maker_backend-data`
+# volume holding the production database — survives the rename to
+# "Prompt Maker Studio" and any future rename of this directory.
+name: prompt-maker
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: prompt-maker-studio-backend
+    expose:
+      - "8000"
+    environment:
+      # Deliberately hardcoded, NOT ${DATABASE_URL}. The root .env holds a
+      # value for non-Docker local runs (`sqlite:///./prompts.db`), which
+      # inside the container resolves to /app/prompts.db — outside the
+      # `backend-data` volume mounted below. Honouring the variable here
+      # silently points the backend at an empty database while the real one
+      # sits in the volume, and the app looks healthy while doing it.
+      - DATABASE_URL=sqlite:////app/data/prompts.db
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://frontend:3000,http://localhost:3000}
+      - REGISTRATION_MODE=${REGISTRATION_MODE:-closed}
+      - ALLOW_PRIVATE_LLM_URLS=${ALLOW_PRIVATE_LLM_URLS:-false}
+      - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      # Scope for the httpOnly session cookie. Left unset: the app and the API
+      # share one origin, so a host-only cookie covers both and widening it
+      # would only expose it to other subdomains. See .env.example.
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
+      - COOKIE_SECURE=${COOKIE_SECURE:-true}
+      # No operator LLM key: every user brings their own provider credential,
+      # stored encrypted per user (see backend/app/services/secret_store.py).
+      - LLM_ENCRYPTION_KEY=${LLM_ENCRYPTION_KEY:-}
+      - LLM_TIMEOUT_SECONDS=${LLM_TIMEOUT_SECONDS:-}
+      - LLM_PRICING_REFRESH=${LLM_PRICING_REFRESH:-true}
+      - LLM_PRICING_URL=${LLM_PRICING_URL:-}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      # "starttls" (default) or "implicit". Compose injects only what is listed
+      # here, so omitting this silently forced starttls onto operators who had
+      # set implicit in .env for a TLS-on-connect port (465) — and their mail
+      # failed with nothing in the config to explain why.
+      - SMTP_TLS_MODE=${SMTP_TLS_MODE:-starttls}
+      - FORWARDED_ALLOW_IPS=${FORWARDED_ALLOW_IPS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      # Usage guard rails, auth rate limits, and the operator diagnostics token.
+      # Each is documented in .env.example and SECURITY.md as an operator
+      # control; each is read from the process environment by the backend
+      # (budget_service.py, auth_routes.py, admin_routes.py). Unset means
+      # "no ceiling" / "framework default" / "endpoint disabled (503)", so the
+      # gap was never an open door — but an operator who set a budget believing
+      # they were capped was not, which is worse than not offering the setting.
+      - GLOBAL_MONTHLY_BUDGET_USD=${GLOBAL_MONTHLY_BUDGET_USD:-}
+      - USER_MONTHLY_BUDGET_USD=${USER_MONTHLY_BUDGET_USD:-}
+      - REGISTER_RATE_LIMIT=${REGISTER_RATE_LIMIT:-5/minute}
+      - LOGIN_RATE_LIMIT=${LOGIN_RATE_LIMIT:-10/minute}
+      - ADMIN_DIAGNOSTICS_TOKEN=${ADMIN_DIAGNOSTICS_TOKEN:-}
+    volumes:
+      - backend-data:/app/data
+    networks:
+      - prompt-maker-studio-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: prompt-maker-studio-frontend
+    expose:
+      - "3000"
+    environment:
+      # Where the Next server forwards /api when nothing in front of it does.
+      # Behind Caddy this never fires; it is what makes the image work when
+      # run without a reverse proxy. Runtime, not build time — deliberately.
+      - API_PROXY_TARGET=${API_PROXY_TARGET:-http://backend:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - prompt-maker-studio-network
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a
+    container_name: prompt-maker-studio-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=${DOMAIN}
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - prompt-maker-studio-network
+    restart: unless-stopped
+
+  db-backup:
+    image: python:3.12-slim@sha256:d657ab0ade19f404a6ccc883ab399540de667aff751748ce23c07330c5a89e64
+    container_name: prompt-maker-studio-db-backup
+    profiles:
+      - backup
+    # Match the host operator by default on ordinary Linux workstations. Set
+    # these explicitly when the host uses a different UID/GID so bind-mounted
+    # backups stay writable and are never created as root-owned files.
+    user: "${BACKUP_UID:-1000}:${BACKUP_GID:-1000}"
+    volumes:
+      - backend-data:/app/data:ro
+      - ./backups:/backups
+      - ./scripts:/scripts:ro
+    environment:
+      - BACKUP_INTERVAL_SECONDS=${BACKUP_INTERVAL_SECONDS:-86400}
+    command: >
+      sh -c "while true; do
+        python /scripts/backup_sqlite.py --db /app/data/prompts.db --out /backups --label prompts;
+        sleep $$BACKUP_INTERVAL_SECONDS;
+      done"
+    networks:
+      - prompt-maker-studio-network
+    restart: unless-stopped
+
+  # Monitoring is opt-in: `docker compose --profile monitoring up -d`.
+  #
+  # Not on by default because these are large third-party images whose own
+  # bundled dependencies carry known HIGH/CRITICAL advisories with no upstream
+  # fix available — roughly 150 between them, against zero in this project's
+  # own two images. Nothing here needs them to run, so the default stack does
+  # not ship them. Both bind to loopback only when enabled.
+  prometheus:
+    image: prom/prometheus:v3.9.0@sha256:27343e8f1bb6555f50b561c758b53b5973a5a110a028d0457a90d4d33804b1b4
+    container_name: prompt-maker-studio-prometheus
+    profiles:
+      - monitoring
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - prompt-maker-studio-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.4.0@sha256:7ce8f1687d7aab0f1f16a7f1db64bf655a3de77b03e87bf474fdd883e3203cba
+    container_name: prompt-maker-studio-grafana
+    profiles:
+      - monitoring
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      - "GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set. Generate with: openssl rand -hex 16}"
+    ports:
+      - "127.0.0.1:3010:3000"
+    networks:
+      - prompt-maker-studio-network
+    restart: unless-stopped
+
+networks:
+  prompt-maker-studio-network:
+    driver: bridge
+
+volumes:
+  backend-data:
+  caddy_data:
+  caddy_config:
+  prometheus_data:
+  grafana_data:

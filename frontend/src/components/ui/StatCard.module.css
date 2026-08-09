@@ -1,0 +1,33 @@
+.card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-6);
+}
+
+.label {
+  font-size: var(--text-xs-size);
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.value {
+  font-size: var(--text-2xl-size);
+  line-height: var(--text-2xl-line);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  margin-top: var(--space-1);
+}
+
+.hint {
+  font-size: var(--text-xs-size);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+
+.hintAccent {
+  font-size: var(--text-xs-size);
+  color: var(--accent-text);
+  margin-top: var(--space-1);
+}

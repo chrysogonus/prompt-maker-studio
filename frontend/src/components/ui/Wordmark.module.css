@@ -1,0 +1,19 @@
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.accent {
+  color: var(--accent-text);
+}
+
+.mark {
+  flex: 0 0 auto;
+  color: var(--pm-mark-color);
+}
+
+.tile {
+  flex: 0 0 auto;
+}

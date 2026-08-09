@@ -1,0 +1,556 @@
+/* The auth screen deliberately uses the same surface, radius, and control
+   language as the in-app components (ui/Card, ui/Button, ui/Input) rather than
+   a separate "marketing" treatment — logging in should look like the product.
+   The only ambient layers are a static dot grid and a single static glow; all
+   motion is one entrance plus the usual focus/loading/error signals. */
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100svh;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--color-border) 22%, transparent) 1px, transparent 1px),
+    var(--color-canvas);
+  background-size: 26px 26px;
+  padding: clamp(var(--space-6), 4vh, 48px);
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.glow {
+  position: absolute;
+  top: -30%;
+  left: -12%;
+  width: min(46vw, 640px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-accent-tag) 12%, transparent),
+    transparent 70%
+  );
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.authShell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+  align-items: center;
+  gap: clamp(var(--space-8), 6vw, 80px);
+  /* Sized to the content, not the viewport: a wider shell only opens a gap
+     between the two columns, since neither grows past its own measure. */
+  width: min(100%, 960px);
+  opacity: 0;
+  transform: translateY(12px);
+  animation: shellReveal 600ms cubic-bezier(0.16, 1, 0.3, 1) 60ms forwards;
+}
+
+.visualPanel {
+  min-width: 0;
+  /* Same measure as .intro/.promptCard, so the headline, the copy and the
+     sample card share one right edge instead of ragging. */
+  max-width: 440px;
+}
+
+/* Layout and the brand mark live in Wordmark.module.css; this is the auth
+   screen's own scale and spacing. */
+.wordmark {
+  display: flex;
+  margin-bottom: var(--space-8);
+  color: var(--text-primary);
+  font-size: var(--text-sm-size);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.promptCard,
+.intro {
+  max-width: 440px;
+}
+
+.eyebrow {
+  margin-bottom: var(--space-3);
+  color: var(--accent-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs-size);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* One step above --text-3xl-size: this is the single display moment in the
+   product, and nothing else on the page competes with it. Tracking stays close
+   to --tracking-tight so it reads as the same typeface system as the app. */
+.heroTitle {
+  max-width: 20ch;
+  color: var(--text-primary);
+  font-size: clamp(1.875rem, 3.2vw, 2.5rem);
+  line-height: 1.15;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.heroCopy {
+  margin-top: var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--text-lg-size);
+  line-height: 1.6;
+}
+
+.promptCard {
+  margin-top: var(--space-8);
+  padding: var(--space-4);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+}
+
+.cardChrome {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-primary);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chromeDot,
+.readyDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent-tag);
+}
+
+.promptRow {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) 1fr;
+  gap: var(--space-3);
+  padding: 5px 0;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.promptTag {
+  color: var(--accent-text);
+}
+
+.readyStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: max-content;
+  margin-top: var(--space-3);
+  padding: 5px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-accent-success) 11%, transparent);
+  color: var(--color-accent-success);
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+}
+
+.readyDot {
+  background: var(--color-accent-success);
+}
+
+.card {
+  position: relative;
+  justify-self: end;
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-8);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-panel-hover);
+  transition: border-color var(--motion-fast);
+}
+
+.card:focus-within {
+  border-color: color-mix(in srgb, var(--color-accent-tag) 42%, var(--border-primary));
+}
+
+.cardContent {
+  animation: contentSwap 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Left-aligned throughout: the heading, the fields and the footer links all sit
+   on one axis, instead of centred text above a left-aligned form. */
+.brand {
+  margin-bottom: var(--space-6);
+}
+
+.title {
+  font-size: var(--text-xl-size);
+  line-height: var(--text-xl-line);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+  letter-spacing: var(--tracking-tight);
+}
+
+.subtitle {
+  font-size: var(--text-sm-size);
+  color: var(--text-secondary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--text-sm-size);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  transition: color var(--motion-fast);
+}
+
+.field:focus-within .label {
+  color: var(--accent-text);
+}
+
+.input {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base-size);
+  background: var(--color-panel-raised);
+  color: var(--text-primary);
+  font-family: inherit;
+  transition:
+    border-color var(--motion-fast),
+    box-shadow var(--motion-fast),
+    background var(--motion-fast);
+}
+
+.input:hover {
+  border-color: color-mix(in srgb, var(--color-accent-tag) 45%, var(--border-primary));
+}
+
+.input:focus {
+  border-color: var(--color-accent-tag);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent-tag) 18%, transparent);
+  background: var(--color-panel);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.passwordWrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.passwordWrap .input {
+  padding-right: calc(var(--space-3) * 2 + 2.5rem);
+}
+
+.revealButton {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm-size);
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast),
+    background var(--motion-fast);
+}
+
+.revealButton:hover,
+.revealButton:focus-visible {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-accent-tag) 8%, transparent);
+}
+
+/* Sits under its own field, so the offending input is identifiable at a glance
+   as well as through aria-describedby. Colour is not the only signal — the
+   input also carries aria-invalid and the .input[aria-invalid] border below. */
+.fieldError {
+  color: var(--color-danger);
+  font-size: var(--text-sm-size);
+  font-weight: var(--weight-medium);
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.input[aria-invalid='true']:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 20%, transparent);
+}
+
+.error {
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: var(--text-sm-size);
+  font-weight: var(--weight-medium);
+  animation: messageReveal 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Announced to assistive tech, drawn nowhere: the validation summary would
+   otherwise repeat each message that already sits under its own field. */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sessionNotice {
+  padding: var(--space-3);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-accent-tag) 12%, var(--color-panel));
+  border: 1px solid color-mix(in srgb, var(--color-accent-tag) 35%, var(--border-primary));
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  line-height: 1.5;
+  animation: messageReveal 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Matches ui/Button's .primary — solid fill, --radius-md, no gradient or lift.
+   Label and arrow stay centred together rather than pinned to opposite edges. */
+.submitButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  margin-top: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-accent-tag);
+  color: var(--on-accent);
+  border: 1px solid var(--color-accent-tag);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base-size);
+  font-weight: var(--weight-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.submitButton:hover:not(:disabled) {
+  background: var(--color-accent-tag-hover);
+  border-color: var(--color-accent-tag-hover);
+}
+
+.buttonArrow {
+  font-size: 1.1em;
+  line-height: 1;
+  transition: transform var(--motion-fast);
+}
+
+.submitButton:hover:not(:disabled) .buttonArrow {
+  transform: translateX(2px);
+}
+
+.buttonSpinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid color-mix(in srgb, var(--on-accent) 30%, transparent);
+  border-top-color: var(--on-accent);
+  border-radius: 50%;
+  animation: buttonSpin 700ms linear infinite;
+}
+
+.submitButton:disabled {
+  background: color-mix(in srgb, var(--color-accent-tag) 20%, var(--bg-tertiary));
+  border-color: transparent;
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+/* One row closes the card: the secondary path on the left, the account switch
+   on the right, separated from the form by a hairline. */
+.cardFooter {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-primary);
+  font-size: var(--text-sm-size);
+  color: var(--text-secondary);
+}
+
+/* Pushed right only when it shares the row with "Forgot password?"; on its own
+   (register, forgot-password) it stays on the left with everything else. */
+.footerPrompt {
+  margin-left: auto;
+}
+
+.footerPrompt:only-child {
+  margin-left: 0;
+}
+
+.toggleButton {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-text);
+  font-weight: var(--weight-semibold);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  transition: color var(--motion-fast);
+}
+
+.toggleButton:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.successMessage {
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-accent-success) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent-success) 42%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--color-accent-success);
+  font-size: var(--text-base-size);
+  line-height: 1.5;
+  animation: messageReveal 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes shellReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes contentSwap {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes messageReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes buttonSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .container {
+    align-items: flex-start;
+  }
+
+  .authShell {
+    grid-template-columns: minmax(0, 480px);
+    justify-content: center;
+    gap: var(--space-8);
+  }
+
+  .promptCard {
+    display: none;
+  }
+
+  .card {
+    justify-self: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .container {
+    padding: var(--space-4);
+  }
+
+  .authShell {
+    gap: var(--space-6);
+  }
+
+  .wordmark {
+    margin-bottom: var(--space-6);
+  }
+
+  .eyebrow {
+    display: none;
+  }
+
+  .heroTitle {
+    font-size: 1.75rem;
+  }
+
+  .heroCopy {
+    margin-top: var(--space-3);
+    font-size: var(--text-base-size);
+  }
+
+  .card {
+    padding: var(--space-6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .authShell {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+
+  .cardContent,
+  .error,
+  .sessionNotice,
+  .successMessage {
+    animation: none;
+  }
+}

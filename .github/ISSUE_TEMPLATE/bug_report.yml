@@ -1,0 +1,118 @@
+name: Bug report
+description: Something is broken or behaves differently than documented
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug.
+
+        **Do not report security vulnerabilities here.** Follow
+        [SECURITY.md](https://github.com/chrysogonus/prompt-maker-studio/blob/main/SECURITY.md)
+        for private disclosure instead.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I am running a recent `main` or the latest tagged release
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug and what you expected instead.
+      placeholder: |
+        Expected: saving a prompt version returns 201 and appears in the version list.
+        Actual: returns 500 and the version list is unchanged.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps someone else can follow from a clean install.
+      placeholder: |
+        1. `make setup && make up`
+        2. Register a new account at http://localhost:3000
+        3. Create a prompt with two fields
+        4. Click "Save version"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: how-running
+    attributes:
+      label: How are you running Prompt Maker Studio?
+      options:
+        - Docker Compose (make up)
+        - Local toolchains (make dev-backend + npm run dev)
+        - Production Compose (docker-compose.prod.yml)
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Authentication / accounts
+        - Dashboard / analytics
+        - Library / folders / tags
+        - Editor / versioning
+        - Playground
+        - Evaluation
+        - AI refinement
+        - Settings / preferences
+        - Email / password reset
+        - Deployment / Docker / Caddy
+        - Monitoring (Prometheus / Grafana)
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit SHA
+      description: Output of `git rev-parse --short HEAD`, or the release tag.
+      placeholder: v0.1.0 or 788eafd
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Docker version, and — if running locally — Python and Node versions.
+      placeholder: |
+        OS: Ubuntu 24.04 (WSL2)
+        Docker: 27.3.1
+        Python: 3.12.3
+        Node: 22.14.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: |
+        Backend logs (`make logs` or `docker compose logs backend`), browser console
+        errors, or a failing test.
+
+        **Redact secrets first** — never paste your `.env`, `SECRET_KEY`, `LLM_ENCRYPTION_KEY`, or any LLM provider API key.
+      render: shell
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, workarounds you found, or related issues.

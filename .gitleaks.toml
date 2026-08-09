@@ -1,0 +1,12 @@
+title = "Prompt Maker Studio Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fabricated SECRET_KEY used only by the backend test harness"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexTarget = "line"
+regexes = ['''os\.environ\.setdefault\("SECRET_KEY", "test-secret-key-that-is-long-enough-[0-9]+"\)''']
+paths = ['''backend/tests/conftest\.py$''']

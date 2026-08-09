@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make help)",
+      "Bash(make lint-backend)",
+      "Bash(make lint-frontend)",
+      "Bash(make test)",
+      "Bash(make test-cov)",
+      "Bash(make test-file FILE=*)",
+      "Bash(make test-frontend)",
+      "Bash(make ci-local)",
+      "Bash(make build-local)",
+      "Bash(make security-backend)",
+      "Bash(make security-frontend)",
+      "Bash(docker compose ps)",
+      "Bash(docker compose logs*)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Edit(.env)",
+      "Read(.env.local*)",
+      "Read(.env.production*)",
+      "Read(.env.development*)",
+      "Read(.env.staging*)",
+      "Bash(make restore-db*)",
+      "Bash(make clean*)"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+# The only effective .dockerignore in this repository. Both images build with
+# the repository root as their context (`context: .` in the Compose files and
+# CI, `docker build ... .` in the Makefile), so Docker consults this file and
+# nothing else. There used to be a backend/.dockerignore and a
+# frontend/.dockerignore; neither was ever read, and neither excluded .env*,
+# which made the build context look filtered per stack when it was not.
+.git
+.github
+# Environment configuration never belongs in a build context. Cover both the
+# root Compose file and nested framework variants such as frontend/.env.local.
+.env*
+**/.env*
+*.env
+**/*.env
+.venv
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/.pytest_cache
+**/htmlcov
+**/coverage.xml
+**/*.db
+docs/assets

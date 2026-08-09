@@ -1,0 +1,119 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.hint a {
+  color: var(--color-accent-tag);
+}
+
+.field {
+  display: grid;
+  /* Label column matches the widest field label so the inputs align without
+     a fixed pixel width that would break under a longer translation. */
+  grid-template-columns: minmax(6rem, max-content) 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.fieldLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.inputWithAction {
+  position: relative;
+  display: block;
+}
+
+.apiKeyInput {
+  padding-right: 42px;
+}
+
+.apiKeyAction {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 120ms ease-out;
+}
+
+.apiKeyAction:hover {
+  color: var(--text-primary);
+}
+
+.modelPicker {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.statusConnected {
+  font-size: 11px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--success-bg);
+  color: var(--success);
+  white-space: nowrap;
+}
+
+.statusUnavailable {
+  font-size: 11px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.error {
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
+.success {
+  font-size: 12px;
+  color: var(--success);
+}
+
+@media (max-width: 700px) {
+  .field {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+}

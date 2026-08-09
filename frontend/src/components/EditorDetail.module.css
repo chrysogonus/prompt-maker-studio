@@ -1,0 +1,291 @@
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 1;
+  padding-bottom: var(--space-10);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: var(--space-4);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-primary);
+  border-top-color: var(--color-accent-tag);
+  border-radius: 50%;
+  animation: spin var(--motion-spin) infinite;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.breadcrumb a {
+  color: var(--text-tertiary);
+}
+
+.breadcrumb a:hover {
+  color: var(--accent-text);
+}
+
+.breadcrumbCurrent {
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.titleBlock {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.name {
+  margin: 0;
+  font-size: var(--text-2xl-size);
+  line-height: var(--text-2xl-line);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loadError {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  max-width: 560px;
+  padding: var(--space-6);
+  background: var(--color-panel);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+
+.loadError h1,
+.loadError p {
+  margin: 0;
+}
+
+.loadError p {
+  color: var(--text-secondary);
+}
+
+.loadErrorActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.loadErrorActions a {
+  color: var(--accent-text);
+}
+
+.meta {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+}
+
+.draftStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  font-size: 11.5px;
+}
+
+.draftStatus button {
+  padding: 0;
+  color: var(--accent-text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-panel));
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: var(--text-sm-size);
+}
+
+.conflictBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-panel));
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: var(--text-sm-size);
+}
+
+.statusBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-accent-tag) 10%, var(--color-panel));
+  border: 1px solid color-mix(in srgb, var(--color-accent-tag) 30%, var(--color-border));
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm-size);
+}
+
+.ctaBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-accent-tag) 10%, var(--color-panel));
+  border: 1px solid color-mix(in srgb, var(--color-accent-tag) 30%, var(--color-border));
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm-size);
+}
+
+.ctaActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bannerMessage {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ctaDismiss {
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: var(--space-1);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.tabButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  margin-right: var(--space-6);
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tabButton[data-active='true'] {
+  color: var(--accent-text);
+  border-bottom-color: var(--color-accent-tag);
+}
+
+.refineTab {
+  gap: 6px;
+}
+
+.historyLinks {
+  display: flex;
+  gap: var(--space-3);
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+}
+
+.historyLinks a,
+.historyLinks button {
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+.historyLinks a:hover,
+.historyLinks button:hover {
+  text-decoration: underline;
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .headerActions button,
+  .headerActions a {
+    flex: 1 1 auto;
+  }
+}

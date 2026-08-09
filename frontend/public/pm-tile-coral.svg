@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Prompt Maker Studio">
+  <rect width="64" height="64" rx="14" fill="#F0997B"/>
+  <g transform="translate(12.16,12.16) scale(1.24)">
+    <g transform="translate(-0.7,0.3)">
+      <path d="M9 8.5L16 16L9 23.5" fill="none" stroke="#141416" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="19" y="21.3" width="7" height="3.4" rx="1.7" fill="#141416"/>
+    </g>
+  </g>
+</svg>

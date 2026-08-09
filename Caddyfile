@@ -1,0 +1,77 @@
+# Caddy reverse proxy configuration
+# Caddy automatically obtains and renews TLS certificates via Let's Encrypt.
+#
+# Required environment variables (set in .env):
+#   DOMAIN — your root domain, e.g. yourdomain.com
+#
+# The app and the API share one origin: /api/* is proxied to the backend and
+# everything else to the frontend. That is what makes the published frontend
+# image domain-agnostic — the browser resolves /api against whatever host it
+# loaded the app from, so no API URL has to be compiled into the bundle. It
+# also removes the cross-origin cookie and CORS setup a separate API subdomain
+# needed.
+
+# Global timeouts block to defend against Slowloris and other timeout-based attacks
+{
+    servers {
+        timeouts {
+            read_body 30s
+            read_header 10s
+            write 30s
+            idle 5m
+        }
+    }
+}
+
+{$DOMAIN} {
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        # 'unsafe-eval' is gone: nothing in a production build needs it, and it
+        # was the cheaper half of this policy's XSS exposure to remove.
+        #
+        # 'unsafe-inline' for script-src remains, deliberately, and is the known
+        # weak point. Next's App Router streams its flight data as six or so
+        # inline <script> blocks per document whose contents differ per page and
+        # per build, so neither `script-src 'self'` nor build-time hashes work.
+        # A nonce is the correct fix and is what upstream documents — but a nonce
+        # must be minted per response, and every page here is statically
+        # prerendered, so adopting it means opting the whole app into dynamic
+        # rendering. That is a rendering-architecture decision with a real cost,
+        # not a header change, so it is left for a deliberate call rather than
+        # smuggled in with a security fix. Measured, tested, and written up in
+        # e2e/csp.spec.ts.
+        Content-Security-Policy "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; form-action 'self'"
+    }
+
+    # Limit request body to 10MB
+    request_body {
+        max_size 10MB
+    }
+
+    # Prometheus scrapes backend:8000/metrics directly over the Compose
+    # network. Nothing routes there from outside now that the backend has no
+    # public origin of its own, but deny it explicitly rather than relying on
+    # the frontend happening to 404.
+    handle /metrics* {
+        respond "Access Denied" 403
+    }
+
+    # The API shares this origin. Matched before the frontend handler below,
+    # and the backend already namespaces every route under /api, so the path is
+    # forwarded unchanged.
+    handle /api/* {
+        # The API returns JSON and never renders anything. Nothing to load, so
+        # nothing is allowed to load.
+        header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+        header Referrer-Policy "no-referrer"
+        reverse_proxy backend:8000
+    }
+
+    handle {
+        reverse_proxy frontend:3000
+    }
+}

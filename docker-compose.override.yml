@@ -1,0 +1,30 @@
+# Local development overrides — applied automatically by `docker compose up`.
+# This file is NOT used in production (deploy with `docker compose -f docker-compose.yml up -d`).
+# It restores direct port access so you can reach the services without Caddy.
+services:
+  # Caddy is the production edge, and locally it was pure cost: it claimed host
+  # :80/:443 and then looped on Let's Encrypt challenges for the `yourdomain.com`
+  # placeholder `make setup` writes into .env — so the first thing a new
+  # contributor saw after `make up` was a wall of ACME failures. Assigning a
+  # profile here removes it from the default local stack without touching the
+  # production topology: `docker compose -f docker-compose.yml up -d` does not
+  # load this file, so deployments still get Caddy with no extra flag. To
+  # exercise the reverse proxy locally, opt back in with
+  # `docker compose --profile caddy up -d` (and point DOMAIN at this host).
+  caddy:
+    profiles:
+      - caddy
+
+  backend:
+    ports:
+      # Loopback by default: direct backend access bypasses Caddy. Set
+      # DEV_BIND_ADDRESS=0.0.0.0 only for deliberate testing on a trusted LAN.
+      - "${DEV_BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-8000}:8000"
+    environment:
+      # Local dev is plain HTTP, where a Secure cookie is never sent back and
+      # every request would look unauthenticated. Production keeps the default.
+      - COOKIE_SECURE=false
+
+  frontend:
+    ports:
+      - "${DEV_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-3000}:3000"

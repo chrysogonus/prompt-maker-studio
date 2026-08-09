@@ -1,0 +1,85 @@
+name: Feature request
+description: Suggest a capability or improvement
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, please skim:
+
+        - [`product/FEATURES.md`](https://github.com/chrysogonus/prompt-maker-studio/blob/main/product/FEATURES.md) — it may already exist
+        - [`product/DECISIONS.md`](https://github.com/chrysogonus/prompt-maker-studio/blob/main/product/DECISIONS.md) — it may have been considered and declined
+        - [`product/ROADMAP.md`](https://github.com/chrysogonus/prompt-maker-studio/blob/main/product/ROADMAP.md) — it may already be planned
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I checked `product/FEATURES.md` and this does not already exist
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation you hit, not the solution you have in mind.
+      placeholder: |
+        When I have 40+ saved prompts, finding the one I used last week means
+        scrolling the whole library — search only matches titles, not body text.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you weighed, and why you discarded them.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Authentication / accounts
+        - Dashboard / analytics
+        - Library / folders / tags
+        - Editor / versioning
+        - Playground
+        - Evaluation
+        - AI refinement
+        - Settings / preferences
+        - Deployment / self-hosting
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Would this be a breaking change?
+      options:
+        - "No"
+        - "Yes"
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to open a PR implementing this

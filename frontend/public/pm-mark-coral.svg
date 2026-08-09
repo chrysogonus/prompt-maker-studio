@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Prompt Maker Studio">
+  <g transform="translate(-0.7,0.3)">
+    <path d="M9 8.5L16 16L9 23.5" fill="none" stroke="#F0997B" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="19" y="21.3" width="7" height="3.4" rx="1.7" fill="#F0997B"/>
+  </g>
+</svg>

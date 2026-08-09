@@ -1,0 +1,45 @@
+.hitArea {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  flex: none;
+}
+
+.hitArea:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.track {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--border-primary);
+  position: relative;
+  transition: background var(--motion-fast);
+}
+
+.hitArea[data-checked='true'] .track {
+  background: var(--color-accent-tag);
+}
+
+.knob {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left var(--motion-fast);
+}
+
+.hitArea[data-checked='true'] .knob {
+  left: 20px;
+}

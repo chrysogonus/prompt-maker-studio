@@ -1,0 +1,52 @@
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-accent-tag) 10%, var(--color-panel));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent-tag) 30%, var(--color-border));
+  font-size: var(--text-sm-size);
+  color: var(--text-secondary);
+}
+
+.message {
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.link {
+  font-weight: var(--weight-semibold);
+  color: var(--accent-text);
+}
+
+.link:hover {
+  color: var(--color-accent-tag-hover);
+}
+
+.dismissButton {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.dismissButton:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-accent-tag) 15%, transparent);
+}

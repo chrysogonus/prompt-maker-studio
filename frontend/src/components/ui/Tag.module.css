@@ -1,0 +1,75 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs-size);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.neutral {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.accent {
+  background: color-mix(in srgb, var(--color-accent-tag) 18%, transparent);
+  color: var(--accent-text);
+}
+
+.success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.outline {
+  border: 1px solid var(--color-accent-tag);
+  color: var(--accent-text);
+}
+
+.removeControl {
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tag:hover .removeControl,
+.tag:focus-within .removeControl {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.remove {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+
+.remove::before {
+  position: absolute;
+  inset: -10px;
+  content: '';
+}
+
+.remove:hover {
+  color: var(--text-primary);
+}
+
+.remove:focus-visible {
+  outline: 2px solid var(--color-accent-tag);
+  outline-offset: 1px;
+  color: var(--text-primary);
+}

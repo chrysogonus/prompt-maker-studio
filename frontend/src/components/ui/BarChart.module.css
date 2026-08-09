@@ -1,0 +1,44 @@
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  height: 110px;
+}
+
+.column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.bar {
+  width: 100%;
+  max-width: 26px;
+  background: var(--bg-tertiary);
+  border-top: 2px solid var(--color-accent-tag);
+  border-radius: 3px 3px 0 0;
+}
+
+.tick {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+}
+
+/* Off-screen but still rendered, so assistive tech reads the figures the bars
+   only show as heights. Apply this to a normal wrapper: table captions can
+   escape clipping when these styles are placed directly on a table. */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

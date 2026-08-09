@@ -1,0 +1,41 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: var(--bg-primary);
+}
+
+.card {
+  width: min(100%, 520px);
+  padding: var(--space-8);
+  color: var(--text-primary);
+  background: var(--color-panel);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+}
+
+.wordmark,
+.code {
+  color: var(--accent-text);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.code {
+  margin: var(--space-8) 0 var(--space-2);
+}
+
+.card h1 {
+  margin: 0;
+}
+
+.card > p:not(.code) {
+  color: var(--text-secondary);
+}
+
+.card a {
+  color: var(--accent-text);
+  font-weight: 600;
+}

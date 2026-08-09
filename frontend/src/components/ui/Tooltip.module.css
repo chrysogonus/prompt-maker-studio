@@ -1,0 +1,31 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.content {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-2));
+  z-index: 20;
+  width: max-content;
+  max-width: 220px;
+  padding: var(--space-1) var(--space-2);
+  visibility: hidden;
+  color: var(--text-primary);
+  background: var(--color-overlay);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  line-height: var(--text-xs-line);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wrapper:hover .content,
+.wrapper:focus-within .content {
+  visibility: visible;
+  opacity: 1;
+}

@@ -1,0 +1,50 @@
+.icon {
+  flex: none;
+  color: currentColor;
+  transition: color 120ms ease-out;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.foreground {
+  color: var(--text-primary);
+}
+
+.accent {
+  color: var(--accent-coral);
+}
+
+.info {
+  color: var(--color-accent-value);
+}
+
+.success {
+  color: var(--success);
+}
+
+.danger {
+  color: var(--danger);
+}
+
+.inherit {
+  color: currentColor;
+}
+
+.spin {
+  animation: iconSpin var(--motion-spin) infinite;
+}
+
+@keyframes iconSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation-duration: 0.001ms;
+    animation-iteration-count: 1;
+  }
+}

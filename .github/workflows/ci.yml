@@ -1,0 +1,562 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: ['*']
+  push:
+    branches: [main, development]
+    # Publishing is gated on a version tag, not on landing a commit — see the
+    # publish job.
+    tags: ['v*']
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default; the publish job overrides this with packages: write,
+# which is the only job that pushes to GHCR.
+permissions:
+  contents: read
+
+# Next.js collects anonymous telemetry by default; CI has not agreed to that
+# either, and a build should not phone home to produce a check result.
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  # ============================================
+  # Repository Secret Scan
+  # ============================================
+  secret-scan:
+    name: Repository - Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout complete history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan reachable history and working tree
+        # The scanner image is pinned by its multi-platform digest in Makefile.
+        # check-secrets stages only tracked/non-ignored files for the directory
+        # pass, so local ignored environment files are never opened.
+        run: make check-secrets
+
+  # ============================================
+  # Backend Quality Gate
+  # ============================================
+  backend-quality:
+    name: Backend - Lint, Security & Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          # Key the cache on the lock, which is what pip actually installs.
+          cache-dependency-path: backend/requirements-dev.lock
+
+      - name: Install dependencies
+        # Install from the transitive lock with hash verification, then the
+        # package itself with --no-deps so nothing outside the lock can be
+        # resolved. Keeps CI's dependency set identical to the published images.
+        #
+        # pip/setuptools/wheel come from the lock too (--allow-unsafe pins them),
+        # so they are not upgraded separately here — an unpinned upgrade would
+        # defeat the point of hashing everything else.
+        run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-build-isolation --no-deps -e .
+
+      - name: Verify dependency locks
+        run: make -C .. check-locks PIP=pip PIPCOMPILE=pip-compile
+
+      - name: Verify the lock check fails closed
+        run: make -C .. check-locks-selftest PIP=pip
+
+      # ---- LINTING ----
+      - name: Lint with Ruff
+        run: |
+          ruff check app/ tests/ --output-format=github
+        continue-on-error: false
+
+      - name: Check code formatting with Ruff
+        run: |
+          ruff format --check app/ tests/
+
+      # ---- SECURITY SCANNING ----
+      - name: Security scan with Bandit
+        run: |
+          bandit -r app/ -f json -o bandit-report.json || true
+          bandit -r app/ -ll -f screen
+        continue-on-error: false
+
+      - name: Audit pip packages
+        run: pip-audit --desc
+        continue-on-error: false
+
+      - name: Upload Bandit report as artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: backend-bandit-report
+          path: backend/bandit-report.json
+          retention-days: 7
+
+      # ---- TESTING ----
+      - name: Run unit tests with coverage
+        env:
+          TESTING: "true"
+        run: |
+          pytest --cov=app \
+                 --cov-report=term-missing \
+                 --cov-report=xml \
+                 --cov-report=html \
+                 --cov-fail-under=90 \
+                 -v
+        continue-on-error: false
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
+        if: always()
+        with:
+          files: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage HTML report as artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: backend-coverage-report
+          path: backend/htmlcov/
+          retention-days: 7
+
+  # ============================================
+  # Frontend Quality Gate
+  # ============================================
+  frontend-quality:
+    name: Frontend - Lint, Security & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ---- LINTING ----
+      - name: TypeScript type checking
+        run: npx tsc --noEmit
+        continue-on-error: false
+
+      - name: Lint with ESLint
+        run: npx eslint src/ e2e/ playwright.config.ts
+        continue-on-error: false
+
+      # ---- SECURITY SCANNING ----
+      # Gating on --omit=dev: the shipped image installs production dependencies
+      # only. Lint/test tooling regularly carries advisories with no non-breaking
+      # fix (e.g. brace-expansion via eslint-plugin-import's pinned minimatch@3);
+      # the full tree is still printed so those stay visible.
+      - name: Security audit
+        run: |
+          npm audit --audit-level=moderate || true
+          npm audit --omit=dev --audit-level=moderate
+        continue-on-error: false
+
+      # ---- BUILD VALIDATION ----
+      - name: Build application
+        run: npm run build
+        continue-on-error: false
+
+      # ---- UNIT TESTS ----
+      # --coverage enforces the floors in vitest.config.ts. Without it the
+      # thresholds are inert and frontend coverage can regress silently, which
+      # is what happened while only the backend had a gate.
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
+        continue-on-error: false
+
+  # ============================================
+  # Docker Build Validation
+  # ============================================
+  docker-build:
+    name: Docker - Build Validation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [backend, frontend]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Verify environment files cannot enter build context
+        if: matrix.service == 'frontend'
+        run: make check-docker-context
+
+      - name: Build ${{ matrix.service }} Docker image
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+        with:
+          context: .
+          file: ./${{ matrix.service }}/Dockerfile
+          push: false
+          load: true
+          tags: prompt-maker-studio-${{ matrix.service }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test ${{ matrix.service }} image
+        run: |
+          docker images | grep prompt-maker-studio-${{ matrix.service }}
+          docker run --rm prompt-maker-studio-${{ matrix.service }}:test \
+            sh -c 'test -f /licenses/LICENSE && test -f /licenses/NOTICE && test -f /licenses/THIRD_PARTY_NOTICES.md'
+
+      - name: Verify THIRD_PARTY_NOTICES matches the ${{ matrix.service }} image
+        # Not just that the file exists: it claims to be the shipped inventory,
+        # and had already drifted (lucide-react, a direct production dependency,
+        # was missing from it entirely).
+        run: python scripts/check_third_party_notices.py --only ${{ matrix.service }}
+
+      - name: Verify frontend bundle hard-codes no API origin
+        if: matrix.service == 'frontend'
+        # The published image must work on any domain. A NEXT_PUBLIC_* value is
+        # compiled into the client bundle and cannot be changed at container
+        # start, so anything host-shaped in .next/static means the image is
+        # pinned to whoever built it. The browser calls /api same-origin.
+        run: |
+          docker run --rm --entrypoint sh prompt-maker-studio-frontend:test -c \
+            '! grep -Rq "localhost:8000\|backend:8000\|//[a-z0-9.-]*:8000" /app/.next/static'
+
+      - name: Verify frontend image omits LGPL native bundle
+        if: matrix.service == 'frontend'
+        run: |
+          docker run --rm prompt-maker-studio-frontend:test \
+            sh -c '! find /app/node_modules -path "*sharp-libvips*" -print -quit | grep -q .'
+
+      - name: Verify frontend image ships no package manager
+        if: matrix.service == 'frontend'
+        # npm's own bundled dependency tree (tar, sigstore, brace-expansion,
+        # ip-address, picomatch) was every HIGH/CRITICAL finding against this
+        # image. Nothing installs at runtime, so npm must not come back.
+        run: |
+          docker run --rm --entrypoint sh prompt-maker-studio-frontend:test -c \
+            '! command -v npm && ! command -v npx && ! test -d /usr/local/lib/node_modules/npm'
+
+      # ---- IMAGE VULNERABILITY SCAN ----
+      - name: Scan ${{ matrix.service }} image for known vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: prompt-maker-studio-${{ matrix.service }}:test
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          # Only findings with a fix available: an unfixable advisory in a base
+          # image is not something a build can act on, and failing on those
+          # trains people to ignore the gate.
+          ignore-unfixed: true
+          # Both images currently scan clean, so there are no suppressions to
+          # document. Add them per-CVE in .trivyignore with a reachability note
+          # rather than widening the severity filter.
+          exit-code: '1'
+          format: table
+
+      - name: Start backend container for smoke test
+        if: matrix.service == 'backend'
+        run: |
+          docker run -d \
+            --name backend-smoke \
+            -p 8000:8000 \
+            -e DATABASE_URL=sqlite:////app/data/prompts.db \
+            -e SECRET_KEY=$(openssl rand -hex 32) \
+            prompt-maker-studio-backend:test
+
+      - name: Wait for backend to be healthy
+        if: matrix.service == 'backend'
+        run: |
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8000/ > /dev/null 2>&1; then
+              echo "Backend healthy after $i attempt(s)"
+              exit 0
+            fi
+            echo "Attempt $i/15: not ready, waiting..."
+            sleep 2
+          done
+          echo "Backend did not become healthy within 30 seconds"
+          docker logs backend-smoke
+          exit 1
+
+      - name: Cleanup backend smoke test container
+        if: matrix.service == 'backend' && always()
+        run: docker stop backend-smoke && docker rm backend-smoke || true
+
+  # ============================================
+  # Browser End-to-End Tests
+  # ============================================
+  browser-e2e:
+    name: Browser - End-to-End Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: ./frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser end-to-end tests
+        run: make test-e2e
+
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-test-results
+          path: frontend/test-results/
+          retention-days: 7
+
+  # ============================================
+  # Docker Compose Validation
+  # ============================================
+  compose-validate:
+    name: Docker Compose - Config Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Validate compose file combinations
+        run: make compose-check
+
+      - name: Verify scheduled backup worker is non-root
+        run: make check-backup-worker
+
+  # ============================================
+  # Static Analysis (CodeQL)
+  # ============================================
+  #
+  # Bandit covers the Python backend; nothing covered the TypeScript half. That
+  # gap matters more here than it would elsewhere: the CSP in Caddyfile keeps
+  # `script-src 'unsafe-inline'` for reasons documented there, so SECURITY.md
+  # names XSS prevention in application code as the primary control — and this
+  # is what checks it mechanically.
+  #
+  # Lives in this workflow, not a separate codeql.yml, so it can join the
+  # `All Quality Gates Passed` aggregate that BRANCH_PROTECTION.md requires
+  # every mandatory job to feed. There is no cron: it runs on every pull
+  # request and every push to main, and a weekly schedule here would re-run the
+  # entire pipeline rather than just this job.
+  codeql:
+    name: Static Analysis - CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Scoped to this job alone; the workflow default stays contents: read.
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@c4dd10e44af883a891fe31ced449bcb4a6728b9b # v3.37.6
+        with:
+          languages: javascript-typescript
+          # No compilation step for TypeScript; CodeQL reads the sources.
+          build-mode: none
+          queries: security-and-quality
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@c4dd10e44af883a891fe31ced449bcb4a6728b9b # v3.37.6
+        with:
+          category: /language:javascript-typescript
+
+  # ============================================
+  # All Checks Passed (Required Status Check)
+  # ============================================
+  all-checks-passed:
+    name: All Quality Gates Passed
+    runs-on: ubuntu-latest
+    needs:
+      [
+        secret-scan,
+        backend-quality,
+        frontend-quality,
+        docker-build,
+        browser-e2e,
+        compose-validate,
+        codeql,
+      ]
+    if: always()
+
+    steps:
+      - name: Check all jobs status
+        run: |
+          if [[ "${{ needs.backend-quality.result }}" != "success" ]]; then
+            echo "❌ Backend quality checks failed"
+            exit 1
+          fi
+          if [[ "${{ needs.secret-scan.result }}" != "success" ]]; then
+            echo "❌ Repository secret scan failed"
+            exit 1
+          fi
+          if [[ "${{ needs.frontend-quality.result }}" != "success" ]]; then
+            echo "❌ Frontend quality checks failed"
+            exit 1
+          fi
+          if [[ "${{ needs.docker-build.result }}" != "success" ]]; then
+            echo "❌ Docker build validation failed"
+            exit 1
+          fi
+          if [[ "${{ needs.browser-e2e.result }}" != "success" ]]; then
+            echo "❌ Browser end-to-end tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.compose-validate.result }}" != "success" ]]; then
+            echo "❌ Docker Compose validation failed"
+            exit 1
+          fi
+          if [[ "${{ needs.codeql.result }}" != "success" ]]; then
+            echo "❌ CodeQL static analysis failed"
+            exit 1
+          fi
+          echo "✅ All quality gates passed successfully"
+
+      - name: Success summary
+        run: |
+          echo "### ✅ CI Pipeline Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All quality gates completed successfully:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Repository: Full-history and working-tree secret scan" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Backend: Lock consistency, Linting, Security, Tests (90%+ coverage)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Frontend: Linting, Security, Build, Tests (coverage floors)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Static analysis: CodeQL (javascript-typescript)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Docker: Build validation" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Browser: End-to-end tests" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Compose: Config validation" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # Publish Docker Images to GHCR
+  # (version tags only, after all quality gates pass)
+  # ============================================
+  #
+  # Triggered by pushing a `v*` tag rather than by every commit landing on main.
+  # This is the only job holding `packages: write`, so it is the only one whose
+  # compromise could replace the project's public images — and a release is now
+  # a deliberate act rather than a side effect of merging.
+  #
+  # `latest` is no longer published. It made a poisoned or simply unready
+  # artifact the default pull, and docs/deployment.md already tells self-hosters
+  # to deploy a pinned tag.
+  publish:
+    name: Publish - ${{ matrix.service }} → GHCR
+    runs-on: ubuntu-latest
+    needs:
+      [
+        secret-scan,
+        backend-quality,
+        frontend-quality,
+        docker-build,
+        browser-e2e,
+        compose-validate,
+        codeql,
+      ]
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [backend, frontend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/prompt-maker-studio-${{ matrix.service }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+
+      - name: Build and push ${{ matrix.service }} image
+        id: build
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+        with:
+          context: .
+          file: ./${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Provenance records which workflow, commit, and inputs produced the
+          # image; the SBOM lists what ended up inside it. Both are attached to
+          # the image in the registry, so a self-hoster can check that a tag
+          # came from this repository rather than trusting the tag name.
+          provenance: mode=max
+          sbom: true
+
+      - name: Record the published digest
+        # An immutable reference to deploy and to record in the release notes —
+        # a tag can be moved, a digest cannot.
+        run: |
+          echo "### ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "ghcr.io/${{ github.repository_owner }}/prompt-maker-studio-${{ matrix.service }}@${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,235 @@
+:root {
+  --pm-coral: #f0997b;
+  --pm-ink: #141416;
+  --pm-surface-tile: #17171a;
+  --pm-border-tile: #2e2e33;
+  /* The lighter brand coral needs a darker substitute on light app chrome. */
+  --pm-mark-color: var(--accent-text);
+
+  --color-canvas: #f7f7f9;
+  --color-panel: #ffffff;
+  --color-panel-raised: #f0f0f4;
+  --color-overlay: #fbfbfd;
+  --color-border: #e1e1e8;
+  --color-text-primary: #1a1c24;
+  --color-text-secondary: #5c6270;
+  /* #9a9fae (the original value) is only ~2.6:1 against white/panel — darkened to
+     clear WCAG AA's 4.5:1 for normal text (with margin against panel-raised, the
+     darker of the two neutral surfaces) while staying lighter than text-secondary. */
+  --color-text-muted: #64697a;
+
+  /* Accent usage rule: --color-accent-tag (coral) is the ONLY actionable/
+     interactive accent - primary buttons, links, focus rings, active nav/
+     tab/segmented state, brand mark, selection highlight. --color-accent-
+     value (cyan) is informational/secondary only - value display, rare
+     one-off emphasis. It must never be used for anything clickable,
+     focusable, or for a hover/active state. */
+  --color-accent-tag: #e8632c;
+  --color-accent-tag-hover: #f17a44;
+  --color-accent-value: #1c7ea6;
+  /* #4f8f3d (the original value) is used as TEXT on the low-alpha --success-bg
+     tint in a dozen places (status pills, connection state, eval method tags),
+     and cleared 4.5:1 on none of them — 2.97:1 over the tint on panel-raised,
+     and only 3.94:1 on plain white. Darkened to pass on every surface it is set
+     on; the worst case is now 4.77:1. Still used as a solid fill for decorative
+     dots, where contrast does not apply. */
+  --color-accent-success: #33691e;
+  --color-danger: #c7395a;
+  /* Darker coral for TEXT set directly on light/neutral surfaces (links, active-tab
+     labels, tag labels). --color-accent-tag itself fails 4.5:1 as text-on-white
+     (measured 3.35:1) even though it works fine as a button background. */
+  --accent-text: #a8461d;
+
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Berkeley Mono', 'Fira Code', ui-monospace, monospace;
+
+  --text-xs-size: 12px;
+  --text-xs-line: 1.4;
+  --text-sm-size: 13px;
+  --text-sm-line: 1.5;
+  --text-base-size: 14px;
+  --text-base-line: 1.6;
+  --text-lg-size: 16px;
+  --text-lg-line: 1.5;
+  --text-xl-size: 20px;
+  --text-xl-line: 1.4;
+  --text-2xl-size: 28px;
+  --text-2xl-line: 1.25;
+  --text-3xl-size: 36px;
+  --text-3xl-line: 1.15;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --motion-fast: 0.15s ease;
+  --motion-spin: 0.6s linear;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 20px;
+  --shadow-panel: 0 1px 2px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.10);
+  --shadow-panel-hover: 0 2px 4px rgba(0,0,0,0.20), 0 6px 16px rgba(0,0,0,0.14);
+
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%235c6270' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --bg-primary: var(--color-panel);
+  --bg-secondary: var(--color-canvas);
+  --bg-tertiary: var(--color-panel-raised);
+  --bg-overlay: var(--color-overlay);
+  --bg-accent: color-mix(in srgb, var(--color-accent-tag) 12%, transparent);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-muted);
+  --text-muted: var(--color-text-muted);
+  --border-primary: var(--color-border);
+  --border-secondary: var(--color-border);
+  --border-accent: var(--color-accent-value);
+  --accent-primary: var(--color-accent-tag);
+  --accent-hover: var(--color-accent-tag-hover);
+  --accent-light: var(--color-accent-value);
+  --accent-coral: var(--accent-text);
+  /* Text/icon color for content placed on a solid --color-accent-tag background.
+     White fails WCAG AA contrast against this coral in both themes (~2.3:1 and
+     ~3.6:1 measured); a dark near-black clears 4.5:1 against both. */
+  --on-accent: #1a1c24;
+  --success: var(--color-accent-success);
+  --success-hover: var(--color-accent-success);
+  --success-bg: color-mix(in srgb, var(--color-accent-success) 14%, transparent);
+  --warning: #a66a00;
+  --danger: var(--color-danger);
+  --danger-hover: var(--color-danger);
+  --danger-bg: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  --shadow-sm: var(--shadow-panel);
+  --shadow-md: var(--shadow-panel);
+  --shadow-lg: var(--shadow-panel-hover);
+  --shadow-xl: var(--shadow-panel-hover);
+  --scrollbar-thumb: var(--color-border);
+}
+
+[data-theme="dark"] {
+  --pm-mark-color: var(--pm-coral);
+
+  --color-canvas: #0f1117;
+  --color-panel: #171a23;
+  --color-panel-raised: #1d2130;
+  --color-overlay: #232837;
+  --color-border: #2a2e3a;
+  --color-text-primary: #e8e6e3;
+  --color-text-secondary: #b0b5c4;
+  /* #9fa4b3 clears WCAG AA's 4.5:1 contrast floor against panel-raised. */
+  --color-text-muted: #9fa4b3;
+  --color-accent-tag: #ff8a65;
+  --color-accent-tag-hover: #ff9e80;
+  --color-accent-value: #7ec8e3;
+  --color-accent-success: #b4e197;
+  --color-danger: #e5637a;
+  /* Dark theme's coral already has ample contrast against dark backgrounds as text. */
+  --accent-text: var(--color-accent-tag);
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239a9fae' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Settings > Preferences > Density: tightens the spacing scale everywhere
+   components consume --space-* vars, rather than a purely decorative toggle. */
+[data-density="compact"] {
+  --space-1: 3px;
+  --space-2: 6px;
+  --space-3: 9px;
+  --space-4: 12px;
+  --space-6: 18px;
+  --space-8: 24px;
+  --space-10: 30px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  font-family: var(--font-display);
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-canvas);
+  color: var(--text-primary);
+  font-size: var(--text-base-size);
+  line-height: var(--text-base-line);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font-family: var(--font-display);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-accent-tag);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent-tag) 28%, transparent);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}

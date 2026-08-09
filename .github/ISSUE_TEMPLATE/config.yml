@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/chrysogonus/prompt-maker-studio/security/advisories/new
+    about: Report privately through GitHub Security Advisories. Never open a public issue for a vulnerability.
+  - name: Question or idea
+    url: https://github.com/chrysogonus/prompt-maker-studio/discussions
+    about: Ask setup questions or float an idea before filing a formal feature request.
+  - name: Self-hosting documentation
+    url: https://github.com/chrysogonus/prompt-maker-studio/blob/main/docs/deployment.md
+    about: Deployment, Docker, Caddy, and backup guidance before opening an issue.

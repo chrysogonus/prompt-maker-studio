@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+*.db
+*.sqlite3
+backend/bandit-report.json
+backend/coverage.xml
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Root placeholder lockfile; frontend/package-lock.json remains tracked
+/package-lock.json
+
+# Node.js
+node_modules/
+.next/
+out/
+*.log
+*.tsbuildinfo
+frontend/playwright-report/
+frontend/test-results/
+frontend/coverage/
+
+# Environment files
+# .env.example is intentionally tracked; every other .env* variant is local-only.
+.env
+.env.*
+!.env.example
+
+# Local database backups
+/backups/
+
+# Local security-scanner output.
+/codex-security-results/
+
+# Coding-agent local state. Ignore everything under .claude/ and re-include the
+# two entries that are project tooling, rather than enumerating the runtime
+# state files to exclude — that list only covered filenames someone had thought
+# of, so any new per-machine state file would have defaulted to committed.
+.claude/*
+!.claude/skills/
+!.claude/settings.json
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Windows/WSL NTFS zone-transfer metadata (created on file copy/download)
+*:Zone.Identifier

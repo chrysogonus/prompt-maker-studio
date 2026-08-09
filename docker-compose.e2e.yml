@@ -1,0 +1,26 @@
+# E2E-only overrides. These names keep Playwright's temporary stack separate
+# from a developer's normal Compose project.
+services:
+  backend:
+    container_name: prompt-maker-studio-e2e-backend
+    environment:
+      # The frontend E2E suite registers several throwaway users per run,
+      # well above the production-safe 5/minute default — see auth_routes.py.
+      # Production closes registration after the first account; the suite
+      # creates a fresh throwaway user per test.
+      - REGISTRATION_MODE=open
+      # The suite points every user at http://127.0.0.1:9 — a deliberately
+      # unreachable loopback endpoint, so a run can get past the "connect a
+      # provider" guard without ever reaching a real, billed provider. The
+      # production default rejects private and loopback destinations.
+      - ALLOW_PRIVATE_LLM_URLS=true
+      - REGISTER_RATE_LIMIT=100/minute
+      # Registration signs the new user straight in, and one test signs back in
+      # explicitly, so the login limit binds first without this.
+      - LOGIN_RATE_LIMIT=100/minute
+      # Playwright drives the stack over plain HTTP, where a Secure session
+      # cookie would never be sent back and every request would look signed out.
+      - COOKIE_SECURE=false
+
+  frontend:
+    container_name: prompt-maker-studio-e2e-frontend
