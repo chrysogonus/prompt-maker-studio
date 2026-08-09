@@ -547,6 +547,10 @@ jobs:
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/prompt-maker-studio-${{ matrix.service }}
+          # metadata-action defaults to `latest=auto`, which tags `latest` on any
+          # semver build — v0.1.0 shipped one despite the policy below. Disable it
+          # explicitly; the comment on this job is the intent, this is the switch.
+          flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
