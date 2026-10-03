@@ -1,12 +1,17 @@
 # Pinned by digest so rebuilding this commit retrieves the same bytes. The
 # readable tag stays in the comment; Dependabot's docker ecosystem updates
 # both together.
-FROM python:3.12-slim@sha256:d657ab0ade19f404a6ccc883ab399540de667aff751748ce23c07330c5a89e64
+FROM python:3.12-slim@sha256:dddfd7e07f9d15aeeca61529320492139d21cac7f0070c00609243e51e4e0016
 
 WORKDIR /app
 
-# Install curl for health checks
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Install curl for health checks. libpcre2-8-0 is upgraded explicitly because
+# the pinned base image predates Debian's fix for CVE-2026-103111; drop it once
+# a base digest ships 10.46-1~deb13u3 or later.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install runtime dependencies from the transitive lock rather than resolving
 # pyproject.toml at build time. pyproject.toml pins only direct dependencies,

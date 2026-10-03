@@ -45,7 +45,7 @@ accurate for it.
 | pycparser | 3.0 | BSD-3-Clause |
 | pydantic | 2.13.4 | MIT |
 | pydantic_core | 2.46.4 | MIT |
-| PyJWT | 2.13.0 | MIT |
+| PyJWT | 2.15.1 | MIT |
 | slowapi | 0.1.9 | MIT |
 | sniffio | 1.3.1 | MIT OR Apache-2.0 |
 | SQLAlchemy | 2.0.51 | MIT |
@@ -67,16 +67,16 @@ The final image is installed with `npm ci --omit=dev --omit=optional`.
 
 | Package | Version | License |
 |---|---:|---|
-| @next/env | 16.2.11 | MIT |
-| @swc/helpers | 0.5.15 | Apache-2.0 |
-| baseline-browser-mapping | 2.10.40 | Apache-2.0 |
-| caniuse-lite | 1.0.30001799 | CC-BY-4.0 |
+| @next/env | 16.3.8 | MIT |
+| @swc/helpers | 0.5.23 | Apache-2.0 |
+| baseline-browser-mapping | 2.11.27 | Apache-2.0 |
+| caniuse-lite | 1.0.30001814 | CC-BY-4.0 |
 | client-only | 0.0.1 | MIT |
 | js-tokens | 4.0.0 | MIT |
 | loose-envify | 1.4.0 | MIT |
 | lucide-react | 1.28.0 | ISC |
 | nanoid | 3.3.18 | MIT |
-| next | 16.2.11 | MIT |
+| next | 16.3.8 | MIT |
 | picocolors | 1.1.1 | ISC |
 | postcss | 8.5.23 | MIT |
 | react | 18.3.1 | MIT |
