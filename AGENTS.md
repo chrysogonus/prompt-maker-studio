@@ -40,6 +40,8 @@ needs tests.
 Branch from `main` as `feat|fix|ref|docs|chore/short-description`. Commits follow Conventional
 Commits (`fix(auth): reject expired reset tokens`). Full rules in `CONTRIBUTING.md`.
 
+Keep commit messages short and concise. Never add a `Co-Authored-By` trailer.
+
 ## Guardrails
 
 - **YOU MUST NOT read, print, write, or edit `.env`** — it holds `SECRET_KEY`,
