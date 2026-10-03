@@ -50,6 +50,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN rm -rf /usr/local/lib/node_modules/npm \
     /usr/local/bin/npm /usr/local/bin/npx /opt/yarn-*
 
+# The pinned base image predates Alpine's OpenSSL fix for CVE-2026-14456;
+# drop this once a base digest ships libssl3/libcrypto3 3.5.8-r0 or later.
+RUN apk upgrade --no-cache libssl3 libcrypto3
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/next.config.js ./

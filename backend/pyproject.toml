@@ -18,7 +18,7 @@ dependencies = [
     "sqlalchemy==2.0.51",
     "pydantic[email]==2.13.4",
     "bcrypt==5.0.0",
-    "PyJWT==2.13.0",
+    "PyJWT==2.15.1",
     "openai==2.48.0",
     "slowapi==0.1.9",
     "prometheus-fastapi-instrumentator==8.1.0",
@@ -40,16 +40,11 @@ dev = [
     "pytest-cov==4.1.0",
     # Starlette >=1.2 uses HTTPX2 for TestClient. Keep legacy httpx as the
     # application's outbound HTTP client until that separate migration.
-    "httpx2==2.7.0",
+    "httpx2==2.13.1",
     "ruff==0.16.1",
     "bandit[toml]==1.9.4",
     "pip-audit==2.7.3",
-    "pip-tools==7.6.0",
-    # pip 26.2 dropped pip._internal.utils.compat.stdlib_pkgs, which pip-tools
-    # 7.6.0 (its latest release) imports whenever it reads a config file — so
-    # every pip-compile run against a pyproject.toml dies on ImportError.
-    # Drop this pin once a pip-tools release supports pip >= 26.2.
-    "pip<26.2",
+    "pip-tools==7.6.1",
 ]
 
 [tool.setuptools.packages.find]
