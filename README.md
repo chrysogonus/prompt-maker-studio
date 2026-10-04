@@ -206,6 +206,7 @@ build receives no build arguments at all.
 | `REGISTER_RATE_LIMIT` | No | SlowAPI rate limit applied to the registration endpoint | `5/minute` |
 | `LOGIN_RATE_LIMIT` | No | SlowAPI rate limit applied to the login endpoint | `10/minute` |
 | `BACKUP_INTERVAL_SECONDS` | Backup Profile | Frequency in seconds for the automated database backup worker | `86400` |
+| `BACKUP_RETENTION_DAYS` | Backup Profile | Scheduled backups older than this many days are deleted | `14` |
 | `BACKUP_UID` | Backup Profile | Numeric host UID used by the non-root scheduled backup worker | `1000` |
 | `BACKUP_GID` | Backup Profile | Numeric host GID used by the non-root scheduled backup worker | `1000` |
 | `UVICORN_RELOAD` | Process env | Enable Uvicorn autoreload when exported for `make dev-backend` | `false` |

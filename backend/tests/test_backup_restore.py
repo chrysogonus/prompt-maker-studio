@@ -73,3 +73,20 @@ def test_restore_rejects_invalid_backup(tmp_path):
         restore_module.restore_backup(invalid_backup, db_path)
 
     assert _read_value(db_path) == "safe"
+
+
+def test_prune_deletes_only_expired_backups_of_its_label(tmp_path):
+    backup_module = _load_script("backup_sqlite")
+    names = [
+        "prompts-20000101T000000Z.sqlite3.gz",  # expired
+        "prompts-29990101T000000Z.sqlite3.gz",  # within retention
+        "other-20000101T000000Z.sqlite3.gz",  # different label
+        "prompts-manual.sqlite3.gz",  # no parseable timestamp
+    ]
+    for name in names:
+        (tmp_path / name).write_bytes(b"")
+
+    deleted = backup_module.prune_backups(tmp_path, label="prompts", keep_days=14)
+
+    assert [path.name for path in deleted] == ["prompts-20000101T000000Z.sqlite3.gz"]
+    assert sorted(path.name for path in tmp_path.iterdir()) == sorted(names[1:])

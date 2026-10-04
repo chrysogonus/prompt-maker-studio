@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import gzip
 from pathlib import Path
 import shutil
@@ -44,15 +44,42 @@ def create_backup(db_path: Path, output_dir: Path, *, label: str = "prompts") ->
     return backup_path
 
 
+def prune_backups(output_dir: Path, *, label: str, keep_days: int) -> list[Path]:
+    """Delete this label's backups older than `keep_days` and return the deleted paths.
+
+    Age comes from the timestamp in the file name, not the mtime, so a copied or
+    restored file keeps its real age. Files that don't match the name pattern are
+    left alone.
+    """
+    cutoff = datetime.now(UTC) - timedelta(days=keep_days)
+    deleted = []
+    for path in output_dir.glob(f"{label}-*.sqlite3.gz"):
+        stamp = path.name.removeprefix(f"{label}-").removesuffix(".sqlite3.gz")
+        try:
+            created = datetime.strptime(stamp, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+        except ValueError:
+            continue
+        if created < cutoff:
+            path.unlink()
+            deleted.append(path)
+    return deleted
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Create a SQLite database backup")
     parser.add_argument("--db", required=True, type=Path, help="Path to the SQLite database file")
     parser.add_argument("--out", required=True, type=Path, help="Directory for backup files")
     parser.add_argument("--label", default="prompts", help="Backup file prefix")
+    parser.add_argument(
+        "--keep-days", type=int, help="Delete this label's backups older than this many days"
+    )
     args = parser.parse_args()
 
     backup_path = create_backup(args.db, args.out, label=args.label)
     print(backup_path)
+    if args.keep_days is not None:
+        for path in prune_backups(args.out, label=args.label, keep_days=args.keep_days):
+            print(f"deleted {path}")
 
 
 if __name__ == "__main__":

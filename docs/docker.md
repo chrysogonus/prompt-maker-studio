@@ -205,6 +205,7 @@ GRAFANA_ADMIN_PASSWORD=change-this-to-a-secure-password
 # Scheduled backups (needed only for the opt-in `backup` profile). Set UID/GID
 # to `id -u` / `id -g` if the host account is not 1000:1000.
 BACKUP_INTERVAL_SECONDS=86400
+BACKUP_RETENTION_DAYS=14
 BACKUP_UID=1000
 BACKUP_GID=1000
 ```

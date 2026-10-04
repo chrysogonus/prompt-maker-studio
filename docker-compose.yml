@@ -3,6 +3,14 @@
 # "Prompt Maker Studio" and any future rename of this directory.
 name: prompt-maker
 
+# Docker's default json-file driver never rotates, and the backend's access log
+# carries client IP addresses. Cap each container's log so old lines are dropped.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   backend:
     build:
@@ -64,6 +72,7 @@ services:
     networks:
       - prompt-maker-studio-network
     restart: unless-stopped
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 5s
@@ -89,6 +98,7 @@ services:
     networks:
       - prompt-maker-studio-network
     restart: unless-stopped
+    logging: *default-logging
 
   caddy:
     image: caddy:2-alpine@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a
@@ -109,6 +119,7 @@ services:
     networks:
       - prompt-maker-studio-network
     restart: unless-stopped
+    logging: *default-logging
 
   db-backup:
     image: python:3.12-slim@sha256:d657ab0ade19f404a6ccc883ab399540de667aff751748ce23c07330c5a89e64
@@ -125,9 +136,11 @@ services:
       - ./scripts:/scripts:ro
     environment:
       - BACKUP_INTERVAL_SECONDS=${BACKUP_INTERVAL_SECONDS:-86400}
+      # If your privacy policy states a backup retention period, keep this in sync.
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
     command: >
       sh -c "while true; do
-        python /scripts/backup_sqlite.py --db /app/data/prompts.db --out /backups --label prompts;
+        python /scripts/backup_sqlite.py --db /app/data/prompts.db --out /backups --label prompts --keep-days $$BACKUP_RETENTION_DAYS;
         sleep $$BACKUP_INTERVAL_SECONDS;
       done"
     networks:

@@ -108,6 +108,7 @@ class TestDockerComposeDocumentedSettingsReachTheBackend:
         "IMAGE_TAG": "image coordinates in docker-compose.prod.yml",
         "GRAFANA_ADMIN_PASSWORD": "read by the grafana service (monitoring profile)",
         "BACKUP_INTERVAL_SECONDS": "read by the db-backup service (backup profile)",
+        "BACKUP_RETENTION_DAYS": "read by the db-backup service (backup profile)",
         "BACKUP_UID": "container user for the db-backup service (backup profile)",
         "BACKUP_GID": "container user for the db-backup service (backup profile)",
     }
