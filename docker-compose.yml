@@ -142,14 +142,27 @@ services:
       - BACKUP_INTERVAL_SECONDS=${BACKUP_INTERVAL_SECONDS:-86400}
       # If your privacy policy states a backup retention period, keep this in sync.
       - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
+    # The database runs in WAL mode. Through the read-only mount a reader can
+    # only open it while the backend holds it open (the -shm/-wal files exist);
+    # after a clean backend shutdown SQLite would need to create them and fails
+    # with "unable to open database file". So wait for a healthy backend, and
+    # retry instead of skipping a whole interval — on reboot Docker restarts
+    # containers without honouring depends_on.
+    depends_on:
+      backend:
+        condition: service_healthy
     command: >
       sh -c "while true; do
-        python /scripts/backup_sqlite.py --db /app/data/prompts.db --out /backups --label prompts --keep-days $$BACKUP_RETENTION_DAYS;
+        until python /scripts/backup_sqlite.py --db /app/data/prompts.db --out /backups --label prompts --keep-days $$BACKUP_RETENTION_DAYS; do
+          echo 'backup failed; retrying in 60s';
+          sleep 60;
+        done;
         sleep $$BACKUP_INTERVAL_SECONDS;
       done"
     networks:
       - prompt-maker-studio-network
     restart: unless-stopped
+    logging: *default-logging
 
   # Monitoring is opt-in: `docker compose --profile monitoring up -d`.
   #

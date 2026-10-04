@@ -12,6 +12,18 @@ any release. See [Project status](./README.md#project-status).
 
 Nothing yet.
 
+## [0.1.3] - 2026-10-04
+
+### Fixed
+
+- The scheduled backup failed with `unable to open database file` when it ran
+  while the backend was stopped — for example during `docker compose up` after
+  an upgrade, or after a reboot — and then waited a full interval before trying
+  again. The read-only mount cannot recreate SQLite's WAL `-shm`/`-wal` files.
+  The worker now starts only once the backend is healthy, retries every 60
+  seconds until a backup succeeds, and its logs are size-capped like the other
+  services. (#38)
+
 ## [0.1.2] - 2026-10-04
 
 ### Added
@@ -257,6 +269,7 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.3
 [0.1.2]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.2
 [0.1.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.0

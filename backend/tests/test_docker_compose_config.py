@@ -179,3 +179,11 @@ class TestDockerComposeBackupUser:
     def test_backup_database_mount_stays_read_only(self):
         backup_block = _service_block(_COMPOSE_PATH.read_text(), "db-backup")
         assert "backend-data:/app/data:ro" in backup_block
+
+    def test_backup_waits_for_the_backend_and_retries(self):
+        # Read-only access to a WAL database needs the backend's -shm/-wal files;
+        # a backup started while the backend is down fails, so it must not
+        # wait a whole interval before trying again.
+        backup_block = _service_block(_COMPOSE_PATH.read_text(), "db-backup")
+        assert re.search(r"backend:\s*\n\s*condition: service_healthy", backup_block)
+        assert "until python /scripts/backup_sqlite.py" in backup_block
