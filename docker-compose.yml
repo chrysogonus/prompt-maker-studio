@@ -37,8 +37,13 @@ services:
       # would only expose it to other subdomains. See .env.example.
       - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
       - COOKIE_SECURE=${COOKIE_SECURE:-true}
-      # No operator LLM key: every user brings their own provider credential,
-      # stored encrypted per user (see backend/app/services/secret_store.py).
+      # Users bring their own provider credential, stored encrypted per user
+      # (see backend/app/services/secret_store.py). The optional server
+      # default below serves anyone who has not connected one.
+      - LLM_PROVIDER=${LLM_PROVIDER:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-}
       - LLM_ENCRYPTION_KEY=${LLM_ENCRYPTION_KEY:-}
       - LLM_TIMEOUT_SECONDS=${LLM_TIMEOUT_SECONDS:-}
       - LLM_PRICING_REFRESH=${LLM_PRICING_REFRESH:-true}

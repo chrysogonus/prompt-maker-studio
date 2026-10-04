@@ -312,4 +312,25 @@ describe('LLMConnectionForm', () => {
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument();
   });
+
+  it('shows the server default, testable, when the user has no connection', async () => {
+    vi.mocked(AuthService.getLLMConnection).mockResolvedValue(
+      connection({
+        configured: false,
+        provider: null,
+        provider_label: null,
+        base_url: null,
+        model: null,
+        has_api_key: false,
+        api_key_hint: null,
+        server_default: { provider_label: 'vLLM (self-hosted)', model: 'served-model' },
+      }),
+    );
+    render(<LLMConnectionForm />);
+
+    expect(
+      await screen.findByText('Server default · vLLM (self-hosted) · served-model'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
+  });
 });

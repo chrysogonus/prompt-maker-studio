@@ -239,6 +239,14 @@ class LLMProviderOption(BaseModel):
     docs_url: str | None = None
 
 
+class LLMServerDefault(BaseModel):
+    """The operator's deployment-wide connection, as shown to users. Carries
+    no base URL or key — only what a user needs to recognise it."""
+
+    provider_label: str
+    model: str
+
+
 class LLMConnectionResponse(BaseModel):
     """Schema for GET/PUT /api/auth/me/llm-connection.
 
@@ -254,6 +262,8 @@ class LLMConnectionResponse(BaseModel):
     has_api_key: bool = False
     api_key_hint: str | None = None
     providers: list[LLMProviderOption] = Field(default_factory=list)
+    # Used whenever `configured` is false; None when the operator set none.
+    server_default: LLMServerDefault | None = None
 
 
 class LLMConnectionUpdate(BaseModel):

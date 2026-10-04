@@ -3,8 +3,10 @@ The single place an LLM client is constructed.
 
 Every AI feature (AI import, refine questions/draft, Playground runs, eval case
 runs, judge grading, eval-case generation) resolves its client from the acting
-user's own provider connection through `client_for()`. There is no operator
-fallback credential and no other `OpenAI(...)` construction in `app/`.
+user's own provider connection through `client_for()`. A user without a usable
+connection of their own falls back to the operator's server default (LLM_*
+env vars), when one is set. There is no other `OpenAI(...)` construction in
+`app/`.
 
 `json_completion()` exists because structured output is the one thing that does
 *not* port cleanly across OpenAI-compatible endpoints: Anthropic silently
@@ -94,8 +96,45 @@ class LLMConnection:
         return self.provider.label
 
 
-def is_configured(user: User) -> bool:
-    """Whether `user` has a connection every AI feature could actually use."""
+@dataclass(frozen=True)
+class ServerDefault:
+    """The deployment-wide connection from LLM_* env vars, used by anyone
+    without a usable connection of their own."""
+
+    provider: Provider
+    base_url: str
+    model: str
+    api_key: str
+
+
+def server_default() -> ServerDefault | None:
+    """
+    The operator's LLM_BASE_URL/LLM_MODEL connection, or None when unset.
+
+    The operator configures this URL, not a user, so it deliberately bypasses
+    the egress policy for user-supplied URLs (ALLOW_PRIVATE_LLM_URLS).
+    """
+    base_url = os.getenv("LLM_BASE_URL", "").strip()
+    model = os.getenv("LLM_MODEL", "").strip()
+    if not base_url or not model:
+        return None
+    handle = os.getenv("LLM_PROVIDER", "").strip() or "custom"
+    try:
+        provider = get_provider(handle)
+    except ValueError:
+        logger.warning("Ignoring the server default LLM: unknown LLM_PROVIDER=%r", handle)
+        return None
+    return ServerDefault(
+        provider=provider,
+        base_url=base_url,
+        model=model,
+        api_key=os.getenv("LLM_API_KEY", "").strip(),
+    )
+
+
+def has_own_connection(user: User) -> bool:
+    """Whether `user` has saved a connection of their own that every AI feature
+    could actually use — ignoring the server default."""
     if not user.llm_provider or not user.llm_model:
         return False
     try:
@@ -107,6 +146,15 @@ def is_configured(user: User) -> bool:
     return bool(user.llm_base_url or provider.default_base_url)
 
 
+def active_provider_and_model(user: User) -> tuple[Provider, str] | None:
+    """The provider and model `user`'s AI features run against — their own
+    connection first, then the server default — or None if neither exists."""
+    if has_own_connection(user):
+        return get_provider(user.llm_provider), user.llm_model
+    default = server_default()
+    return (default.provider, default.model) if default else None
+
+
 def available_models_for(user: User) -> list[str]:
     """
     Models to offer this user in a picker: their provider's suggested models,
@@ -114,8 +162,9 @@ def available_models_for(user: User) -> list[str]:
     this is a convenience list rather than an allowlist — except that the
     Playground validates against it to avoid advertising an unrunnable choice.
     """
-    if not is_configured(user):
-        return []
+    if not has_own_connection(user):
+        default = server_default()
+        return [default.model] if default else []
     provider = get_provider(user.llm_provider)
     models = [user.llm_model]
     models.extend(m for m in provider.models if m != user.llm_model)
@@ -140,11 +189,12 @@ def timeout_seconds_for(provider: Provider) -> float:
 
 def client_for(user: User, model: str | None = None) -> LLMConnection:
     """
-    Build the LLM client for `user`'s own provider connection.
+    Build the LLM client for `user`'s own provider connection, or for the
+    server default when they have no usable connection of their own.
 
     Args:
-        user: The acting user — the connection is always theirs, never a
-            shared operator credential
+        user: The acting user — their own connection always wins over the
+            server default
         model: Optional override (e.g. the Playground's model picker); falls
             back to the connection's configured model
 
@@ -152,6 +202,16 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
         NoProviderConfiguredError: If no usable connection is configured
         StoredKeyUnreadableError: If the stored key cannot be decrypted
     """
+    if not has_own_connection(user):
+        default = server_default()
+        if default is not None:
+            return _build_connection(
+                default.provider,
+                (model or default.model).strip(),
+                default.base_url,
+                default.api_key or _LOCAL_API_KEY_PLACEHOLDER,
+            )
+
     if not user.llm_provider:
         msg = (
             "No AI provider is connected. Add your provider and API key in "
@@ -196,9 +256,13 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
     else:
         api_key = _LOCAL_API_KEY_PLACEHOLDER
 
+    return _build_connection(provider, resolved_model, base_url, api_key)
+
+
+def _build_connection(provider: Provider, model: str, base_url: str, api_key: str) -> LLMConnection:
     return LLMConnection(
         provider=provider,
-        model=resolved_model,
+        model=model,
         client=OpenAI(
             api_key=api_key,
             base_url=base_url,

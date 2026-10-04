@@ -47,8 +47,7 @@ from app.models.user import User
 from app.services.analytics_service import AnalyticsService
 from app.services.budget_service import BudgetExceededError, BudgetService
 from app.services.email_service import send_playground_run_failure_email
-from app.services.llm_client import available_models_for, is_configured
-from app.services.llm_providers import get_provider
+from app.services.llm_client import active_provider_and_model, available_models_for
 from app.services.optimistic_concurrency import is_stale, next_write_stamp
 from app.services.playground_service import PlaygroundRunError, PlaygroundService
 from app.services.prompt_compiler import compile_prompt
@@ -345,14 +344,13 @@ def get_prompts_config(
         frontend never advertises a model it can't run), and whether the
         operator's global monthly spend ceiling is exhausted (BudgetService).
     """
-    connected = is_configured(current_user)
-    provider = get_provider(current_user.llm_provider) if connected else None
+    provider, model = active_provider_and_model(current_user) or (None, None)
     budget_status = BudgetService.global_status(db)
     return PromptsConfigResponse(
-        provider_connected=connected,
+        provider_connected=provider is not None,
         provider=provider.handle if provider else None,
         provider_label=provider.label if provider else None,
-        model=current_user.llm_model if connected else None,
+        model=model,
         available_models=available_models_for(current_user),
         **budget_status,
     )

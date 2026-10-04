@@ -86,6 +86,8 @@ export interface LLMConnection {
   has_api_key: boolean;
   api_key_hint: string | null;
   providers: LLMProviderOption[];
+  /** The operator's connection, used while `configured` is false. */
+  server_default?: { provider_label: string; model: string } | null;
 }
 
 export interface LLMConnectionUpdate {

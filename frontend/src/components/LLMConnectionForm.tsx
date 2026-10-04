@@ -184,11 +184,17 @@ export default function LLMConnectionForm() {
           </div>
         </div>
         <span
-          className={connection?.configured ? styles.statusConnected : styles.statusUnavailable}
+          className={
+            connection?.configured || connection?.server_default
+              ? styles.statusConnected
+              : styles.statusUnavailable
+          }
         >
           {connection?.configured
             ? `Connected · ${connection.provider_label}`
-            : 'Not connected'}
+            : connection?.server_default
+              ? `Server default · ${connection.server_default.provider_label} · ${connection.server_default.model}`
+              : 'Not connected'}
         </span>
       </div>
 
@@ -331,7 +337,7 @@ export default function LLMConnectionForm() {
           type="button"
           variant="secondary"
           onClick={handleTest}
-          disabled={isTesting || !connection?.configured}
+          disabled={isTesting || !(connection?.configured || connection?.server_default)}
         >
           {isTesting ? 'Testing…' : 'Test connection'}
         </Button>

@@ -2,7 +2,9 @@
 
 from unittest.mock import patch
 
-from tests.conftest import TEST_LLM_MODEL
+import pytest
+
+from tests.conftest import SERVER_DEFAULT_ENV, TEST_LLM_MODEL
 
 
 class TestPromptsConfigEndpoint:
@@ -38,6 +40,19 @@ class TestPromptsConfigEndpoint:
             "budget_exhausted": False,
             "global_budget_remaining_usd": None,
         }
+
+    @pytest.mark.usefixtures("server_default_llm")
+    def test_config_reports_the_server_default_without_a_connection(self, client, auth_headers):
+        client.delete("/api/auth/me/llm-connection", headers=auth_headers)
+
+        data = client.get("/api/prompts/config", headers=auth_headers).json()
+
+        assert data["provider_connected"] is True
+        assert data["provider"] == "vllm"
+        assert data["model"] == SERVER_DEFAULT_ENV["LLM_MODEL"]
+        assert data["available_models"] == [SERVER_DEFAULT_ENV["LLM_MODEL"]]
+        assert SERVER_DEFAULT_ENV["LLM_API_KEY"] not in str(data)
+        assert SERVER_DEFAULT_ENV["LLM_BASE_URL"] not in str(data)
 
     def test_config_never_leaks_the_api_key(self, client, auth_headers):
         """The stored credential must not appear anywhere in the response."""

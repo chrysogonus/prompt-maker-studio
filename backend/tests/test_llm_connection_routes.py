@@ -11,7 +11,7 @@ from openai import AuthenticationError
 
 from app.models.billed_call import BilledCall
 from app.models.user import User
-from tests.conftest import TEST_LLM_API_KEY, TEST_LLM_MODEL, make_chat_response
+from tests.conftest import SERVER_DEFAULT_ENV, TEST_LLM_API_KEY, TEST_LLM_MODEL, make_chat_response
 
 
 class TestGetConnection:
@@ -35,6 +35,28 @@ class TestGetConnection:
         assert TEST_LLM_API_KEY not in resp.text
         # Only a non-reversible hint is exposed.
         assert resp.json()["api_key_hint"] == "sk-…0000"
+
+    def test_server_default_is_absent_when_unset(self, client, auth_headers):
+        resp = client.get("/api/auth/me/llm-connection", headers=auth_headers)
+
+        assert resp.json()["server_default"] is None
+
+    def test_shows_the_server_default_without_its_url_or_key(
+        self, client, auth_headers, server_default_llm
+    ):
+        client.delete("/api/auth/me/llm-connection", headers=auth_headers)
+
+        resp = client.get("/api/auth/me/llm-connection", headers=auth_headers)
+
+        data = resp.json()
+        # `configured` describes the user's own connection only.
+        assert data["configured"] is False
+        assert data["server_default"] == {
+            "provider_label": "vLLM (self-hosted)",
+            "model": SERVER_DEFAULT_ENV["LLM_MODEL"],
+        }
+        assert SERVER_DEFAULT_ENV["LLM_API_KEY"] not in resp.text
+        assert SERVER_DEFAULT_ENV["LLM_BASE_URL"] not in resp.text
 
     def test_requires_authentication(self, client):
         assert client.get("/api/auth/me/llm-connection").status_code == 401
@@ -259,6 +281,17 @@ class TestConnectionProbe:
         assert resp.status_code == 200
         assert resp.json()["ok"] is False
         assert "Settings" in resp.json()["message"]
+
+    def test_probe_uses_the_server_default_without_a_connection(
+        self, client, auth_headers, mock_llm, server_default_llm
+    ):
+        client.delete("/api/auth/me/llm-connection", headers=auth_headers)
+        mock_llm.return_value.chat.completions.create.return_value = make_chat_response("ok")
+
+        resp = client.post("/api/auth/me/llm-connection/test", headers=auth_headers)
+
+        assert resp.json()["ok"] is True
+        assert mock_llm.call_args.kwargs["base_url"] == SERVER_DEFAULT_ENV["LLM_BASE_URL"]
 
     def test_probe_is_recorded_in_the_spend_ledger(
         self, client, auth_headers, mock_llm, db_session

@@ -652,6 +652,22 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 ---
 
+## Optional Operator Server-Default LLM
+
+**Status**: Accepted (amends "Bring-your-own only" above)
+
+**Context**: An operator running their own inference server (e.g. vLLM on a private network) wants every user on the instance to use it without each person entering the URL, model, and key. Per-user setup also forced `ALLOW_PRIVATE_LLM_URLS=true`, which opens a user-reachable SSRF path to private addresses just to reach one known host.
+
+**Decision**: `LLM_BASE_URL` + `LLM_MODEL` (with optional `LLM_API_KEY` and `LLM_PROVIDER`, default `custom`) define a server default in `llm_client.py`. It is used only when a user has no usable connection of their own; a saved connection always wins. The URL is operator-trusted and skips the user-URL egress policy. The API exposes only the provider label and model, never the URL or key.
+
+**Rationale**: Fallback rather than enforcement keeps bring-your-own intact and makes the change one branch in the single client-construction seam. Keeping the credential in env rather than copying it into user rows avoids the fan-out the BYO decision rejected.
+
+**Consequences**: The operator funds and rate-limits every fallback call — budgets still apply, but a self-hosted provider prices at zero. Error copy still points at "Settings → API access", which for a fallback user means "connect your own" rather than "fix the server default".
+
+**Source**: `backend/app/services/llm_client.py` (`server_default`, `client_for`), `backend/app/api/auth_routes.py`, `frontend/src/components/LLMConnectionForm.tsx`
+
+---
+
 ## Rename to Prompt Maker Studio Keeps Backward-Compatible Shims
 
 **Status**: Accepted
