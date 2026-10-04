@@ -12,6 +12,26 @@ any release. See [Project status](./README.md#project-status).
 
 Nothing yet.
 
+## [0.1.2] - 2026-10-04
+
+### Added
+
+- **Operator-supplied legal pages.** `/impressum` and `/datenschutz` render HTML
+  fragments from a folder mounted read-only into the frontend
+  (`LEGAL_PAGES_PATH`, default `./legal`). Links appear in the app footer and on
+  the sign-in screen only for pages whose file exists; deployments without the
+  files are unchanged. See "Legal Pages" in `docs/deployment.md`. (#36)
+- Scheduled backups older than `BACKUP_RETENTION_DAYS` (default 14) are deleted
+  after each run, so deleted user data does not survive indefinitely in old
+  backups. Manual `make backup-db` runs never prune. (#35)
+
+### Changed
+
+- Container logs for backend, frontend and Caddy are capped at 3 × 10 MB each;
+  the backend access log contains client IP addresses. **Operators**: the next
+  `docker compose up -d` recreates those containers to apply the limit,
+  discarding their current logs. (#35)
+
 ## [0.1.0] - 2026-08-09
 
 The first public release. Prompt Maker Studio was developed privately, so this
@@ -237,5 +257,6 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.2
 [0.1.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.0
