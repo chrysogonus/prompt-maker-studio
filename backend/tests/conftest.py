@@ -63,6 +63,29 @@ def mock_litellm_pricing():
     llm_pricing._reset_pricing_cache()
 
 
+SERVER_DEFAULT_ENV = {
+    "LLM_PROVIDER": "vllm",
+    "LLM_BASE_URL": "http://192.168.0.10/v1",
+    "LLM_API_KEY": "server-default-key-not-real",
+    "LLM_MODEL": "served-model",
+}
+
+
+@pytest.fixture(autouse=True)
+def no_server_default_llm(monkeypatch):
+    """A developer's shell must not silently give every test user a provider."""
+    for name in SERVER_DEFAULT_ENV:
+        monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture
+def server_default_llm(monkeypatch):
+    """Configure the operator's server-default connection (LLM_* env vars)."""
+    for name, value in SERVER_DEFAULT_ENV.items():
+        monkeypatch.setenv(name, value)
+    return SERVER_DEFAULT_ENV
+
+
 @pytest.fixture(autouse=True)
 def reset_model_catalog_cache():
     """A process-global TTL cache must not leak model ids between tests."""

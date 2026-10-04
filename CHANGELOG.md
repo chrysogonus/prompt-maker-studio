@@ -12,6 +12,14 @@ any release. See [Project status](./README.md#project-status).
 
 Nothing yet.
 
+## [0.1.4] - 2026-10-04
+
+### Added
+
+- Optional server-default LLM (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`,
+  `LLM_PROVIDER`) for users who have not connected their own provider. A
+  user's own connection still takes precedence.
+
 ## [0.1.3] - 2026-10-04
 
 ### Fixed
@@ -269,7 +277,8 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.4
 [0.1.3]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.3
 [0.1.2]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.2
 [0.1.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.0

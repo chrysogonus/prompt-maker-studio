@@ -36,6 +36,7 @@ from app.models.schemas import (
     LLMConnectionTestResponse,
     LLMConnectionUpdate,
     LLMProviderOption,
+    LLMServerDefault,
     ModelPriceInfo,
     ResetPasswordRequest,
     Token,
@@ -50,7 +51,8 @@ from app.services.email_service import redact_email, send_password_reset_email
 from app.services.llm_client import (
     client_for,
     describe_llm_error,
-    is_configured,
+    has_own_connection,
+    server_default,
     text_completion,
 )
 from app.services.llm_model_catalog import invalidate_model_cache, model_catalog_for
@@ -423,12 +425,13 @@ def _connection_response(user: User) -> LLMConnectionResponse:
         except SecretDecryptionError:
             logger.warning("Stored LLM key for user %s is undecryptable", user.id)
 
-    # `is_configured` is the canonical predicate every AI route keys off; the
-    # extra `has_key` term makes an undecryptable stored key read as "not
-    # connected" here, so the form prompts for a fresh one.
-    configured = is_configured(user) and (
+    # `has_own_connection` is the canonical predicate for the user's own
+    # connection; the extra `has_key` term makes an undecryptable stored key
+    # read as "not connected" here, so the form prompts for a fresh one.
+    configured = has_own_connection(user) and (
         has_key or bool(provider and not provider.requires_api_key)
     )
+    default = server_default()
     return LLMConnectionResponse(
         configured=configured,
         provider=provider.handle if provider else None,
@@ -438,6 +441,11 @@ def _connection_response(user: User) -> LLMConnectionResponse:
         has_api_key=has_key,
         api_key_hint=hint,
         providers=_provider_options(),
+        server_default=(
+            LLMServerDefault(provider_label=default.provider.label, model=default.model)
+            if default
+            else None
+        ),
     )
 
 

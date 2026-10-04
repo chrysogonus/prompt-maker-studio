@@ -183,6 +183,9 @@ build receives no build arguments at all.
 | `REGISTRATION_MODE` | No | `closed` (default) or `open`. Closed still admits the first account, then locks; open lets anyone who can reach the instance sign up | `closed` |
 | `ALLOW_PRIVATE_LLM_URLS` | No | Permit provider base URLs resolving to private/loopback/link-local addresses. Required for self-hosted Ollama or vLLM; off by default because it is an SSRF primitive for anyone holding an account | `false` |
 | `FORWARDED_ALLOW_IPS` | No | Trusted reverse-proxy IP CIDRs for rate limiting | `10.0.0.0/8,172.16.0.0/12,192.168.0.0/16` |
+| `LLM_BASE_URL` / `LLM_MODEL` | No | Server default LLM for every user without a connection of their own (theirs always wins). Enabled when both are set. Operator-trusted, so a private URL works without `ALLOW_PRIVATE_LLM_URLS`; users see only the provider label and model | `http://10.0.0.5:8000/v1` |
+| `LLM_PROVIDER` | No | Provider handle for the server default (`openai`, `anthropic`, `gemini`, `ollama`, `vllm`, `custom`); sets structured-output support and pricing | `custom` |
+| `LLM_API_KEY` | No | API key for the server default; leave empty for servers that need none | — |
 | `LLM_ENCRYPTION_KEY` | No | Fernet key encrypting each user's stored provider API key. Defaults to a value derived from `SECRET_KEY`; set it explicitly to rotate JWT signing without invalidating stored credentials | `gAAAAA…` |
 | `LLM_PRICING_REFRESH` | No | Fetch published model prices from a pinned revision of LiteLLM's index (the only outbound request not to your own provider or SMTP server). `false` uses the compiled-in snapshot only | `true` |
 | `LLM_PRICING_URL` | No | Override the pricing document URL, e.g. an internal mirror | — |

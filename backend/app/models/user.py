@@ -57,8 +57,9 @@ class User(Base):
     notify_eval_regression = Column(Boolean, nullable=False, default=False, server_default="0")
 
     # Bring-your-own LLM provider connection. Every AI feature resolves its
-    # client from these columns via services/llm_client.py — there is no
-    # operator-wide fallback key. llm_api_key_encrypted holds Fernet
+    # client from these columns via services/llm_client.py, falling back to
+    # the operator's server default (LLM_* env vars) only when they are
+    # unusable. llm_api_key_encrypted holds Fernet
     # ciphertext (services/secret_store.py), never a usable credential, and is
     # excluded from every response schema.
     llm_provider = Column(String(30), nullable=True)

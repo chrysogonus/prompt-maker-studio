@@ -20,14 +20,21 @@ from app.services.llm_client import (
     available_models_for,
     client_for,
     describe_llm_error,
-    is_configured,
+    has_own_connection,
     json_completion,
+    server_default,
     timeout_seconds_for,
     usage_from,
 )
 from app.services.llm_providers import PROVIDERS
 from app.services.secret_store import encrypt_secret
-from tests.conftest import TEST_LLM_API_KEY, TEST_LLM_MODEL, make_chat_response, make_connection
+from tests.conftest import (
+    SERVER_DEFAULT_ENV,
+    TEST_LLM_API_KEY,
+    TEST_LLM_MODEL,
+    make_chat_response,
+    make_connection,
+)
 
 _SCHEMA = {
     "type": "json_schema",
@@ -56,18 +63,18 @@ def _user(**overrides) -> User:
     return User(**{**defaults, **overrides})
 
 
-class TestIsConfigured:
+class TestHasOwnConnection:
     def test_true_for_a_complete_hosted_connection(self):
-        assert is_configured(_user()) is True
+        assert has_own_connection(_user()) is True
 
     def test_false_without_a_provider(self):
-        assert is_configured(_user(llm_provider=None)) is False
+        assert has_own_connection(_user(llm_provider=None)) is False
 
     def test_false_without_a_model(self):
-        assert is_configured(_user(llm_model=None)) is False
+        assert has_own_connection(_user(llm_model=None)) is False
 
     def test_false_when_a_hosted_provider_has_no_key(self):
-        assert is_configured(_user(llm_api_key_encrypted=None)) is False
+        assert has_own_connection(_user(llm_api_key_encrypted=None)) is False
 
     def test_true_for_a_keyless_self_hosted_connection(self):
         """Local inference servers accept any bearer token, so demanding a key
@@ -78,10 +85,77 @@ class TestIsConfigured:
             llm_api_key_encrypted=None,
             llm_base_url="http://localhost:11434/v1",
         )
-        assert is_configured(user) is True
+        assert has_own_connection(user) is True
 
     def test_false_for_an_unknown_saved_provider(self):
-        assert is_configured(_user(llm_provider="some-removed-vendor")) is False
+        assert has_own_connection(_user(llm_provider="some-removed-vendor")) is False
+
+
+@pytest.mark.usefixtures("server_default_llm")
+class TestServerDefault:
+    """The operator's LLM_* connection serves users without one of their own."""
+
+    def test_used_when_the_user_has_no_connection(self):
+        with patch("app.services.llm_client.OpenAI") as mock_openai_cls:
+            connection = client_for(_user(llm_provider=None, llm_model=None))
+
+        assert connection.provider_handle == "vllm"
+        assert connection.model == SERVER_DEFAULT_ENV["LLM_MODEL"]
+        kwargs = mock_openai_cls.call_args.kwargs
+        assert kwargs["base_url"] == SERVER_DEFAULT_ENV["LLM_BASE_URL"]
+        assert kwargs["api_key"] == SERVER_DEFAULT_ENV["LLM_API_KEY"]
+
+    def test_used_when_the_users_connection_is_unusable(self):
+        """Migration 019 left users with a provider but no key; they should get
+        the server default, not a "missing key" error."""
+        with patch("app.services.llm_client.OpenAI"):
+            connection = client_for(_user(llm_api_key_encrypted=None))
+
+        assert connection.provider_handle == "vllm"
+
+    def test_users_own_connection_wins(self):
+        with patch("app.services.llm_client.OpenAI") as mock_openai_cls:
+            connection = client_for(_user())
+
+        assert connection.provider_handle == "openai"
+        assert mock_openai_cls.call_args.kwargs["api_key"] == TEST_LLM_API_KEY
+
+    def test_model_override_applies(self):
+        with patch("app.services.llm_client.OpenAI"):
+            connection = client_for(_user(llm_provider=None), model="other-model")
+
+        assert connection.model == "other-model"
+
+    def test_keyless_server_gets_the_placeholder(self, monkeypatch):
+        monkeypatch.setenv("LLM_API_KEY", "")
+        with patch("app.services.llm_client.OpenAI") as mock_openai_cls:
+            client_for(_user(llm_provider=None))
+
+        assert mock_openai_cls.call_args.kwargs["api_key"] == "not-required"
+
+    def test_private_url_needs_no_egress_opt_in(self, monkeypatch):
+        """The URL is operator-trusted, unlike a user-supplied one."""
+        monkeypatch.delenv("ALLOW_PRIVATE_LLM_URLS", raising=False)
+        with patch("app.services.llm_client.OpenAI") as mock_openai_cls:
+            client_for(_user(llm_provider=None))
+
+        assert mock_openai_cls.call_args.kwargs["base_url"] == "http://192.168.0.10/v1"
+
+    def test_offers_only_the_default_model(self):
+        assert available_models_for(_user(llm_provider=None)) == ["served-model"]
+
+    def test_provider_defaults_to_custom(self, monkeypatch):
+        monkeypatch.delenv("LLM_PROVIDER")
+        assert server_default().provider.handle == "custom"
+
+    def test_disabled_without_a_model(self, monkeypatch):
+        monkeypatch.delenv("LLM_MODEL")
+        assert server_default() is None
+
+    def test_disabled_by_an_unknown_provider(self, monkeypatch, caplog):
+        monkeypatch.setenv("LLM_PROVIDER", "not-a-vendor")
+        assert server_default() is None
+        assert "LLM_PROVIDER" in caplog.text
 
 
 class TestAvailableModels:
