@@ -1,8 +1,18 @@
 apiVersion: 1
 
+# Earlier versions provisioned this data source without a uid, so Grafana gave
+# it a random one, and Grafana refuses to change the uid of an existing data
+# source. Deleting it by name first lets it be recreated with the fixed uid
+# below on every start, including on volumes from those versions.
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
 datasources:
   - name: Prometheus
     type: prometheus
+    # Fixed so the provisioned dashboard's panels can reference it.
+    uid: prometheus
     access: proxy
     url: http://prometheus:9090
     isDefault: true

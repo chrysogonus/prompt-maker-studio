@@ -12,7 +12,7 @@
       "id": 1,
       "type": "stat",
       "title": "Request Rate (req/s)",
-      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -27,7 +27,7 @@
       "id": 2,
       "type": "stat",
       "title": "Error Rate (5xx %)",
-      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -42,7 +42,7 @@
       "id": 3,
       "type": "stat",
       "title": "P95 Latency",
-      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -52,21 +52,6 @@
       ],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
       "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "thresholds" }, "thresholds": { "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.5}, {"color": "red", "value": 2}] } } }
-    },
-    {
-      "id": 4,
-      "type": "stat",
-      "title": "Active Requests",
-      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        {
-          "expr": "sum(http_requests_created{job=\"fastapi-backend\"}) or vector(0)",
-          "legendFormat": "in-flight"
-        }
-      ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
-      "fieldConfig": { "defaults": { "unit": "short" } }
     },
     {
       "id": 5,
@@ -124,13 +109,13 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Rate-Limited Requests",
+      "title": "Client Errors (4xx, incl. rate limits)",
       "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"fastapi-backend\", status=\"429\"}[2m]))",
-          "legendFormat": "429 Too Many Requests"
+          "expr": "sum(rate(http_requests_total{job=\"fastapi-backend\", status=\"4xx\"}[2m]))",
+          "legendFormat": "4xx"
         }
       ],
       "fieldConfig": { "defaults": { "unit": "reqps" } }
