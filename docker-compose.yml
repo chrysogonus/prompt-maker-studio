@@ -92,6 +92,10 @@ services:
       # Behind Caddy this never fires; it is what makes the image work when
       # run without a reverse proxy. Runtime, not build time — deliberately.
       - API_PROXY_TARGET=${API_PROXY_TARGET:-http://backend:8000}
+      - LEGAL_PAGES_DIR=/legal
+    # Operator-supplied Impressum/privacy policy; see docs/deployment.md.
+    volumes:
+      - ${LEGAL_PAGES_PATH:-./legal}:/legal:ro
     depends_on:
       backend:
         condition: service_healthy

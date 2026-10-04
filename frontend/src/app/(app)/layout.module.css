@@ -108,3 +108,9 @@
 .footerContent a:hover {
   color: var(--text-secondary);
 }
+
+.legalLinks {
+  display: inline-flex;
+  gap: var(--space-3);
+  margin-left: var(--space-3);
+}

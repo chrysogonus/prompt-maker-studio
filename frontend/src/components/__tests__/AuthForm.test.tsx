@@ -53,6 +53,25 @@ describe('AuthForm — login view', () => {
     expect(screen.getByText('<GOAL>')).toBeInTheDocument();
   });
 
+  it('links the legal pages for signed-out visitors', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({ pages: ['impressum', 'datenschutz'] }));
+    try {
+      render(<AuthForm onSuccess={mockOnSuccess} />);
+      expect(await screen.findByRole('link', { name: 'Impressum' })).toHaveAttribute(
+        'href',
+        '/impressum',
+      );
+      expect(screen.getByRole('link', { name: 'Datenschutz' })).toHaveAttribute(
+        'href',
+        '/datenschutz',
+      );
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it('shows a "Forgot password?" link', () => {
     render(<AuthForm onSuccess={mockOnSuccess} />);
     expect(screen.getByRole('button', { name: /forgot password/i })).toBeInTheDocument();
