@@ -283,6 +283,13 @@ non-root UID/GID supplied above, so the host operator retains ownership. Put
 the same values in `.env` if the profile is managed without this one-shot
 command.
 
+After each run the worker deletes scheduled backups older than
+`BACKUP_RETENTION_DAYS` (default 14), so deleted user data does not live on
+indefinitely in old backups. If your privacy policy states a retention period,
+keep the two in sync. Container logs are capped at 3 × 10 MB per service in
+`docker-compose.yml` for the same reason: the backend's access log contains
+client IP addresses.
+
 ### Restore database:
 
 Stop the backend, restore a tested backup, and restart the backend:
