@@ -10,7 +10,13 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- The Grafana dashboard showed no data: its panels referenced a data source
+  uid that the provisioning never set. Existing Grafana volumes are migrated
+  on the next start. The "Rate-Limited Requests" panel, which could never match
+  the grouped status codes, now shows all 4xx responses, and the "Active
+  Requests" panel, which plotted a timestamp, is removed.
 
 ## [0.1.4] - 2026-10-04
 
