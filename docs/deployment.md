@@ -206,6 +206,33 @@ For local development (with override file):
 - **Backend API**: `http://localhost:8000`
 - **API Documentation**: `http://localhost:8000/docs`
 
+## Legal Pages (Impressum, Privacy Policy)
+
+Operators in Germany and elsewhere in the EU usually have to publish an
+Impressum and a privacy policy. Their content identifies whoever runs the
+deployment, so it is not part of this repository or the published images —
+each operator supplies their own.
+
+Put HTML fragments (no `<html>`/`<body>`, just headings, paragraphs and lists)
+in the folder named by `LEGAL_PAGES_PATH` (default `./legal`, git-ignored):
+
+| File | Served at |
+|---|---|
+| `impressum.html` | `/impressum` |
+| `datenschutz.html` | `/datenschutz` |
+
+The folder is mounted read-only into the frontend container and read on every
+request, so edits go live without a restart. A page — and its link in the app
+footer and on the sign-in screen — appears only when its file exists, so a
+deployment without these files shows neither. The files must be readable by
+the container's non-root user (`chmod 644`). Their HTML is rendered as-is and
+treated as trusted, like the `Caddyfile`; the site's Content-Security-Policy
+still blocks external scripts, styles and images in it.
+
+To keep the files versioned without forking this repository, keep them in a
+separate private repository and set `LEGAL_PAGES_PATH` to its checkout, e.g.
+`LEGAL_PAGES_PATH=/opt/prompt-maker-deploy/legal`.
+
 ## Service Communication
 
 All services run on the `prompt-maker-studio-network` Docker bridge network:

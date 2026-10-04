@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import AuthForm from '@/components/AuthForm';
 import NavBar from '@/components/NavBar';
 import EmailReminderBanner from '@/components/EmailReminderBanner';
+import LegalLinks from '@/components/LegalLinks';
 import Button from '@/components/ui/Button';
 import { AuthContext } from '@/lib/auth-context';
 import { AuthService, SESSION_EXPIRED_EVENT } from '@/lib/auth';
@@ -190,6 +191,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               Apache-2.0
             </a>
             .
+            <LegalLinks className={styles.legalLinks} />
           </div>
         </footer>
       </div>

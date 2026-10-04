@@ -489,6 +489,24 @@
   }
 }
 
+/* Spans both shell columns so the links sit centred below the hero and card. */
+.legalLinks {
+  grid-column: 1 / -1;
+  justify-self: center;
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--text-xs-size);
+}
+
+.legalLinks a {
+  color: var(--text-tertiary);
+  text-underline-offset: 2px;
+}
+
+.legalLinks a:hover {
+  color: var(--text-secondary);
+}
+
 @media (max-width: 900px) {
   .container {
     align-items: flex-start;

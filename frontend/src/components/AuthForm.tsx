@@ -8,6 +8,7 @@ import { useRef, useState } from 'react';
 import { AuthService } from '@/lib/auth';
 import { APP_NAME } from '@/lib/branding';
 import Wordmark from './ui/Wordmark';
+import LegalLinks from './LegalLinks';
 import styles from './AuthForm.module.css';
 
 interface AuthFormProps {
@@ -415,6 +416,8 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
             {cardContent}
           </div>
         </div>
+
+        <LegalLinks className={styles.legalLinks} />
       </main>
     </div>
   );

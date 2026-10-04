@@ -64,6 +64,27 @@ describe('AppLayout', () => {
     expect(screen.getByRole('contentinfo')).not.toHaveTextContent('All rights reserved');
   });
 
+  it('links the legal pages the deployment provides from the application footer', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({ pages: ['impressum'] }));
+    try {
+      render(
+        <AppLayout>
+          <p>Page content</p>
+        </AppLayout>,
+      );
+
+      expect(await screen.findByRole('link', { name: 'Impressum' })).toHaveAttribute(
+        'href',
+        '/impressum',
+      );
+      expect(screen.getByRole('contentinfo')).not.toHaveTextContent('Datenschutz');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it('retains a persisted session and offers retry after a transient reload check failure', async () => {
     // This test injects the network failure the layout is expected to log.
     expectConsoleError('Auth check failed:');
