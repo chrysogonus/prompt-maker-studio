@@ -26,6 +26,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_llm_connection_routes.py` | `/api/auth/me/llm-connection` GET/PUT/DELETE and its probe: provider switching, key retention/clearing, base-URL validation, per-user isolation, and assertions that the stored key never appears in a response body or log line |
 | `test_llm_url_egress.py` | Egress policy for user-supplied provider base URLs: private, loopback, link-local, multicast, and cloud-metadata destinations are rejected after DNS resolution (every answer, not just the first), with the ALLOW_PRIVATE_LLM_URLS opt-in for self-hosted Ollama/vLLM |
 | `test_llm_pricing.py` | LiteLLM provider/model normalization, per-token to per-million conversion, live/static/free pricing precedence, unknown prices, and stale-on-refresh-error cache behavior |
+| `test_mcp_routes.py` | MCP prompt-library endpoint: bearer auth (missing, invalid, revoked tokens), the v1 tool list and annotations, save/list/get/update/version tools, per-user isolation, re-rendering on update, and stale-edit rejection |
 | `test_metrics.py` | Prometheus business metrics, read through `collect()` rather than library internals |
 | `test_migrations.py` | SQLite migration upgrades and idempotency |
 | `test_models.py` | User and prompt ORM models |

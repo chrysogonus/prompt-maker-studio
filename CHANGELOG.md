@@ -10,6 +10,17 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- MCP endpoint at `/api/mcp` exposing the saved-prompt library as tools (list,
+  get, save, update, version history) for ChatGPT and other MCP clients. It
+  accepts the existing bearer token; OAuth account linking is not implemented
+  yet. See [docs/mcp.md](./docs/mcp.md).
+
+### Changed
+
+- uvicorn upgraded from 0.27.0 to 0.54.0, required by the MCP SDK.
+
 ### Fixed
 
 - The Grafana dashboard showed no data: its panels referenced a data source

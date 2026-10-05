@@ -405,6 +405,7 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 |---|---|---|---|
 | `GET` | `/api/analytics/dashboard` | Yes | Fetch user dashboard metrics and usage statistics |
 | `POST` | `/api/admin/smtp/check` | Admin Token | Validate SMTP connectivity (requires `X-Admin-Token` header) |
+| `POST` | `/api/mcp` | Yes | MCP server exposing the saved-prompt library as tools (see [docs/mcp.md](docs/mcp.md)) |
 
 ## Additional Documentation
 
@@ -416,6 +417,7 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 - [docs/authentication.md](./docs/authentication.md) — Complete JWT authentication flow, token refresh, and security controls
 - [docs/saved-prompts.md](./docs/saved-prompts.md) — Saved prompts features, optimistic concurrency, and version history specs
 - [docs/licensing.md](./docs/licensing.md) — Source and container licensing controls
+- [docs/mcp.md](./docs/mcp.md) — MCP endpoint exposing the prompt library to ChatGPT and other MCP clients
 - [.github/CI_PIPELINE.md](./.github/CI_PIPELINE.md) — CI jobs, required aggregate check, artifacts, and local equivalents
 - [product/FEATURES.md](./product/FEATURES.md) — Complete list of implemented features (source of truth)
 - [product/DECISIONS.md](./product/DECISIONS.md) — Architecture Decisions Record (ADR)

@@ -20,6 +20,7 @@ accurate for it.
 | annotated-doc | 0.0.4 | MIT |
 | annotated-types | 0.8.0 | MIT |
 | anyio | 4.14.2 | MIT |
+| attrs | 26.1.0 | MIT |
 | bcrypt | 5.0.0 | Apache-2.0 |
 | certifi | 2026.7.22 | MPL-2.0 |
 | cffi | 2.1.0 | MIT-0 |
@@ -33,12 +34,19 @@ accurate for it.
 | greenlet | 3.5.4 | MIT AND PSF-2.0 |
 | h11 | 0.16.0 | MIT |
 | httpcore | 1.0.9 | BSD-3-Clause |
+| httpcore2 | 2.13.1 | BSD-3-Clause |
 | httpx | 0.28.1 | BSD-3-Clause |
+| httpx2 | 2.13.1 | BSD-3-Clause |
 | idna | 3.18 | BSD-3-Clause |
 | jiter | 0.16.0 | MIT |
+| jsonschema | 4.26.0 | MIT |
+| jsonschema-specifications | 2025.9.1 | MIT |
 | limits | 5.8.0 | MIT |
+| mcp | 2.3.0 | MIT |
+| mcp-types | 2.3.0 | MIT |
 | msgpack | 1.2.1 | Apache-2.0 |
 | openai | 2.48.0 | Apache-2.0 |
+| opentelemetry-api | 1.45.0 | Apache-2.0 |
 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause |
 | prometheus-fastapi-instrumentator | 8.1.0 | ISC |
 | prometheus_client | 0.26.0 | Apache-2.0 AND BSD-2-Clause |
@@ -46,14 +54,19 @@ accurate for it.
 | pydantic | 2.13.4 | MIT |
 | pydantic_core | 2.46.4 | MIT |
 | PyJWT | 2.15.1 | MIT |
+| python-multipart | 0.0.32 | Apache-2.0 |
+| referencing | 0.37.0 | MIT |
+| rpds-py | 2026.9.1 | MIT |
 | slowapi | 0.1.9 | MIT |
 | sniffio | 1.3.1 | MIT OR Apache-2.0 |
 | SQLAlchemy | 2.0.51 | MIT |
+| sse-starlette | 3.5.0 | BSD-3-Clause |
 | starlette | 1.3.1 | BSD-3-Clause |
 | tqdm | 4.69.1 | MPL-2.0 AND MIT |
+| truststore | 0.10.4 | MIT |
 | typing-inspection | 0.4.2 | MIT |
 | typing_extensions | 4.16.0 | PSF-2.0 |
-| uvicorn | 0.27.0 | BSD-3-Clause |
+| uvicorn | 0.54.0 | BSD-3-Clause |
 | wrapt | 2.2.2 | BSD-2-Clause |
 
 The MPL-covered `certifi` and `tqdm` files are shipped unmodified. Their source

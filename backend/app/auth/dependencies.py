@@ -94,21 +94,42 @@ def get_current_user(
         logger.debug("Request carried neither a session cookie nor a bearer token")
         raise _credentials_exception()
 
+    user = user_from_token(token, db)
+    if user is None:
+        raise _credentials_exception()
+
+    return user
+
+
+def user_from_token(token: str, db: Session) -> User | None:
+    """
+    Resolve a JWT to the user it was issued for.
+
+    Shared by `get_current_user` and the MCP endpoint's token verifier, so both
+    apply the same expiry, subject, and revocation checks.
+
+    Args:
+        token: The encoded JWT
+        db: Database session
+
+    Returns:
+        The user, or None when the token is invalid, expired, or revoked
+    """
     payload = decode_access_token(token)
 
     if payload is None:
         logger.debug("Token could not be decoded or has expired")
-        raise _credentials_exception()
+        return None
 
     username: str | None = payload.get("sub")
     if username is None:
         logger.debug("Token payload is missing the 'sub' claim")
-        raise _credentials_exception()
+        return None
 
     user = db.query(User).filter(User.username == username).first()
     if user is None:
         logger.debug("Token subject %r does not match any user", username)
-        raise _credentials_exception()
+        return None
 
     # A token minted before the user's last password change, reset, or explicit
     # "sign out everywhere" is no longer valid, however much of its lifetime is
@@ -116,6 +137,6 @@ def get_current_user(
     # as version 0, which matches the column default.
     if payload.get("tv", 0) != (user.token_version or 0):
         logger.debug("Token for %r was issued before sessions were last revoked", username)
-        raise _credentials_exception()
+        return None
 
     return user
