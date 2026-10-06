@@ -29,6 +29,11 @@ any release. See [Project status](./README.md#project-status).
   the grouped status codes, now shows all 4xx responses, and the "Active
   Requests" panel, which plotted a timestamp, is removed.
 
+### Security
+
+- `source-map-js` updated from 1.2.1 to 1.2.2 in the frontend image
+  (CVE-2026-93749, denial of service via malformed indexed source maps).
+
 ## [0.1.4] - 2026-10-04
 
 ### Added

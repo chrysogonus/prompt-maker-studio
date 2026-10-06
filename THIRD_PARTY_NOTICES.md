@@ -95,7 +95,7 @@ The final image is installed with `npm ci --omit=dev --omit=optional`.
 | react | 18.3.1 | MIT |
 | react-dom | 18.3.1 | MIT |
 | scheduler | 0.23.2 | MIT |
-| source-map-js | 1.2.1 | BSD-3-Clause |
+| source-map-js | 1.2.2 | BSD-3-Clause |
 | styled-jsx | 5.1.6 | MIT |
 | tslib | 2.8.1 | 0BSD |
 
