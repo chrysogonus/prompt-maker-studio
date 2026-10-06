@@ -30,6 +30,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_metrics.py` | Prometheus business metrics, read through `collect()` rather than library internals |
 | `test_migrations.py` | SQLite migration upgrades and idempotency |
 | `test_models.py` | User and prompt ORM models |
+| `test_oauth.py` | OAuth account linking for MCP clients: discovery metadata, dynamic registration and its redirect-host allowlist, consent approve/deny, PKCE, single-use codes, audience-bound access tokens rejected by the REST API, refresh-token rotation, revocation, and disconnection on sign-out-everywhere or account deletion |
 | `test_optimistic_concurrency.py` | Conflict detection for concurrent prompt writes: `updated_at` advances even when the wall clock steps backwards or two writes land in one instant, and any difference from the client's token is a conflict (no tolerance window to lose an update in) |
 | `test_playground.py` | Template variable compilation, PlaygroundService cost/latency math, the Playground run endpoint (success, failure, ownership, validation, budget-ceiling rejection), and the run-history endpoint (pagination, ownership, failed runs) |
 | `test_prompt_generator.py` | XML prompt generation |

@@ -20,6 +20,7 @@ from app.models.billed_call import BilledCall
 from app.models.eval_case import EvalCase
 from app.models.eval_run import EvalRun
 from app.models.eval_run_result import EvalRunResult
+from app.models.oauth import OAuthAuthorizationCode, OAuthClient, OAuthRefreshToken
 from app.models.playground_run import PlaygroundRun
 from app.models.prompt import Prompt
 from app.models.prompt_id_sequence import PromptIdSequence
@@ -31,6 +32,9 @@ __all__ = [
     "EvalCase",
     "EvalRun",
     "EvalRunResult",
+    "OAuthAuthorizationCode",
+    "OAuthClient",
+    "OAuthRefreshToken",
     "PlaygroundRun",
     "Prompt",
     "PromptIdSequence",

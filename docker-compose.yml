@@ -49,6 +49,7 @@ services:
       - LLM_PRICING_REFRESH=${LLM_PRICING_REFRESH:-true}
       - LLM_PRICING_URL=${LLM_PRICING_URL:-}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - OAUTH_REDIRECT_HOSTS=${OAUTH_REDIRECT_HOSTS:-chatgpt.com}
       - SMTP_HOST=${SMTP_HOST:-}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USER=${SMTP_USER:-}

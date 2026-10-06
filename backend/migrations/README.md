@@ -39,6 +39,7 @@ multiple times. It currently handles:
 - `017_eval_case_metadata` — adds optional eval-case names and an `intentionally_empty` flag so robustness cases can explicitly suppress missing-variable warnings.
 - `018_prompt_id_sequence` — creates a durable SQLite prompt-ID high-water mark so deleted prompt IDs are never reused by later prompts.
 - `019_user_llm_connection` — adds `users.llm_provider`/`llm_base_url`/`llm_api_key_encrypted`/`llm_model` (the per-user bring-your-own provider connection; the key is Fernet ciphertext, never plaintext) and `billed_calls.provider` (pricing is per `(provider, model)`). Existing users are pre-filled with the `openai` provider and their previous `default_model`, but **no key** — the operator's shared credential is deliberately not copied into user rows, so each user re-enters their own.
+- `022_oauth_tables` — creates `oauth_clients`, `oauth_authorization_codes`, and `oauth_refresh_tokens` for MCP OAuth account linking (dynamic client registration, one-time authorization codes, rotating refresh tokens), with `ON DELETE CASCADE` from `users`. Codes and refresh tokens are stored as SHA-256 digests.
 
 ## Production Migration Checklist
 

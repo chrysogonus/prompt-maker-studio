@@ -5,15 +5,14 @@ The tools call the existing prompt route handlers, so ownership checks, version
 snapshots, and edit-conflict detection behave exactly as they do on the REST API.
 The client's own model writes the prompt text; nothing here calls an LLM.
 
-Authentication is the same bearer JWT the REST API accepts. OAuth account
-linking, which ChatGPT needs to obtain that token for an end user, is not
-implemented yet.
+Clients authenticate with an access token from this server's OAuth flow
+(services/oauth_provider.py), which is how ChatGPT links an account. The REST
+API's own bearer JWT is accepted too, for scripts and local testing.
 """
 
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime
-import os
 
 import anyio.to_thread
 from fastapi import HTTPException
@@ -42,10 +41,13 @@ from app.models.schemas import (
     PromptVersionResponse,
 )
 from app.models.user import User
+from app.services.oauth_provider import ISSUER_URL, RESOURCE_URL, user_from_mcp_access_token
 from app.services.prompt_generator import PromptGeneratorService
 from app.services.prompt_id_service import PromptIdService
 
 MCP_PATH = "/api/mcp"
+# RFC 9728 protected-resource metadata, which the 401 challenge points clients to.
+PROTECTED_RESOURCE_METADATA_PATH = f"/.well-known/oauth-protected-resource{MCP_PATH}"
 
 INSTRUCTIONS = f"""\
 Tools for the user's {APP_NAME} prompt library. You write and refine the prompt
@@ -78,23 +80,29 @@ class VersionList(BaseModel):
     versions: list[PromptVersionResponse]
 
 
-class _SessionTokenVerifier:
-    """Accept the same JWTs as the REST API, including their revocation checks."""
+class _TokenVerifier:
+    """Accept OAuth access tokens issued for this endpoint, or the REST API's
+    session JWTs, with the same revocation checks either way."""
 
     async def verify_token(self, token: str) -> AccessToken | None:
-        user_id = await anyio.to_thread.run_sync(_user_id_for_token, token)
-        if user_id is None:
-            return None
-        return AccessToken(token=token, client_id="session", scopes=[], subject=str(user_id))
+        return await anyio.to_thread.run_sync(_access_for_token, token)
 
 
-def _user_id_for_token(token: str) -> int | None:
-    db = SessionLocal()
-    try:
-        user = user_from_token(token, db)
-        return user.id if user else None
-    finally:
-        db.close()
+def _access_for_token(token: str) -> AccessToken | None:
+    with SessionLocal() as db:
+        if resolved := user_from_mcp_access_token(token, db):
+            user, payload = resolved
+            return AccessToken(
+                token=token,
+                client_id=payload["client_id"],
+                scopes=[],
+                expires_at=payload["exp"],
+                resource=RESOURCE_URL,
+                subject=str(user.id),
+            )
+        if user := user_from_token(token, db):
+            return AccessToken(token=token, client_id="session", scopes=[], subject=str(user.id))
+    return None
 
 
 @contextmanager
@@ -123,12 +131,13 @@ mcp_server = MCPServer(
     # The SDK calls logging.basicConfig at this level. The app configures no
     # logging of its own, so WARNING keeps the root output what it was before.
     log_level="WARNING",
-    token_verifier=_SessionTokenVerifier(),
-    # Bearer-only for now: issuer_url is required by the SDK but not advertised
-    # anywhere until resource_server_url is set alongside the OAuth endpoints.
+    token_verifier=_TokenVerifier(),
     auth=AuthSettings(
-        issuer_url=os.getenv("FRONTEND_URL", "http://localhost:3000"),
-        resource_server_url=None,
+        issuer_url=ISSUER_URL,
+        resource_server_url=RESOURCE_URL,
+        # The verifier checks the audience of OAuth tokens itself; session
+        # JWTs carry none and are accepted deliberately.
+        validate_token_resource=False,
     ),
 )
 

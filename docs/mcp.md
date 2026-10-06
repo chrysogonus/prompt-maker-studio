@@ -1,8 +1,8 @@
 # MCP Endpoint (ChatGPT Integration)
 
 `POST /api/mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server
-that exposes a user's saved-prompt library as tools. It is the backend for the planned
-ChatGPT integration: ChatGPT writes and refines the prompt text in conversation, and
+that exposes a user's saved-prompt library as tools. It is the backend for the ChatGPT
+integration: ChatGPT writes and refines the prompt text in conversation, and
 these tools store and retrieve it. Nothing on this endpoint calls an LLM, so users need
 no provider connection to use it.
 
@@ -32,14 +32,50 @@ Delete and version restore are intentionally not exposed.
 
 ## Authentication
 
-The endpoint accepts the same bearer JWT as the REST API, including the
-`token_version` revocation check, so "Sign out everywhere" and password changes
-disconnect MCP clients too. Unauthenticated requests get `401` with a
-`WWW-Authenticate: Bearer` header.
+ChatGPT links a user's account through this backend's own OAuth 2.1 authorization
+server (`backend/app/services/oauth_provider.py`, built on the MCP SDK's handlers):
 
-OAuth account linking, which ChatGPT needs to obtain a token for an end user, is
-**not implemented yet**. Until then the endpoint can be tested with a token taken
-from a normal login.
+1. An unauthenticated call to `/api/mcp` returns `401` with
+   `WWW-Authenticate: Bearer resource_metadata="<FRONTEND_URL>/.well-known/oauth-protected-resource/api/mcp"`.
+2. That document names the issuer `<FRONTEND_URL>/api/oauth`, whose metadata is at
+   `/.well-known/oauth-authorization-server/api/oauth`.
+3. The client registers itself at `/api/oauth/register` (dynamic client registration).
+   Its redirect URIs must be on a host in `OAUTH_REDIRECT_HOSTS` (default `chatgpt.com`)
+   or loopback, so a look-alike app cannot use the consent screen to collect codes.
+4. `/api/oauth/authorize` validates the request (PKCE `S256` is required) and redirects
+   the browser to the frontend's `/oauth/authorize` page with the request signed into a
+   15-minute JWT. The user signs in or creates an account there, then allows or denies.
+5. Allowing issues a one-time code (5 minutes), which the client exchanges at
+   `/api/oauth/token` for a 1-hour access token and a 30-day refresh token. Refresh
+   tokens rotate on every use.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /.well-known/oauth-protected-resource/api/mcp` | Protected-resource metadata (RFC 9728) |
+| `GET /.well-known/oauth-authorization-server/api/oauth` | Authorization-server metadata (RFC 8414) |
+| `POST /api/oauth/register` | Dynamic client registration (RFC 7591) |
+| `GET /api/oauth/authorize` | Start of the authorization-code flow |
+| `POST /api/oauth/token` | Code and refresh-token exchange |
+| `POST /api/oauth/revoke` | Token revocation (RFC 7009) |
+| `GET`, `POST /api/oauth/consent` | Consent-screen details and decision (session-authenticated) |
+
+Access tokens are JWTs whose `aud` is `<FRONTEND_URL>/api/mcp`. The REST API's session
+decoder rejects any token with an audience, so a token issued to ChatGPT works only on
+the MCP endpoint. Access and refresh tokens both carry the user's `token_version`, so
+"Sign out everywhere", a password change, or a reset disconnects every linked client;
+deleting the account removes its grants. Authorization codes and refresh tokens are
+stored as SHA-256 digests (migration `022_oauth_tables`).
+
+`FRONTEND_URL` must be the public origin clients reach: it is the base of the issuer,
+the resource identifier, and the consent-page URL. Caddy routes `/.well-known/oauth-*`
+to the backend; everything else lives under `/api`.
+
+The endpoint also accepts the REST API's own bearer JWT, for scripts and local testing.
+
+Not implemented: client ID metadata documents (OpenAI's preferred registration method;
+ChatGPT also supports dynamic registration), the RFC 9207 `iss` response parameter (so
+ChatGPT uses a callback-specific redirect URI), mTLS verification of ChatGPT's client
+certificate, and rate limits on registration and token requests.
 
 ## Testing it locally
 

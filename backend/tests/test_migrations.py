@@ -123,6 +123,7 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
             "019_user_llm_connection",
             "020_delete_cascades",
             "021_user_token_version",
+            "022_oauth_tables",
         }
         assert "updated_at" in _columns(connection, "prompts")
         assert _table_exists(connection, "prompt_versions")
@@ -149,6 +150,8 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
         assert _table_exists(connection, "billed_calls")
         assert {"name", "intentionally_empty"}.issubset(_columns(connection, "eval_cases"))
         assert _table_exists(connection, "prompt_id_sequence")
+        for oauth_table in ("oauth_clients", "oauth_authorization_codes", "oauth_refresh_tokens"):
+            assert _table_exists(connection, oauth_table)
         assert {
             "user_id",
             "source",
@@ -276,7 +279,7 @@ def test_run_migrations_is_idempotent_on_current_database(tmp_path):
 
     with engine.connect() as connection:
         versions = connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
-        assert len(versions) == 21
+        assert len(versions) == 22
         assert {
             "fields",
             "user_id",

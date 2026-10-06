@@ -406,6 +406,9 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 | `GET` | `/api/analytics/dashboard` | Yes | Fetch user dashboard metrics and usage statistics |
 | `POST` | `/api/admin/smtp/check` | Admin Token | Validate SMTP connectivity (requires `X-Admin-Token` header) |
 | `POST` | `/api/mcp` | Yes | MCP server exposing the saved-prompt library as tools (see [docs/mcp.md](docs/mcp.md)) |
+| `POST` | `/api/oauth/register`, `/api/oauth/token`, `/api/oauth/revoke` | No | OAuth 2.1 endpoints MCP clients such as ChatGPT use to link an account (see [docs/mcp.md](docs/mcp.md)) |
+| `GET` | `/api/oauth/authorize` | No | Start of the OAuth flow; redirects to the consent page |
+| `GET`, `POST` | `/api/oauth/consent` | Yes | Consent-screen details and the user's allow/deny decision |
 
 ## Additional Documentation
 

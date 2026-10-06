@@ -14,8 +14,13 @@ any release. See [Project status](./README.md#project-status).
 
 - MCP endpoint at `/api/mcp` exposing the saved-prompt library as tools (list,
   get, save, update, version history) for ChatGPT and other MCP clients. It
-  accepts the existing bearer token; OAuth account linking is not implemented
-  yet. See [docs/mcp.md](./docs/mcp.md).
+  accepts the existing bearer token. See [docs/mcp.md](./docs/mcp.md).
+- OAuth 2.1 account linking for MCP clients: dynamic client registration,
+  PKCE, a consent page at `/oauth/authorize` with sign-in and sign-up, and
+  rotating refresh tokens. Linked clients are disconnected by "Sign out
+  everywhere", password changes, and account deletion. New
+  `OAUTH_REDIRECT_HOSTS` setting (default `chatgpt.com`). Requires migration
+  `022_oauth_tables` and a new Caddy route for `/.well-known/oauth-*`.
 
 ### Changed
 

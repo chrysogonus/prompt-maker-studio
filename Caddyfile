@@ -71,6 +71,15 @@
         reverse_proxy backend:8000
     }
 
+    # OAuth discovery for MCP clients such as ChatGPT (RFC 8414 and RFC 9728).
+    # These documents must sit at the origin's root, outside /api, so they get
+    # their own route to the backend.
+    handle /.well-known/oauth-* {
+        header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+        header Referrer-Policy "no-referrer"
+        reverse_proxy backend:8000
+    }
+
     handle {
         reverse_proxy frontend:3000
     }
