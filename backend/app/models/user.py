@@ -75,6 +75,12 @@ class User(Base):
         "PlaygroundRun", back_populates="user", cascade="all, delete-orphan"
     )
     billed_calls = relationship("BilledCall", back_populates="user", cascade="all, delete-orphan")
+    oauth_authorization_codes = relationship(
+        "OAuthAuthorizationCode", back_populates="user", cascade="all, delete-orphan"
+    )
+    oauth_refresh_tokens = relationship(
+        "OAuthRefreshToken", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} username={self.username!r}>"

@@ -21,6 +21,7 @@ from app.models.billed_call import BilledCall
 from app.models.eval_case import EvalCase
 from app.models.eval_run import EvalRun
 from app.models.eval_run_result import EvalRunResult
+from app.models.oauth import OAuthAuthorizationCode, OAuthClient, OAuthRefreshToken
 from app.models.playground_run import PlaygroundRun
 from app.models.prompt import Prompt
 from app.models.prompt_version import PromptVersion
@@ -724,6 +725,16 @@ def _migration_021_user_token_version(connection) -> None:
         _add_column_if_missing(connection, "users", "token_version", "INTEGER NOT NULL DEFAULT 0")
 
 
+def _migration_022_oauth_tables(connection) -> None:
+    """Create the OAuth client, authorization-code, and refresh-token tables
+    behind MCP account linking. The DDL is rendered from the models, as in
+    migration 020, so it cannot drift from them."""
+    for model in (OAuthClient, OAuthAuthorizationCode, OAuthRefreshToken):
+        connection.execute(CreateTable(model.__table__, if_not_exists=True))
+        for index in model.__table__.indexes:
+            connection.execute(CreateIndex(index, if_not_exists=True))
+
+
 _MIGRATIONS: tuple[Migration, ...] = (
     ("001_dynamic_prompt_fields", _migration_001_dynamic_prompt_fields),
     ("002_prompt_user_id", _migration_002_prompt_user_id),
@@ -746,4 +757,5 @@ _MIGRATIONS: tuple[Migration, ...] = (
     ("019_user_llm_connection", _migration_019_user_llm_connection),
     ("020_delete_cascades", _migration_020_delete_cascades),
     ("021_user_token_version", _migration_021_user_token_version),
+    ("022_oauth_tables", _migration_022_oauth_tables),
 )

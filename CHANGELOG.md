@@ -10,6 +10,26 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- MCP endpoint at `/api/mcp` exposing the saved-prompt library as tools (list,
+  get, save, update, version history) for ChatGPT and other MCP clients. It
+  accepts the existing bearer token. See [docs/mcp.md](./docs/mcp.md).
+- OAuth 2.1 account linking for MCP clients: dynamic client registration,
+  PKCE, a consent page at `/oauth/authorize` with sign-in and sign-up, and
+  rotating refresh tokens. Linked clients are disconnected by "Sign out
+  everywhere", password changes, and account deletion. New
+  `OAUTH_REDIRECT_HOSTS` setting (default `chatgpt.com`). Requires migration
+  `022_oauth_tables` and a new Caddy route for `/.well-known/oauth-*`.
+- Rate limits on the OAuth registration, token, revocation, and consent
+  endpoints (`OAUTH_REGISTER_RATE_LIMIT`, `OAUTH_TOKEN_RATE_LIMIT`), and the
+  `offline_access` scope so ChatGPT relies on refresh tokens. Step-by-step
+  ChatGPT connection guide in [docs/mcp.md](./docs/mcp.md).
+
+### Changed
+
+- uvicorn upgraded from 0.27.0 to 0.54.0, required by the MCP SDK.
+
 ### Fixed
 
 - The Grafana dashboard showed no data: its panels referenced a data source
@@ -17,6 +37,11 @@ any release. See [Project status](./README.md#project-status).
   on the next start. The "Rate-Limited Requests" panel, which could never match
   the grouped status codes, now shows all 4xx responses, and the "Active
   Requests" panel, which plotted a timestamp, is removed.
+
+### Security
+
+- `source-map-js` updated from 1.2.1 to 1.2.2 in the frontend image
+  (CVE-2026-93749, denial of service via malformed indexed source maps).
 
 ## [0.1.4] - 2026-10-04
 

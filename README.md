@@ -190,7 +190,7 @@ build receives no build arguments at all.
 | `LLM_PRICING_REFRESH` | No | Fetch published model prices from a pinned revision of LiteLLM's index (the only outbound request not to your own provider or SMTP server). `false` uses the compiled-in snapshot only | `true` |
 | `LLM_PRICING_URL` | No | Override the pricing document URL, e.g. an internal mirror | — |
 | `LLM_TIMEOUT_SECONDS` | No | Overrides the per-request provider timeout. Defaults: 30s hosted, 180s self-hosted | `180` |
-| `FRONTEND_URL` | For Email | Public frontend base URL used in password-reset email links | `http://localhost:3000` |
+| `FRONTEND_URL` | For Email, ChatGPT | Public base URL used in password-reset email links and as the base of the MCP endpoint and its OAuth issuer | `http://localhost:3000` |
 | `SMTP_HOST` | For Email | SMTP server hostname for outbound emails | `smtp.example.com` |
 | `SMTP_PORT` | For Email | SMTP server port | `587` |
 | `SMTP_TLS_MODE` | No | `starttls` (default) or `implicit` for a TLS-on-connect port such as 465. Certificates are always verified | `starttls` |
@@ -208,6 +208,9 @@ build receives no build arguments at all.
 | `ADMIN_DIAGNOSTICS_TOKEN` | No | Token protecting the operator `/api/admin/smtp/check` endpoint; the endpoint returns 503 while unset | `local-diagnostics-token` |
 | `REGISTER_RATE_LIMIT` | No | SlowAPI rate limit applied to the registration endpoint | `5/minute` |
 | `LOGIN_RATE_LIMIT` | No | SlowAPI rate limit applied to the login endpoint | `10/minute` |
+| `OAUTH_REGISTER_RATE_LIMIT` | No | Rate limit on OAuth client registration for MCP clients such as ChatGPT (see [docs/mcp.md](docs/mcp.md)) | `20/minute` |
+| `OAUTH_TOKEN_RATE_LIMIT` | No | Rate limit on the OAuth token and revocation endpoints | `60/minute` |
+| `OAUTH_REDIRECT_HOSTS` | No | Hosts MCP clients may register as OAuth redirect targets, besides loopback | `chatgpt.com` |
 | `BACKUP_INTERVAL_SECONDS` | Backup Profile | Frequency in seconds for the automated database backup worker | `86400` |
 | `BACKUP_RETENTION_DAYS` | Backup Profile | Scheduled backups older than this many days are deleted | `14` |
 | `BACKUP_UID` | Backup Profile | Numeric host UID used by the non-root scheduled backup worker | `1000` |
@@ -405,6 +408,10 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 |---|---|---|---|
 | `GET` | `/api/analytics/dashboard` | Yes | Fetch user dashboard metrics and usage statistics |
 | `POST` | `/api/admin/smtp/check` | Admin Token | Validate SMTP connectivity (requires `X-Admin-Token` header) |
+| `POST` | `/api/mcp` | Yes | MCP server exposing the saved-prompt library as tools (see [docs/mcp.md](docs/mcp.md)) |
+| `POST` | `/api/oauth/register`, `/api/oauth/token`, `/api/oauth/revoke` | No | OAuth 2.1 endpoints MCP clients such as ChatGPT use to link an account (see [docs/mcp.md](docs/mcp.md)) |
+| `GET` | `/api/oauth/authorize` | No | Start of the OAuth flow; redirects to the consent page |
+| `GET`, `POST` | `/api/oauth/consent` | Yes | Consent-screen details and the user's allow/deny decision |
 
 ## Additional Documentation
 
@@ -416,6 +423,7 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 - [docs/authentication.md](./docs/authentication.md) — Complete JWT authentication flow, token refresh, and security controls
 - [docs/saved-prompts.md](./docs/saved-prompts.md) — Saved prompts features, optimistic concurrency, and version history specs
 - [docs/licensing.md](./docs/licensing.md) — Source and container licensing controls
+- [docs/mcp.md](./docs/mcp.md) — MCP endpoint exposing the prompt library to ChatGPT and other MCP clients
 - [.github/CI_PIPELINE.md](./.github/CI_PIPELINE.md) — CI jobs, required aggregate check, artifacts, and local equivalents
 - [product/FEATURES.md](./product/FEATURES.md) — Complete list of implemented features (source of truth)
 - [product/DECISIONS.md](./product/DECISIONS.md) — Architecture Decisions Record (ADR)

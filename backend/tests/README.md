@@ -26,9 +26,11 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_llm_connection_routes.py` | `/api/auth/me/llm-connection` GET/PUT/DELETE and its probe: provider switching, key retention/clearing, base-URL validation, per-user isolation, and assertions that the stored key never appears in a response body or log line |
 | `test_llm_url_egress.py` | Egress policy for user-supplied provider base URLs: private, loopback, link-local, multicast, and cloud-metadata destinations are rejected after DNS resolution (every answer, not just the first), with the ALLOW_PRIVATE_LLM_URLS opt-in for self-hosted Ollama/vLLM |
 | `test_llm_pricing.py` | LiteLLM provider/model normalization, per-token to per-million conversion, live/static/free pricing precedence, unknown prices, and stale-on-refresh-error cache behavior |
+| `test_mcp_routes.py` | MCP prompt-library endpoint: bearer auth (missing, invalid, revoked tokens), the v1 tool list and annotations, save/list/get/update/version tools, per-user isolation, re-rendering on update, and stale-edit rejection |
 | `test_metrics.py` | Prometheus business metrics, read through `collect()` rather than library internals |
 | `test_migrations.py` | SQLite migration upgrades and idempotency |
 | `test_models.py` | User and prompt ORM models |
+| `test_oauth.py` | OAuth account linking for MCP clients: discovery metadata, dynamic registration and its redirect-host allowlist, consent approve/deny, PKCE, single-use codes, audience-bound access tokens rejected by the REST API, refresh-token rotation, revocation, the `offline_access` scope, rate limits on registration/token/consent, and disconnection on sign-out-everywhere or account deletion |
 | `test_optimistic_concurrency.py` | Conflict detection for concurrent prompt writes: `updated_at` advances even when the wall clock steps backwards or two writes land in one instant, and any difference from the client's token is a conflict (no tolerance window to lose an update in) |
 | `test_playground.py` | Template variable compilation, PlaygroundService cost/latency math, the Playground run endpoint (success, failure, ownership, validation, budget-ceiling rejection), and the run-history endpoint (pagination, ownership, failed runs) |
 | `test_prompt_generator.py` | XML prompt generation |

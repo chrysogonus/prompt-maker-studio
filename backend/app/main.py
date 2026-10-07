@@ -3,6 +3,7 @@ FastAPI application entry point.
 Configures CORS, database, and routes.
 """
 
+from contextlib import asynccontextmanager
 import logging
 import os
 import uuid
@@ -20,6 +21,9 @@ from app.api.admin_routes import router as admin_router
 from app.api.analytics_routes import router as analytics_router
 from app.api.auth_routes import router as auth_router
 from app.api.eval_routes import router as eval_router
+from app.api.mcp_routes import MCP_PATH, PROTECTED_RESOURCE_METADATA_PATH, mcp_endpoint
+from app.api.oauth_routes import oauth_protocol_app, well_known_router
+from app.api.oauth_routes import router as oauth_router
 from app.api.refine_routes import router as refine_router
 from app.api.routes import router
 from app.auth.cookies import CSRF_HEADER_NAME
@@ -31,8 +35,18 @@ from app.limiter import limiter
 
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    async with mcp_endpoint.lifespan():
+        yield
+
+
 app = FastAPI(
-    title=f"{APP_NAME} API", description="API for generating structured prompts", version="0.1.0"
+    title=f"{APP_NAME} API",
+    description="API for generating structured prompts",
+    version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.state.limiter = limiter
@@ -181,6 +195,12 @@ app.include_router(admin_router)
 app.include_router(analytics_router)
 app.include_router(eval_router)
 app.include_router(refine_router)
+app.include_router(oauth_router)
+app.include_router(well_known_router)
+# After oauth_router, whose /api/oauth/consent would otherwise fall into this mount.
+app.mount("/api/oauth", oauth_protocol_app)
+app.add_route(MCP_PATH, mcp_endpoint, include_in_schema=False)
+app.add_route(PROTECTED_RESOURCE_METADATA_PATH, mcp_endpoint, include_in_schema=False)
 
 
 @app.get("/")

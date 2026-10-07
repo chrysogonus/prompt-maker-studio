@@ -4,6 +4,7 @@
 
 import { PromptRequest, PromptResponse, PromptHistoryResponse, ParseTextRequest, ParseTextResponse, PromptUpdateRequest, PromptsConfigResponse, PromptVersionResponse, PlaygroundRunRequest, PlaygroundRunResponse, PlaygroundRunHistoryResponse, EvalCase, EvalCaseCreateRequest, EvalCaseUpdateRequest, EvalCaseGenerateRequest, EvalCaseGenerateResponse, EvalRun, EvalRunRateRequest, RefineDraftRequest, RefineDraftResponse, RefineQuestionsResponse } from '@/types/prompt';
 import { DashboardStatsResponse } from '@/types/analytics';
+import { OAuthConsentDetails, OAuthConsentResult } from '@/types/oauth';
 import { API_URL } from './apiBase';
 import { AuthService, CREDENTIALS, csrfHeaders } from './auth';
 
@@ -379,6 +380,47 @@ export class ApiClient {
       throw new Error('Failed to fetch prompt versions');
     }
 
+    return response.json();
+  }
+
+  /**
+   * Describe a pending OAuth request from an MCP client (e.g. ChatGPT) for
+   * the consent screen. `request` is the signed value /api/oauth/authorize
+   * put in the page URL.
+   */
+  static async getOAuthConsent(request: string): Promise<OAuthConsentDetails> {
+    const response = await fetch(
+      `${API_URL}/api/oauth/consent?request=${encodeURIComponent(request)}`,
+      { headers: this.getAuthHeaders(), credentials: CREDENTIALS },
+    );
+    return this.readOAuthConsentResponse(response);
+  }
+
+  /** Approve or deny a pending OAuth request; returns the client redirect. */
+  static async decideOAuthConsent(request: string, approve: boolean): Promise<OAuthConsentResult> {
+    const response = await fetch(`${API_URL}/api/oauth/consent`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      credentials: CREDENTIALS,
+      body: JSON.stringify({ request, approve }),
+    });
+    return this.readOAuthConsentResponse(response);
+  }
+
+  private static async readOAuthConsentResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+      if (response.status === 401) {
+        AuthService.removeToken();
+        throw new ApiError('Session expired. Please sign in again.', 401);
+      }
+      const errorData = await response.json().catch(() => ({ detail: '' }));
+      throw new ApiError(
+        typeof errorData.detail === 'string' && errorData.detail
+          ? errorData.detail
+          : 'Could not complete the connection request.',
+        response.status,
+      );
+    }
     return response.json();
   }
 
