@@ -167,7 +167,7 @@ password: access and refresh tokens are rejected immediately.
 |---|---|
 | Registration fails with `invalid_redirect_uri` | The client's callback host is not in `OAUTH_REDIRECT_HOSTS` (ChatGPT's is `chatgpt.com`). |
 | ChatGPT keeps asking to sign in, or every tool call gets `401` | `FRONTEND_URL` differs from the URL ChatGPT uses, so the token's audience does not match; or the account signed out everywhere. |
-| Discovery URLs return an HTML page | The Caddy `/.well-known/oauth-*` route is missing. |
+| Discovery URLs return an HTML page | Caddy is still running the old `Caddyfile`: it reads the file only at start, and `up -d --build` does not restart it. Run `docker compose -f docker-compose.yml up -d --force-recreate caddy` (a `caddy reload` is not enough after `git pull`, because the single-file bind mount still points at the replaced file). |
 | Consent page says the request expired | More than 15 minutes passed since ChatGPT started the flow; connect again. |
 | "Registration is closed on this instance" | `REGISTRATION_MODE` is `closed`; create the account another way or open registration. |
 | `429` from `/api/oauth/register` or `/token` | Many users connecting at once from OpenAI's shared addresses; raise the limits above. |
