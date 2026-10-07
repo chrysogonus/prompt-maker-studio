@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-07
+
 ### Added
 
 - MCP endpoint at `/api/mcp` exposing the saved-prompt library as tools (list,
@@ -20,7 +22,10 @@ any release. See [Project status](./README.md#project-status).
   rotating refresh tokens. Linked clients are disconnected by "Sign out
   everywhere", password changes, and account deletion. New
   `OAUTH_REDIRECT_HOSTS` setting (default `chatgpt.com`). Requires migration
-  `022_oauth_tables` and a new Caddy route for `/.well-known/oauth-*`.
+  `022_oauth_tables` and a new Caddy route for `/.well-known/oauth-*`: back up
+  the database before upgrading, and recreate the Caddy container
+  (`docker compose -f docker-compose.yml up -d --force-recreate caddy`), which
+  does not reload its `Caddyfile` on its own.
 - Rate limits on the OAuth registration, token, revocation, and consent
   endpoints (`OAUTH_REGISTER_RATE_LIMIT`, `OAUTH_TOKEN_RATE_LIMIT`), and the
   `offline_access` scope so ChatGPT relies on refresh tokens. Step-by-step
@@ -308,7 +313,8 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.2.0
 [0.1.4]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.4
 [0.1.3]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.3
 [0.1.2]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.2
