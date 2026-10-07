@@ -21,6 +21,7 @@ dependencies = [
     "PyJWT==2.15.1",
     "openai==2.48.0",
     "slowapi==0.1.9",
+    "limits==5.8.0",
     "prometheus-fastapi-instrumentator==8.1.0",
     "starlette==1.3.1",
     "cryptography==50.0.0",
@@ -147,6 +148,9 @@ line-ending = "auto"
     "ARG001",  # Unused function arguments (slowapi Request injection)
 ]
 "app/api/refine_routes.py" = [
+    "ARG001",  # Unused function arguments (slowapi Request injection)
+]
+"app/api/oauth_routes.py" = [
     "ARG001",  # Unused function arguments (slowapi Request injection)
 ]
 "app/services/secret_store.py" = [

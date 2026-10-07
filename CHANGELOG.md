@@ -21,6 +21,10 @@ any release. See [Project status](./README.md#project-status).
   everywhere", password changes, and account deletion. New
   `OAUTH_REDIRECT_HOSTS` setting (default `chatgpt.com`). Requires migration
   `022_oauth_tables` and a new Caddy route for `/.well-known/oauth-*`.
+- Rate limits on the OAuth registration, token, revocation, and consent
+  endpoints (`OAUTH_REGISTER_RATE_LIMIT`, `OAUTH_TOKEN_RATE_LIMIT`), and the
+  `offline_access` scope so ChatGPT relies on refresh tokens. Step-by-step
+  ChatGPT connection guide in [docs/mcp.md](./docs/mcp.md).
 
 ### Changed
 

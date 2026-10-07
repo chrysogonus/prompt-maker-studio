@@ -140,6 +140,8 @@ class TestDiscovery:
         assert metadata["token_endpoint"] == f"{ISSUER_URL}/token"
         assert metadata["registration_endpoint"] == f"{ISSUER_URL}/register"
         assert "S256" in metadata["code_challenge_methods_supported"]
+        # ChatGPT relies on refresh tokens only when this scope is advertised.
+        assert metadata["scopes_supported"] == ["offline_access"]
 
 
 class TestRegistration:
@@ -173,6 +175,19 @@ class TestAuthorizationFlow:
         response = _mcp(client, tokens["access_token"])
         assert response.status_code == 200
         assert len(response.json()["result"]["tools"]) == 5
+
+    def test_offline_access_scope_is_granted(self, client, auth_headers):
+        """ChatGPT requests the advertised scope; it must not be refused."""
+        client_id = _register(client).json()["client_id"]
+        verifier, challenge = _pkce()
+        response = _authorize(client, client_id, challenge, scope="offline_access")
+        request = parse_qs(urlparse(response.headers["location"]).query)["request"][0]
+        code = _approve(client, auth_headers, request)["code"]
+
+        tokens = _exchange(client, client_id, code, verifier).json()
+
+        assert tokens["scope"] == "offline_access"
+        assert tokens["refresh_token"]
 
     def test_state_is_returned_to_the_client(self, client, auth_headers):
         client_id = _register(client).json()["client_id"]
@@ -335,3 +350,38 @@ class TestTokens:
         )
 
         assert db_session.query(OAuthRefreshToken).count() == 0
+
+
+class TestRateLimits:
+    """The limiter is per client address and bypassed under TESTING, so each
+    test switches it on and starts from an empty bucket."""
+
+    @pytest.fixture(autouse=True)
+    def live_limiter(self, monkeypatch):
+        from app.limiter import limiter
+
+        limiter.reset()
+        monkeypatch.setenv("TESTING", "false")
+        yield
+        limiter.reset()
+
+    def test_registration_is_rate_limited(self, client):
+        for _ in range(20):
+            assert _register(client).status_code == 201
+        response = _register(client)
+        assert response.status_code == 429
+        assert "Rate limit exceeded" in response.json()["error"]
+
+    def test_token_endpoint_is_rate_limited(self, client):
+        bogus = {"grant_type": "authorization_code", "code": "x", "client_id": "nobody"}
+        for _ in range(60):
+            assert client.post("/api/oauth/token", data=bogus).status_code != 429
+        assert client.post("/api/oauth/token", data=bogus).status_code == 429
+
+    def test_consent_decisions_are_rate_limited(self, client, auth_headers):
+        decision = {"request": "not-a-signed-request", "approve": True}
+        for _ in range(10):
+            response = client.post("/api/oauth/consent", headers=auth_headers, json=decision)
+            assert response.status_code == 400
+        response = client.post("/api/oauth/consent", headers=auth_headers, json=decision)
+        assert response.status_code == 429
