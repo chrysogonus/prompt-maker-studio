@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiClient } from '../api';
+import { ApiClient, ApiError } from '../api';
 import { AuthService } from '../auth';
 
 beforeEach(() => {
@@ -68,5 +68,48 @@ describe('ApiClient authenticated requests', () => {
     await ApiClient.deletePrompt(49);
 
     expect(validitySpy).toHaveBeenCalledWith(120_000);
+  });
+});
+
+describe('ApiClient.createPrompt', () => {
+  const body = { name: 'Tutor', fields: [{ name: 'Role', content: 'A tutor' }], folder: 'Learning' };
+
+  it('posts the sections, never any rendered text, and returns the saved prompt', async () => {
+    const saved = { id: 5, ...body, generated_prompt: '<ROLE>\nA tutor\n</ROLE>' };
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => saved,
+    } as Response);
+
+    await expect(ApiClient.createPrompt(body)).resolves.toEqual(saved);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/api\/prompts$/);
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(init?.body as string)).toEqual(body);
+  });
+
+  it('throws an ApiError carrying the server message and status', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({ detail: 'Budget exhausted' }),
+    } as Response);
+
+    const error = await ApiClient.createPrompt(body).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ message: 'Budget exhausted', status: 409 });
+  });
+
+  it('falls back to a plain message for field-level validation errors', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({ detail: [{ loc: ['body', 'name'], msg: 'Field required' }] }),
+    } as Response);
+
+    await expect(ApiClient.createPrompt(body)).rejects.toThrow('Failed to save prompt: 422');
   });
 });

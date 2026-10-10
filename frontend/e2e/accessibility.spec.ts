@@ -118,17 +118,20 @@ test.describe('accessibility audit', () => {
     await expect(page).toHaveURL(/\/editor\/new$/);
     await auditPage(page, 'editor-new (dark)');
 
-    await page.getByPlaceholder(/field name/i).fill('goal');
-    await page.getByPlaceholder(/enter content for this field/i).fill('accessibility audit content');
-    await page.getByRole('button', { name: 'Generate Prompt' }).click();
+    await page.getByLabel('Task text').fill('Audit {{subject}} for accessibility');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await page.getByLabel('Prompt Name').fill(promptName);
-    await page.getByLabel('Prompt Name').press('Enter');
+    await auditPage(page, 'editor save dialog (dark)');
+    const dialog = page.getByRole('dialog', { name: 'Save prompt' });
+    await dialog.getByLabel('Name', { exact: true }).fill(promptName);
+    await dialog.getByLabel('Name', { exact: true }).press('Enter');
     await expect(page).toHaveURL(/\/editor\/\d+$/);
-    await auditPage(page, 'editor-detail (dark)');
+    await auditPage(page, 'editor saved prompt (dark)');
 
-    await page.getByRole('link', { name: /test in playground/i }).click();
-    await expect(page).toHaveURL(/\/playground\/\d+$/);
+    await page.getByRole('button', { name: 'History' }).click();
+    await auditPage(page, 'editor history (dark)');
+
+    const promptId = page.url().match(/\/editor\/(\d+)$/)![1];
+    await page.goto(`/playground/${promptId}`);
     await auditPage(page, 'playground (dark)');
 
     await navLink(page, 'Library').click();
@@ -146,6 +149,10 @@ test.describe('accessibility audit', () => {
 
     await page.goto('/library');
     await auditPage(page, 'library (light)');
+
+    await page.goto(`/editor/${promptId}`);
+    await expect(page.getByLabel('Task text')).toBeVisible();
+    await auditPage(page, 'editor saved prompt (light)');
 
     await page.goto('/settings');
     await auditPage(page, 'settings (light)');

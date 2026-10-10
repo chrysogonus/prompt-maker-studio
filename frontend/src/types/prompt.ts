@@ -47,10 +47,17 @@ export interface ParseTextResponse {
   fields: PromptField[];
 }
 
+export interface PromptCreateRequest {
+  name: string;
+  fields: PromptField[];
+  folder?: string | null;
+  variable_metadata?: Record<string, VariableMetadataItem> | null;
+}
+
+/** The prompt's text is rendered from `fields` on the server, so it is never sent. */
 export interface PromptUpdateRequest {
   name?: string | null;
   fields?: PromptField[] | null;
-  generated_prompt?: string | null;
   folder?: string | null;
   is_favorite?: boolean | null;
   tags?: string[] | null;

@@ -2,7 +2,7 @@
  * API client for interacting with the backend
  */
 
-import { PromptRequest, PromptResponse, PromptHistoryResponse, ParseTextRequest, ParseTextResponse, PromptUpdateRequest, PromptsConfigResponse, PromptVersionResponse, PlaygroundRunRequest, PlaygroundRunResponse, PlaygroundRunHistoryResponse, EvalCase, EvalCaseCreateRequest, EvalCaseUpdateRequest, EvalCaseGenerateRequest, EvalCaseGenerateResponse, EvalRun, EvalRunRateRequest, RefineDraftRequest, RefineDraftResponse, RefineQuestionsResponse } from '@/types/prompt';
+import { PromptCreateRequest, PromptRequest, PromptResponse, PromptHistoryResponse, ParseTextRequest, ParseTextResponse, PromptUpdateRequest, PromptsConfigResponse, PromptVersionResponse, PlaygroundRunRequest, PlaygroundRunResponse, PlaygroundRunHistoryResponse, EvalCase, EvalCaseCreateRequest, EvalCaseUpdateRequest, EvalCaseGenerateRequest, EvalCaseGenerateResponse, EvalRun, EvalRunRateRequest, RefineDraftRequest, RefineDraftResponse, RefineQuestionsResponse } from '@/types/prompt';
 import { DashboardStatsResponse } from '@/types/analytics';
 import { OAuthConsentDetails, OAuthConsentResult } from '@/types/oauth';
 import { API_URL } from './apiBase';
@@ -96,6 +96,25 @@ export class ApiClient {
       }
       const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
       throw new Error(errorData.detail || `Failed to generate prompt: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Save a new prompt to the library. The server renders its text from the
+   * sections, so only the sections are sent.
+   */
+  static async createPrompt(data: PromptCreateRequest): Promise<PromptHistoryResponse> {
+    const response = await this.authenticatedFetch(`${API_URL}/api/prompts`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      const detail = Array.isArray(errorData.detail) ? null : errorData.detail;
+      throw new ApiError(detail || `Failed to save prompt: ${response.status}`, response.status);
     }
 
     return response.json();
