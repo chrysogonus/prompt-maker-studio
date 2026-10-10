@@ -324,18 +324,11 @@ describe('SettingsPage', () => {
     });
   });
 
-  it('toggles auto-run evaluation on update', async () => {
-    vi.mocked(AuthService.updateProfile).mockResolvedValue(
-      user({ auto_run_eval_on_update: true })
-    );
+  it('no longer offers the auto-run evaluation toggle', async () => {
     renderSettings();
-    await screen.findByRole('switch', { name: 'Auto-run evaluation on Update' });
+    await screen.findByRole('radio', { name: 'Judge' });
 
-    await userEvent.click(screen.getByRole('switch', { name: 'Auto-run evaluation on Update' }));
-
-    await waitFor(() => {
-      expect(AuthService.updateProfile).toHaveBeenCalledWith({ auto_run_eval_on_update: true });
-    });
+    expect(screen.queryByRole('switch', { name: /Auto-run evaluation/ })).not.toBeInTheDocument();
   });
 
   it('toggles the evaluation-complete notification preference', async () => {

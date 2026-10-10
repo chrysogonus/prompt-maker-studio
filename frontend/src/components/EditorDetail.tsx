@@ -145,7 +145,7 @@ export default function EditorDetail({ promptId }: EditorDetailProps) {
     if (saveNoticeTimerRef.current) window.clearTimeout(saveNoticeTimerRef.current);
     // A newer notice supersedes the "run your eval set" nudge left by an earlier
     // update, rather than stacking a second banner above a stale one. Callers
-    // that still want the nudge re-raise it after this via `maybeAutoRunEval`.
+    // that still want the nudge re-raise it after this via `nudgeEvalRerun`.
     setShowEvalCta(false);
     setSaveNotice(message);
     saveNoticeTimerRef.current = window.setTimeout(() => setSaveNotice(''), 4000);
@@ -320,21 +320,17 @@ export default function EditorDetail({ promptId }: EditorDetailProps) {
     }
   }, [promptId]);
 
-  // After an Update or accepted refinement: auto-run the eval set if the user
-  // opted in, otherwise nudge them to re-score the new version.
-  const maybeAutoRunEval = useCallback(async () => {
+  // After an Update or accepted refinement: nudge the user to re-score the new
+  // version. Evaluations never start on their own while Evaluate is deferred,
+  // whatever the stored auto-run preference says, so nothing is billed unseen.
+  const nudgeEvalRerun = useCallback(async () => {
     try {
       const cases = await ApiClient.listEvalCases(promptId);
-      if (cases.length === 0) return;
-      if (currentUser?.auto_run_eval_on_update) {
-        await runEval();
-      } else {
-        setShowEvalCta(true);
-      }
+      if (cases.length > 0) setShowEvalCta(true);
     } catch {
       // Fetching the case list is best-effort; a failure just skips the nudge.
     }
-  }, [currentUser, promptId, runEval]);
+  }, [promptId]);
 
   const handleUpdate = async (name?: string) => {
     if (!templateText.trim()) {
@@ -357,7 +353,7 @@ export default function EditorDetail({ promptId }: EditorDetailProps) {
       setShowSaveDialog(false);
       await refreshVersions();
       showSaveNotice('Changes saved.');
-      maybeAutoRunEval();
+      nudgeEvalRerun();
     } catch (err) {
       reportMutationError(err, 'Failed to update prompt.');
     } finally {
@@ -457,7 +453,7 @@ export default function EditorDetail({ promptId }: EditorDetailProps) {
       setTemplateText(updated.generated_prompt);
       setRestoredDraft(false);
       await refreshVersions();
-      maybeAutoRunEval();
+      nudgeEvalRerun();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       reportMutationError(err, 'Failed to save refined prompt.');

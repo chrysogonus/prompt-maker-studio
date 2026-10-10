@@ -45,7 +45,7 @@ import { APP_SLUG, pageTitle } from '@/lib/branding';
 
 type Theme = 'light' | 'dark';
 type Density = 'comfortable' | 'compact';
-type PreferenceSaveTarget = 'library-view' | 'eval-method' | 'auto-run';
+type PreferenceSaveTarget = 'library-view' | 'eval-method';
 type PreferenceSaveStatus = 'saving' | 'saved';
 
 const SETTINGS_SECTION_IDS = [
@@ -319,14 +319,6 @@ export default function SettingsPage() {
       'eval-method',
       { default_eval_method: method },
       'Failed to update default eval method.',
-    );
-  };
-
-  const handleToggleAutoRunEvalOnUpdate = async (checked: boolean) => {
-    await updatePreference(
-      'auto-run',
-      { auto_run_eval_on_update: checked },
-      'Failed to update auto-run preference.',
     );
   };
 
@@ -672,25 +664,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Auto-run evaluation on Update</div>
-                <div className={styles.rowHint}>
-                  Automatically re-score against the eval set whenever you click Update in
-                  Editor Detail
-                </div>
-              </div>
-              <div className={styles.controlWithFeedback}>
-                <Toggle
-                  checked={user?.auto_run_eval_on_update ?? false}
-                  onChange={handleToggleAutoRunEvalOnUpdate}
-                  label="Auto-run evaluation on Update"
-                />
-                {preferenceSaveFeedback('auto-run')}
-              </div>
-            </div>
             {prefsError && <div className={styles.error}>{prefsError}</div>}
           </Card>
         </section>

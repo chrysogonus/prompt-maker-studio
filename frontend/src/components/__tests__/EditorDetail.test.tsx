@@ -258,7 +258,7 @@ describe('EditorDetail', () => {
     );
   });
 
-  it('auto-runs an evaluation after Update when the user has opted in and has eval cases', async () => {
+  it('never auto-runs an evaluation after Update, even with the stored preference on', async () => {
     vi.mocked(AuthService.getCurrentUser).mockResolvedValue({
       id: 1,
       username: 'testuser',
@@ -274,7 +274,8 @@ describe('EditorDetail', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Update' }));
 
-    await waitFor(() => expect(ApiClient.createEvalRun).toHaveBeenCalledWith(1));
+    expect(await screen.findByText(/run your eval set/)).toBeInTheDocument();
+    expect(ApiClient.createEvalRun).not.toHaveBeenCalled();
   });
 
   it('does not auto-run an evaluation when the user has not opted in', async () => {
