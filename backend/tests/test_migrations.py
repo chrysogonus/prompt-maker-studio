@@ -91,16 +91,36 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
         )
 
         row = (
-            connection.execute(text('SELECT fields, user_id, name FROM "prompts" WHERE id = 10'))
+            connection.execute(
+                text(
+                    'SELECT fields, generated_prompt, user_id, name, folder FROM "prompts" '
+                    "WHERE id = 10"
+                )
+            )
             .mappings()
             .one()
         )
-        assert json.loads(row["fields"]) == [
+        # 001's backfill no longer renders to the stored text, so 023 keeps it as
+        # a version snapshot and makes the text itself the single section.
+        snapshot = (
+            connection.execute(
+                text("SELECT fields, generated_prompt FROM prompt_versions WHERE prompt_id = 10")
+            )
+            .mappings()
+            .one()
+        )
+        assert json.loads(snapshot["fields"]) == [
             {"name": "goal", "content": "write a test"},
             {"name": "style", "content": "direct"},
         ]
+        assert snapshot["generated_prompt"] == "<GOAL>write a test</GOAL>"
+        assert json.loads(row["fields"]) == [
+            {"name": "prompt", "content": "<GOAL>write a test</GOAL>"}
+        ]
+        assert row["generated_prompt"] == "<PROMPT>\n<GOAL>write a test</GOAL>\n</PROMPT>"
         assert row["user_id"] == 1
-        assert row["name"] is None
+        assert row["name"] == "Untitled (1 Jan 2026, 00:00 UTC)"
+        assert row["folder"] == "Recovered history"
         assert _migration_versions(connection) == {
             "001_dynamic_prompt_fields",
             "002_prompt_user_id",
@@ -124,6 +144,8 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
             "020_delete_cascades",
             "021_user_token_version",
             "022_oauth_tables",
+            "023_recover_drifted_prompt_sections",
+            "024_recover_unnamed_prompts",
         }
         assert "updated_at" in _columns(connection, "prompts")
         assert _table_exists(connection, "prompt_versions")
@@ -279,7 +301,7 @@ def test_run_migrations_is_idempotent_on_current_database(tmp_path):
 
     with engine.connect() as connection:
         versions = connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
-        assert len(versions) == 22
+        assert len(versions) == 24
         assert {
             "fields",
             "user_id",
@@ -339,7 +361,7 @@ def test_migration_020_adds_cascades_and_clears_orphans(tmp_path):
         connection.execute(
             text(
                 "INSERT INTO prompts (id, user_id, fields, generated_prompt) "
-                "VALUES (1, 1, '[]', 'p')"
+                "VALUES (1, 1, '[]', '')"
             )
         )
         connection.execute(
@@ -393,3 +415,164 @@ def test_migration_020_adds_cascades_and_clears_orphans(tmp_path):
     with engine.connect() as connection:
         for table in ("prompts", "playground_runs", "billed_calls", "prompt_versions"):
             assert connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar() == 0, table
+
+
+def _current_database(tmp_path):
+    """A fully migrated-shape database with one user, as a live deployment has."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'current.db'}")
+    with engine.begin() as connection:
+        Base.metadata.create_all(bind=connection)
+        connection.execute(
+            text(
+                "INSERT INTO users (id, username, email, hashed_password, created_at) "
+                "VALUES (1, 'owner', 'owner@example.com', 'x', '2026-01-01 00:00:00')"
+            )
+        )
+    return engine
+
+
+def _insert_prompt(connection, prompt_id, fields, generated_prompt, **columns):
+    values = {
+        "id": prompt_id,
+        "user_id": 1,
+        "fields": json.dumps(fields),
+        "generated_prompt": generated_prompt,
+        "name": "Saved",
+        "created_at": "2026-03-14 09:12:33.000000",
+        "updated_at": "2026-03-15 10:00:00.000000",
+        **columns,
+    }
+    names = ", ".join(values)
+    placeholders = ", ".join(f":{name}" for name in values)
+    connection.execute(text(f"INSERT INTO prompts ({names}) VALUES ({placeholders})"), values)
+
+
+def _prompt(connection, prompt_id):
+    row = (
+        connection.execute(text("SELECT * FROM prompts WHERE id = :id"), {"id": prompt_id})
+        .mappings()
+        .one()
+    )
+    return {**row, "fields": json.loads(row["fields"])}
+
+
+def _snapshots(connection, prompt_id):
+    rows = connection.execute(
+        text(
+            "SELECT version_number, note, author_user_id, fields, generated_prompt "
+            "FROM prompt_versions WHERE prompt_id = :id ORDER BY version_number"
+        ),
+        {"id": prompt_id},
+    ).mappings()
+    return [{**row, "fields": json.loads(row["fields"])} for row in rows]
+
+
+def test_migration_023_splits_edited_text_into_sections_when_it_round_trips(tmp_path):
+    """Text edited in the raw editor but still in the rendered shape becomes the
+    sections, and the stale fields survive in a snapshot."""
+    engine = _current_database(tmp_path)
+    edited = "<ROLE>\nYou are a patient tutor.\n</ROLE>\n\n<TASK>\nExplain {{topic}}.\n</TASK>"
+    stale = [{"name": "role", "content": "You are a tutor."}]
+    with engine.begin() as connection:
+        _insert_prompt(connection, 1, stale, edited)
+        connection.execute(
+            text(
+                "INSERT INTO prompt_versions "
+                "(prompt_id, version_number, author_user_id, fields, generated_prompt) "
+                "VALUES (1, 1, 1, '[]', 'older')"
+            )
+        )
+
+    run_migrations(engine)
+
+    with engine.connect() as connection:
+        prompt = _prompt(connection, 1)
+        assert prompt["fields"] == [
+            {"name": "role", "content": "You are a patient tutor."},
+            {"name": "task", "content": "Explain {{topic}}."},
+        ]
+        assert prompt["generated_prompt"] == edited
+        assert prompt["updated_at"] == "2026-03-15 10:00:00.000000"
+        snapshot = _snapshots(connection, 1)[-1]
+        assert snapshot == {
+            "version_number": 2,
+            "note": "Before section recovery",
+            "author_user_id": 1,
+            "fields": stale,
+            "generated_prompt": edited,
+        }
+
+
+@pytest.mark.parametrize(
+    "edited",
+    [
+        # Free text around the tags.
+        "Fix typos only:\n<TEXT>\n{{text}}\n</TEXT>",
+        # A closing tag inside the content: splitting at the first one would
+        # leave text behind, so the parse must not be trusted.
+        "<ROLE>\na\n</ROLE>\nb\n</ROLE>",
+        # Lowercase tags never come out of the renderer.
+        "<role>\na\n</role>",
+        # Only whitespace differs from what the fields render.
+        "<ROLE>\na\n</ROLE>\n",
+    ],
+)
+def test_migration_023_keeps_text_whole_when_sections_would_not_round_trip(tmp_path, edited):
+    engine = _current_database(tmp_path)
+    stale = [{"name": "role", "content": "a"}]
+    with engine.begin() as connection:
+        _insert_prompt(connection, 1, stale, edited)
+
+    run_migrations(engine)
+
+    with engine.connect() as connection:
+        prompt = _prompt(connection, 1)
+        assert prompt["fields"] == [{"name": "prompt", "content": edited}]
+        assert prompt["generated_prompt"] == f"<PROMPT>\n{edited}\n</PROMPT>"
+        [snapshot] = _snapshots(connection, 1)
+        assert (snapshot["fields"], snapshot["generated_prompt"]) == (stale, edited)
+
+
+def test_migration_023_leaves_consistent_prompts_alone(tmp_path):
+    engine = _current_database(tmp_path)
+    fields = [{"name": "role", "content": "a"}, {"name": "task", "content": ""}]
+    rendered = "<ROLE>\na\n</ROLE>\n\n<TASK>\n\n</TASK>"
+    with engine.begin() as connection:
+        _insert_prompt(connection, 1, fields, rendered)
+
+    run_migrations(engine)
+
+    with engine.connect() as connection:
+        prompt = _prompt(connection, 1)
+        assert (prompt["fields"], prompt["generated_prompt"]) == (fields, rendered)
+        assert _snapshots(connection, 1) == []
+
+
+def test_migration_024_files_unnamed_prompts_under_recovered_history(tmp_path):
+    engine = _current_database(tmp_path)
+    fields = [{"name": "task", "content": "Write a birthday message"}]
+    rendered = "<TASK>\nWrite a birthday message\n</TASK>"
+    with engine.begin() as connection:
+        # Two identical history entries: both are kept.
+        _insert_prompt(connection, 1, fields, rendered, name=None)
+        _insert_prompt(connection, 2, fields, rendered, name=None)
+        _insert_prompt(connection, 3, fields, rendered, name=None, folder="Personal")
+        _insert_prompt(connection, 4, fields, rendered, name=None, created_at=None)
+        _insert_prompt(connection, 5, fields, rendered, name="Kept", folder=None)
+
+    run_migrations(engine)
+
+    with engine.connect() as connection:
+        rows = {
+            row["id"]: (row["name"], row["folder"], row["updated_at"])
+            for row in connection.execute(text("SELECT * FROM prompts")).mappings()
+        }
+    recovered = "Untitled (14 Mar 2026, 09:12 UTC)"
+    unchanged = "2026-03-15 10:00:00.000000"
+    assert rows == {
+        1: (recovered, "Recovered history", unchanged),
+        2: (recovered, "Recovered history", unchanged),
+        3: (recovered, "Personal", unchanged),
+        4: ("Untitled", "Recovered history", unchanged),
+        5: ("Kept", None, unchanged),
+    }

@@ -13,6 +13,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 import json
 import logging
+import re
 
 from sqlalchemy import Engine, column, delete, select, table, text, update
 from sqlalchemy.schema import CreateIndex, CreateTable
@@ -735,6 +736,155 @@ def _migration_022_oauth_tables(connection) -> None:
             connection.execute(CreateIndex(index, if_not_exists=True))
 
 
+RECOVERED_HISTORY_FOLDER = "Recovered history"
+SECTION_RECOVERY_NOTE = "Before section recovery"
+_RENDERED_SECTION = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>\n(.*?)\n</\1>", re.DOTALL)
+
+
+def _render_fields(fields: list[dict]) -> str:
+    """Render stored field dicts exactly as PromptGeneratorService.generate does.
+
+    Frozen here so this migration keeps meaning what it meant when it shipped,
+    even if the live renderer changes later.
+    """
+    return "\n\n".join(
+        f"<{field['name'].upper()}>\n{field['content']}\n</{field['name'].upper()}>"
+        for field in fields
+    )
+
+
+def _parse_rendered_sections(rendered: str, previous_fields: list[dict]) -> list[dict] | None:
+    """Split text back into sections, or None unless that reproduces it exactly.
+
+    Edited XML is arbitrary text, so a parse is only trusted when rendering the
+    parsed sections gives back the original byte for byte. Section names reuse
+    the previous field's spelling where its tag matches, so `role` stays `role`
+    rather than becoming `ROLE`.
+    """
+    names_by_tag = {field["name"].upper(): field["name"] for field in previous_fields}
+    sections: list[dict] = []
+    position = 0
+    while position < len(rendered):
+        if sections:
+            if not rendered.startswith("\n\n", position):
+                return None
+            position += 2
+        match = _RENDERED_SECTION.match(rendered, position)
+        if match is None:
+            return None
+        tag = match.group(1)
+        sections.append(
+            {"name": names_by_tag.get(tag.upper(), tag.lower()), "content": match.group(2)}
+        )
+        position = match.end()
+    if not sections or _render_fields(sections) != rendered:
+        return None
+    return sections
+
+
+def _migration_023_recover_drifted_prompt_sections(connection) -> None:
+    """Make every prompt's fields the source of its generated text.
+
+    The saved-prompt editor PATCHed `generated_prompt` as raw text, so a prompt
+    could drift from the fields it claims to be built from. From here on the
+    server renders the text from the fields on every write, so each drifted
+    prompt first gets its original fields and text kept as a version snapshot,
+    then its fields are rebuilt from the text: split into sections when that
+    round-trips exactly, otherwise kept whole as a single `prompt` section.
+    Rows are rewritten without touching `updated_at`, so the library order the
+    user knows does not change.
+    """
+    if not _table_exists(connection, "prompts"):
+        return
+
+    rows = connection.execute(
+        text('SELECT id, user_id, fields, generated_prompt FROM "prompts"')
+    ).mappings()
+    now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f")
+    for row in rows.all():
+        fields = json.loads(row["fields"]) if isinstance(row["fields"], str) else row["fields"]
+        original = row["generated_prompt"]
+        if _render_fields(fields) == original:
+            continue
+
+        recovered = _parse_rendered_sections(original, fields) or [
+            {"name": "prompt", "content": original}
+        ]
+        next_version = connection.execute(
+            text(
+                "SELECT COALESCE(MAX(version_number), 0) + 1 FROM prompt_versions "
+                "WHERE prompt_id = :prompt_id"
+            ),
+            {"prompt_id": row["id"]},
+        ).scalar_one()
+        connection.execute(
+            text(
+                "INSERT INTO prompt_versions "
+                "(prompt_id, version_number, note, author_user_id, fields, generated_prompt, "
+                "created_at) "
+                "VALUES (:prompt_id, :version_number, :note, :author_user_id, :fields, "
+                ":generated_prompt, :created_at)"
+            ),
+            {
+                "prompt_id": row["id"],
+                "version_number": next_version,
+                "note": SECTION_RECOVERY_NOTE,
+                "author_user_id": row["user_id"],
+                "fields": json.dumps(fields),
+                "generated_prompt": original,
+                "created_at": now,
+            },
+        )
+        connection.execute(
+            text(
+                'UPDATE "prompts" SET fields = :fields, generated_prompt = :generated_prompt '
+                "WHERE id = :prompt_id"
+            ),
+            {
+                "fields": json.dumps(recovered),
+                "generated_prompt": _render_fields(recovered),
+                "prompt_id": row["id"],
+            },
+        )
+
+
+def _recovered_prompt_name(created_at: str | None) -> str:
+    """`Untitled (14 Mar 2026, 09:12 UTC)` — timestamps are stored as naive UTC."""
+    if not created_at:
+        return "Untitled"
+    moment = datetime.fromisoformat(str(created_at))
+    return f"Untitled ({moment.day} {moment:%b %Y, %H:%M} UTC)"
+
+
+def _migration_024_recover_unnamed_prompts(connection) -> None:
+    """Move unnamed prompts out of the retired History log into the library.
+
+    Every Generate click used to store an unnamed prompt that only the History
+    tab listed. That tab is going away, so each one gets a readable date-based
+    name and lands in the "Recovered history" folder, unless it was already
+    filed somewhere. Nothing is deduplicated: identical fields can still differ
+    in text that was edited by hand.
+    """
+    if not _table_exists(connection, "prompts"):
+        return
+
+    rows = connection.execute(
+        text('SELECT id, created_at FROM "prompts" WHERE name IS NULL')
+    ).mappings()
+    for row in rows.all():
+        connection.execute(
+            text(
+                'UPDATE "prompts" SET name = :name, folder = COALESCE(folder, :folder) '
+                "WHERE id = :prompt_id"
+            ),
+            {
+                "name": _recovered_prompt_name(row["created_at"]),
+                "folder": RECOVERED_HISTORY_FOLDER,
+                "prompt_id": row["id"],
+            },
+        )
+
+
 _MIGRATIONS: tuple[Migration, ...] = (
     ("001_dynamic_prompt_fields", _migration_001_dynamic_prompt_fields),
     ("002_prompt_user_id", _migration_002_prompt_user_id),
@@ -758,4 +908,6 @@ _MIGRATIONS: tuple[Migration, ...] = (
     ("020_delete_cascades", _migration_020_delete_cascades),
     ("021_user_token_version", _migration_021_user_token_version),
     ("022_oauth_tables", _migration_022_oauth_tables),
+    ("023_recover_drifted_prompt_sections", _migration_023_recover_drifted_prompt_sections),
+    ("024_recover_unnamed_prompts", _migration_024_recover_unnamed_prompts),
 )
