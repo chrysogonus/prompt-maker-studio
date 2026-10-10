@@ -13,7 +13,6 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 import json
 import logging
-import re
 
 from sqlalchemy import Engine, column, delete, select, table, text, update
 from sqlalchemy.schema import CreateIndex, CreateTable
@@ -27,6 +26,7 @@ from app.models.playground_run import PlaygroundRun
 from app.models.prompt import Prompt
 from app.models.prompt_version import PromptVersion
 from app.models.user import User
+from app.services.prompt_sections import render_sections, sections_for_text
 
 logger = logging.getLogger(__name__)
 
@@ -738,48 +738,6 @@ def _migration_022_oauth_tables(connection) -> None:
 
 RECOVERED_HISTORY_FOLDER = "Recovered history"
 SECTION_RECOVERY_NOTE = "Before section recovery"
-_RENDERED_SECTION = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>\n(.*?)\n</\1>", re.DOTALL)
-
-
-def _render_fields(fields: list[dict]) -> str:
-    """Render stored field dicts exactly as PromptGeneratorService.generate does.
-
-    Frozen here so this migration keeps meaning what it meant when it shipped,
-    even if the live renderer changes later.
-    """
-    return "\n\n".join(
-        f"<{field['name'].upper()}>\n{field['content']}\n</{field['name'].upper()}>"
-        for field in fields
-    )
-
-
-def _parse_rendered_sections(rendered: str, previous_fields: list[dict]) -> list[dict] | None:
-    """Split text back into sections, or None unless that reproduces it exactly.
-
-    Edited XML is arbitrary text, so a parse is only trusted when rendering the
-    parsed sections gives back the original byte for byte. Section names reuse
-    the previous field's spelling where its tag matches, so `role` stays `role`
-    rather than becoming `ROLE`.
-    """
-    names_by_tag = {field["name"].upper(): field["name"] for field in previous_fields}
-    sections: list[dict] = []
-    position = 0
-    while position < len(rendered):
-        if sections:
-            if not rendered.startswith("\n\n", position):
-                return None
-            position += 2
-        match = _RENDERED_SECTION.match(rendered, position)
-        if match is None:
-            return None
-        tag = match.group(1)
-        sections.append(
-            {"name": names_by_tag.get(tag.upper(), tag.lower()), "content": match.group(2)}
-        )
-        position = match.end()
-    if not sections or _render_fields(sections) != rendered:
-        return None
-    return sections
 
 
 def _migration_023_recover_drifted_prompt_sections(connection) -> None:
@@ -804,12 +762,10 @@ def _migration_023_recover_drifted_prompt_sections(connection) -> None:
     for row in rows.all():
         fields = json.loads(row["fields"]) if isinstance(row["fields"], str) else row["fields"]
         original = row["generated_prompt"]
-        if _render_fields(fields) == original:
+        if render_sections(fields) == original:
             continue
 
-        recovered = _parse_rendered_sections(original, fields) or [
-            {"name": "prompt", "content": original}
-        ]
+        recovered = sections_for_text(original, fields)
         next_version = connection.execute(
             text(
                 "SELECT COALESCE(MAX(version_number), 0) + 1 FROM prompt_versions "
@@ -842,7 +798,7 @@ def _migration_023_recover_drifted_prompt_sections(connection) -> None:
             ),
             {
                 "fields": json.dumps(recovered),
-                "generated_prompt": _render_fields(recovered),
+                "generated_prompt": render_sections(recovered),
                 "prompt_id": row["id"],
             },
         )

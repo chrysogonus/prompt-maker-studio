@@ -2,6 +2,8 @@
 Unit tests for API endpoints.
 """
 
+import pytest
+
 from app.api.routes import duplicate_prompt as duplicate_prompt_route
 from app.models.eval_case import EvalCase
 from app.models.playground_run import PlaygroundRun
@@ -736,6 +738,86 @@ class TestGetSavedPromptsEndpoint:
         assert "created_at" in item
 
 
+class TestCreatePromptEndpoint:
+    """Test cases for POST /api/prompts, which saves a new prompt to the library."""
+
+    FIELDS = [
+        {"name": "Role", "content": "You are a patient tutor."},
+        {"name": "Output format", "content": "Explain {{topic}} in three steps."},
+    ]
+
+    def test_saves_a_named_prompt_and_renders_its_text(self, client, auth_headers):
+        response = client.post(
+            "/api/prompts",
+            headers=auth_headers,
+            json={
+                "name": "Tutor",
+                "fields": self.FIELDS,
+                "folder": "  Learning ",
+                "variable_metadata": {"topic": {"description": "What to explain"}},
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "Tutor"
+        assert data["fields"] == self.FIELDS
+        assert data["generated_prompt"] == (
+            "<ROLE>\nYou are a patient tutor.\n</ROLE>\n\n"
+            "<OUTPUT_FORMAT>\nExplain {{topic}} in three steps.\n</OUTPUT_FORMAT>"
+        )
+        assert data["folder"] == "Learning"
+        assert data["variable_metadata"] == {
+            "topic": {"type": "text", "description": "What to explain"}
+        }
+        saved = client.get("/api/prompts/saved", headers=auth_headers).json()
+        assert [p["id"] for p in saved] == [data["id"]]
+        versions = client.get(f"/api/prompts/{data['id']}/versions", headers=auth_headers)
+        assert versions.json() == []
+
+    def test_blank_folder_means_unfiled(self, client, auth_headers):
+        response = client.post(
+            "/api/prompts",
+            headers=auth_headers,
+            json={"name": "Loose", "fields": self.FIELDS, "folder": "  "},
+        )
+
+        assert response.status_code == 201
+        assert response.json()["folder"] is None
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"fields": FIELDS},
+            {"name": "  ", "fields": FIELDS},
+            {"name": "No sections", "fields": []},
+            {"name": "Dup", "fields": [FIELDS[0], {"name": "role", "content": "again"}]},
+            {"name": "Raw text", "fields": FIELDS, "generated_prompt": "anything"},
+        ],
+    )
+    def test_invalid_payloads_are_rejected(self, client, auth_headers, payload):
+        response = client.post("/api/prompts", headers=auth_headers, json=payload)
+
+        assert response.status_code == 422
+        assert client.get("/api/prompts/saved", headers=auth_headers).json() == []
+
+    def test_requires_authentication(self, client):
+        response = client.post("/api/prompts", json={"name": "Anon", "fields": self.FIELDS})
+
+        assert response.status_code == 401
+
+    def test_saved_prompt_belongs_to_its_creator_only(
+        self, client, auth_headers, second_auth_headers
+    ):
+        created = client.post(
+            "/api/prompts", headers=auth_headers, json={"name": "Mine", "fields": self.FIELDS}
+        ).json()
+
+        assert client.get("/api/prompts/saved", headers=second_auth_headers).json() == []
+        other = client.get(f"/api/prompts/{created['id']}", headers=second_auth_headers)
+        assert other.status_code == 404
+
+
 class TestUpdatePromptEndpoint:
     """Test cases for PATCH /api/prompts/{id} endpoint."""
 
@@ -786,8 +868,8 @@ class TestUpdatePromptEndpoint:
         )
         assert response.status_code == 422
 
-    def test_update_fields_and_generated_prompt(self, client, auth_headers):
-        """Updating fields and generated_prompt replaces both in-place."""
+    def test_update_fields_rerenders_generated_prompt(self, client, auth_headers):
+        """New sections replace the old ones and the text is rendered from them."""
         prompt_id = self._create_prompt(client, auth_headers, name="Existing")
 
         response = client.patch(
@@ -795,15 +877,33 @@ class TestUpdatePromptEndpoint:
             headers=auth_headers,
             json={
                 "name": "Updated Name",
-                "fields": [{"name": "goal", "content": "new content"}],
-                "generated_prompt": "<GOAL>\nnew content\n</GOAL>",
+                "fields": [
+                    {"name": "goal", "content": "new content"},
+                    {"name": "Output format", "content": "Three bullets"},
+                ],
             },
         )
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Updated Name"
-        assert data["fields"][0]["content"] == "new content"
-        assert data["generated_prompt"] == "<GOAL>\nnew content\n</GOAL>"
+        assert data["fields"][1] == {"name": "Output format", "content": "Three bullets"}
+        assert data["generated_prompt"] == (
+            "<GOAL>\nnew content\n</GOAL>\n\n<OUTPUT_FORMAT>\nThree bullets\n</OUTPUT_FORMAT>"
+        )
+
+    def test_update_rejects_raw_generated_prompt(self, client, auth_headers):
+        """The text is always rendered from the sections, so it cannot be written directly."""
+        prompt_id = self._create_prompt(client, auth_headers, name="Existing")
+
+        response = client.patch(
+            f"/api/prompts/{prompt_id}",
+            headers=auth_headers,
+            json={"generated_prompt": "hand-edited text"},
+        )
+
+        assert response.status_code == 422
+        current = client.get(f"/api/prompts/{prompt_id}", headers=auth_headers).json()
+        assert current["generated_prompt"] == "<GOAL>\noriginal content\n</GOAL>"
 
     def test_update_concurrency_conflict(self, client, auth_headers):
         """Updating a prompt fails with 409 Conflict if last_updated_at is stale.

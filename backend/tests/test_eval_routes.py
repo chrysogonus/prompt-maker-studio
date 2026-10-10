@@ -19,15 +19,13 @@ def _generator_usage() -> LLMUsage:
     )
 
 
-def _create_saved_prompt(client, headers, template="Say {{thing}}") -> int:
+def _create_saved_prompt(client, headers, goal="Say {{thing}}") -> int:
     response = client.post(
-        "/api/prompts/generate",
+        "/api/prompts",
         headers=headers,
-        json={"fields": [{"name": "goal", "content": "x"}], "name": "Eval Prompt"},
+        json={"fields": [{"name": "goal", "content": goal}], "name": "Eval Prompt"},
     )
-    prompt_id = response.json()["id"]
-    client.patch(f"/api/prompts/{prompt_id}", headers=headers, json={"generated_prompt": template})
-    return prompt_id
+    return response.json()["id"]
 
 
 def _mock_playground_result(output_text="hello world"):
@@ -550,8 +548,8 @@ class TestListEvalRuns:
         assert runs[0]["id"] > runs[1]["id"]
 
     def test_list_runs_never_includes_another_prompts_results(self, client, auth_headers):
-        first_prompt_id = _create_saved_prompt(client, auth_headers, template="first {{thing}}")
-        second_prompt_id = _create_saved_prompt(client, auth_headers, template="second {{thing}}")
+        first_prompt_id = _create_saved_prompt(client, auth_headers, goal="first {{thing}}")
+        second_prompt_id = _create_saved_prompt(client, auth_headers, goal="second {{thing}}")
         for prompt_id, criterion in (
             (first_prompt_id, "first-only"),
             (second_prompt_id, "second-only"),

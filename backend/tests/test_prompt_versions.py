@@ -1,6 +1,9 @@
 """Tests for prompt version snapshotting and restore (migration 009)."""
 
+import pytest
+
 from app.models.playground_run import PlaygroundRun
+from app.models.prompt_version import PromptVersion
 
 
 class TestPromptVersioning:
@@ -30,10 +33,7 @@ class TestPromptVersioning:
         client.patch(
             f"/api/prompts/{prompt_id}",
             headers=auth_headers,
-            json={
-                "fields": [{"name": "goal", "content": "v2 content"}],
-                "generated_prompt": "<GOAL>v2 content</GOAL>",
-            },
+            json={"fields": [{"name": "goal", "content": "v2 content"}]},
         )
 
         versions = client.get(f"/api/prompts/{prompt_id}/versions", headers=auth_headers).json()
@@ -61,7 +61,7 @@ class TestPromptVersioning:
         response = client.patch(
             f"/api/prompts/{prompt_id}",
             headers=auth_headers,
-            json={"generated_prompt": current["generated_prompt"]},
+            json={"fields": current["fields"]},
         )
 
         assert response.status_code == 200
@@ -152,6 +152,48 @@ class TestPromptVersioning:
         assert len(versions_after) == 2
         assert versions_after[0]["fields"][0]["content"] == "v2 content"
         assert versions_after[0]["note"] == "Restore to v1"
+
+    @pytest.mark.parametrize(
+        ("old_text", "restored_fields"),
+        [
+            # Hand-edited text still in the rendered shape splits into sections.
+            (
+                "<GOAL>\nedited by hand\n</GOAL>\n\n<TONE>\nwarm\n</TONE>",
+                [
+                    {"name": "goal", "content": "edited by hand"},
+                    {"name": "tone", "content": "warm"},
+                ],
+            ),
+            # Anything else is restored whole rather than guessed at.
+            ("Free text, no tags", [{"name": "prompt", "content": "Free text, no tags"}]),
+        ],
+    )
+    def test_restoring_a_version_whose_text_disagrees_with_its_fields(
+        self, client, auth_headers, db_session, old_text, restored_fields
+    ):
+        """Versions from before sections became the source of the text can hold
+        hand-edited text their stale fields don't render to. Restoring brings
+        back that text, as sections that render to it."""
+        prompt_id = self._create_saved_prompt(client, auth_headers)
+        version = PromptVersion(
+            prompt_id=prompt_id,
+            version_number=1,
+            fields=[{"name": "goal", "content": "stale"}],
+            generated_prompt=old_text,
+        )
+        db_session.add(version)
+        db_session.commit()
+
+        resp = client.post(
+            f"/api/prompts/{prompt_id}/versions/{version.id}/restore", headers=auth_headers
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["fields"] == restored_fields
+        if len(restored_fields) > 1:
+            assert resp.json()["generated_prompt"] == old_text
+        else:
+            assert resp.json()["generated_prompt"] == f"<PROMPT>\n{old_text}\n</PROMPT>"
 
     def test_restore_nonexistent_version_returns_404(self, client, auth_headers):
         prompt_id = self._create_saved_prompt(client, auth_headers)

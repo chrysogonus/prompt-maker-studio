@@ -36,6 +36,7 @@ from app.models.schemas import (
     PlaygroundRunHistoryResponse,
     PlaygroundRunRequest,
     PlaygroundRunResponse,
+    PromptCreateRequest,
     PromptHistoryResponse,
     PromptRequest,
     PromptResponse,
@@ -54,6 +55,7 @@ from app.services.prompt_compiler import compile_prompt
 from app.services.prompt_generator import PromptGeneratorService
 from app.services.prompt_id_service import PromptIdService
 from app.services.prompt_parser import PromptParserService as TextParserService
+from app.services.prompt_sections import render_sections
 from app.services.prompt_version_service import PromptVersionService
 from app.services.spend_ledger import LLMUsage, record_billed_call
 
@@ -155,6 +157,50 @@ def generate_prompt(
     if prompt.name is not None:
         prompts_saved_total.inc()
 
+    return prompt
+
+
+@router.post("", response_model=PromptHistoryResponse, status_code=status.HTTP_201_CREATED)
+def create_prompt(
+    body: PromptCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Save a new prompt to the calling user's library.
+
+    The prompt's text is rendered from its sections here, never taken from the
+    client, so the two cannot disagree.
+
+    Args:
+        body: Name, sections, and optional folder and variable descriptions
+        db: Database session
+        current_user: Current authenticated user; the prompt is stored under their account
+
+    Returns:
+        The saved prompt
+    """
+    fields = [{"name": field.name, "content": field.content} for field in body.fields]
+    prompt = Prompt(
+        id=PromptIdService.next_id(db),
+        user_id=current_user.id,
+        fields=fields,
+        generated_prompt=render_sections(fields),
+        name=body.name,
+        folder=(body.folder or "").strip() or None,
+        variable_metadata=(
+            {k: v.model_dump() for k, v in body.variable_metadata.items()}
+            if body.variable_metadata
+            else None
+        ),
+    )
+    db.add(prompt)
+    db.commit()
+    db.refresh(prompt)
+
+    prompts_saved_total.inc()
+
+    _attach_run_counts(db, current_user.id, [prompt])
     return prompt
 
 
@@ -429,10 +475,11 @@ def update_prompt(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Update name, fields, and/or generated_prompt of an owned prompt.
+    Update an owned prompt's name, sections, or organisation.
 
     Only the fields included in the request body are updated; omitted
-    fields retain their current values.
+    fields retain their current values. New sections re-render the prompt's
+    text, and snapshot the previous state as a version when they change it.
 
     Args:
         prompt_id: Unique identifier of the prompt to update
@@ -463,9 +510,7 @@ def update_prompt(
         if body.fields is not None
         else None
     )
-    content_changing = (next_fields is not None and next_fields != prompt.fields) or (
-        body.generated_prompt is not None and body.generated_prompt != prompt.generated_prompt
-    )
+    content_changing = next_fields is not None and next_fields != prompt.fields
     # Only version already-saved prompts — an unnamed history entry has no
     # prior "saved" state worth preserving.
     if not was_unnamed and content_changing:
@@ -475,8 +520,7 @@ def update_prompt(
         prompt.name = body.name
     if next_fields is not None:
         prompt.fields = next_fields
-    if body.generated_prompt is not None:
-        prompt.generated_prompt = body.generated_prompt
+        prompt.generated_prompt = render_sections(next_fields)
     if body.folder is not None:
         prompt.folder = body.folder
     if body.is_favorite is not None:
@@ -550,7 +594,11 @@ def restore_prompt_version(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Restore an owned prompt to a prior version's fields/generated_prompt.
+    Restore an owned prompt to a prior version's content.
+
+    Versions recorded before sections became the source of the text may not
+    match their own sections; those are restored from their text, the way
+    migration 023 recovered live prompts.
 
     The state being replaced is itself snapshotted first, so restoring never
     loses data — it can always be undone by restoring the newly-created

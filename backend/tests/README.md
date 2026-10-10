@@ -36,6 +36,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_prompt_generator.py` | XML prompt generation |
 | `test_prompt_parser.py` | Text-to-fields parser service (including non-strict-schema providers and fenced JSON) and the parse-text endpoint |
 | `test_prompt_refiner.py` | PromptRefinerService clarifying-question and draft-generation calls |
+| `test_prompt_sections.py` | Rendering sections to tagged text, display names with spaces, and recovering sections from text only when that round-trips exactly |
 | `test_prompt_versions.py` | Version snapshotting on edit, restore semantics, ownership, cascade delete, run_count passthrough |
 | `test_prompts_config.py` | Per-user AI capability endpoint: connection state, model list, budget status, and per-user scoping |
 | `test_refine_routes.py` | Refine tab clarifying-questions and draft endpoints, the accept-as-new-version flow, and budget-ceiling rejection |

@@ -79,17 +79,13 @@ class TestPlaygroundService:
 
 
 class TestPlaygroundRunEndpoint:
-    def _create_saved_prompt(self, client, headers, template="<GOAL>\n{{topic}}\n</GOAL>") -> int:
+    def _create_saved_prompt(self, client, headers, goal="{{topic}}") -> int:
         response = client.post(
-            "/api/prompts/generate",
+            "/api/prompts",
             headers=headers,
-            json={"fields": [{"name": "goal", "content": "x"}], "name": "Playground Prompt"},
+            json={"fields": [{"name": "goal", "content": goal}], "name": "Playground Prompt"},
         )
-        prompt_id = response.json()["id"]
-        client.patch(
-            f"/api/prompts/{prompt_id}", headers=headers, json={"generated_prompt": template}
-        )
-        return prompt_id
+        return response.json()["id"]
 
     def test_run_requires_auth(self, client, auth_headers):
         prompt_id = self._create_saved_prompt(client, auth_headers)
@@ -157,9 +153,7 @@ class TestPlaygroundRunEndpoint:
         assert billed.cost_usd == pytest.approx(run.cost_usd)
 
     def test_run_substitutes_template_variables_before_calling_openai(self, client, auth_headers):
-        prompt_id = self._create_saved_prompt(
-            client, auth_headers, template="<GOAL>\n{{topic}}\n</GOAL>"
-        )
+        prompt_id = self._create_saved_prompt(client, auth_headers)
         mock_response = _make_openai_response("ok")
 
         with patch("app.services.llm_client.OpenAI") as mock_openai_cls:
@@ -210,17 +204,13 @@ class TestPlaygroundRunEndpoint:
 
 
 class TestPlaygroundRunHistoryEndpoint:
-    def _create_saved_prompt(self, client, headers, template="<GOAL>\n{{topic}}\n</GOAL>") -> int:
+    def _create_saved_prompt(self, client, headers, goal="{{topic}}") -> int:
         response = client.post(
-            "/api/prompts/generate",
+            "/api/prompts",
             headers=headers,
-            json={"fields": [{"name": "goal", "content": "x"}], "name": "Playground Prompt"},
+            json={"fields": [{"name": "goal", "content": goal}], "name": "Playground Prompt"},
         )
-        prompt_id = response.json()["id"]
-        client.patch(
-            f"/api/prompts/{prompt_id}", headers=headers, json={"generated_prompt": template}
-        )
-        return prompt_id
+        return response.json()["id"]
 
     def _run(self, client, headers, prompt_id, variables=None):
         mock_response = _make_openai_response("output", prompt_tokens=10, completion_tokens=5)

@@ -11,6 +11,7 @@ from app.models.schemas import (
     EvalCaseCreateRequest,
     EvalRunRateRequest,
     ParseTextRequest,
+    PromptCreateRequest,
     PromptField,
     PromptHistoryResponse,
     PromptRequest,
@@ -45,10 +46,13 @@ class TestPromptField:
         with pytest.raises(ValidationError):
             PromptField(name="goal")
 
-    def test_prompt_field_name_with_space_rejected(self):
-        """Names with spaces produce invalid XML tags — must be rejected."""
+    def test_prompt_field_name_keeps_spaces_and_collapses_runs(self):
+        """Names are what the user reads; only the rendered tag replaces spaces."""
+        assert PromptField(name="  Output \t format ", content="x").name == "Output format"
+
+    def test_prompt_field_name_of_only_whitespace_rejected(self):
         with pytest.raises(ValidationError):
-            PromptField(name="bad name", content="Some content")
+            PromptField(name="   ", content="Some content")
 
     def test_prompt_field_name_starting_with_digit_rejected(self):
         """Names starting with a digit produce invalid XML tags — must be rejected."""
@@ -167,6 +171,15 @@ class TestPromptRequest:
             PromptRequest(**data)
 
         assert "Field names must be unique" in str(exc_info.value)
+
+    @pytest.mark.parametrize(
+        ("first", "second"), [("Goal", "goal"), ("Output format", "output_format")]
+    )
+    def test_prompt_request_rejects_names_that_render_to_the_same_tag(self, first, second):
+        data = {"fields": [{"name": first, "content": "a"}, {"name": second, "content": "b"}]}
+
+        with pytest.raises(ValidationError, match="Field names must be unique"):
+            PromptRequest(**data)
 
     def test_valid_prompt_request_custom_field_names(self):
         """Test that custom field names are allowed."""
@@ -300,6 +313,32 @@ class TestParseTextRequest:
             ParseTextRequest(text="x" * 10_001)
 
 
+class TestPromptCreateRequest:
+    """Test cases for PromptCreateRequest schema."""
+
+    def test_name_is_trimmed(self):
+        req = PromptCreateRequest(
+            name="  Weekly update ", fields=[{"name": "Task", "content": "x"}]
+        )
+        assert req.name == "Weekly update"
+
+    @pytest.mark.parametrize("name", ["", "   "])
+    def test_blank_name_rejected(self, name):
+        with pytest.raises(ValidationError):
+            PromptCreateRequest(name=name, fields=[{"name": "Task", "content": "x"}])
+
+    def test_at_least_one_section_required(self):
+        with pytest.raises(ValidationError):
+            PromptCreateRequest(name="Empty", fields=[])
+
+    def test_generated_prompt_is_not_accepted(self):
+        """The text is rendered from the sections; sending it is an error, not a no-op."""
+        with pytest.raises(ValidationError):
+            PromptCreateRequest(
+                name="x", fields=[{"name": "Task", "content": "x"}], generated_prompt="x"
+            )
+
+
 class TestPromptUpdateRequest:
     """Test cases for PromptUpdateRequest schema."""
 
@@ -307,15 +346,18 @@ class TestPromptUpdateRequest:
         req = PromptUpdateRequest()
         assert req.name is None
         assert req.fields is None
-        assert req.generated_prompt is None
         assert req.variable_metadata is None
 
-    def test_generated_prompt_at_max_boundary_accepted(self):
-        PromptUpdateRequest(generated_prompt="x" * 50_000)
-
-    def test_generated_prompt_exceeding_max_rejected(self):
+    def test_generated_prompt_is_not_accepted(self):
+        """The text is rendered from the sections; sending it is an error, not a no-op."""
         with pytest.raises(ValidationError):
-            PromptUpdateRequest(generated_prompt="x" * 50_001)
+            PromptUpdateRequest(generated_prompt="x")
+
+    def test_duplicate_section_names_rejected(self):
+        with pytest.raises(ValidationError, match="Field names must be unique"):
+            PromptUpdateRequest(
+                fields=[{"name": "Role", "content": "a"}, {"name": "ROLE", "content": "b"}]
+            )
 
     def test_note_optional_and_bounded(self):
         assert PromptUpdateRequest().note is None
