@@ -44,8 +44,6 @@ function prompt(overrides: Partial<PromptHistoryResponse> = {}): PromptHistoryRe
     updated_at: '2026-07-08T00:00:00Z',
     folder: 'Work',
     is_favorite: false,
-    tags: null,
-    run_count: 0,
     variable_metadata: { team: { type: 'list', description: 'Team or project name' } },
     ...overrides,
   };

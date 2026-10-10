@@ -44,13 +44,9 @@ function user(overrides: Partial<Record<string, unknown>> = {}) {
     username: 'testuser',
     email: 'testuser@example.com',
     created_at: '2026-07-01T00:00:00Z',
-    notify_run_failure: false,
-    notify_weekly_summary: false,
     default_library_view: null,
     default_eval_method: null,
     auto_run_eval_on_update: false,
-    notify_eval_complete: false,
-    notify_eval_regression: false,
     ...overrides,
   };
 }

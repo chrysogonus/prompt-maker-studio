@@ -28,25 +28,17 @@ export interface User {
   username: string;
   email?: string | null;
   created_at: string;
-  notify_run_failure?: boolean;
-  notify_weekly_summary?: boolean;
   default_library_view?: 'grid' | 'list' | null;
   default_eval_method?: 'rule' | 'judge' | 'manual' | null;
   auto_run_eval_on_update?: boolean;
-  notify_eval_complete?: boolean;
-  notify_eval_regression?: boolean;
 }
 
 export interface UserUpdate {
   email?: string | null;
   new_username?: string | null;
-  notify_run_failure?: boolean | null;
-  notify_weekly_summary?: boolean | null;
   default_library_view?: 'grid' | 'list' | null;
   default_eval_method?: 'rule' | 'judge' | 'manual' | null;
   auto_run_eval_on_update?: boolean | null;
-  notify_eval_complete?: boolean | null;
-  notify_eval_regression?: boolean | null;
 }
 
 export interface ForgotPasswordRequest {

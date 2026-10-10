@@ -135,8 +135,6 @@ test.describe('accessibility audit', () => {
     await auditPage(page, 'editor history (dark)');
 
     const promptId = page.url().match(/\/editor\/(\d+)$/)![1];
-    await page.goto(`/playground/${promptId}`);
-    await auditPage(page, 'playground (dark)');
 
     await sidebarLink(page, /All prompts/).click();
     await expect(page).toHaveURL(/\/library$/);

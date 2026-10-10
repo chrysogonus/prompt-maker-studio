@@ -10,7 +10,7 @@ beforeEach(() => {
 });
 
 describe('ApiClient authenticated requests', () => {
-  it('refreshes and retries an eval run once after a 401', async () => {
+  it('refreshes and retries a save once after a 401', async () => {
     // The session cookie is httpOnly and invisible here; what the client does
     // carry per request is the CSRF token, which a refresh rotates.
     document.cookie = 'csrf_token=original-csrf';
@@ -18,17 +18,19 @@ describe('ApiClient authenticated requests', () => {
     const refreshSpy = vi.spyOn(AuthService, 'refreshSession').mockImplementation(async () => {
       document.cookie = 'csrf_token=refreshed-csrf';
     });
-    const run = { id: 7, score: 100, results: [] };
+    const saved = { id: 7, name: 'Tutor' };
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce({ ok: false, status: 401 } as Response)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => run,
+        json: async () => saved,
       } as Response);
 
-    await expect(ApiClient.createEvalRun(48)).resolves.toEqual(run);
+    await expect(
+      ApiClient.createPrompt({ name: 'Tutor', fields: [{ name: 'Role', content: 'A tutor' }] }),
+    ).resolves.toEqual(saved);
 
     expect(refreshSpy).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -46,19 +48,6 @@ describe('ApiClient authenticated requests', () => {
         headers: expect.objectContaining({ 'X-CSRF-Token': 'refreshed-csrf' }),
       }),
     );
-  });
-
-  it('preflights a long eval run with a two-minute validity requirement', async () => {
-    const validitySpy = vi.spyOn(AuthService, 'ensureSessionValidity').mockResolvedValue();
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ id: 8, score: null, results: [] }),
-    } as Response);
-
-    await ApiClient.createEvalRun(48);
-
-    expect(validitySpy).toHaveBeenCalledWith(120_000);
   });
 
   it('renews near-expiry auth before a delayed prompt deletion commits', async () => {

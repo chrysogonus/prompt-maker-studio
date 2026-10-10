@@ -31,7 +31,6 @@ function prompt(id: number, folder: string | null, isFavorite = false): PromptHi
     created_at: '2026-07-01T00:00:00',
     folder,
     is_favorite: isFavorite,
-    run_count: 0,
   };
 }
 

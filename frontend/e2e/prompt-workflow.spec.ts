@@ -295,24 +295,6 @@ test('explains Import text when no AI connection exists', async ({ page }) => {
   );
 });
 
-test('shows the unavailable Playground state when no provider is connected', async ({ page }) => {
-  // A freshly registered user has no LLM provider connection, so this
-  // deterministic disabled-state assertion never makes a real, billed API
-  // call — a live run is deliberately not part of the required e2e suite.
-  const user = uniqueUser('noplayground');
-  await register(page, user);
-  const promptId = await createSavedPrompt(
-    page,
-    'Playground Test ' + user.username,
-    'playground test content',
-  );
-
-  await page.goto(`/playground/${promptId}`);
-
-  await expect(page.getByText(/Playground needs an AI provider/i)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Run' })).toBeDisabled();
-});
-
 test('files prompts into folders from the library and keeps Settings preferences', async ({
   page,
 }) => {

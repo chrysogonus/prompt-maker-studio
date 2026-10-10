@@ -44,8 +44,6 @@ function saved(overrides: Partial<PromptHistoryResponse> = {}): PromptHistoryRes
     updated_at: '2026-07-08T00:00:00',
     folder: 'Work',
     is_favorite: false,
-    tags: null,
-    run_count: 0,
     variable_metadata: null,
     ...overrides,
   };

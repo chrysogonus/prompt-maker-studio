@@ -2,8 +2,7 @@
  * API client for interacting with the backend
  */
 
-import { PromptCreateRequest, PromptRequest, PromptResponse, PromptHistoryResponse, ParseTextRequest, ParseTextResponse, PromptUpdateRequest, PromptsConfigResponse, PromptVersionResponse, PlaygroundRunRequest, PlaygroundRunResponse, PlaygroundRunHistoryResponse, EvalCase, EvalCaseCreateRequest, EvalCaseUpdateRequest, EvalCaseGenerateRequest, EvalCaseGenerateResponse, EvalRun, EvalRunRateRequest, RefineDraftRequest, RefineDraftResponse, RefineQuestionsResponse } from '@/types/prompt';
-import { DashboardStatsResponse } from '@/types/analytics';
+import { PromptCreateRequest, PromptHistoryResponse, ParseTextRequest, ParseTextResponse, PromptUpdateRequest, PromptsConfigResponse, PromptVersionResponse } from '@/types/prompt';
 import { OAuthConsentDetails, OAuthConsentResult } from '@/types/oauth';
 import { API_URL } from './apiBase';
 import { AuthService, CREDENTIALS, csrfHeaders } from './auth';
@@ -17,8 +16,8 @@ export class ApiError extends Error {
   }
 }
 
-/** Message shown for a prompt that does not exist. Matched on by the editor and
- * playground load-error screens to tell "gone" apart from "request failed". */
+/** Message shown for a prompt that does not exist. Matched on by the editor's
+ * load-error screen to tell "gone" apart from "request failed". */
 export const PROMPT_NOT_FOUND_MESSAGE = 'Prompt not found — it may have been deleted.';
 
 /**
@@ -43,10 +42,6 @@ export class ApiClient {
    */
   private static getAuthHeaders(): HeadersInit {
     return csrfHeaders();
-  }
-
-  private static getCsvAuthHeaders(): HeadersInit {
-    return csrfHeaders('text/csv');
   }
 
   /**
@@ -79,29 +74,6 @@ export class ApiClient {
   }
 
   /**
-   * Generate a new prompt
-   */
-  static async generatePrompt(data: PromptRequest): Promise<PromptResponse> {
-    const response = await fetch(`${API_URL}/api/prompts/generate`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `Failed to generate prompt: ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  /**
    * Save a new prompt to the library. The server renders its text from the
    * sections, so only the sections are sent.
    */
@@ -122,15 +94,13 @@ export class ApiClient {
 
   /**
    * Get all named (saved) prompts for the current user, optionally filtered
-   * by tag, folder, or favorite status for the Library screen.
+   * by folder or favorite status.
    */
   static async getSavedPrompts(filters?: {
-    tag?: string;
     folder?: string;
     favoriteOnly?: boolean;
   }): Promise<PromptHistoryResponse[]> {
     const params = new URLSearchParams();
-    if (filters?.tag) params.set('tag', filters.tag);
     if (filters?.folder) params.set('folder', filters.folder);
     if (filters?.favoriteOnly) params.set('favorite_only', 'true');
     const query = params.toString();
@@ -168,26 +138,6 @@ export class ApiClient {
       { method: 'DELETE' },
     );
     if (!response.ok) throw new ApiError('Failed to remove folder', response.status);
-    return response.json();
-  }
-
-  /**
-   * Get the distinct tag labels used across the current user's prompts.
-   */
-  static async getTags(): Promise<string[]> {
-    const response = await fetch(`${API_URL}/api/prompts/tags`, {
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      throw new Error('Failed to fetch tags');
-    }
-
     return response.json();
   }
 
@@ -268,30 +218,6 @@ export class ApiClient {
       credentials: CREDENTIALS,
       keepalive: true,
     }).catch(() => {});
-  }
-
-  /**
-   * Get prompt history, optionally paginated with offset and filtered with search
-   */
-  static async getHistory(limit: number = 50, offset: number = 0, search?: string): Promise<PromptHistoryResponse[]> {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    if (search && search.trim()) {
-      params.set('search', search.trim());
-    }
-    const response = await fetch(`${API_URL}/api/prompts/history?${params.toString()}`, {
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      throw new Error('Failed to fetch history');
-    }
-
-    return response.json();
   }
 
   /**
@@ -485,59 +411,6 @@ export class ApiClient {
   }
 
   /**
-   * Run a compiled prompt against a model in the Playground. Rate-limited
-   * server-side (10/min) since this is a real, billed OpenAI request.
-   */
-  static async runPlayground(
-    id: number,
-    data: PlaygroundRunRequest
-  ): Promise<PlaygroundRunResponse> {
-    const response = await fetch(`${API_URL}/api/prompts/${id}/playground/run`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `Playground run failed: ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Get an owned prompt's prior Playground runs, newest first, for the
-   * history drawer / replay feature. Includes failed attempts.
-   */
-  static async getPlaygroundRuns(
-    id: number,
-    limit: number = 20,
-    offset: number = 0,
-  ): Promise<PlaygroundRunHistoryResponse[]> {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    const response = await fetch(`${API_URL}/api/prompts/${id}/playground/runs?${params.toString()}`, {
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      throw new Error('Failed to fetch Playground run history');
-    }
-
-    return response.json();
-  }
-
-  /**
    * Export all of the calling user's prompts (with version history) as a
    * raw JSON blob, for the Settings "Export all prompts" download.
    */
@@ -556,26 +429,6 @@ export class ApiClient {
     }
 
     return response.blob();
-  }
-
-  /**
-   * Get the calling user's Dashboard usage analytics.
-   */
-  static async getDashboardStats(): Promise<DashboardStatsResponse> {
-    const response = await fetch(`${API_URL}/api/analytics/dashboard`, {
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      throw new Error('Failed to fetch dashboard stats');
-    }
-
-    return response.json();
   }
 
   /**
@@ -603,281 +456,4 @@ export class ApiClient {
     }
   }
 
-  /**
-   * List an owned prompt's eval cases, in display order.
-   */
-  static async listEvalCases(promptId: number): Promise<EvalCase[]> {
-    const response = await fetch(`${API_URL}/api/prompts/${promptId}/eval/cases`, {
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      throw new Error('Failed to fetch eval cases');
-    }
-
-    return response.json();
-  }
-
-  /** Export an owned prompt's eval set as a CSV download. */
-  static async exportEvalCases(promptId: number): Promise<Blob> {
-    const response = await fetch(`${API_URL}/api/prompts/${promptId}/eval/cases/export`, {
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      throw new Error('Failed to export eval cases');
-    }
-    return response.blob();
-  }
-
-  /** Atomically append eval cases from UTF-8 CSV text. */
-  static async importEvalCases(promptId: number, csvText: string): Promise<EvalCase[]> {
-    const response = await fetch(`${API_URL}/api/prompts/${promptId}/eval/cases/import`, {
-      method: 'POST',
-      headers: this.getCsvAuthHeaders(),
-      credentials: CREDENTIALS,
-      body: csvText,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `Failed to import eval cases: ${response.status}`);
-    }
-    return response.json();
-  }
-
-  /**
-   * Add a new eval case to an owned prompt.
-   */
-  static async createEvalCase(promptId: number, data: EvalCaseCreateRequest): Promise<EvalCase> {
-    const response = await fetch(`${API_URL}/api/prompts/${promptId}/eval/cases`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `Failed to create eval case: ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Propose a reviewable batch of eval cases from an owned prompt's current
-   * template. Proposals are never persisted server-side — call createEvalCase
-   * for each one the user accepts.
-   */
-  static async generateEvalCases(
-    promptId: number,
-    data: EvalCaseGenerateRequest,
-  ): Promise<EvalCaseGenerateResponse> {
-    const response = await fetch(`${API_URL}/api/prompts/${promptId}/eval/cases/generate`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `Failed to generate eval cases: ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Partially update an owned eval case.
-   */
-  static async updateEvalCase(
-    promptId: number,
-    caseId: number,
-    data: EvalCaseUpdateRequest,
-  ): Promise<EvalCase> {
-    const response = await fetch(`${API_URL}/api/prompts/${promptId}/eval/cases/${caseId}`, {
-      method: 'PATCH',
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      throw new Error('Failed to update eval case');
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Delete an owned eval case.
-   */
-  static async deleteEvalCase(promptId: number, caseId: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/prompts/${promptId}/eval/cases/${caseId}`, {
-      method: 'DELETE',
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      throw new Error('Failed to delete eval case');
-    }
-  }
-
-  /**
-   * Run every eval case attached to an owned prompt against a real model.
-   * Rate-limited server-side (10/min) since this is a real, billed OpenAI request.
-   */
-  static async createEvalRun(promptId: number): Promise<EvalRun> {
-    const response = await this.authenticatedFetch(`${API_URL}/api/prompts/${promptId}/eval/runs`, {
-      method: 'POST',
-    }, LONG_OPERATION_SESSION_VALIDITY_MS);
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `Evaluation run failed: ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  /**
-   * List an owned prompt's eval run history, newest first.
-   */
-  static async listEvalRuns(promptId: number): Promise<EvalRun[]> {
-    const response = await this.authenticatedFetch(
-      `${API_URL}/api/prompts/${promptId}/eval/runs`,
-    );
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      throw new Error('Failed to fetch eval runs');
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Submit a 1-5 star manual rating for a pending eval result.
-   */
-  static async rateEvalResult(
-    promptId: number,
-    runId: number,
-    resultId: number,
-    data: EvalRunRateRequest,
-  ): Promise<EvalRun> {
-    const response = await fetch(
-      `${API_URL}/api/prompts/${promptId}/eval/runs/${runId}/results/${resultId}/rate`,
-      {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-        body: JSON.stringify(data),
-      },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `Failed to submit rating: ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Generate clarifying questions about an owned prompt's current template.
-   */
-  static async getRefineQuestions(
-    promptId: number,
-    options: { force?: boolean } = {},
-  ): Promise<RefineQuestionsResponse> {
-    const params = new URLSearchParams();
-    if (options.force) params.set('force', 'true');
-    const query = params.toString();
-    const response = await fetch(`${API_URL}/api/prompts/${promptId}/refine/questions${query ? `?${query}` : ''}`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `Failed to generate questions: ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Generate a draft revision incorporating the given clarifying-question answers.
-   */
-  static async getRefineDraft(
-    promptId: number,
-    data: RefineDraftRequest,
-  ): Promise<RefineDraftResponse> {
-    const response = await fetch(`${API_URL}/api/prompts/${promptId}/refine/draft`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      credentials: CREDENTIALS,
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        AuthService.removeToken();
-        throw new Error('Session expired. Please login again.');
-      }
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `Failed to generate a draft: ${response.status}`);
-    }
-
-    return response.json();
-  }
 }
