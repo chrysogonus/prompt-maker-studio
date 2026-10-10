@@ -1325,3 +1325,112 @@ class TestRunCountAndVariableMetadata:
             json={"variable_metadata": {"x": {"type": "date"}}},
         )
         assert resp.status_code == 422
+
+
+class TestFolderEndpoints:
+    """Test cases for renaming and removing folders (PATCH/DELETE /api/prompts/folders)."""
+
+    def _save(self, client, headers, name, folder):
+        response = client.post(
+            "/api/prompts",
+            headers=headers,
+            json={"name": name, "fields": [{"name": "Task", "content": name}], "folder": folder},
+        )
+        assert response.status_code == 201
+        return response.json()
+
+    def _folders(self, client, headers):
+        return {
+            p["name"]: p["folder"] for p in client.get("/api/prompts/saved", headers=headers).json()
+        }
+
+    def test_rename_moves_every_prompt_and_keeps_their_edit_time(self, client, auth_headers):
+        first = self._save(client, auth_headers, "Status", "Work")
+        self._save(client, auth_headers, "Review", "Work")
+        self._save(client, auth_headers, "Meals", "Personal")
+
+        response = client.patch(
+            "/api/prompts/folders",
+            params={"name": "Work"},
+            headers=auth_headers,
+            json={"name": "  Job "},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"name": "Job", "prompt_count": 2}
+        assert self._folders(client, auth_headers) == {
+            "Status": "Job",
+            "Review": "Job",
+            "Meals": "Personal",
+        }
+        after = client.get(f"/api/prompts/{first['id']}", headers=auth_headers).json()
+        assert after["updated_at"] == first["updated_at"]
+
+    def test_renaming_onto_an_existing_folder_merges_them(self, client, auth_headers):
+        self._save(client, auth_headers, "Status", "Work")
+        self._save(client, auth_headers, "Meals", "Personal")
+
+        client.patch(
+            "/api/prompts/folders",
+            params={"name": "Personal"},
+            headers=auth_headers,
+            json={"name": "Work"},
+        )
+
+        assert client.get("/api/prompts/folders", headers=auth_headers).json() == ["Work"]
+
+    def test_remove_unfiles_prompts_without_deleting_them(self, client, auth_headers):
+        self._save(client, auth_headers, "Status", "Work")
+        self._save(client, auth_headers, "Meals", "Personal")
+
+        response = client.delete(
+            "/api/prompts/folders", params={"name": "Work"}, headers=auth_headers
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"name": "Work", "prompt_count": 1}
+        assert self._folders(client, auth_headers) == {"Status": None, "Meals": "Personal"}
+
+    def test_unknown_folder_is_not_found(self, client, auth_headers):
+        rename = client.patch(
+            "/api/prompts/folders",
+            params={"name": "Nope"},
+            headers=auth_headers,
+            json={"name": "Other"},
+        )
+        remove = client.delete(
+            "/api/prompts/folders", params={"name": "Nope"}, headers=auth_headers
+        )
+
+        assert rename.status_code == 404
+        assert remove.status_code == 404
+
+    def test_blank_new_name_is_rejected(self, client, auth_headers):
+        self._save(client, auth_headers, "Status", "Work")
+
+        response = client.patch(
+            "/api/prompts/folders",
+            params={"name": "Work"},
+            headers=auth_headers,
+            json={"name": "   "},
+        )
+
+        assert response.status_code == 422
+        assert self._folders(client, auth_headers) == {"Status": "Work"}
+
+    def test_only_the_callers_prompts_move(self, client, auth_headers, second_auth_headers):
+        self._save(client, auth_headers, "Mine", "Work")
+        self._save(client, second_auth_headers, "Theirs", "Work")
+
+        client.patch(
+            "/api/prompts/folders",
+            params={"name": "Work"},
+            headers=auth_headers,
+            json={"name": "Job"},
+        )
+        client.delete("/api/prompts/folders", params={"name": "Job"}, headers=auth_headers)
+
+        assert self._folders(client, second_auth_headers) == {"Theirs": "Work"}
+
+    def test_requires_authentication(self, client):
+        assert client.delete("/api/prompts/folders", params={"name": "Work"}).status_code == 401

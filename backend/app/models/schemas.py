@@ -172,6 +172,26 @@ class PromptUpdateRequest(BaseModel):
         return _require_unique_section_tags(fields)
 
 
+class FolderRenameRequest(BaseModel):
+    """Schema for renaming a folder (PATCH /api/prompts/folders)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., min_length=1, max_length=255, description="New folder name")
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, name: object) -> object:
+        return name.strip() if isinstance(name, str) else name
+
+
+class FolderChangeResponse(BaseModel):
+    """Result of renaming or removing a folder."""
+
+    name: str
+    prompt_count: int = Field(..., description="How many prompts moved")
+
+
 class PromptVersionResponse(BaseModel):
     """Schema for a single prompt version snapshot."""
 

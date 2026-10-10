@@ -31,6 +31,8 @@ from app.models.schemas import (
     DataExportResponse,
     ExportedPrompt,
     ExportedPromptVersion,
+    FolderChangeResponse,
+    FolderRenameRequest,
     ParseTextRequest,
     ParseTextResponse,
     PlaygroundRunHistoryResponse,
@@ -295,6 +297,74 @@ def get_prompt_folders(
         .all()
     )
     return sorted({row[0] for row in rows if row[0]})
+
+
+@router.patch("/folders", response_model=FolderChangeResponse)
+def rename_folder(
+    body: FolderRenameRequest,
+    name: str = Query(..., min_length=1, max_length=255, description="Folder to rename"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Rename a folder by moving every prompt in it to the new name.
+
+    Folders are labels on prompts, so renaming onto a name already in use
+    merges the two. Prompts keep their `updated_at`: filing is not an edit, and
+    bumping it would reorder the library and invalidate open editors.
+
+    Args:
+        body: The new folder name
+        name: Current folder name, matched exactly
+        db: Database session
+        current_user: Current authenticated user; only their prompts move
+
+    Returns:
+        The folder's new name and how many prompts moved
+
+    Raises:
+        HTTPException: 404 if the caller has no prompts in that folder
+    """
+    moved = (
+        db.query(Prompt)
+        .filter(Prompt.user_id == current_user.id, Prompt.folder == name)
+        .update({Prompt.folder: body.name}, synchronize_session=False)
+    )
+    if not moved:
+        raise HTTPException(status_code=404, detail="Folder not found")
+    db.commit()
+    return FolderChangeResponse(name=body.name, prompt_count=moved)
+
+
+@router.delete("/folders", response_model=FolderChangeResponse)
+def remove_folder(
+    name: str = Query(..., min_length=1, max_length=255, description="Folder to remove"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Remove a folder. Its prompts move to Unfiled; none are deleted.
+
+    Args:
+        name: Folder name, matched exactly
+        db: Database session
+        current_user: Current authenticated user; only their prompts move
+
+    Returns:
+        The removed folder's name and how many prompts became unfiled
+
+    Raises:
+        HTTPException: 404 if the caller has no prompts in that folder
+    """
+    moved = (
+        db.query(Prompt)
+        .filter(Prompt.user_id == current_user.id, Prompt.folder == name)
+        .update({Prompt.folder: None}, synchronize_session=False)
+    )
+    if not moved:
+        raise HTTPException(status_code=404, detail="Folder not found")
+    db.commit()
+    return FolderChangeResponse(name=name, prompt_count=moved)
 
 
 @router.get("/export", response_model=DataExportResponse)
