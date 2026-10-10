@@ -1,8 +1,9 @@
 .seg {
   display: inline-flex;
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-raised);
   flex-shrink: 0;
 }
 
@@ -10,11 +11,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-2) var(--space-3);
+  height: 30px;
+  padding: 0 var(--space-3);
   border: none;
-  border-left: 1px solid var(--border-primary);
+  border-radius: 5px;
   background: transparent;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: var(--text-sm-size);
   font-family: inherit;
   cursor: pointer;
@@ -27,21 +29,17 @@
   color: var(--text-muted);
 }
 
-.option:first-child {
-  border-left: none;
-}
-
-.option[data-active='true'] {
-  background: color-mix(in srgb, var(--color-accent-tag) 16%, transparent);
-  color: var(--accent-text);
-}
-
+/* The chosen option is raised, not coloured: coral is kept for actions. */
+.option[data-active='true'],
 .option[data-has-icon='true'][data-active='true'] {
-  color: var(--accent-coral);
+  background: var(--color-panel);
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  box-shadow: 0 1px 2px rgba(43, 27, 40, 0.12);
 }
 
 .option:hover:not([data-active='true']):not(:disabled) {
-  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .option[data-has-icon='true']:hover:not([data-active='true']):not(:disabled) {

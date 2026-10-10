@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { diffWords } from '@/lib/diff';
+import { parseServerDate } from '@/lib/relativeTime';
 import { PromptHistoryResponse, PromptVersionResponse } from '@/types/prompt';
 import styles from './PromptEditor.module.css';
 
@@ -17,7 +18,7 @@ interface HistoryPanelProps {
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleString(undefined, {
+  return parseServerDate(iso).toLocaleString(undefined, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

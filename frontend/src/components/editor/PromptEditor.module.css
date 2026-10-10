@@ -520,7 +520,8 @@ button.title:hover {
   grid-row: 1;
   position: sticky;
   top: var(--space-4);
-  height: calc(100vh - 2 * var(--space-4));
+  /* Fits below the editor header before scrolling, so Copy is never off-screen. */
+  height: calc(100vh - 112px);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }

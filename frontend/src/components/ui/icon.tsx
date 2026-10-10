@@ -1,6 +1,15 @@
 import type { LucideIcon, LucideProps } from 'lucide-react';
 import {
   Bell,
+  Folder,
+  Inbox,
+  Library,
+  Menu,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Settings,
+  Star,
   Check,
   CircleAlert,
   CircleCheck,
@@ -106,6 +115,15 @@ function semanticIcon(Icon: LucideIcon, { spin = false }: { spin?: boolean } = {
 // Action and state metaphors are named here so feature code never chooses
 // competing glyphs for the same concept.
 export const CopyIcon = semanticIcon(Copy);
+export const AllPromptsIcon = semanticIcon(Library);
+export const FavoriteIcon = semanticIcon(Star);
+export const FolderIcon = semanticIcon(Folder);
+export const UnfiledIcon = semanticIcon(Inbox);
+export const SettingsIcon = semanticIcon(Settings);
+export const NewIcon = semanticIcon(Plus);
+export const SearchIcon = semanticIcon(Search);
+export const MoreIcon = semanticIcon(MoreHorizontal);
+export const MenuIcon = semanticIcon(Menu);
 export const DownloadIcon = semanticIcon(Download);
 export const RevealIcon = semanticIcon(Eye);
 export const HideIcon = semanticIcon(EyeOff);

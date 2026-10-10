@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-theme="dark" className={`${hanken.variable} ${jetbrains.variable}`}>
+    <html lang="en" data-theme="light" className={`${hanken.variable} ${jetbrains.variable}`}>
       <body>{children}</body>
     </html>
   );

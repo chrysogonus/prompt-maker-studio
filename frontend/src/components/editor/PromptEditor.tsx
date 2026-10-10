@@ -16,6 +16,7 @@ import Dialog from '@/components/ui/Dialog';
 import { ApiClient, ApiError, PROMPT_NOT_FOUND_MESSAGE, isValidPromptId } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { pageTitle, storageKey } from '@/lib/branding';
+import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { normalizeSectionName, sectionNameError, variablesIn } from '@/lib/sections';
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
 import {
@@ -104,9 +105,13 @@ function uniqueName(sections: EditorSection[]): string {
 interface PromptEditorProps {
   /** Omitted for a new, not yet saved prompt. */
   promptId?: number;
+  /** New prompts only: a starter template id to begin from, unless a draft exists. */
+  initialStarter?: string;
+  /** New prompts only: open Import text straight away. */
+  openImport?: boolean;
 }
 
-export default function PromptEditor({ promptId }: PromptEditorProps) {
+export default function PromptEditor({ promptId, initialStarter, openImport }: PromptEditorProps) {
   const router = useRouter();
   const { currentUser } = useAuth();
   const isNew = promptId === undefined;
@@ -138,7 +143,7 @@ export default function PromptEditor({ promptId }: PromptEditorProps) {
   const [folders, setFolders] = useState<string[]>([]);
   const [renaming, setRenaming] = useState(false);
   const [starterOpen, setStarterOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(Boolean(openImport));
   const [aiAvailable, setAiAvailable] = useState(true);
   const mutationChain = useRef<Promise<unknown>>(Promise.resolve());
 
@@ -217,16 +222,20 @@ export default function PromptEditor({ promptId }: PromptEditorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyPrompt, promptId]);
 
-  // A new prompt picks up where the last unsaved one left off.
+  // A new prompt picks up where the last unsaved one left off, and otherwise
+  // starts from the template it was opened with.
   useEffect(() => {
     if (!isNew) return;
     const draft = readDraft(draftKey);
+    const starter = STARTER_TEMPLATES.find((template) => template.id === initialStarter);
     if (draft) {
       setSections(toEditorSections(draft.sections, true));
       setMetadata(draft.metadata);
       setRestoredDraft(true);
+    } else if (starter) {
+      setSections(toEditorSections(starter.sections, false));
     }
-  }, [draftKey, isNew]);
+  }, [draftKey, initialStarter, isNew]);
 
   // Keep the draft in step with every edit; drop it once nothing is unsaved.
   useEffect(() => {
@@ -416,6 +425,7 @@ export default function PromptEditor({ promptId }: PromptEditorProps) {
     if (!prompt || !name || name === prompt.name) return;
     try {
       await patch({ name });
+      notifyLibraryChanged();
     } catch (err) {
       reportError(err, 'Failed to rename prompt.');
     }
@@ -427,6 +437,7 @@ export default function PromptEditor({ promptId }: PromptEditorProps) {
     setMoveDialog(null);
     try {
       await patch({ folder });
+      notifyLibraryChanged();
       showNotice({ text: folder ? `Moved to ${folder}` : 'Moved to Unfiled' });
     } catch (err) {
       reportError(err, 'Failed to move prompt.');

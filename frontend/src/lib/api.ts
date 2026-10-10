@@ -151,6 +151,26 @@ export class ApiClient {
     return response.json();
   }
 
+  /** Rename a folder; renaming onto an existing folder merges the two. */
+  static async renameFolder(name: string, newName: string): Promise<{ name: string; prompt_count: number }> {
+    const response = await this.authenticatedFetch(
+      `${API_URL}/api/prompts/folders?${new URLSearchParams({ name })}`,
+      { method: 'PATCH', body: JSON.stringify({ name: newName }) },
+    );
+    if (!response.ok) throw new ApiError('Failed to rename folder', response.status);
+    return response.json();
+  }
+
+  /** Remove a folder. Its prompts become unfiled; none are deleted. */
+  static async removeFolder(name: string): Promise<{ name: string; prompt_count: number }> {
+    const response = await this.authenticatedFetch(
+      `${API_URL}/api/prompts/folders?${new URLSearchParams({ name })}`,
+      { method: 'DELETE' },
+    );
+    if (!response.ok) throw new ApiError('Failed to remove folder', response.status);
+    return response.json();
+  }
+
   /**
    * Get the distinct tag labels used across the current user's prompts.
    */

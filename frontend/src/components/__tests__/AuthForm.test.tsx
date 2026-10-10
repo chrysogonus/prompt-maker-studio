@@ -38,7 +38,7 @@ describe('AuthForm — login view', () => {
   it('renders the login form by default', () => {
     render(<AuthForm onSuccess={mockOnSuccess} />);
     expect(
-      screen.getByRole('heading', { name: /turn rough ideas into prompts you can trust/i }),
+      screen.getByRole('heading', { name: /a home for the prompts you keep retyping/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
@@ -48,9 +48,9 @@ describe('AuthForm — login view', () => {
 
   it('keeps the prompt workspace preview decorative', () => {
     render(<AuthForm onSuccess={mockOnSuccess} />);
-    const preview = screen.getByText('Structured prompt', { exact: true });
+    const preview = screen.getByText('<ROLE>');
     expect(preview.closest('[aria-hidden="true"]')).toBeInTheDocument();
-    expect(screen.getByText('<GOAL>')).toBeInTheDocument();
+    expect(screen.getByText('{{topic}}')).toBeInTheDocument();
   });
 
   it('links the legal pages for signed-out visitors', async () => {

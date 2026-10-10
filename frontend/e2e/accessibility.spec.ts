@@ -16,8 +16,9 @@ function uniqueUser(prefix: string): TestUser {
   };
 }
 
-function navLink(page: Page, name: string) {
-  return page.getByRole('navigation').getByRole('link', { name });
+/** Links in the sidebar, so page content with the same name can't match. */
+function sidebarLink(page: Page, name: string | RegExp) {
+  return page.getByRole('complementary', { name: 'Sidebar' }).getByRole('link', { name });
 }
 
 async function register(page: Page, user: TestUser) {
@@ -30,7 +31,8 @@ async function register(page: Page, user: TestUser) {
   await page.locator('#reg-email').fill(user.email);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  await expect(page.getByText(`Good to see you, ${user.username}`)).toBeVisible();
+  // The library is the home page; a new account starts with it empty.
+  await expect(page.getByRole('heading', { name: 'Your prompt library is empty' })).toBeVisible();
 }
 
 /** Mirrors the app's own imperative theme toggle (see `(app)/layout.tsx`) rather than
@@ -99,6 +101,7 @@ test.describe('accessibility audit', () => {
   test('login page has no serious a11y violations, in dark and light theme', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+    await setTheme(page, 'dark');
     await auditPage(page, 'login (dark)');
 
     await setTheme(page, 'light');
@@ -112,9 +115,10 @@ test.describe('accessibility audit', () => {
     const promptName = 'A11y Audit ' + user.username;
 
     await register(page, user);
-    await auditPage(page, 'dashboard (dark)');
+    await setTheme(page, 'dark');
+    await auditPage(page, 'empty library (dark)');
 
-    await page.getByRole('link', { name: '+ New prompt' }).click();
+    await sidebarLink(page, 'New prompt').click();
     await expect(page).toHaveURL(/\/editor\/new$/);
     await auditPage(page, 'editor-new (dark)');
 
@@ -134,18 +138,15 @@ test.describe('accessibility audit', () => {
     await page.goto(`/playground/${promptId}`);
     await auditPage(page, 'playground (dark)');
 
-    await navLink(page, 'Library').click();
+    await sidebarLink(page, /All prompts/).click();
     await expect(page).toHaveURL(/\/library$/);
     await auditPage(page, 'library (dark)');
 
-    await navLink(page, 'Settings').click();
+    await sidebarLink(page, 'Settings').click();
     await expect(page).toHaveURL(/\/settings$/);
     await auditPage(page, 'settings (dark)');
 
     await setTheme(page, 'light');
-
-    await page.goto('/');
-    await auditPage(page, 'dashboard (light)');
 
     await page.goto('/library');
     await auditPage(page, 'library (light)');

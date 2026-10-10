@@ -18,9 +18,9 @@ function uniqueUser(prefix: string): TestUser {
   };
 }
 
-/** Nav clicks are scoped to the navigation landmark so page content can't match. */
-function navLink(page: Page, name: string) {
-  return page.getByRole('navigation').getByRole('link', { name });
+/** Links in the sidebar, so page content with the same name can't match. */
+function sidebarLink(page: Page, name: string | RegExp) {
+  return page.getByRole('complementary', { name: 'Sidebar' }).getByRole('link', { name });
 }
 
 async function register(page: Page, user: TestUser) {
@@ -33,75 +33,54 @@ async function register(page: Page, user: TestUser) {
   await page.locator('#reg-email').fill(user.email);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  // Dashboard is the post-login landing page in the new IA.
-  await expect(page.getByText(`Good to see you, ${user.username}`)).toBeVisible();
+  // The library is the home page; a new account starts with it empty.
+  await expect(page).toHaveURL(/\/library$/);
+  await expect(page.getByRole('heading', { name: 'Your prompt library is empty' })).toBeVisible();
 }
 
-test('keeps top-level headers and centered chrome stable across navigation', async ({ page }) => {
+test('keeps page headings in one place across navigation and adapts the shell to phones', async ({
+  page,
+}) => {
   const user = uniqueUser('layout');
   await page.setViewportSize({ width: 1440, height: 900 });
   await register(page, user);
 
-  const dashboardHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
-  const dashboardAction = await page
-    .getByRole('link', { name: '+ New prompt', exact: true })
-    .boundingBox();
-  const dashboardMain = await page.locator('main').boundingBox();
+  await sidebarLink(page, 'Settings').click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  const settingsHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
 
-  await navLink(page, 'Library').click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Prompt library' })).toBeVisible();
-
-  const libraryHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
-  const libraryAction = await page
-    .getByRole('link', { name: '+ New prompt', exact: true })
-    .boundingBox();
-  const libraryMain = await page.locator('main').boundingBox();
-
-  expect(dashboardHeading).not.toBeNull();
-  expect(dashboardAction).not.toBeNull();
-  expect(dashboardMain).not.toBeNull();
-  expect(libraryHeading).not.toBeNull();
-  expect(libraryAction).not.toBeNull();
-  expect(libraryMain).not.toBeNull();
-  expect(Math.abs(libraryHeading!.y - dashboardHeading!.y)).toBeLessThanOrEqual(1);
-  expect(Math.abs(libraryAction!.y - dashboardAction!.y)).toBeLessThanOrEqual(1);
-  expect(Math.abs(libraryAction!.height - dashboardAction!.height)).toBeLessThanOrEqual(1);
-  expect(Math.abs(libraryMain!.x - dashboardMain!.x)).toBeLessThanOrEqual(1);
-
-  await navLink(page, 'Editor').click();
+  await sidebarLink(page, 'New prompt').click();
   await expect(page.getByRole('heading', { level: 1, name: 'New prompt' })).toBeVisible();
   const editorHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
-  const editorMain = await page.locator('main').boundingBox();
 
-  await navLink(page, 'Library').click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Prompt library' })).toBeVisible();
-  const libraryAfterEditorHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
-  const libraryAfterEditorMain = await page.locator('main').boundingBox();
+  await sidebarLink(page, /All prompts/).click();
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  const libraryHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
 
-  expect(editorHeading).not.toBeNull();
-  expect(editorMain).not.toBeNull();
-  expect(libraryAfterEditorHeading).not.toBeNull();
-  expect(libraryAfterEditorMain).not.toBeNull();
-  expect(Math.abs(libraryAfterEditorHeading!.y - editorHeading!.y)).toBeLessThanOrEqual(1);
-  expect(Math.abs(libraryAfterEditorMain!.x - editorMain!.x)).toBeLessThanOrEqual(1);
+  for (const box of [settingsHeading, editorHeading, libraryHeading]) expect(box).not.toBeNull();
+  expect(Math.abs(settingsHeading!.x - libraryHeading!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(editorHeading!.x - libraryHeading!.x)).toBeLessThanOrEqual(8);
+  expect(Math.abs(settingsHeading!.y - libraryHeading!.y)).toBeLessThanOrEqual(1);
   expect(
-    await page.evaluate(() => getComputedStyle(document.documentElement).scrollbarGutter)
+    await page.evaluate(() => getComputedStyle(document.documentElement).scrollbarGutter),
   ).toContain('stable');
 
+  // On a phone the sidebar becomes a drawer behind the menu button.
   await page.setViewportSize({ width: 390, height: 844 });
-  const narrowHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
-  const narrowAction = await page
-    .getByRole('link', { name: '+ New prompt', exact: true })
-    .boundingBox();
-  expect(narrowHeading).not.toBeNull();
-  expect(narrowAction).not.toBeNull();
-  expect(narrowAction!.y).toBeGreaterThanOrEqual(narrowHeading!.y + narrowHeading!.height);
-  expect(narrowAction!.x + narrowAction!.width).toBeLessThanOrEqual(390);
+  const sidebar = page.getByRole('complementary', { name: 'Sidebar' });
+  await expect(sidebar).not.toBeInViewport();
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await expect(sidebar).toBeInViewport();
+  await sidebarLink(page, 'Settings').click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(sidebar).not.toBeInViewport();
+  const newLink = await page.getByRole('banner').getByRole('link', { name: 'New' }).boundingBox();
+  expect(newLink!.x + newLink!.width).toBeLessThanOrEqual(390);
 });
 
 /** Create and save a one-section prompt from /editor/new, returning its id. */
 async function createSavedPrompt(page: Page, name: string, content: string) {
-  await page.getByRole('link', { name: '+ New prompt' }).click();
+  await sidebarLink(page, 'New prompt').click();
   await expect(page).toHaveURL(/\/editor\/new$/);
   await page.getByLabel('Task text').fill(content);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -133,7 +112,7 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   await expect(preview).toContainText('<TASK>');
   await expect(preview).toContainText('Verify saved prompt persistence');
 
-  await navLink(page, 'Library').click();
+  await sidebarLink(page, /All prompts/).click();
   await expect(page).toHaveURL(/\/library$/);
   await expect(page.getByText(promptName)).toBeVisible();
 
@@ -144,7 +123,7 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   await page.locator('#password').fill(user.password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
-  await navLink(page, 'Library').click();
+  await sidebarLink(page, /All prompts/).click();
   await expect(page).toHaveURL(/\/library$/);
   await expect(page.getByText(promptName)).toBeVisible();
   await page.getByText(promptName).click();
@@ -152,40 +131,28 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   await expect(page).toHaveURL(/\/editor\/\d+$/);
   await expect(page.getByLabel('Task text')).toHaveValue('Verify saved prompt persistence');
 
-  // The source stays intact while independently-created copies can be deleted
-  // through both Library layouts. Waiting for DELETE also covers the five-second
-  // undo window rather than only asserting the optimistic UI removal.
-  await navLink(page, 'Library').click();
-  const sourceGroup = page.getByRole('group').filter({ hasText: promptName });
-  await sourceGroup.getByRole('button', { name: /^Duplicate / }).click();
+  // Copies come from each prompt's menu; deleting one is undoable for a few
+  // seconds and only then reaches the server, in both library layouts.
+  await sidebarLink(page, /All prompts/).click();
   const duplicateName = `${promptName} Duplicate`;
-  let duplicateGroup = page.getByRole('group').filter({ hasText: duplicateName });
-  await expect(duplicateGroup).toBeVisible();
+  for (const layout of ['List', 'Grid']) {
+    await page.getByRole('button', { name: layout, exact: true }).click();
+    await page.getByRole('button', { name: `More actions for ${promptName}`, exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+    await expect(page.getByRole('link', { name: duplicateName, exact: true })).toBeVisible();
 
-  await duplicateGroup.getByRole('button', { name: /^Delete / }).click();
-  const gridDelete = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'DELETE' && /\/api\/prompts\/\d+$/.test(response.url()),
-  );
-  await duplicateGroup.getByRole('button', { name: /^Confirm delete / }).click();
-  await expect(duplicateGroup).not.toBeVisible();
-  await gridDelete;
+    const deleted = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'DELETE' && /\/api\/prompts\/\d+$/.test(response.url()),
+    );
+    await page.getByRole('button', { name: `More actions for ${duplicateName}`, exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
+    await expect(page.getByRole('link', { name: duplicateName, exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
+    expect((await deleted).status()).toBe(204);
+  }
 
-  await sourceGroup.getByRole('button', { name: /^Duplicate / }).click();
-  await page.getByRole('radio', { name: 'List' }).click();
-  duplicateGroup = page.getByRole('group').filter({ hasText: duplicateName });
-  await expect(duplicateGroup).toBeVisible();
-  await duplicateGroup.getByRole('button', { name: /^Delete / }).click();
-  const listDelete = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'DELETE' && /\/api\/prompts\/\d+$/.test(response.url()),
-  );
-  await duplicateGroup.getByRole('button', { name: /^Confirm delete / }).click();
-  await expect(duplicateGroup).not.toBeVisible();
-  await listDelete;
-
-  await expect(page.getByText(promptName, { exact: true })).toBeVisible();
-  await page.getByText(promptName, { exact: true }).click();
+  await page.getByRole('link', { name: promptName, exact: true }).click();
   await expect(page.getByLabel('Task text')).toHaveValue('Verify saved prompt persistence');
 });
 
@@ -234,7 +201,7 @@ test('blocks section names that render to the same tag and saves spaced names', 
   const user = uniqueUser('newprompt');
   await register(page, user);
 
-  await page.getByRole('link', { name: '+ New prompt' }).click();
+  await sidebarLink(page, 'New prompt').click();
   await expect(page).toHaveURL(/\/editor\/new$/);
   await page.getByLabel('Task text').fill('Summarise {{source}}');
 
@@ -316,7 +283,7 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
 test('explains Import text when no AI connection exists', async ({ page }) => {
   await register(page, uniqueUser('aiunavailable'));
 
-  await page.getByRole('link', { name: '+ New prompt' }).click();
+  await sidebarLink(page, 'New prompt').click();
   await expect(page).toHaveURL(/\/editor\/new$/);
   await page.getByRole('button', { name: 'Import text' }).click();
 
@@ -346,45 +313,58 @@ test('shows the unavailable Playground state when no provider is connected', asy
   await expect(page.getByRole('button', { name: 'Run' })).toBeDisabled();
 });
 
-test('Dashboard renders real, honest zero stats, and Settings preferences persist across a reload', async ({
+test('files prompts into folders from the library and keeps Settings preferences', async ({
   page,
 }) => {
-  // Combined into one test (rather than a separate registration) because the
-  // e2e backend runs with its real 5/minute register rate limit — unlike
-  // pytest's TESTING env, nothing here bypasses it, so each e2e test that
-  // needs a fresh account is a scarce resource within a single suite run.
-  const user = uniqueUser('dashboard');
+  // Combined into one test because the e2e backend runs with its real
+  // 5/minute register rate limit, so fresh accounts are scarce in one run.
+  const user = uniqueUser('folders');
   await register(page, user);
+  await createSavedPrompt(page, 'Status update ' + user.username, 'Summarise the week');
 
-  // Post-registration, the Dashboard must show real zero/placeholder values,
-  // never fabricated numbers — no prompts or Playground runs exist yet.
-  await expect(page.getByText('Runs this month')).toBeVisible();
-  await expect(page.getByText('Star prompts in the Library to pin them here.')).toBeVisible();
-  await expect(
-    page.getByText('Run prompts in the Playground to see your top prompts here.'),
-  ).toBeVisible();
+  // Filed from the library, the folder appears in the sidebar.
+  await sidebarLink(page, /All prompts/).click();
+  await page.getByRole('button', { name: /^More actions for Status update/ }).click();
+  await page.getByRole('menuitem', { name: 'Move to folder…' }).click();
+  const move = page.getByRole('dialog', { name: 'Move to folder' });
+  await move.getByLabel('Folder').fill('Work');
+  await move.getByRole('button', { name: 'Move' }).click();
+  await sidebarLink(page, /^Work/).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Work' })).toBeVisible();
 
-  await navLink(page, 'Settings').click();
+  // Renaming the folder moves its prompts; removing it unfiles them.
+  await page.getByRole('button', { name: 'Actions for the Work folder' }).click();
+  await page.getByRole('menuitem', { name: 'Rename folder' }).click();
+  const rename = page.getByRole('dialog', { name: 'Rename folder' });
+  await rename.getByLabel('Name').fill('Job');
+  await rename.getByRole('button', { name: 'Rename' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Job' })).toBeVisible();
+  await expect(sidebarLink(page, /^Job/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Actions for the Job folder' }).click();
+  await page.getByRole('menuitem', { name: 'Remove folder…' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove folder' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Unfiled' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /^Status update/ })).toBeVisible();
+  await expect(sidebarLink(page, /^Job/)).toHaveCount(0);
+
+  // Theme is stored in the browser; the library layout on the account.
+  await sidebarLink(page, 'Settings').click();
   await expect(page).toHaveURL(/\/settings$/);
-
-  // Theme and density are pure frontend preferences applied as data-attributes.
   await page.getByRole('radio', { name: 'Light' }).click();
-  await page.getByRole('radio', { name: 'Compact' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
-
-  // Run-failure notification preference is persisted server-side.
-  const runFailureToggle = page.getByRole('switch', { name: 'Run failures' });
-  await expect(runFailureToggle).toHaveAttribute('aria-checked', 'false');
-  await runFailureToggle.click();
-  await expect(runFailureToggle).toHaveAttribute('aria-checked', 'true');
+  const savedView = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH' && /\/api\/auth\/me$/.test(response.url()),
+  );
+  await page.getByRole('radio', { name: 'Grid' }).click();
+  expect((await savedView).status()).toBe(200);
 
   await page.reload();
-
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
-  await expect(page.getByRole('switch', { name: 'Run failures' })).toHaveAttribute(
-    'aria-checked',
+  await expect(page.getByRole('radio', { name: 'Grid' })).toHaveAttribute('aria-checked', 'true');
+  await sidebarLink(page, /All prompts/).click();
+  await expect(page.getByRole('button', { name: 'Grid', exact: true })).toHaveAttribute(
+    'aria-pressed',
     'true',
   );
 });

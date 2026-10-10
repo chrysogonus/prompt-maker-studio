@@ -9,7 +9,7 @@ vi.mock('@/components/AuthForm', () => ({
   default: () => <div>Auth form</div>,
 }));
 
-vi.mock('@/components/NavBar', () => ({
+vi.mock('@/components/shell/Sidebar', () => ({
   default: () => <nav>Navigation</nav>,
 }));
 
