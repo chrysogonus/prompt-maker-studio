@@ -14,8 +14,6 @@ from app.models.schemas import (
     PromptCreateRequest,
     PromptField,
     PromptHistoryResponse,
-    PromptRequest,
-    PromptResponse,
     PromptUpdateRequest,
     RefineDraftRequest,
     VariableMetadataItem,
@@ -85,20 +83,20 @@ class TestPromptField:
             PromptField(name="goal", content="x" * 10_001)
 
 
-class TestPromptRequest:
-    """Test cases for PromptRequest schema."""
+class TestPromptSectionRules:
+    """Section-list rules every new prompt is held to (PromptCreateRequest)."""
 
     def test_valid_prompt_request_with_single_field(self):
-        """Test creating a valid PromptRequest with one field."""
+        """Test creating a valid PromptCreateRequest with one field."""
         data = {"fields": [{"name": "goal", "content": "Create a story"}]}
-        request = PromptRequest(**data)
+        request = PromptCreateRequest(name="Prompt", **data)
 
         assert len(request.fields) == 1
         assert request.fields[0].name == "goal"
         assert request.fields[0].content == "Create a story"
 
     def test_valid_prompt_request_with_multiple_fields(self):
-        """Test creating a valid PromptRequest with multiple fields."""
+        """Test creating a valid PromptCreateRequest with multiple fields."""
         data = {
             "fields": [
                 {"name": "goal", "content": "Create a story"},
@@ -108,7 +106,7 @@ class TestPromptRequest:
             ]
         }
 
-        request = PromptRequest(**data)
+        request = PromptCreateRequest(name="Prompt", **data)
 
         assert len(request.fields) == 4
         assert request.fields[0].name == "goal"
@@ -117,21 +115,21 @@ class TestPromptRequest:
         assert request.fields[3].name == "setting"
 
     def test_invalid_prompt_request_missing_fields(self):
-        """Test that PromptRequest validation fails without fields."""
+        """Test that PromptCreateRequest validation fails without fields."""
         data = {}
 
         with pytest.raises(ValidationError) as exc_info:
-            PromptRequest(**data)
+            PromptCreateRequest(name="Prompt", **data)
 
         errors = exc_info.value.errors()
         assert any(error["loc"] == ("fields",) for error in errors)
 
     def test_invalid_prompt_request_empty_fields(self):
-        """Test that PromptRequest validation fails with empty fields array."""
+        """Test that PromptCreateRequest validation fails with empty fields array."""
         data = {"fields": []}
 
         with pytest.raises(ValidationError) as exc_info:
-            PromptRequest(**data)
+            PromptCreateRequest(name="Prompt", **data)
 
         errors = exc_info.value.errors()
         assert any("fields" in str(error["loc"]) for error in errors)
@@ -145,7 +143,7 @@ class TestPromptRequest:
         }
 
         with pytest.raises(ValidationError) as exc_info:
-            PromptRequest(**data)
+            PromptCreateRequest(name="Prompt", **data)
 
         errors = exc_info.value.errors()
         assert any(error["loc"] == ("fields",) for error in errors)
@@ -155,11 +153,11 @@ class TestPromptRequest:
         data = {
             "fields": [{"name": f"field_{i}", "content": "x"} for i in range(100)],
         }
-        request = PromptRequest(**data)
+        request = PromptCreateRequest(name="Prompt", **data)
         assert len(request.fields) == 100
 
     def test_invalid_prompt_request_duplicate_field_names(self):
-        """Test that PromptRequest validation fails with duplicate field names."""
+        """Test that PromptCreateRequest validation fails with duplicate field names."""
         data = {
             "fields": [
                 {"name": "goal", "content": "First"},
@@ -168,7 +166,7 @@ class TestPromptRequest:
         }
 
         with pytest.raises(ValidationError) as exc_info:
-            PromptRequest(**data)
+            PromptCreateRequest(name="Prompt", **data)
 
         assert "Field names must be unique" in str(exc_info.value)
 
@@ -179,7 +177,7 @@ class TestPromptRequest:
         data = {"fields": [{"name": first, "content": "a"}, {"name": second, "content": "b"}]}
 
         with pytest.raises(ValidationError, match="Field names must be unique"):
-            PromptRequest(**data)
+            PromptCreateRequest(name="Prompt", **data)
 
     def test_valid_prompt_request_custom_field_names(self):
         """Test that custom field names are allowed."""
@@ -190,29 +188,10 @@ class TestPromptRequest:
             ]
         }
 
-        request = PromptRequest(**data)
+        request = PromptCreateRequest(name="Prompt", **data)
         assert len(request.fields) == 2
         assert request.fields[0].name == "custom_field"
         assert request.fields[1].name == "another-field"
-
-
-class TestPromptResponse:
-    """Test cases for PromptResponse schema."""
-
-    def test_valid_prompt_response(self):
-        """Test creating a valid PromptResponse."""
-        data = {
-            "id": 1,
-            "name": None,
-            "generated_prompt": "<GOAL>\nTest\n</GOAL>",
-            "created_at": datetime.now(UTC),
-        }
-
-        response = PromptResponse(**data)
-        assert response.id == 1
-        assert response.name is None
-        assert response.generated_prompt == "<GOAL>\nTest\n</GOAL>"
-        assert isinstance(response.created_at, datetime)
 
 
 class TestPromptHistoryResponse:
@@ -254,8 +233,6 @@ class TestPromptHistoryResponse:
         assert response.name is None
         assert len(response.fields) == 1
         assert response.fields[0].name == "goal"
-        # Default when the caller (e.g. a fresh ORM instance) doesn't set it.
-        assert response.run_count == 0
 
     def test_variable_metadata_round_trips(self):
         data = {

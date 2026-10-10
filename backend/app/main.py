@@ -18,7 +18,6 @@ from slowapi.errors import RateLimitExceeded
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.api.admin_routes import router as admin_router
-from app.api.analytics_routes import router as analytics_router
 from app.api.auth_routes import router as auth_router
 from app.api.eval_routes import router as eval_router
 from app.api.mcp_routes import MCP_PATH, PROTECTED_RESOURCE_METADATA_PATH, mcp_endpoint
@@ -192,7 +191,6 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(router)
 app.include_router(admin_router)
-app.include_router(analytics_router)
 app.include_router(eval_router)
 app.include_router(refine_router)
 app.include_router(oauth_router)

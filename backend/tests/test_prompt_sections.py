@@ -29,6 +29,16 @@ def test_render_sections_keeps_content_verbatim():
     )
 
 
+def test_render_sections_keeps_multiline_text_and_reserved_characters_byte_for_byte():
+    content = "Line 1\nUse \"quotes\" & <tags> and 'apostrophes' > all preserved"
+
+    assert render_sections([{"name": "goal", "content": content}]) == f"<GOAL>\n{content}\n</GOAL>"
+
+
+def test_render_sections_of_nothing_is_empty():
+    assert render_sections([]) == ""
+
+
 def test_parse_reuses_previous_spelling_and_lowercases_new_tags():
     text = "<OUTPUT_FORMAT>\nbullets\n</OUTPUT_FORMAT>\n\n<TASK>\nsummarise\n</TASK>"
 

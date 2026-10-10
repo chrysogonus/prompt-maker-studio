@@ -63,7 +63,6 @@ class PromptSummary(BaseModel):
     id: int
     name: str
     folder: str | None
-    tags: list[str] | None
     is_favorite: bool
     updated_at: datetime
 
@@ -142,14 +141,12 @@ _WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHin
 
 
 @mcp_server.tool(annotations=_READ_ONLY)
-def list_saved_prompts(
-    tag: str | None = None, folder: str | None = None, favorite_only: bool = False
-) -> PromptList:
-    """List the user's saved prompts, newest first, optionally filtered by tag,
-    folder, or favorite status. Returns names and metadata, not prompt text."""
+def list_saved_prompts(folder: str | None = None, favorite_only: bool = False) -> PromptList:
+    """List the user's saved prompts, newest first, optionally filtered by
+    folder or favorite status. Returns names and metadata, not prompt text."""
     with _user_session() as (db, user):
         prompts = routes.get_saved_prompts(
-            tag=tag, folder=folder, favorite_only=favorite_only, db=db, current_user=user
+            folder=folder, favorite_only=favorite_only, db=db, current_user=user
         )
         return PromptList(
             prompts=[
@@ -157,7 +154,6 @@ def list_saved_prompts(
                     id=p.id,
                     name=p.name,
                     folder=p.folder,
-                    tags=p.tags,
                     is_favorite=p.is_favorite,
                     updated_at=p.updated_at or p.created_at,
                 )

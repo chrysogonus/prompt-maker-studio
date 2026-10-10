@@ -322,20 +322,12 @@ def delete_account(
 
 def _apply_preference_updates(body: UserUpdate, current_user: User) -> None:
     """Apply the simple, non-conflict-checked preference fields of a profile update."""
-    if body.notify_run_failure is not None:
-        current_user.notify_run_failure = body.notify_run_failure
-    if body.notify_weekly_summary is not None:
-        current_user.notify_weekly_summary = body.notify_weekly_summary
     if body.default_library_view is not None:
         current_user.default_library_view = body.default_library_view
     if body.default_eval_method is not None:
         current_user.default_eval_method = body.default_eval_method
     if body.auto_run_eval_on_update is not None:
         current_user.auto_run_eval_on_update = body.auto_run_eval_on_update
-    if body.notify_eval_complete is not None:
-        current_user.notify_eval_complete = body.notify_eval_complete
-    if body.notify_eval_regression is not None:
-        current_user.notify_eval_regression = body.notify_eval_regression
 
 
 @router.patch("/me", response_model=UserResponse)

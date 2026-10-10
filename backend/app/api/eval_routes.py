@@ -30,10 +30,6 @@ from app.models.schemas import (
 )
 from app.models.user import User
 from app.services.budget_service import BudgetExceededError, BudgetService
-from app.services.email_service import (
-    send_eval_run_complete_email,
-    send_eval_score_regression_email,
-)
 from app.services.eval_generator_service import EvalGeneratorService
 from app.services.eval_service import EvalService
 from app.services.spend_ledger import record_billed_call
@@ -55,33 +51,6 @@ def _get_owned_case(prompt_id: int, case_id: int, user_id: int, db: Session) -> 
     if not case:
         raise HTTPException(status_code=404, detail="Eval case not found")
     return case
-
-
-def _notify_run_outcome(db: Session, prompt_name: str, user: User, run: EvalRun) -> None:
-    """Best-effort completion/regression emails — never fails the request."""
-    if run.score is None:
-        return
-
-    if user.notify_eval_complete and user.email:
-        try:
-            send_eval_run_complete_email(user.email, prompt_name, run.score)
-        except Exception:
-            logger.exception("Failed to send eval-run-complete email")
-
-    if user.notify_eval_regression and user.email:
-        previous = (
-            db.query(EvalRun)
-            .filter(
-                EvalRun.prompt_id == run.prompt_id, EvalRun.id != run.id, EvalRun.score.isnot(None)
-            )
-            .order_by(EvalRun.created_at.desc())
-            .first()
-        )
-        if previous is not None and run.score < previous.score:
-            try:
-                send_eval_score_regression_email(user.email, prompt_name, previous.score, run.score)
-            except Exception:
-                logger.exception("Failed to send eval-score-regression email")
 
 
 @router.get("/{prompt_id}/eval/cases", response_model=list[EvalCaseResponse])
@@ -390,7 +359,6 @@ def create_eval_run(
     except Exception as exc:
         raise llm_http_error(exc, connection, "eval run") from exc
 
-    _notify_run_outcome(db, prompt.name or "Untitled", current_user, run)
     return run
 
 
@@ -437,9 +405,5 @@ def rate_eval_result(
     if not result or not result.is_pending:
         raise HTTPException(status_code=404, detail="Pending eval result not found")
 
-    run, just_finalized = EvalService.submit_manual_rating(db, result, body.stars)
-
-    if just_finalized:
-        _notify_run_outcome(db, prompt.name or "Untitled", current_user, run)
-
+    run, _ = EvalService.submit_manual_rating(db, result, body.stars)
     return run

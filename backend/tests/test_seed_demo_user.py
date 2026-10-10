@@ -12,7 +12,6 @@ from app.models.playground_run import PlaygroundRun
 from app.models.prompt import Prompt
 from app.models.prompt_version import PromptVersion
 from app.models.user import User
-from app.services.analytics_service import AnalyticsService
 from scripts.seed_demo_user import EMAIL, PASSWORD, USERNAME, main, seed_alex
 
 
@@ -96,14 +95,6 @@ class TestSeedAlex:
         assert len(runs) >= 15
         assert any(r.status == "error" for r in runs)
         assert any(r.status == "success" for r in runs)
-
-        summary = AnalyticsService.dashboard_summary(db_session, user.id)
-        assert summary["success_rate_pct"] is not None
-        assert summary["top_prompts"] != []
-
-        prompt_ids = [p.id for p in db_session.query(Prompt).filter(Prompt.user_id == user.id)]
-        counts = AnalyticsService.run_counts_by_prompt_ids(db_session, user.id, prompt_ids)
-        assert any(count > 0 for count in counts.values())
 
     def test_rerun_is_idempotent_not_duplicated(self, db_session):
         seed_alex(db_session)

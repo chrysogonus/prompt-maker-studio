@@ -2,7 +2,6 @@
 
 import pytest
 
-from app.models.playground_run import PlaygroundRun
 from app.models.prompt_version import PromptVersion
 
 
@@ -11,11 +10,11 @@ class TestPromptVersioning:
 
     def _create_saved_prompt(self, client, headers, name="Original") -> int:
         response = client.post(
-            "/api/prompts/generate",
+            "/api/prompts",
             headers=headers,
             json={"fields": [{"name": "goal", "content": "v1 content"}], "name": name},
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
         return response.json()["id"]
 
     def test_no_versions_before_any_edit(self, client, auth_headers):
@@ -65,24 +64,6 @@ class TestPromptVersioning:
         )
 
         assert response.status_code == 200
-        versions = client.get(f"/api/prompts/{prompt_id}/versions", headers=auth_headers).json()
-        assert versions == []
-
-    def test_editing_an_unnamed_prompt_does_not_create_a_version(self, client, auth_headers):
-        """History-only (unnamed) prompts have no prior 'saved' state to preserve."""
-        response = client.post(
-            "/api/prompts/generate",
-            headers=auth_headers,
-            json={"fields": [{"name": "goal", "content": "draft"}]},
-        )
-        prompt_id = response.json()["id"]
-
-        client.patch(
-            f"/api/prompts/{prompt_id}",
-            headers=auth_headers,
-            json={"fields": [{"name": "goal", "content": "still a draft"}]},
-        )
-
         versions = client.get(f"/api/prompts/{prompt_id}/versions", headers=auth_headers).json()
         assert versions == []
 
@@ -199,27 +180,6 @@ class TestPromptVersioning:
         prompt_id = self._create_saved_prompt(client, auth_headers)
         resp = client.post(f"/api/prompts/{prompt_id}/versions/999/restore", headers=auth_headers)
         assert resp.status_code == 404
-
-    def test_restore_response_includes_real_run_count(self, client, auth_headers, db_session):
-        """The restored prompt's response reflects real Playground run counts, not a placeholder."""
-        user_id = client.get("/api/auth/me", headers=auth_headers).json()["id"]
-        prompt_id = self._create_saved_prompt(client, auth_headers)
-        client.patch(
-            f"/api/prompts/{prompt_id}",
-            headers=auth_headers,
-            json={"fields": [{"name": "goal", "content": "v2 content"}]},
-        )
-        db_session.add(PlaygroundRun(prompt_id=prompt_id, user_id=user_id, model="gpt-4o-mini"))
-        db_session.add(PlaygroundRun(prompt_id=prompt_id, user_id=user_id, model="gpt-4o-mini"))
-        db_session.commit()
-
-        versions = client.get(f"/api/prompts/{prompt_id}/versions", headers=auth_headers).json()
-        v1_id = versions[0]["id"]
-
-        resp = client.post(
-            f"/api/prompts/{prompt_id}/versions/{v1_id}/restore", headers=auth_headers
-        )
-        assert resp.json()["run_count"] == 2
 
     def test_restore_blocked_for_non_owner(self, client, auth_headers, second_auth_headers):
         prompt_id = self._create_saved_prompt(client, auth_headers)
