@@ -1,5 +1,5 @@
 -- Historical reference only — the executed migration lives in
--- backend/app/database/migrations.py (_migration_024_recover_unnamed_prompts).
+-- backend/app/database/migrations/v024_recover_unnamed_prompts.py (_migration_024_recover_unnamed_prompts).
 --
 -- Unnamed prompts were only listed by the retired History tab. Each gets a
 -- date-based name, e.g. 'Untitled (14 Mar 2026, 09:12 UTC)' (the Python step

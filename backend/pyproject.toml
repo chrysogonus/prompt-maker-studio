@@ -137,10 +137,10 @@ line-ending = "auto"
 ]
 # slowapi requires the `request` parameter by exact name in rate-limited handlers,
 # but the function body never references it directly.
-"app/api/auth_routes.py" = [
-    "ARG001",  # Unused function arguments (slowapi Request injection)
-    "PT028",   # FastAPI endpoint name starts with test_ and uses Depends
-]
+"app/api/session_routes.py" = ["ARG001"]
+"app/api/account_routes.py" = ["ARG001"]
+"app/api/llm_connection_routes.py" = ["ARG001", "PT028"]
+"app/api/password_routes.py" = ["ARG001"]
 "app/api/routes.py" = [
     "ARG001",  # Unused function arguments (slowapi Request injection)
 ]

@@ -9,7 +9,7 @@ import os
 from fastapi import APIRouter, HTTPException, Request, status
 
 from app.limiter import limiter
-from app.models.schemas import SmtpDiagnosticResponse
+from app.schemas.admin import SmtpDiagnosticResponse
 from app.services.email_service import check_smtp_connection
 
 logger = logging.getLogger(__name__)

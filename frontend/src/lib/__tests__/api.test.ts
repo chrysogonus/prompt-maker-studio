@@ -102,3 +102,50 @@ describe('ApiClient.createPrompt', () => {
     await expect(ApiClient.createPrompt(body)).rejects.toThrow('Failed to save prompt: 422');
   });
 });
+
+describe('account and OAuth request boundaries', () => {
+  it('keeps wrong-password account deletion distinct from session expiry', async () => {
+    const removeToken = vi.spyOn(AuthService, 'removeToken');
+    const refresh = vi.spyOn(AuthService, 'refreshSession');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 401 } as Response);
+    await expect(ApiClient.deleteAccount('incorrect')).rejects.toThrow('Password is incorrect.');
+    expect(removeToken).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('sends account deletion credentials and accepts an empty success response', async () => {
+    document.cookie = 'csrf_token=account-csrf';
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, status: 204 } as Response);
+    await expect(ApiClient.deleteAccount('password')).resolves.toBeUndefined();
+    expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/api\/auth\/me$/), expect.objectContaining({
+      method: 'DELETE', credentials: 'include', body: JSON.stringify({ current_password: 'password' }),
+      headers: expect.objectContaining({ 'X-CSRF-Token': 'account-csrf' }),
+    }));
+  });
+
+  it('encodes consent handles and sends an explicit denial decision', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true, json: async () => ({ client_name: 'Client' }),
+    } as Response);
+    await expect(ApiClient.getOAuthConsent('a+b&c')).resolves.toEqual({ client_name: 'Client' });
+    expect(fetch.mock.calls[0][0]).toMatch(/request=a%2Bb%26c$/);
+    await ApiClient.decideOAuthConsent('a+b&c', false);
+    expect(JSON.parse(fetch.mock.calls[1][1]?.body as string)).toEqual({ request: 'a+b&c', approve: false });
+  });
+
+  it('clears expired consent sessions and preserves a typed unauthorized failure', async () => {
+    const removeToken = vi.spyOn(AuthService, 'removeToken');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 401 } as Response);
+    await expect(ApiClient.getOAuthConsent('expired')).rejects.toMatchObject({ status: 401 });
+    expect(removeToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the consent fallback when the server returns an unreadable error', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false, status: 502, json: async () => { throw new Error('Invalid JSON'); },
+    } as unknown as Response);
+    await expect(ApiClient.decideOAuthConsent('request', true)).rejects.toMatchObject({
+      message: 'Could not complete the connection request.', status: 502,
+    });
+  });
+});

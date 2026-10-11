@@ -150,14 +150,16 @@ prompt-maker-studio/
 │   ├── app/
 │   │   ├── api/         # Endpoints
 │   │   ├── services/    # Business logic
-│   │   ├── models/      # Data models
+│   │   ├── models/      # ORM models
+│   │   ├── schemas/     # Domain API schemas
 │   │   └── database/    # DB config
 │   └── run.py           # Start server
 │
 └── frontend/            # Next.js frontend
     ├── src/
     │   ├── app/         # Pages
-    │   ├── components/  # UI components
+    │   ├── components/  # Shared primitives and shell
+    │   ├── features/    # Feature UI, controllers and tests
     │   └── lib/         # API client
     └── package.json
 ```
@@ -242,7 +244,7 @@ Safe to re-run — it replaces the account's data rather than duplicating it.
 The application uses **dynamic fields** — users can add any named field from the UI or API without code changes. No schema update is needed for new field types.
 
 If you need to add a new **system-level** field (e.g. a required metadata field), update:
-1. `backend/app/models/schemas.py` — add field to `PromptField` or `PromptRequest` validators
+1. `backend/app/schemas/prompts.py` — add field to `PromptField` or `PromptRequest` validators
 2. `backend/app/services/prompt_generator.py` — adjust generation logic if special-casing is needed
 3. Update relevant tests in `backend/tests/`
 

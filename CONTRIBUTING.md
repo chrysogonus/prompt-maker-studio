@@ -125,14 +125,19 @@ update the table in `backend/tests/README.md` in the same change.
 ### Database changes
 
 There is **no Alembic**. Schema changes go through the idempotent migration
-runner at `backend/app/database/migrations.py` — never raw SQL against a
+runner at `backend/app/database/migrations/runner.py` — never raw SQL against a
 running database. The numbered `.sql` files in `backend/migrations/` are
 historical references and are not executed. See
 [`backend/migrations/README.md`](./backend/migrations/README.md).
 
 ## Branches and commits
 
-Branch from `main` using a type prefix:
+During the ongoing repository refactoring, make refactoring changes on `dev`.
+Create each feature branch from `dev` and merge it back into `dev`. For this
+effort, the branch and rebase base is `dev`; otherwise use `main`. See
+[AGENTS.md](./AGENTS.md).
+
+Use a type prefix for separate branches:
 
 ```
 feat/short-description     fix/short-description
@@ -155,7 +160,7 @@ breaking changes.
 
 ## Pull requests
 
-1. Rebase on the latest `main`.
+1. Rebase on the latest target branch (`dev` for the refactoring effort, otherwise `main`).
 2. Run `make ci-local` and make sure it is green.
 3. Fill in the [PR template](./.github/PULL_REQUEST_TEMPLATE.md) — it is not decorative.
 4. Link the issue with `Closes #123`.

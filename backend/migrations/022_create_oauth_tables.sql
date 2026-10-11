@@ -1,6 +1,6 @@
 -- 022_oauth_tables: tables behind MCP OAuth account linking (dynamic client
 -- registration, one-time authorization codes, rotating refresh tokens).
--- Reference only; applied by app/database/migrations.py, which renders the
+-- Reference only; applied by app/database/migrations/v022_oauth_tables.py, which renders the
 -- same DDL from app/models/oauth.py.
 
 CREATE TABLE IF NOT EXISTS oauth_clients (

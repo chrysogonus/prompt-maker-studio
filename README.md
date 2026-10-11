@@ -62,6 +62,7 @@ prompt-maker-studio/
 │   │   ├── auth/      # JWT + bcrypt utilities, dependencies, and token logic
 │   │   ├── database/  # SQLAlchemy session engine and custom migration runner
 │   │   ├── models/    # Prompt, version, user, OAuth, spend-ledger, and eval ORM models
+│   │   ├── schemas/   # Domain-specific Pydantic boundary models
 │   │   └── services/  # Section rendering, LLM client/providers, import, versions, eval/refine, email
 │   ├── migrations/    # Historical reference SQL migrations
 │   ├── scripts/       # Demo-account seed
@@ -71,15 +72,22 @@ prompt-maker-studio/
 ├── frontend/          # Next.js frontend (React 18 / TypeScript 6)
 │   ├── src/
 │   │   ├── app/       # App Router pages: sidebar shell (library, editor, settings), sign-in, OAuth consent
-│   │   ├── components/# Feature UI components and shared design primitives
+│   │   ├── components/# Shared design primitives and authenticated shell
+│   │   ├── features/  # Editor, library, settings and auth UI/controllers/tests
 │   │   ├── lib/       # API client, auth service, section rendering, and library helpers
 │   │   └── types/     # TypeScript interfaces and schemas
 │   └── package.json   # Dependencies, scripts, and Vitest/Playwright config
+├── contracts/         # Shared frontend/backend section-rendering fixtures
 ├── docs/              # System architecture, deployment, docker, auth, and saved-prompts documentation
 ├── product/           # Product specs, vision, roadmap, decisions log, and backlog
 ├── monitoring/        # Prometheus and Grafana service configurations
 └── scripts/           # Dependency-light SQLite backup/restore utilities
 ```
+
+The refactoring structure and verification record live in
+[docs/refactoring.md](docs/refactoring.md). REST and MCP share prompt services;
+app routes assemble feature controllers and UI. Database initialization happens
+during application startup rather than import.
 
 ## Prerequisites
 

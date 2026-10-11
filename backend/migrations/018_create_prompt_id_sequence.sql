@@ -1,5 +1,5 @@
 -- Historical reference only — the executed migration lives in
--- backend/app/database/migrations.py (_migration_018_prompt_id_sequence).
+-- backend/app/database/migrations/v018_prompt_id_sequence.py (_migration_018_prompt_id_sequence).
 
 CREATE TABLE IF NOT EXISTS prompt_id_sequence (
     singleton INTEGER PRIMARY KEY CHECK (singleton = 1),

@@ -14,6 +14,8 @@ RUN npm ci
 
 # Copy application code
 COPY frontend/. .
+# Type checking includes tests that consume the cross-application fixtures.
+COPY contracts/ /contracts/
 
 # No NEXT_PUBLIC_API_URL build argument, deliberately. A NEXT_PUBLIC_* value is
 # compiled into the client bundle and cannot be changed when the container

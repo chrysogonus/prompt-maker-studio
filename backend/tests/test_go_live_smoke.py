@@ -62,7 +62,9 @@ def test_register_login_generate_save_reload_and_reset_password(client, db_sessi
         assert to_email == "smoke@example.com"
         captured_links.append(reset_link)
 
-    with patch("app.api.auth_routes.send_password_reset_email", side_effect=capture_reset_email):
+    with patch(
+        "app.services.accounts.passwords.send_password_reset_email", side_effect=capture_reset_email
+    ):
         forgot = client.post(
             "/api/auth/forgot-password",
             json={"email": "smoke@example.com"},

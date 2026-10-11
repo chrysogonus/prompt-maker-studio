@@ -334,7 +334,10 @@ def test_migration_020_survives_modern_alter_table_rename_semantics():
     3.37 tolerated the default and 3.46 did not, so this failed only inside the
     container, on boot, after passing locally.
     """
-    source = pathlib.Path("app/database/migrations.py").read_text()
+    source = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "app/database/migrations/v020_delete_cascades.py"
+    ).read_text()
     assert "PRAGMA legacy_alter_table=ON" in source
     assert "PRAGMA legacy_alter_table=OFF" in source
     if sqlite3.sqlite_version_info < (3, 25):  # pragma: no cover - ancient hosts only

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import renderingCases from '../../../../contracts/section-rendering.json';
 import {
   fillVariables,
   normalizeSectionName,
@@ -31,6 +32,10 @@ describe('section names', () => {
 });
 
 describe('renderSections', () => {
+  it.each(renderingCases)('preserves the shared contract: $name', ({ sections, rendered }) => {
+    expect(renderSections(sections)).toBe(rendered);
+  });
+
   it('matches the server rendering byte for byte', () => {
     expect(
       renderSections([

@@ -12,7 +12,7 @@ import pytest
 
 from app.models.billed_call import BilledCall
 from app.models.prompt import Prompt
-from app.models.schemas import PromptField
+from app.schemas.prompts import PromptField
 from app.services.prompt_parser import PromptParserService
 from app.services.spend_ledger import LLMUsage
 from tests.conftest import TEST_LLM_MODEL, make_chat_response, make_connection

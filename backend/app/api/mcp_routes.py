@@ -1,7 +1,7 @@
 """
 MCP endpoint exposing the saved-prompt library as tools for ChatGPT and other MCP clients.
 
-The tools call the existing prompt route handlers, so ownership checks, version
+The tools call shared prompt services, so ownership checks, version
 snapshots, and edit-conflict detection behave exactly as they do on the REST API.
 The client's own model writes the prompt text; nothing here calls an LLM.
 
@@ -27,19 +27,20 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from app.api import routes
 from app.auth.dependencies import user_from_token
 from app.branding import APP_NAME
 from app.database.connection import SessionLocal
-from app.models.schemas import (
+from app.models.user import User
+from app.schemas.prompts import (
     PromptCreateRequest,
     PromptField,
     PromptHistoryResponse,
     PromptUpdateRequest,
     PromptVersionResponse,
 )
-from app.models.user import User
+from app.services.errors import OperationError
 from app.services.oauth_provider import ISSUER_URL, RESOURCE_URL, user_from_mcp_access_token
+from app.services.prompts import library, versions
 
 MCP_PATH = "/api/mcp"
 # RFC 9728 protected-resource metadata, which the 401 challenge points clients to.
@@ -103,7 +104,7 @@ def _access_for_token(token: str) -> AccessToken | None:
 @contextmanager
 def _user_session() -> Iterator[tuple[Session, User]]:
     """Open a database session for the authenticated caller, translating the
-    route handlers' HTTP errors into tool errors the model can read."""
+    services' operation errors into tool errors the model can read."""
     db = SessionLocal()
     try:
         user = db.get(User, int(get_access_token().subject))
@@ -111,7 +112,7 @@ def _user_session() -> Iterator[tuple[Session, User]]:
             msg = "Account not found"
             raise ToolError(msg)
         yield db, user
-    except HTTPException as exc:
+    except (HTTPException, OperationError) as exc:
         raise ToolError(str(exc.detail)) from exc
     except ValidationError as exc:
         raise ToolError(str(exc)) from exc
@@ -145,8 +146,8 @@ def list_saved_prompts(folder: str | None = None, favorite_only: bool = False) -
     """List the user's saved prompts, newest first, optionally filtered by
     folder or favorite status. Returns names and metadata, not prompt text."""
     with _user_session() as (db, user):
-        prompts = routes.get_saved_prompts(
-            folder=folder, favorite_only=favorite_only, db=db, current_user=user
+        prompts = library.get_saved_prompts(
+            folder=folder, favorite_only=favorite_only, db=db, user_id=user.id
         )
         return PromptList(
             prompts=[
@@ -166,7 +167,7 @@ def list_saved_prompts(folder: str | None = None, favorite_only: bool = False) -
 def get_prompt(prompt_id: int) -> PromptHistoryResponse:
     """Get one saved prompt: its fields, rendered prompt text, and timestamps."""
     with _user_session() as (db, user):
-        prompt = routes.get_prompt_by_id(prompt_id=prompt_id, db=db, current_user=user)
+        prompt = library.get_prompt_by_id(prompt_id=prompt_id, db=db, user_id=user.id)
         return PromptHistoryResponse.model_validate(prompt)
 
 
@@ -177,7 +178,7 @@ def save_prompt(name: str, fields: list[PromptField]) -> PromptHistoryResponse:
     with a letter or _."""
     with _user_session() as (db, user):
         body = PromptCreateRequest(name=name, fields=fields)
-        prompt = routes.create_prompt(body=body, db=db, current_user=user)
+        prompt = library.create_prompt(body=body, db=db, user_id=user.id)
         return PromptHistoryResponse.model_validate(prompt)
 
 
@@ -202,7 +203,7 @@ def update_prompt(
             note=note,
             last_updated_at=last_updated_at,
         )
-        prompt = routes.update_prompt(prompt_id=prompt_id, body=body, db=db, current_user=user)
+        prompt = library.update_prompt(prompt_id=prompt_id, body=body, db=db, user_id=user.id)
         return PromptHistoryResponse.model_validate(prompt)
 
 
@@ -211,8 +212,8 @@ def list_prompt_versions(prompt_id: int) -> VersionList:
     """List the earlier versions of a saved prompt, newest first. The current
     content is not included; get it with get_prompt."""
     with _user_session() as (db, user):
-        versions = routes.get_prompt_versions(prompt_id=prompt_id, db=db, current_user=user)
-        return VersionList(versions=versions)
+        history = versions.get_prompt_versions(prompt_id=prompt_id, db=db, user_id=user.id)
+        return VersionList(versions=history)
 
 
 class _MCPEndpoint:

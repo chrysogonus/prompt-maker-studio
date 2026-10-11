@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { PromptMakerTile } from '@/components/brand/PromptMakerMark';
 import {
   AllPromptsIcon,
@@ -12,17 +12,15 @@ import {
   SettingsIcon,
   UnfiledIcon,
 } from '@/components/ui/icon';
-import { ApiClient } from '@/lib/api';
+import { useLibraryData } from '@/features/library/LibraryData';
 import { useAuth } from '@/lib/auth-context';
 import { APP_NAME } from '@/lib/branding';
-import { LIBRARY_CHANGED_EVENT } from '@/lib/libraryEvents';
 import {
   RECOVERED_HISTORY_FOLDER,
   libraryHref,
   viewFromParams,
   type LibraryView,
 } from '@/lib/libraryViews';
-import type { PromptHistoryResponse } from '@/types/prompt';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -42,23 +40,12 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { currentUser, logout } = useAuth();
-  const [prompts, setPrompts] = useState<PromptHistoryResponse[]>([]);
+  const { prompts: library, load } = useLibraryData();
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = () =>
-      ApiClient.getSavedPrompts()
-        .then((data) => !cancelled && setPrompts(data))
-        .catch(() => {});
-    load();
-    window.addEventListener(LIBRARY_CHANGED_EVENT, load);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(LIBRARY_CHANGED_EVENT, load);
-    };
-  }, [pathname]);
+  useEffect(() => { void load().catch(() => {}); }, [load, pathname]);
 
   const counts = useMemo(() => {
+    const prompts = library ?? [];
     const folders = new Map<string, number>();
     let unfiled = 0;
     for (const p of prompts) {
@@ -71,7 +58,7 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
       unfiled,
       folders: sortFolders([...folders.keys()]).map((name) => ({ name, count: folders.get(name)! })),
     };
-  }, [prompts]);
+  }, [library]);
 
   const current = pathname === '/library' ? viewFromParams(searchParams) : null;
 

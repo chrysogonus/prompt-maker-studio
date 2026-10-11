@@ -3,7 +3,7 @@
 > Updated: 2026-10-11
 
 ## Now — Current Sprint / Active Development
-- [ ] **0.3.0 release** — The redesign (sections editor, library home and sidebar, simplified Settings, retirement of shallow features, data recovery) is implemented on the `feat/redesign` integration branch. Remaining: test the migrations on a copy of production data, then merge and release.
+- [ ] **0.3.0 release** — The redesign (sections editor, library home and sidebar, simplified Settings, retirement of shallow features, data recovery) is integrated into `dev`. Broader behavior-preserving refactoring continues there (see `docs/refactoring.md`). Remaining for release: test the migrations on a copy of production data, then release.
 
 ## Next — Coming Soon (next 1–2 sprints)
 - [ ] **Recovered history cleanup** — Let users select several prompts, or find duplicates, to tidy "Recovered history" (see BACKLOG "Bulk Prompt Delete")

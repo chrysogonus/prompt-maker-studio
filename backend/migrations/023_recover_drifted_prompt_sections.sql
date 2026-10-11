@@ -1,5 +1,5 @@
 -- Historical reference only — the executed migration lives in
--- backend/app/database/migrations.py (_migration_023_recover_drifted_prompt_sections).
+-- backend/app/database/migrations/v023_recover_drifted_prompt_sections.py (_migration_023_recover_drifted_prompt_sections).
 --
 -- Not expressible in SQL: the migration renders each prompt's `fields` the way
 -- the generator does and compares the result with `generated_prompt`. For every

@@ -33,7 +33,7 @@ vi.mock('@/lib/auth', () => ({
   },
 }));
 
-vi.mock('@/components/AuthForm', () => ({
+vi.mock('@/features/auth/AuthForm', () => ({
   default: ({ onSuccess }: { onSuccess: () => void }) => (
     <button type="button" onClick={onSuccess}>
       Mock sign in

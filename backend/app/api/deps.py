@@ -2,6 +2,7 @@
 Shared FastAPI route dependencies used across multiple router modules.
 """
 
+from collections.abc import Callable
 import logging
 
 from fastapi import HTTPException
@@ -9,14 +10,24 @@ from sqlalchemy.orm import Session
 
 from app.models.prompt import Prompt
 from app.models.user import User
+from app.services.errors import OperationError
 from app.services.llm_client import (
     LLMConnection,
     LLMConnectionError,
     client_for,
     describe_llm_error,
 )
+from app.services.prompts.ownership import get_owned_prompt as owned_prompt
 
 logger = logging.getLogger(__name__)
+
+
+def call_service[T](operation: Callable[..., T], *args, **kwargs) -> T:
+    """Translate expected operation failures at the HTTP boundary."""
+    try:
+        return operation(*args, **kwargs)
+    except OperationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 def get_llm_connection(user: User, model: str | None = None) -> LLMConnection:
@@ -48,7 +59,4 @@ def get_owned_prompt(prompt_id: int, user_id: int, db: Session) -> Prompt:
     Returns 404 for both missing prompts and prompts owned by another user,
     so the response does not reveal whether a resource exists at all.
     """
-    prompt = db.query(Prompt).filter(Prompt.id == prompt_id, Prompt.user_id == user_id).first()
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Prompt not found")
-    return prompt
+    return call_service(owned_prompt, prompt_id, user_id, db)

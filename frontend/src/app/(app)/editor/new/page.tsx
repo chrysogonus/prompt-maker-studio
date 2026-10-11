@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import PromptEditor from '@/components/editor/PromptEditor';
+import PromptEditor from '@/features/editor/PromptEditor';
 
 function NewPrompt() {
   const params = useSearchParams();

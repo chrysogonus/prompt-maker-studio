@@ -6,6 +6,7 @@ enforces that in both directions, so this table cannot silently drift.
 | Module | Coverage area |
 |---|---|
 | `test_admin_routes.py` | Token-protected SMTP diagnostics |
+| `test_application.py` | Application factory, startup lifecycle, and test initialization isolation |
 | `test_api.py` | Prompt generation, saved prompts (incl. folder/tag/favorite filters), history, pagination, search, updates, ownership, real per-prompt run counts, and variable_metadata |
 | `test_auth.py` | Registration, JWT lifecycle, profile, account deletion, password reset, password change, and the `SECRET_KEY` startup guard that rejects every published example key |
 | `test_auth_cookies.py` | The browser session path: httpOnly session cookie, the readable CSRF cookie, double-submit CSRF enforcement on cookie-authenticated writes (and its bearer/safe-method exemptions), logout, and the `COOKIE_DOMAIN`/`COOKIE_SECURE` deployment settings |
@@ -35,6 +36,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_prompt_parser.py` | Text-to-fields parser service (including non-strict-schema providers and fenced JSON) and the parse-text endpoint |
 | `test_prompt_refiner.py` | PromptRefinerService clarifying-question and draft-generation calls |
 | `test_prompt_sections.py` | Rendering sections to tagged text, display names with spaces, and recovering sections from text only when that round-trips exactly |
+| `test_prompt_service.py` | Transport-independent prompt operations, ownership, versions, and failed-write rollback |
 | `test_prompt_versions.py` | Version snapshotting on edit, restore semantics, ownership, cascade delete, run_count passthrough |
 | `test_prompts_config.py` | Per-user AI capability endpoint: connection state, model list, budget status, and per-user scoping |
 | `test_refine_routes.py` | Refine tab clarifying-questions and draft endpoints, the accept-as-new-version flow, and budget-ceiling rejection |

@@ -411,7 +411,7 @@ Prompt Maker Studio is built for a single backend instance and does not scale
 horizontally today. This is a design constraint, not a configuration gap:
 
 - **SQLite only.** There is no PostgreSQL or MySQL support. The migration
-  runner (`backend/app/database/migrations.py`) is SQLite-specific, and SQLite
+  runner (`backend/app/database/migrations/runner.py`) is SQLite-specific, and SQLite
   allows a single writer. Do not plan a deployment around swapping the
   database — see [SQLite as Primary Database](../product/DECISIONS.md).
 - **One backend replica.** Multiple backends would contend for the same SQLite

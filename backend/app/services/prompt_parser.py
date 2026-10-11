@@ -4,7 +4,7 @@ using the acting user's own LLM provider, via the shared JSON-completion
 helper in services/llm_client.py.
 """
 
-from app.models.schemas import PromptField
+from app.schemas.prompts import PromptField
 from app.services.llm_client import LLMConnection, json_completion
 from app.services.spend_ledger import LLMUsage
 

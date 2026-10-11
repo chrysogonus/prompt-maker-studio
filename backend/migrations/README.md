@@ -2,7 +2,7 @@
 
 The application uses SQLite by default. Fresh databases are created from the
 SQLAlchemy models, and existing SQLite databases are upgraded on backend startup
-by the idempotent migration runner in `app/database/migrations.py`.
+by the idempotent migration runner in `app/database/migrations/runner.py`.
 
 The `.sql` files in this directory are historical references. Do not run them
 against production without reviewing dialect compatibility; the supported go-live
@@ -17,7 +17,14 @@ On startup, `app.main.init_db()` calls:
    change on existing SQLite tables.
 
 The runner records completed versions in `schema_migrations` and is safe to run
-multiple times. It currently handles:
+multiple times. `app/database/migrations/registry.py` records the unchanged
+version order; each `vNNN_*.py` module owns one historical step. Add new steps
+to the registry rather than editing an applied migration. Migration 023 uses
+frozen helpers in `recovery.py`, so future changes to live section rendering
+cannot change its historical upgrade behavior. No migration IDs or database
+schemas changed during the refactor.
+
+It currently handles:
 
 - `001_dynamic_prompt_fields` — backfills `prompts.fields` from legacy static
   prompt columns when needed.

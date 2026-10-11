@@ -12,12 +12,8 @@ from app.api.deps import get_llm_connection, get_owned_prompt, llm_http_error
 from app.auth.dependencies import get_current_user
 from app.database.connection import get_db
 from app.limiter import limiter
-from app.models.schemas import (
-    RefineDraftRequest,
-    RefineDraftResponse,
-    RefineQuestionsResponse,
-)
 from app.models.user import User
+from app.schemas.refinement import RefineDraftRequest, RefineDraftResponse, RefineQuestionsResponse
 from app.services.budget_service import BudgetExceededError, BudgetService
 from app.services.prompt_refiner import PromptRefinerService
 from app.services.spend_ledger import record_billed_call

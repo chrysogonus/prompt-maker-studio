@@ -47,7 +47,7 @@ class TestUnhandledExceptionHandler:
             with (
                 TestClient(app, raise_server_exceptions=False) as no_raise_client,
                 patch(
-                    "app.api.routes.render_sections",
+                    "app.services.prompts.library.render_sections",
                     side_effect=RuntimeError("sensitive internal detail: db-password=hunter2"),
                 ),
             ):

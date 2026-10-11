@@ -19,7 +19,8 @@ backend/
 │   ├── api/          # FastAPI routers and request/response orchestration
 │   ├── auth/         # JWT, password hashing, and auth dependencies
 │   ├── database/     # SQLAlchemy connection and idempotent migration runner
-│   ├── models/       # ORM entities and Pydantic boundary schemas
+│   ├── models/       # ORM entities
+│   ├── schemas/      # Domain-specific Pydantic request/response models
 │   └── services/     # Business logic and external integrations
 ├── migrations/       # Historical SQL references; not executed directly
 ├── scripts/          # Demo-account seeding
@@ -28,12 +29,13 @@ backend/
 └── run.py            # Uvicorn development entry point
 ```
 
-`app/main.py` configures middleware, error handling, metrics, database startup,
-and these router groups:
+`app/main.py` exposes `create_app()` and initializes the database during the
+application lifespan. `app/http.py` configures middleware, error handling and
+metrics. The factory assembles these router groups:
 
 | Router | Prefix / responsibility |
 |---|---|
-| `auth_routes.py` | `/api/auth`: accounts, sessions, profiles, and password recovery |
+| `auth_routes.py` | `/api/auth`: assembles session, account, LLM-connection and password routers |
 | `routes.py` | `/api/prompts`: create, library, folders, versions, import, export, and capability config |
 | `mcp_routes.py` | `/api/mcp`: the library as MCP tools for ChatGPT and other clients |
 | `oauth_routes.py` | `/api/oauth` and `/.well-known/oauth-*`: account linking for MCP clients |
@@ -47,6 +49,11 @@ references; avoid duplicating a full endpoint inventory here.
 
 ## Service and Data Boundaries
 
+- REST and MCP share prompt operations in `services/prompts/`; neither transport
+  calls the other. `services/accounts/` owns registration, profile, connection
+  and password-recovery operations; `services/evaluation/` owns case persistence,
+  CSV import/export and rating/history access. Expected operation failures are
+  translated by each transport.
 - A prompt's sections (`fields`) are the only content clients write;
   `services/prompt_sections.py` renders `generated_prompt` from them on every
   write and recovers sections from older text. Versioning and monotonic SQLite
@@ -60,7 +67,7 @@ references; avoid duplicating a full endpoint inventory here.
 - Users, prompts, prompt versions, Playground runs (kept for evaluations), eval
   records, billed calls, OAuth records, and the prompt-ID sequence are separate
   ORM models.
-- Pydantic schemas in `app/models/schemas.py` validate API inputs and outputs.
+- Pydantic schemas in `app/schemas/` validate API inputs and outputs.
 
 The complete implemented-feature map is maintained in
 [`product/FEATURES.md`](../product/FEATURES.md), and architectural rationale is
@@ -75,7 +82,7 @@ recorded in [`product/DECISIONS.md`](../product/DECISIONS.md).
 - Map expected external-service failures explicitly and preserve request IDs on
   unexpected 500 responses.
 - Never edit a running database manually. Schema changes go through
-  `app/database/migrations.py`; follow the
+  `app/database/migrations/runner.py`; follow the
   [migration guide](migrations/README.md).
 - Add focused tests for new behavior and keep the module table in
   [tests/README.md](tests/README.md) synchronized.

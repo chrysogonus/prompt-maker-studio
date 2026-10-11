@@ -1,5 +1,8 @@
 """Tests for rendering a prompt's sections and recovering sections from text."""
 
+import json
+from pathlib import Path
+
 import pytest
 
 from app.services.prompt_sections import (
@@ -8,6 +11,17 @@ from app.services.prompt_sections import (
     section_tag,
     sections_for_text,
 )
+
+
+@pytest.mark.parametrize(
+    "case",
+    json.loads(
+        (Path(__file__).resolve().parents[2] / "contracts/section-rendering.json").read_text()
+    ),
+    ids=lambda case: case["name"],
+)
+def test_shared_section_rendering_contract(case):
+    assert render_sections(case["sections"]) == case["rendered"]
 
 
 @pytest.mark.parametrize(

@@ -7,17 +7,16 @@ from datetime import UTC, datetime
 from pydantic import ValidationError
 import pytest
 
-from app.models.schemas import (
-    EvalCaseCreateRequest,
-    EvalRunRateRequest,
-    ParseTextRequest,
+from app.schemas.evaluation import EvalCaseCreateRequest, EvalRunRateRequest
+from app.schemas.import_text import ParseTextRequest
+from app.schemas.prompts import (
     PromptCreateRequest,
     PromptField,
     PromptHistoryResponse,
     PromptUpdateRequest,
-    RefineDraftRequest,
     VariableMetadataItem,
 )
+from app.schemas.refinement import RefineDraftRequest
 
 
 class TestPromptField:

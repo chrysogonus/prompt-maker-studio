@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: ['*']
   push:
-    branches: [main, development]
+    branches: [main, dev, development]
     # Publishing is gated on a version tag, not on landing a commit — see the
     # publish job.
     tags: ['v*']

@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import PromptEditor from '@/components/editor/PromptEditor';
+import PromptEditor from '@/features/editor/PromptEditor';
 
 export default function EditPromptPage() {
   const params = useParams<{ id: string }>();

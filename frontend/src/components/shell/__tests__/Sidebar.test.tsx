@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Sidebar from '../Sidebar';
 import { ApiClient } from '@/lib/api';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import type { PromptHistoryResponse } from '@/types/prompt';
+
+import { LibraryDataProvider } from '@/features/library/LibraryData';
+import type { ReactElement } from 'react';
+
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: LibraryDataProvider });
 
 let pathname = '/library';
 let params = new URLSearchParams();

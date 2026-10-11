@@ -275,7 +275,7 @@ For production deployment:
 
 1. Use proper secrets management (not `.env` files)
 2. Plan around **SQLite only**. Prompt Maker Studio has no PostgreSQL or MySQL
-   support: `backend/app/database/migrations.py` is a SQLite-specific migration
+   support: `backend/app/database/migrations/runner.py` is a SQLite-specific migration
    runner, and the schema, backup, and restore tooling all assume a single
    database file. That also caps you at one backend replica — see
    [`product/DECISIONS.md`](../product/DECISIONS.md). Persist the

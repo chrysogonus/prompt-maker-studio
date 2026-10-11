@@ -1,0 +1,447 @@
+'use client';
+
+import { FormEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+import { ApiClient, ApiError, PROMPT_NOT_FOUND_MESSAGE, isValidPromptId } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import { pageTitle, storageKey } from '@/lib/branding';
+import { notifyLibraryChanged } from '@/lib/libraryEvents';
+import { sectionNameError, variablesIn } from '@/lib/sections';
+import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
+import { PromptHistoryResponse, PromptUpdateRequest, PromptVersionResponse } from '@/types/prompt';
+
+import { useDraftPersistence } from './useDraftPersistence';
+import {
+  EditorSection,
+  Metadata,
+  Notice,
+  toEditorSections,
+  blankSections,
+  toFields,
+  snapshot,
+  readDraft,
+  PromptEditorProps,
+} from './editorState';
+
+export function usePromptEditor({ promptId, initialStarter, openImport }: PromptEditorProps) {
+  const router = useRouter();
+  const { currentUser } = useAuth();
+  const isNew = promptId === undefined;
+  // Scoped by username: prompt ids are per account, and two accounts can
+  // share a browser.
+  const draftKey = currentUser ? storageKey(`editor-draft:${currentUser}:${promptId ?? 'new'}`) : null;
+
+  const [prompt, setPrompt] = useState<PromptHistoryResponse | null>(null);
+  const promptRef = useRef<PromptHistoryResponse | null>(null);
+  const [versions, setVersions] = useState<PromptVersionResponse[]>([]);
+  const [sections, setSections] = useState<EditorSection[]>(blankSections);
+  const [metadata, setMetadata] = useState<Metadata>({});
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [mode, setMode] = useState<'template' | 'filled'>('template');
+  const [mobileTab, setMobileTab] = useState<'edit' | 'use'>(isNew ? 'edit' : 'use');
+  const [previewOpen, setPreviewOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [restoredDraft, setRestoredDraft] = useState(false);
+  const [loading, setLoading] = useState(!isNew);
+  const [loadError, setLoadError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [note, setNote] = useState('');
+  const [conflict, setConflict] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const noticeTimer = useRef<number | null>(null);
+  const [saveDialog, setSaveDialog] = useState<{ name: string; folder: string; error: string } | null>(null);
+  const [moveDialog, setMoveDialog] = useState<string | null>(null);
+  const [folders, setFolders] = useState<string[]>([]);
+  const [renaming, setRenaming] = useState(false);
+  const [starterOpen, setStarterOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(Boolean(openImport));
+  const [aiAvailable, setAiAvailable] = useState(true);
+  const mutationChain = useRef<Promise<unknown>>(Promise.resolve());
+
+  const showNotice = useCallback((next: Notice, ms = 4000) => {
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+    setNotice(next);
+    noticeTimer.current = window.setTimeout(() => setNotice(null), ms);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+    },
+    [],
+  );
+
+  const applyPrompt = useCallback((next: PromptHistoryResponse) => {
+    promptRef.current = next;
+    setPrompt(next);
+  }, []);
+
+  const fields = useMemo(() => toFields(sections), [sections]);
+  const variables = useMemo(() => variablesIn(fields), [fields]);
+  const savedSnapshot = prompt ? snapshot(prompt.fields, prompt.variable_metadata) : null;
+  const currentSnapshot = snapshot(fields, metadata);
+  const dirty = prompt
+    ? currentSnapshot !== savedSnapshot
+    : fields.some((field) => field.content.trim()) || Object.keys(metadata).length > 0;
+
+  const nameErrors = sections.map((section, i) =>
+    sectionNameError(
+      section.name,
+      sections.filter((_, j) => j !== i).map((other) => other.name),
+    ),
+  );
+
+  // Load a saved prompt, preferring a draft made against the same saved state.
+  useEffect(() => {
+    if (promptId === undefined) return;
+    let cancelled = false;
+    (async () => {
+      if (!isValidPromptId(promptId)) {
+        setLoadError(PROMPT_NOT_FOUND_MESSAGE);
+        setLoading(false);
+        return;
+      }
+      try {
+        const [loaded, history] = await Promise.all([
+          ApiClient.getPromptById(promptId),
+          ApiClient.getPromptVersions(promptId),
+        ]);
+        if (cancelled) return;
+        applyPrompt(loaded);
+        setVersions(history);
+        const base = snapshot(loaded.fields, loaded.variable_metadata);
+        const draft = readDraft(draftKey);
+        if (draft && draft.base === base) {
+          setSections(toEditorSections(draft.sections, true));
+          setMetadata(draft.metadata);
+          setRestoredDraft(true);
+        } else {
+          setSections(toEditorSections(loaded.fields, true));
+          setMetadata(loaded.variable_metadata ?? {});
+        }
+        if (variablesIn(loaded.fields).length > 0) setMode('filled');
+      } catch (err) {
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load prompt.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // `draftKey` only changes when the signed-in user does, which remounts anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyPrompt, promptId]);
+
+  // A new prompt picks up where the last unsaved one left off, and otherwise
+  // starts from the template it was opened with.
+  useEffect(() => {
+    if (!isNew) return;
+    const draft = readDraft(draftKey);
+    const starter = STARTER_TEMPLATES.find((template) => template.id === initialStarter);
+    if (draft) {
+      setSections(toEditorSections(draft.sections, true));
+      setMetadata(draft.metadata);
+      setRestoredDraft(true);
+    } else if (starter) {
+      setSections(toEditorSections(starter.sections, false));
+    }
+  }, [draftKey, initialStarter, isNew]);
+
+  useDraftPersistence({ dirty, draftKey, fields, loadError, loading, metadata, savedSnapshot });
+
+  useEffect(() => {
+    ApiClient.getPromptsConfig()
+      .then((config) => setAiAvailable(config.provider_connected))
+      .catch(() => setAiAvailable(true));
+    ApiClient.getFolders()
+      .then(setFolders)
+      .catch(() => setFolders([]));
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    document.title = pageTitle(
+      isNew ? 'New prompt' : (prompt?.name ?? (loadError ? 'Could not load prompt' : 'Prompt')),
+    );
+    return () => {
+      document.title = pageTitle();
+    };
+  }, [isNew, loadError, loading, prompt?.name]);
+
+  const enqueue = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
+    const result = mutationChain.current.then(task, task);
+    mutationChain.current = result.catch(() => undefined);
+    return result;
+  }, []);
+
+  /** PATCH stamped with the freshest known server state, one at a time. */
+  const patch = useCallback(
+    (body: PromptUpdateRequest) =>
+      enqueue(async () => {
+        const current = promptRef.current!;
+        const updated = await ApiClient.updatePrompt(current.id, {
+          ...body,
+          last_updated_at: current.updated_at || current.created_at,
+        });
+        applyPrompt(updated);
+        return updated;
+      }),
+    [applyPrompt, enqueue],
+  );
+
+  const reportError = (err: unknown, fallback: string) => {
+    if (err instanceof ApiError && err.status === 409) {
+      setConflict(true);
+      return;
+    }
+    showNotice({ text: err instanceof Error ? err.message : fallback, tone: 'error' }, 8000);
+  };
+
+  const save = async () => {
+    if (savingRef.current) return;
+    setSections((current) => current.map((s) => ({ ...s, touched: true })));
+    if (nameErrors.some(Boolean)) {
+      showNotice({ text: 'Fix the highlighted section names before saving.', tone: 'error' });
+      return;
+    }
+    if (!prompt) {
+      setSaveDialog({ name: '', folder: '', error: '' });
+      return;
+    }
+    if (!dirty) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const updated = await patch({
+        fields,
+        variable_metadata: metadata,
+        note: note.trim() || null,
+      });
+      setSections((current) =>
+        current.map((s, i) => ({ ...s, name: updated.fields[i]?.name ?? s.name })),
+      );
+      setNote('');
+      setRestoredDraft(false);
+      setConflict(false);
+      setVersions(await ApiClient.getPromptVersions(updated.id));
+      showNotice({ text: 'Saved' });
+    } catch (err) {
+      reportError(err, 'Failed to save prompt.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  // Ctrl/⌘+S saves here instead of the browser's "Save page".
+  const saveRef = useRef(save);
+  useLayoutEffect(() => {
+    saveRef.current = save;
+  });
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        if (!saveDialog) saveRef.current();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [saveDialog]);
+
+  const createPrompt = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!saveDialog || savingRef.current) return;
+    const name = saveDialog.name.trim();
+    if (!name) {
+      setSaveDialog({ ...saveDialog, error: 'Give the prompt a name.' });
+      return;
+    }
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const created = await ApiClient.createPrompt({
+        name,
+        fields,
+        folder: saveDialog.folder.trim() || null,
+        variable_metadata: metadata,
+      });
+      if (draftKey) localStorage.removeItem(draftKey);
+      router.replace(`/editor/${created.id}`);
+    } catch (err) {
+      setSaveDialog({
+        ...saveDialog,
+        error: err instanceof Error ? err.message : 'Failed to save prompt.',
+      });
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const discardEdits = () => {
+    if (draftKey) localStorage.removeItem(draftKey);
+    setRestoredDraft(false);
+    setConflict(false);
+    if (prompt) {
+      setSections(toEditorSections(prompt.fields, true));
+      setMetadata(prompt.variable_metadata ?? {});
+    } else {
+      setSections(blankSections());
+      setMetadata({});
+    }
+  };
+
+  const reloadAfterConflict = async () => {
+    try {
+      applyPrompt(await ApiClient.getPromptById(prompt!.id));
+      setVersions(await ApiClient.getPromptVersions(prompt!.id));
+      setConflict(false);
+      showNotice({
+        text: 'Loaded the latest saved version. Your edits are still here; saving replaces it.',
+      });
+    } catch (err) {
+      reportError(err, 'Failed to reload prompt.');
+    }
+  };
+
+  const restore = async (versionId: number, versionNumber: number) => {
+    try {
+      const restored = await enqueue(async () => {
+        const updated = await ApiClient.restorePromptVersion(promptRef.current!.id, versionId);
+        applyPrompt(updated);
+        return updated;
+      });
+      setSections(toEditorSections(restored.fields, true));
+      setMetadata(restored.variable_metadata ?? {});
+      setVersions(await ApiClient.getPromptVersions(restored.id));
+      showNotice({ text: `Restored version ${versionNumber}` });
+    } catch (err) {
+      reportError(err, 'Failed to restore that version.');
+    }
+  };
+
+  const rename = async (value: string) => {
+    setRenaming(false);
+    const name = value.trim();
+    if (!prompt || !name || name === prompt.name) return;
+    try {
+      await patch({ name });
+      notifyLibraryChanged();
+    } catch (err) {
+      reportError(err, 'Failed to rename prompt.');
+    }
+  };
+
+  const move = async (event: FormEvent) => {
+    event.preventDefault();
+    const folder = (moveDialog ?? '').trim();
+    setMoveDialog(null);
+    try {
+      await patch({ folder });
+      notifyLibraryChanged();
+      showNotice({ text: folder ? `Moved to ${folder}` : 'Moved to Unfiled' });
+    } catch (err) {
+      reportError(err, 'Failed to move prompt.');
+    }
+  };
+
+  const updateSection = (key: number, change: Partial<EditorSection>) =>
+    setSections((current) => current.map((s) => (s.key === key ? { ...s, ...change } : s)));
+
+  const moveSection = (index: number, offset: -1 | 1) =>
+    setSections((current) => {
+      const next = [...current];
+      [next[index], next[index + offset]] = [next[index + offset], next[index]];
+      return next;
+    });
+
+  const removeSection = (index: number) => {
+    const removed = sections[index];
+    setSections((current) => {
+      const next = current.filter((_, i) => i !== index);
+      return next.length ? next : blankSections();
+    });
+    showNotice(
+      {
+        text: `Removed “${removed.name || 'section'}”`,
+        action: {
+          label: 'Undo',
+          run: () =>
+            setSections((current) => [
+              ...current.slice(0, index),
+              removed,
+              ...current.slice(index),
+            ]),
+        },
+      },
+      6000,
+    );
+  };
+
+  const replaceSections = (next: { name: string; content: string; hint?: string }[]) => {
+    setSections(toEditorSections(next, false));
+    setMetadata({});
+    setValues({});
+  };
+  return {
+    router,
+    isNew,
+    prompt,
+    promptRef,
+    versions,
+    sections,
+    setSections,
+    metadata,
+    setMetadata,
+    values,
+    setValues,
+    mode,
+    setMode,
+    mobileTab,
+    setMobileTab,
+    previewOpen,
+    setPreviewOpen,
+    historyOpen,
+    setHistoryOpen,
+    restoredDraft,
+    loading,
+    loadError,
+    saving,
+    note,
+    setNote,
+    conflict,
+    notice,
+    setNotice,
+    saveDialog,
+    setSaveDialog,
+    moveDialog,
+    setMoveDialog,
+    folders,
+    renaming,
+    setRenaming,
+    starterOpen,
+    setStarterOpen,
+    importOpen,
+    setImportOpen,
+    aiAvailable,
+    showNotice,
+    fields,
+    variables,
+    dirty,
+    nameErrors,
+    save,
+    createPrompt,
+    discardEdits,
+    reloadAfterConflict,
+    restore,
+    rename,
+    move,
+    updateSection,
+    moveSection,
+    removeSection,
+    replaceSections,
+  };
+}

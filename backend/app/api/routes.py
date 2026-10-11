@@ -2,48 +2,35 @@
 API route handlers for prompt operations.
 """
 
-from copy import deepcopy
-from datetime import UTC, datetime
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
-from app.api.deps import get_llm_connection, llm_http_error
-from app.api.deps import get_owned_prompt as _get_owned_prompt
+from app.api.deps import call_service, get_llm_connection, llm_http_error
 from app.auth.dependencies import get_current_user
 from app.database.connection import get_db
 from app.limiter import limiter
 from app.metrics import (
     ai_import_failures_total,
     ai_imports_total,
-    prompts_saved_total,
 )
-from app.models.eval_case import EvalCase
-from app.models.prompt import Prompt
-from app.models.prompt_version import PromptVersion
-from app.models.schemas import (
+from app.models.user import User
+from app.schemas.connections import PromptsConfigResponse
+from app.schemas.import_text import ParseTextRequest, ParseTextResponse
+from app.schemas.prompts import (
     DataExportResponse,
-    ExportedPrompt,
-    ExportedPromptVersion,
     FolderChangeResponse,
     FolderRenameRequest,
-    ParseTextRequest,
-    ParseTextResponse,
     PromptCreateRequest,
     PromptHistoryResponse,
-    PromptsConfigResponse,
     PromptUpdateRequest,
     PromptVersionResponse,
 )
-from app.models.user import User
 from app.services.budget_service import BudgetExceededError, BudgetService
 from app.services.llm_client import active_provider_and_model, available_models_for
-from app.services.optimistic_concurrency import is_stale, next_write_stamp
-from app.services.prompt_id_service import PromptIdService
 from app.services.prompt_parser import PromptParserService as TextParserService
-from app.services.prompt_sections import render_sections
-from app.services.prompt_version_service import PromptVersionService
+from app.services.prompts import export, folders, library, versions
 from app.services.spend_ledger import record_billed_call
 
 logger = logging.getLogger(__name__)
@@ -115,27 +102,7 @@ def create_prompt(
     Returns:
         The saved prompt
     """
-    fields = [{"name": field.name, "content": field.content} for field in body.fields]
-    prompt = Prompt(
-        id=PromptIdService.next_id(db),
-        user_id=current_user.id,
-        fields=fields,
-        generated_prompt=render_sections(fields),
-        name=body.name,
-        folder=(body.folder or "").strip() or None,
-        variable_metadata=(
-            {k: v.model_dump() for k, v in body.variable_metadata.items()}
-            if body.variable_metadata
-            else None
-        ),
-    )
-    db.add(prompt)
-    db.commit()
-    db.refresh(prompt)
-
-    prompts_saved_total.inc()
-
-    return prompt
+    return call_service(library.create_prompt, body=body, db=db, user_id=current_user.id)
 
 
 @router.get("/saved", response_model=list[PromptHistoryResponse])
@@ -160,14 +127,13 @@ def get_saved_prompts(
     Returns:
         List of named prompts ordered newest first
     """
-    query = db.query(Prompt).filter(Prompt.user_id == current_user.id, Prompt.name.isnot(None))
-
-    if folder:
-        query = query.filter(Prompt.folder == folder)
-    if favorite_only:
-        query = query.filter(Prompt.is_favorite.is_(True))
-
-    return query.order_by(Prompt.created_at.desc()).all()
+    return call_service(
+        library.get_saved_prompts,
+        folder=folder,
+        favorite_only=favorite_only,
+        db=db,
+        user_id=current_user.id,
+    )
 
 
 @router.get("/folders", response_model=list[str])
@@ -185,13 +151,7 @@ def get_prompt_folders(
     Returns:
         Sorted list of distinct folder labels
     """
-    rows = (
-        db.query(Prompt.folder)
-        .filter(Prompt.user_id == current_user.id, Prompt.folder.isnot(None))
-        .distinct()
-        .all()
-    )
-    return sorted({row[0] for row in rows if row[0]})
+    return call_service(folders.get_prompt_folders, db=db, user_id=current_user.id)
 
 
 @router.patch("/folders", response_model=FolderChangeResponse)
@@ -220,15 +180,7 @@ def rename_folder(
     Raises:
         HTTPException: 404 if the caller has no prompts in that folder
     """
-    moved = (
-        db.query(Prompt)
-        .filter(Prompt.user_id == current_user.id, Prompt.folder == name)
-        .update({Prompt.folder: body.name}, synchronize_session=False)
-    )
-    if not moved:
-        raise HTTPException(status_code=404, detail="Folder not found")
-    db.commit()
-    return FolderChangeResponse(name=body.name, prompt_count=moved)
+    return call_service(folders.rename_folder, body=body, name=name, db=db, user_id=current_user.id)
 
 
 @router.delete("/folders", response_model=FolderChangeResponse)
@@ -251,15 +203,7 @@ def remove_folder(
     Raises:
         HTTPException: 404 if the caller has no prompts in that folder
     """
-    moved = (
-        db.query(Prompt)
-        .filter(Prompt.user_id == current_user.id, Prompt.folder == name)
-        .update({Prompt.folder: None}, synchronize_session=False)
-    )
-    if not moved:
-        raise HTTPException(status_code=404, detail="Folder not found")
-    db.commit()
-    return FolderChangeResponse(name=name, prompt_count=moved)
+    return call_service(folders.remove_folder, name=name, db=db, user_id=current_user.id)
 
 
 @router.get("/export", response_model=DataExportResponse)
@@ -282,56 +226,7 @@ def export_prompts(
     Returns:
         A timestamped JSON dump of every owned prompt and its version history
     """
-    prompts = (
-        db.query(Prompt)
-        .filter(Prompt.user_id == current_user.id)
-        .order_by(Prompt.created_at.asc())
-        .all()
-    )
-
-    # Batch-load every version (with its author) for all prompts in one query
-    # instead of one query per prompt — this scaled linearly with a user's
-    # saved-prompt count, unlike the aggregate queries in analytics_service.py.
-    prompt_ids = [prompt.id for prompt in prompts]
-    versions_by_prompt_id: dict[int, list[PromptVersion]] = {pid: [] for pid in prompt_ids}
-    if prompt_ids:
-        all_versions = (
-            db.query(PromptVersion)
-            .options(joinedload(PromptVersion.author))
-            .filter(PromptVersion.prompt_id.in_(prompt_ids))
-            .order_by(PromptVersion.prompt_id.asc(), PromptVersion.version_number.asc())
-            .all()
-        )
-        for version in all_versions:
-            versions_by_prompt_id[version.prompt_id].append(version)
-
-    exported = [
-        ExportedPrompt(
-            id=prompt.id,
-            name=prompt.name,
-            fields=prompt.fields,
-            generated_prompt=prompt.generated_prompt,
-            folder=prompt.folder,
-            tags=prompt.tags,
-            is_favorite=prompt.is_favorite,
-            created_at=prompt.created_at,
-            updated_at=prompt.updated_at,
-            versions=[
-                ExportedPromptVersion(
-                    version_number=v.version_number,
-                    note=v.note,
-                    author=v.author.username if v.author else None,
-                    fields=v.fields,
-                    generated_prompt=v.generated_prompt,
-                    created_at=v.created_at,
-                )
-                for v in versions_by_prompt_id[prompt.id]
-            ],
-        )
-        for prompt in prompts
-    ]
-
-    return DataExportResponse(exported_at=datetime.now(UTC), prompts=exported)
+    return call_service(export.export_prompts, db=db, user_id=current_user.id)
 
 
 @router.get("/config", response_model=PromptsConfigResponse)
@@ -387,7 +282,9 @@ def get_prompt_by_id(
     Raises:
         HTTPException: If prompt not found or not owned by the current user
     """
-    return _get_owned_prompt(prompt_id, current_user.id, db)
+    return call_service(
+        library.get_prompt_by_id, prompt_id=prompt_id, db=db, user_id=current_user.id
+    )
 
 
 @router.patch("/{prompt_id}", response_model=PromptHistoryResponse)
@@ -416,42 +313,9 @@ def update_prompt(
     Raises:
         HTTPException: If prompt not found or not owned by the current user
     """
-    prompt = _get_owned_prompt(prompt_id, current_user.id, db)
-
-    # Optimistic concurrency check
-    if body.last_updated_at is not None:
-        db_time = prompt.updated_at or prompt.created_at
-        if is_stale(db_time, body.last_updated_at):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="This prompt has been modified by another session. Please reload to merge or overwrite.",
-            )
-
-    next_fields = (
-        [{"name": field.name, "content": field.content} for field in body.fields]
-        if body.fields is not None
-        else None
+    return call_service(
+        library.update_prompt, prompt_id=prompt_id, body=body, db=db, user_id=current_user.id
     )
-    if next_fields is not None and next_fields != prompt.fields:
-        PromptVersionService.snapshot(db, prompt, current_user.id, note=body.note)
-
-    if body.name is not None:
-        prompt.name = body.name
-    if next_fields is not None:
-        prompt.fields = next_fields
-        prompt.generated_prompt = render_sections(next_fields)
-    if body.folder is not None:
-        prompt.folder = body.folder
-    if body.is_favorite is not None:
-        prompt.is_favorite = body.is_favorite
-    if body.variable_metadata is not None:
-        prompt.variable_metadata = {k: v.model_dump() for k, v in body.variable_metadata.items()}
-
-    prompt.updated_at = next_write_stamp(prompt.updated_at or prompt.created_at)
-
-    db.commit()
-    db.refresh(prompt)
-    return prompt
 
 
 @router.get("/{prompt_id}/versions", response_model=list[PromptVersionResponse])
@@ -477,25 +341,9 @@ def get_prompt_versions(
     Raises:
         HTTPException: If prompt not found or not owned by the current user
     """
-    prompt = _get_owned_prompt(prompt_id, current_user.id, db)
-    versions = (
-        db.query(PromptVersion)
-        .filter(PromptVersion.prompt_id == prompt.id)
-        .order_by(PromptVersion.version_number.desc())
-        .all()
+    return call_service(
+        versions.get_prompt_versions, prompt_id=prompt_id, db=db, user_id=current_user.id
     )
-    return [
-        PromptVersionResponse(
-            id=v.id,
-            version_number=v.version_number,
-            note=v.note,
-            author=v.author.username if v.author else None,
-            fields=v.fields,
-            generated_prompt=v.generated_prompt,
-            created_at=v.created_at,
-        )
-        for v in versions
-    ]
 
 
 @router.post("/{prompt_id}/versions/{version_id}/restore", response_model=PromptHistoryResponse)
@@ -528,21 +376,13 @@ def restore_prompt_version(
     Raises:
         HTTPException: If the prompt or version is not found/not owned
     """
-    prompt = _get_owned_prompt(prompt_id, current_user.id, db)
-    version = (
-        db.query(PromptVersion)
-        .filter(PromptVersion.id == version_id, PromptVersion.prompt_id == prompt.id)
-        .first()
+    return call_service(
+        versions.restore_prompt_version,
+        prompt_id=prompt_id,
+        version_id=version_id,
+        db=db,
+        user_id=current_user.id,
     )
-    if not version:
-        raise HTTPException(status_code=404, detail="Version not found")
-
-    PromptVersionService.restore(db, prompt, version, current_user.id)
-    prompt.updated_at = next_write_stamp(prompt.updated_at or prompt.created_at)
-
-    db.commit()
-    db.refresh(prompt)
-    return prompt
 
 
 @router.delete("/{prompt_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -567,9 +407,7 @@ def delete_prompt(
     Raises:
         HTTPException: If prompt not found or not owned by the current user
     """
-    prompt = _get_owned_prompt(prompt_id, current_user.id, db)
-    db.delete(prompt)
-    db.commit()
+    return call_service(library.delete_prompt, prompt_id=prompt_id, db=db, user_id=current_user.id)
 
 
 @router.post("/{prompt_id}/duplicate", response_model=PromptHistoryResponse)
@@ -595,59 +433,6 @@ def duplicate_prompt(
     Raises:
         HTTPException: If prompt not found or not owned by the current user
     """
-    original = _get_owned_prompt(prompt_id, current_user.id, db)
-    # 100 matches the name length cap enforced elsewhere (PromptRequest/PromptUpdateRequest).
-    base_name = f"{original.name or 'Untitled Prompt'} Duplicate"[:100]
-    existing_names = {
-        row[0]
-        for row in db.query(Prompt.name)
-        .filter(Prompt.user_id == current_user.id, Prompt.name.isnot(None))
-        .all()
-    }
-    duplicate_name = base_name
-    suffix = 1
-    while duplicate_name in existing_names:
-        suffix_text = f" {suffix}"
-        duplicate_name = f"{base_name[: 100 - len(suffix_text)]}{suffix_text}"
-        suffix += 1
-
-    duplicated = Prompt(
-        id=PromptIdService.next_id(db),
-        user_id=current_user.id,
-        fields=deepcopy(original.fields),
-        generated_prompt=original.generated_prompt,
-        name=duplicate_name,
-        folder=original.folder,
-        is_favorite=False,
-        tags=deepcopy(original.tags),
-        variable_metadata=deepcopy(original.variable_metadata),
+    return call_service(
+        library.duplicate_prompt, prompt_id=prompt_id, db=db, user_id=current_user.id
     )
-
-    db.add(duplicated)
-    db.flush()
-
-    original_cases = (
-        db.query(EvalCase)
-        .filter(EvalCase.prompt_id == original.id)
-        .order_by(EvalCase.position)
-        .all()
-    )
-    db.add_all(
-        [
-            EvalCase(
-                prompt_id=duplicated.id,
-                method=case.method,
-                name=case.name,
-                criteria=case.criteria,
-                variables=deepcopy(case.variables),
-                intentionally_empty=case.intentionally_empty,
-                position=case.position,
-            )
-            for case in original_cases
-        ]
-    )
-    db.commit()
-    db.refresh(duplicated)
-
-    prompts_saved_total.inc()
-    return duplicated

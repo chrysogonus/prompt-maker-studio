@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import AppLayout from '../layout';
 import { AuthService } from '@/lib/auth';
 
-vi.mock('@/components/AuthForm', () => ({
+vi.mock('@/features/auth/AuthForm', () => ({
   default: () => <div>Auth form</div>,
 }));
 

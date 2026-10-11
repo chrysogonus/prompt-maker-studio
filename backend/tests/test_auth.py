@@ -1156,7 +1156,7 @@ def test_change_password_keeps_the_calling_session_signed_in(client):
 def test_password_reset_revokes_tokens_issued_before_it(client, monkeypatch):
     """Account recovery has to recover the account: a session stolen before the
     reset must stop working, not survive until its own expiry."""
-    from app.api import auth_routes
+    from app.services.accounts import passwords as auth_routes
 
     token = _register_and_login(client, username="resetrevoke", password="oldpass123")
     captured: dict[str, str] = {}
