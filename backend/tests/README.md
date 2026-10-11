@@ -39,7 +39,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_prompt_versions.py` | Version snapshotting on edit, restore semantics, ownership, cascade delete, run_count passthrough |
 | `test_prompts_config.py` | Per-user AI capability endpoint: connection state, model list, budget status, and per-user scoping |
 | `test_refine_routes.py` | Refine tab clarifying-questions and draft endpoints, the accept-as-new-version flow, and budget-ceiling rejection |
-| `test_safe_regex.py` | Time-bounded matching for user-supplied eval regexes: catastrophic patterns are abandoned within a fixed budget regardless of input length, the runaway worker is killed rather than merely abandoned, the pool recovers, and `re` semantics (backreferences, lookaround) are preserved |
+| `test_safe_regex.py` | Time-bounded matching for user-supplied eval regexes: catastrophic patterns are abandoned within a fixed budget regardless of input length, the runaway worker is killed rather than merely abandoned, workers come from a fork server rather than a fork of the threaded server, the pool recovers, and `re` semantics (backreferences, lookaround) are preserved |
 | `test_schemas.py` | Pydantic request and response validation, including `VariableMetadataItem`, eval case/rating, and refine draft schemas |
 | `test_secret_store.py` | Fernet encryption of stored provider API keys: round-trip, non-determinism, key-rotation failure mode, and display masking |
 | `test_seed_demo_user.py` | `backend/scripts/seed_demo_user.py` — the `SEED_DEMO_USER` opt-in guard, idempotent demo-account seeding, and its downstream analytics |

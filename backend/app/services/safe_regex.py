@@ -21,6 +21,7 @@ import atexit
 import concurrent.futures
 from concurrent.futures import BrokenExecutor, ProcessPoolExecutor
 import logging
+import multiprocessing
 import re
 import threading
 
@@ -35,6 +36,13 @@ MATCH_TIMEOUT_SECONDS = 0.25
 # so a bound here raises the cost of finding a pattern that fits inside the
 # timeout while still covering any plausible model response.
 MAX_MATCH_INPUT_CHARS = 100_000
+
+# Workers come from a fork server, not a fork of this process: forking while
+# other threads run copies any lock they hold, and a worker that inherits one
+# blocks before it runs anything. Preloading this module means a fresh worker
+# does not spend its match budget importing it.
+_MP_CONTEXT = multiprocessing.get_context("forkserver")
+_MP_CONTEXT.set_forkserver_preload([__name__])
 
 _executor: ProcessPoolExecutor | None = None
 _executor_lock = threading.Lock()
@@ -55,7 +63,7 @@ def _get_executor() -> ProcessPoolExecutor:
         if _executor is None:
             # One worker: matching is not parallelised here, and a single process
             # keeps the blast radius of a kill to one in-flight match.
-            _executor = ProcessPoolExecutor(max_workers=1)
+            _executor = ProcessPoolExecutor(max_workers=1, mp_context=_MP_CONTEXT)
         return _executor
 
 
