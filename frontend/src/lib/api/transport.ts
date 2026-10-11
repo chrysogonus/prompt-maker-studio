@@ -4,7 +4,8 @@ import { AuthService } from '../auth';
 import { CREDENTIALS, csrfHeaders } from '../authCookies';
 
 export function sessionFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  return fetch(url, { ...init, headers: csrfHeaders(), credentials: CREDENTIALS });
+  const contentType = new Headers(init.headers).get('Content-Type') ?? 'application/json';
+  return fetch(url, { ...init, headers: csrfHeaders(contentType), credentials: CREDENTIALS });
 }
 
 export async function authenticatedFetch(

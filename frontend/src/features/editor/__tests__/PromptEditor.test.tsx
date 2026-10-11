@@ -99,6 +99,16 @@ async function renderSaved() {
   await screen.findByRole('button', { name: 'Weekly status update' });
 }
 
+it('only opens evaluation for a saved prompt without unsaved changes', async () => {
+  const user = userEvent.setup();
+  await renderSaved();
+  expect(screen.getByRole('link', { name: 'Evaluate' })).toHaveAttribute('href', '/editor/1/evaluate');
+  await user.type(screen.getByLabelText('Role text'), ' Updated.');
+  expect(screen.queryByRole('link', { name: 'Evaluate' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Evaluate' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Evaluate' })).toHaveAttribute('title', 'Save your changes before evaluating.');
+});
+
 describe('prompt refinement', () => {
   it('keeps a pending request when closed and restores focus without starting another call', async () => {
     const user = userEvent.setup();

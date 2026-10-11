@@ -78,4 +78,3 @@ The evaluation UI uses these endpoints for saved prompts. Runs use the latest sa
 | `GET` | `/api/oauth/authorize` | No | Start of the OAuth flow; redirects to the consent page |
 | `GET`, `POST` | `/api/oauth/consent` | Yes | Consent-screen details and the user's allow/deny decision |
 | `POST` | `/api/admin/smtp/check` | Admin Token | Validate SMTP connectivity (requires `X-Admin-Token` header) |
-

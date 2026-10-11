@@ -1,0 +1,65 @@
+import type { EvalCase, EvalCaseInput, EvalProposal, EvalRun } from '@/types/evaluation';
+import { API_URL } from '../apiBase';
+import { ApiError } from './errors';
+import { authenticatedFetch } from './transport';
+
+async function request(promptId: number, path: string, init: RequestInit = {}, billed = false) {
+  const response = await authenticatedFetch(
+    `${API_URL}/api/prompts/${promptId}/eval/${path}`, init, billed ? 2 * 60 * 1000 : 0,
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    const detail = error?.detail;
+    const message = typeof detail === 'string' ? detail : Array.isArray(detail)
+      ? detail.map((item: { msg: string }) => item.msg).join('. ')
+      : 'Evaluation request failed. Please try again.';
+    throw new ApiError(message, response.status);
+  }
+  return response;
+}
+
+export async function getEvalCases(promptId: number): Promise<EvalCase[]> {
+  return (await request(promptId, 'cases')).json();
+}
+
+export async function createEvalCase(promptId: number, data: EvalCaseInput): Promise<EvalCase> {
+  return (await request(promptId, 'cases', { method: 'POST', body: JSON.stringify(data) })).json();
+}
+
+export async function updateEvalCase(promptId: number, caseId: number, data: EvalCaseInput): Promise<EvalCase> {
+  return (await request(promptId, `cases/${caseId}`, { method: 'PATCH', body: JSON.stringify(data) })).json();
+}
+
+export async function deleteEvalCase(promptId: number, caseId: number): Promise<void> {
+  await request(promptId, `cases/${caseId}`, { method: 'DELETE' });
+}
+
+export async function importEvalCases(promptId: number, csv: string): Promise<EvalCase[]> {
+  return (await request(promptId, 'cases/import', {
+    method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: csv,
+  })).json();
+}
+
+export async function exportEvalCases(promptId: number): Promise<Blob> {
+  return (await request(promptId, 'cases/export')).blob();
+}
+
+export async function generateEvalCases(promptId: number, goal: string): Promise<{ proposals: EvalProposal[] }> {
+  return (await request(promptId, 'cases/generate', {
+    method: 'POST', body: JSON.stringify({ goal: goal.trim() || null }),
+  }, true)).json();
+}
+
+export async function runEvaluation(promptId: number): Promise<EvalRun> {
+  return (await request(promptId, 'runs', { method: 'POST' }, true)).json();
+}
+
+export async function getEvalRuns(promptId: number): Promise<EvalRun[]> {
+  return (await request(promptId, 'runs')).json();
+}
+
+export async function rateEvalResult(promptId: number, runId: number, resultId: number, stars: number): Promise<EvalRun> {
+  return (await request(promptId, `runs/${runId}/results/${resultId}/rate`, {
+    method: 'POST', body: JSON.stringify({ stars }),
+  })).json();
+}
