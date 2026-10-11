@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.prompt import Prompt
 from app.models.prompt_version import PromptVersion
+from app.services.prompt_sections import render_sections, sections_for_text
 
 
 class PromptVersionService:
@@ -66,7 +67,9 @@ class PromptVersionService:
     def restore(db: Session, prompt: Prompt, version: PromptVersion, author_user_id: int) -> None:
         """
         Restore `prompt` to the state captured in `version`, after snapshotting
-        the state being replaced so it isn't lost.
+        the state being replaced so it isn't lost. The sections are recovered
+        from the version's text, since older versions can disagree with their
+        own sections.
         """
         PromptVersionService.snapshot(
             db,
@@ -74,5 +77,5 @@ class PromptVersionService:
             author_user_id,
             note=f"Restore to v{version.version_number}",
         )
-        prompt.fields = version.fields
-        prompt.generated_prompt = version.generated_prompt
+        prompt.fields = sections_for_text(version.generated_prompt, version.fields)
+        prompt.generated_prompt = render_sections(prompt.fields)

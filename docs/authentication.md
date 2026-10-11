@@ -99,28 +99,26 @@ the header.
 Invalid, expired, or userless tokens return 401. Requests with neither a
 session cookie nor a bearer credential are rejected the same way.
 
-The frontend renews a still-valid session before long-running evaluation and
-delayed-delete requests, and retries an eval-history request once after a 401 —
-rebuilding headers per attempt, because a refresh rotates the CSRF token. An
+The frontend renews a still-valid session before a delayed prompt deletion, and
+retries an authenticated request once after a 401 — rebuilding headers per
+attempt, because a refresh rotates the CSRF token. An
 expired session cannot be refreshed and still requires login.
 
 ## Prompt Access
 
 All mutating prompt operations and prompt data retrieval require authentication:
 
-- `POST /api/prompts/parse-text`
-- `POST /api/prompts/generate`
-- `GET /api/prompts/saved`
-- `GET /api/prompts/history`
+- `POST /api/prompts` and `POST /api/prompts/parse-text`
+- `GET /api/prompts/saved` and `GET`, `PATCH`, `DELETE /api/prompts/folders`
 - `GET`, `PATCH`, `DELETE /api/prompts/{id}`
-- `POST /api/prompts/{id}/duplicate`
+- `POST /api/prompts/{id}/duplicate`, versions and restore
 
 `GET /api/prompts/config` **requires authentication**. It used to be the one
 unauthenticated route in `routes.py`, back when AI availability was a global
 env check; with bring-your-own provider credentials, "is AI available" is a
 question about the calling user's own connection. It returns
-`provider_connected` (so AI import and the Playground can point at Settings
-instead of failing at call time), `provider` / `provider_label` / `model`
+`provider_connected` (so Import text can point at Settings instead of failing
+at call time), `provider` / `provider_label` / `model`
 describing that connection, `available_models` (empty when unconnected, so the
 UI never advertises a model it cannot run), and the operator's global budget
 snapshot — `budget_exhausted` plus `global_budget_remaining_usd`, which is

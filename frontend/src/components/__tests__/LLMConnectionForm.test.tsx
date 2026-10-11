@@ -68,7 +68,7 @@ describe('LLMConnectionForm', () => {
     expect(await screen.findByLabelText('Provider')).toHaveValue('openai');
     expect(screen.getByLabelText('Base URL')).toHaveValue('https://api.openai.com/v1');
     expect(screen.getByLabelText('Model')).toHaveValue('gpt-4o-mini');
-    expect(screen.getByText(/Connected · OpenAI/)).toBeInTheDocument();
+    expect(screen.getByText(/Connected to OpenAI/)).toBeInTheDocument();
   });
 
   it('shows live models with pricing while keeping free-text entry available', async () => {
@@ -329,7 +329,9 @@ describe('LLMConnectionForm', () => {
     render(<LLMConnectionForm />);
 
     expect(
-      await screen.findByText('Server default · vLLM (self-hosted) · served-model'),
+      await screen.findByText(
+        'Using this server’s default connection (vLLM (self-hosted), served-model)',
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
   });

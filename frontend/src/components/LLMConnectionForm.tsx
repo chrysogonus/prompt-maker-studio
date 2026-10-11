@@ -1,5 +1,5 @@
 /**
- * Settings → API access: the user's bring-your-own LLM provider connection.
+ * Settings, AI connection: the user's bring-your-own LLM provider connection.
  *
  * Every AI feature runs against the provider configured here, billed to the
  * user's own account — there is no operator-wide key. The stored API key is
@@ -179,8 +179,7 @@ export default function LLMConnectionForm() {
         <div>
           <div className={styles.label}>AI provider</div>
           <div className={styles.hint}>
-            Bring your own account. AI import, Refine, the Playground, and evaluations all run
-            against this endpoint and are billed to you.
+            Your own OpenAI-compatible account. Calls are billed by your provider.
           </div>
         </div>
         <span
@@ -191,9 +190,9 @@ export default function LLMConnectionForm() {
           }
         >
           {connection?.configured
-            ? `Connected · ${connection.provider_label}`
+            ? `Connected to ${connection.provider_label}`
             : connection?.server_default
-              ? `Server default · ${connection.server_default.provider_label} · ${connection.server_default.model}`
+              ? `Using this server’s default connection (${connection.server_default.provider_label}, ${connection.server_default.model})`
               : 'Not connected'}
         </span>
       </div>

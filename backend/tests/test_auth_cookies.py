@@ -92,7 +92,7 @@ class TestSessionCookies:
         assert (
             client.patch(
                 "/api/auth/me",
-                json={"notify_run_failure": True},
+                json={"default_library_view": "grid"},
                 headers=_csrf_header(client),
             ).status_code
             == status.HTTP_200_OK
@@ -105,7 +105,7 @@ class TestCsrfProtection:
 
         response = client.patch(
             "/api/auth/me",
-            json={"notify_run_failure": True},
+            json={"default_library_view": "grid"},
             headers=_csrf_header(client),
         )
 
@@ -115,7 +115,7 @@ class TestCsrfProtection:
         """The shape of a cross-site forgery: cookie present, header absent."""
         _register_and_login(client)
 
-        response = client.patch("/api/auth/me", json={"notify_run_failure": True})
+        response = client.patch("/api/auth/me", json={"default_library_view": "grid"})
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert "CSRF" in response.json()["detail"]
@@ -125,7 +125,7 @@ class TestCsrfProtection:
 
         response = client.patch(
             "/api/auth/me",
-            json={"notify_run_failure": True},
+            json={"default_library_view": "grid"},
             headers={CSRF_HEADER_NAME: "not-the-real-token"},
         )
 
@@ -144,7 +144,7 @@ class TestCsrfProtection:
 
         response = client.patch(
             "/api/auth/me",
-            json={"notify_run_failure": True},
+            json={"default_library_view": "grid"},
             headers={"Authorization": f"Bearer {token}"},
         )
 

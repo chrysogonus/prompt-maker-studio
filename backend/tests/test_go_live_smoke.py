@@ -27,11 +27,14 @@ def test_register_login_generate_save_reload_and_reset_password(client, db_sessi
     headers = {"Authorization": f"Bearer {token}"}
 
     generated = client.post(
-        "/api/prompts/generate",
-        json={"fields": [{"name": "goal", "content": "ship a go-live smoke test"}]},
+        "/api/prompts",
+        json={
+            "name": "Go-live",
+            "fields": [{"name": "goal", "content": "ship a go-live smoke test"}],
+        },
         headers=headers,
     )
-    assert generated.status_code == status.HTTP_200_OK
+    assert generated.status_code == status.HTTP_201_CREATED
     prompt_id = generated.json()["id"]
 
     saved = client.patch(

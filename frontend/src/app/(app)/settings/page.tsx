@@ -1,11 +1,7 @@
 /**
- * Settings — full sectioned layout: Profile, Preferences, Notifications,
- * API access, Data, Danger zone. API access is the editable bring-your-own
- * LLM provider connection (LLMConnectionForm) — provider, endpoint, model,
- * and the user's own API key, which every AI feature runs against.
- * Weekly-summary emails are sent by a cron-invoked script
- * (`make send-weekly-summary`), not an in-process scheduler. See
- * product/DECISIONS.md for both adaptations.
+ * Settings, top to bottom: profile and sign-in, appearance, how the library
+ * opens, the optional AI connection (bring-your-own provider, or the
+ * operator's default), data export, and account deletion.
  */
 
 'use client';
@@ -20,110 +16,42 @@ import ChangePasswordForm from '@/components/ChangePasswordForm';
 import LLMConnectionForm from '@/components/LLMConnectionForm';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import Card from '@/components/ui/Card';
-import Toggle from '@/components/ui/Toggle';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import {
   ActionCompleteIcon,
-  ApiAccessIcon,
-  ComfortableDensityIcon,
-  CompactDensityIcon,
-  DangerIcon,
   DarkThemeIcon,
-  DataIcon,
   DownloadIcon,
   GridViewIcon,
   LightThemeIcon,
   ListViewIcon,
   LoadingIcon,
-  NotificationsIcon,
-  PreferencesIcon,
-  ProfileIcon,
 } from '@/components/ui/icon';
 import styles from './page.module.css';
 import { APP_SLUG, pageTitle } from '@/lib/branding';
 
 type Theme = 'light' | 'dark';
-type Density = 'comfortable' | 'compact';
-type PreferenceSaveTarget = 'library-view' | 'eval-method' | 'auto-run';
 type PreferenceSaveStatus = 'saving' | 'saved';
 
-const SETTINGS_SECTION_IDS = [
-  's-profile',
-  's-preferences',
-  's-notifications',
-  's-api',
-  's-data',
-  's-danger',
-] as const;
-
 const THEME_OPTIONS = [
-  {
-    value: 'light',
-    label: 'Light',
-    icon: <LightThemeIcon size={14} tone="inherit" />,
-  },
-  {
-    value: 'dark',
-    label: 'Dark',
-    icon: <DarkThemeIcon size={14} tone="inherit" />,
-  },
-] as const;
-
-const DENSITY_OPTIONS = [
-  {
-    value: 'comfortable',
-    label: 'Comfortable',
-    icon: <ComfortableDensityIcon size={14} tone="inherit" />,
-  },
-  {
-    value: 'compact',
-    label: 'Compact',
-    icon: <CompactDensityIcon size={14} tone="inherit" />,
-  },
+  { value: 'light', label: 'Light', icon: <LightThemeIcon size={14} tone="inherit" /> },
+  { value: 'dark', label: 'Dark', icon: <DarkThemeIcon size={14} tone="inherit" /> },
 ] as const;
 
 const LIBRARY_VIEW_OPTIONS = [
-  {
-    value: 'grid',
-    label: 'Grid',
-    icon: <GridViewIcon size={14} tone="inherit" />,
-  },
-  {
-    value: 'list',
-    label: 'List',
-    icon: <ListViewIcon size={14} tone="inherit" />,
-  },
-] as const;
-
-const EVAL_METHOD_OPTIONS = [
-  { value: 'rule', label: 'Rule' },
-  { value: 'judge', label: 'Judge' },
-  { value: 'manual', label: 'Manual' },
+  { value: 'list', label: 'List', icon: <ListViewIcon size={14} tone="inherit" /> },
+  { value: 'grid', label: 'Grid', icon: <GridViewIcon size={14} tone="inherit" /> },
 ] as const;
 
 function readStoredTheme(): Theme {
-  if (typeof window === 'undefined') return 'dark';
-  return (localStorage.getItem('theme') as Theme) || 'dark';
-}
-
-function readStoredDensity(): Density {
-  if (typeof window === 'undefined') return 'comfortable';
-  return (localStorage.getItem('density') as Density) || 'comfortable';
+  if (typeof window === 'undefined') return 'light';
+  return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
 }
 
 export default function SettingsPage() {
   const { currentUser, logout } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [theme, setTheme] = useState<Theme>(readStoredTheme);
-  const [density, setDensity] = useState<Density>(readStoredDensity);
-  const [activeSection, setActiveSection] = useState<(typeof SETTINGS_SECTION_IDS)[number]>(
-    's-profile',
-  );
-  const [preferenceSave, setPreferenceSave] = useState<{
-    target: PreferenceSaveTarget;
-    status: PreferenceSaveStatus;
-  } | null>(null);
+  const [viewSave, setViewSave] = useState<PreferenceSaveStatus | null>(null);
   const [showUsernameEdit, setShowUsernameEdit] = useState(false);
   const [newUsernameValue, setNewUsernameValue] = useState('');
   const [usernameError, setUsernameError] = useState('');
@@ -156,49 +84,6 @@ export default function SettingsPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const hashSection = window.location.hash.slice(1);
-    if (SETTINGS_SECTION_IDS.some((id) => id === hashSection)) {
-      setActiveSection(hashSection as (typeof SETTINGS_SECTION_IDS)[number]);
-    }
-
-    let animationFrame: number | null = null;
-    const updateActiveSection = () => {
-      animationFrame = null;
-      const activationLine = Math.min(160, window.innerHeight * 0.25);
-      let nextSection: (typeof SETTINGS_SECTION_IDS)[number] = SETTINGS_SECTION_IDS[0];
-
-      for (const id of SETTINGS_SECTION_IDS) {
-        const section = document.getElementById(id);
-        if (section && section.getBoundingClientRect().top <= activationLine) {
-          nextSection = id;
-        }
-      }
-
-      const documentHeight = document.documentElement.scrollHeight;
-      if (
-        documentHeight > window.innerHeight &&
-        window.scrollY + window.innerHeight >= documentHeight - 2
-      ) {
-        nextSection = SETTINGS_SECTION_IDS[SETTINGS_SECTION_IDS.length - 1];
-      }
-      setActiveSection(nextSection);
-    };
-    const scheduleUpdate = () => {
-      if (animationFrame === null) {
-        animationFrame = window.requestAnimationFrame(updateActiveSection);
-      }
-    };
-
-    window.addEventListener('scroll', scheduleUpdate, { passive: true });
-    window.addEventListener('resize', scheduleUpdate);
-    return () => {
-      window.removeEventListener('scroll', scheduleUpdate);
-      window.removeEventListener('resize', scheduleUpdate);
-      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
-    };
-  }, []);
-
   useEffect(
     () => () => {
       if (preferenceSaveTimer.current) clearTimeout(preferenceSaveTimer.current);
@@ -210,12 +95,6 @@ export default function SettingsPage() {
     setTheme(next);
     localStorage.setItem('theme', next);
     document.documentElement.setAttribute('data-theme', next);
-  };
-
-  const setDensityPreference = (next: Density) => {
-    setDensity(next);
-    localStorage.setItem('density', next);
-    document.documentElement.setAttribute('data-density', next);
   };
 
   // Both profile forms are noValidate: the native browser tooltip is invisible
@@ -261,92 +140,24 @@ export default function SettingsPage() {
     }
   };
 
-  const handleToggleNotifyRunFailure = async (checked: boolean) => {
-    setPrefsError('');
-    try {
-      const updated = await AuthService.updateProfile({ notify_run_failure: checked });
-      setUser(updated);
-    } catch (err) {
-      setPrefsError(err instanceof Error ? err.message : 'Failed to update notification preference.');
-    }
-  };
-
-  const handleToggleNotifyWeeklySummary = async (checked: boolean) => {
-    setPrefsError('');
-    try {
-      const updated = await AuthService.updateProfile({ notify_weekly_summary: checked });
-      setUser(updated);
-    } catch (err) {
-      setPrefsError(err instanceof Error ? err.message : 'Failed to update notification preference.');
-    }
-  };
-
-  const updatePreference = async (
-    target: PreferenceSaveTarget,
-    update: UserUpdate,
-    errorMessage: string,
-  ) => {
+  const handleDefaultLibraryViewChange = async (view: 'grid' | 'list') => {
+    const update: UserUpdate = { default_library_view: view };
     const sequence = ++preferenceSaveSequence.current;
     if (preferenceSaveTimer.current) clearTimeout(preferenceSaveTimer.current);
     setPrefsError('');
-    setPreferenceSave({ target, status: 'saving' });
+    setViewSave('saving');
     try {
       const updated = await AuthService.updateProfile(update);
       if (preferenceSaveSequence.current !== sequence) return;
-
       setUser(updated);
-      setPreferenceSave({ target, status: 'saved' });
+      setViewSave('saved');
       preferenceSaveTimer.current = setTimeout(() => {
-        if (preferenceSaveSequence.current === sequence) setPreferenceSave(null);
+        if (preferenceSaveSequence.current === sequence) setViewSave(null);
       }, 1500);
     } catch (err) {
       if (preferenceSaveSequence.current !== sequence) return;
-      setPreferenceSave(null);
-      setPrefsError(err instanceof Error ? err.message : errorMessage);
-    }
-  };
-
-  const handleDefaultLibraryViewChange = async (view: 'grid' | 'list') => {
-    await updatePreference(
-      'library-view',
-      { default_library_view: view },
-      'Failed to update default library view.',
-    );
-  };
-
-  const handleDefaultEvalMethodChange = async (method: 'rule' | 'judge' | 'manual') => {
-    await updatePreference(
-      'eval-method',
-      { default_eval_method: method },
-      'Failed to update default eval method.',
-    );
-  };
-
-  const handleToggleAutoRunEvalOnUpdate = async (checked: boolean) => {
-    await updatePreference(
-      'auto-run',
-      { auto_run_eval_on_update: checked },
-      'Failed to update auto-run preference.',
-    );
-  };
-
-  const handleToggleNotifyEvalComplete = async (checked: boolean) => {
-    setPrefsError('');
-    try {
-      const updated = await AuthService.updateProfile({ notify_eval_complete: checked });
-      setUser(updated);
-    } catch (err) {
-      setPrefsError(err instanceof Error ? err.message : 'Failed to update notification preference.');
-    }
-  };
-
-  const handleToggleNotifyEvalRegression = async (checked: boolean) => {
-    setPrefsError('');
-    try {
-      const updated = await AuthService.updateProfile({ notify_eval_regression: checked });
-      setUser(updated);
-    } catch (err) {
-      setPrefsError(err instanceof Error ? err.message : 'Failed to update notification preference.');
+      setViewSave(null);
+      setPrefsError(err instanceof Error ? err.message : 'Failed to update default library view.');
     }
   };
 
@@ -358,7 +169,7 @@ export default function SettingsPage() {
       const blob = await ApiClient.exportPrompts();
       const filename = `${APP_SLUG}-export.json`;
       downloadBlob(blob, filename);
-      setExportSuccess(`Successfully exported prompts to ${filename}`);
+      setExportSuccess(`Exported your prompts to ${filename}`);
       setTimeout(() => {
         setExportSuccess((prev) => (prev.includes(filename) ? '' : prev));
       }, 5000);
@@ -391,8 +202,8 @@ export default function SettingsPage() {
       logout();
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete account.');
-      // The banner stays open so a mistyped password can be corrected, rather
-      // than making the user start the flow again.
+      // The confirmation stays open so a mistyped password can be corrected,
+      // rather than making the user start the flow again.
       setIsDeleting(false);
     }
   };
@@ -403,445 +214,239 @@ export default function SettingsPage() {
     setDeleteError('');
   };
 
-  const preferenceSaveFeedback = (target: PreferenceSaveTarget) => {
-    const status = preferenceSave?.target === target ? preferenceSave.status : null;
-    return (
-      <span className={styles.saveFeedback} aria-live="polite">
-        {status === 'saving' && (
-          <>
-            <LoadingIcon size={16} tone="muted" />
-            <span className={styles.visuallyHidden}>Saving preference</span>
-          </>
-        )}
-        {status === 'saved' && (
-          <>
-            <ActionCompleteIcon size={16} tone="success" />
-            <span className={styles.visuallyHidden}>Preference saved</span>
-          </>
-        )}
-      </span>
-    );
-  };
-
   return (
-    <div className={styles.layout}>
-      <nav className={styles.rail} aria-label="Settings sections">
-        <h1 className={styles.title}>Settings</h1>
-        <a
-          href="#s-profile"
-          className={styles.railLink}
-          data-active={activeSection === 's-profile'}
-          aria-current={activeSection === 's-profile' ? 'location' : undefined}
-          onClick={() => setActiveSection('s-profile')}
-        >
-          <ProfileIcon size={18} tone="inherit" />
-          Profile
-        </a>
-        <a
-          href="#s-preferences"
-          className={styles.railLink}
-          data-active={activeSection === 's-preferences'}
-          aria-current={activeSection === 's-preferences' ? 'location' : undefined}
-          onClick={() => setActiveSection('s-preferences')}
-        >
-          <PreferencesIcon size={18} tone="inherit" />
-          Preferences
-        </a>
-        <a
-          href="#s-notifications"
-          className={styles.railLink}
-          data-active={activeSection === 's-notifications'}
-          aria-current={activeSection === 's-notifications' ? 'location' : undefined}
-          onClick={() => setActiveSection('s-notifications')}
-        >
-          <NotificationsIcon size={18} tone="inherit" />
-          Notifications
-        </a>
-        <a
-          href="#s-api"
-          className={styles.railLink}
-          data-active={activeSection === 's-api'}
-          aria-current={activeSection === 's-api' ? 'location' : undefined}
-          onClick={() => setActiveSection('s-api')}
-        >
-          <ApiAccessIcon size={18} tone="inherit" />
-          API access
-        </a>
-        <a
-          href="#s-data"
-          className={styles.railLink}
-          data-active={activeSection === 's-data'}
-          aria-current={activeSection === 's-data' ? 'location' : undefined}
-          onClick={() => setActiveSection('s-data')}
-        >
-          <DataIcon size={18} tone="inherit" />
-          Data
-        </a>
-        <a
-          href="#s-danger"
-          className={styles.railLinkDanger}
-          data-active={activeSection === 's-danger'}
-          aria-current={activeSection === 's-danger' ? 'location' : undefined}
-          onClick={() => setActiveSection('s-danger')}
-        >
-          <DangerIcon size={18} tone="inherit" />
-          Danger zone
-        </a>
-      </nav>
+    <div className={styles.page}>
+      <h1 className={styles.title}>Settings</h1>
 
-      <div className={styles.settings}>
-        <section className={styles.section} id="s-profile">
-          <h2 className={styles.sectionLabel}>Profile</h2>
-          <Card className={styles.card}>
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Username</div>
-                <div className={styles.rowHint}>{currentUser}</div>
-              </div>
-              {!showUsernameEdit ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setNewUsernameValue(currentUser ?? '');
-                    setShowUsernameEdit(true);
-                    setUsernameError('');
-                  }}
-                >
-                  Edit username
-                </Button>
-              ) : (
-                <form onSubmit={handleUsernameChange} className={styles.inlineForm} noValidate>
-                  <Input
-                    value={newUsernameValue}
-                    onChange={(e) => setNewUsernameValue(e.target.value)}
-                    minLength={3}
-                    maxLength={50}
-                    pattern="[a-zA-Z0-9_-]+"
-                    title="3-50 chars; letters, digits, underscores, hyphens"
-                    required
-                    autoFocus
-                  />
-                  <Button type="submit" variant="primary">
-                    Save
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={() => setShowUsernameEdit(false)}>
-                    Cancel
-                  </Button>
-                </form>
-              )}
+      <section className={styles.section} id="s-profile" aria-labelledby="h-profile">
+        <div className={styles.intro}>
+          <h2 id="h-profile">Profile</h2>
+          <p>Used to sign in and to recover your account.</p>
+        </div>
+        <div className={styles.body}>
+          <div className={styles.row}>
+            <div>
+              <div className={styles.rowLabel}>Username</div>
+              <div className={styles.rowValue}>{currentUser}</div>
             </div>
-            {usernameError && <div className={styles.error} role="alert">{usernameError}</div>}
-
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Email</div>
-                <div className={styles.rowHint}>{user?.email || 'No email on file'}</div>
-              </div>
-              {!showEmailEdit ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setNewEmailValue(user?.email ?? '');
-                    setShowEmailEdit(true);
-                    setEmailError('');
-                  }}
-                >
-                  Edit email
-                </Button>
-              ) : (
-                <form onSubmit={handleEmailChange} className={styles.inlineForm} noValidate>
-                  <Input
-                    type="email"
-                    value={newEmailValue}
-                    onChange={(e) => setNewEmailValue(e.target.value)}
-                    placeholder="you@example.com"
-                    required
-                    autoFocus
-                  />
-                  <Button type="submit" variant="primary">
-                    Save
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={() => setShowEmailEdit(false)}>
-                    Cancel
-                  </Button>
-                </form>
-              )}
-            </div>
-            {emailError && <div className={styles.error} role="alert">{emailError}</div>}
-
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Password</div>
-                <div className={styles.rowHint}>
-                  Change your account password. This signs out every other device.
-                </div>
-              </div>
-              <ChangePasswordForm />
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Active sessions</div>
-                <div className={styles.rowHint}>
-                  Sign out everywhere, including devices you no longer have. You will need to
-                  sign in again here.
-                </div>
-              </div>
+            {!showUsernameEdit && (
               <Button
                 variant="secondary"
-                onClick={handleSignOutEverywhere}
-                disabled={isSigningOutEverywhere}
+                onClick={() => {
+                  setNewUsernameValue(currentUser ?? '');
+                  setShowUsernameEdit(true);
+                  setUsernameError('');
+                }}
               >
-                {isSigningOutEverywhere ? 'Signing out…' : 'Sign out everywhere'}
+                Edit username
               </Button>
-            </div>
-            {signOutError && <div className={styles.error} role="alert">{signOutError}</div>}
-          </Card>
-        </section>
-
-        <section className={styles.section} id="s-preferences">
-          <h2 className={styles.sectionLabel}>Preferences</h2>
-          <Card className={styles.card}>
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Theme</div>
-                <div className={styles.rowHint}>Applies across the whole app</div>
-              </div>
-              <SegmentedControl
-                aria-label="Theme"
-                options={THEME_OPTIONS}
-                value={theme}
-                onChange={toggleTheme}
-              />
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Density</div>
-                <div className={styles.rowHint}>Spacing in lists and cards</div>
-              </div>
-              <SegmentedControl
-                aria-label="Density"
-                options={DENSITY_OPTIONS}
-                value={density}
-                onChange={setDensityPreference}
-              />
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Default library view</div>
-                <div className={styles.rowHint}>Grid or list when you open the Library</div>
-              </div>
-              <div className={styles.controlWithFeedback}>
-                <SegmentedControl
-                  aria-label="Default library view"
-                  options={LIBRARY_VIEW_OPTIONS}
-                  value={user?.default_library_view ?? 'grid'}
-                  onChange={handleDefaultLibraryViewChange}
-                />
-                {preferenceSaveFeedback('library-view')}
-              </div>
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Default eval scoring method</div>
-                <div className={styles.rowHint}>Applied to new cases you add in Evaluate</div>
-              </div>
-              <div className={styles.controlWithFeedback}>
-                <SegmentedControl
-                  aria-label="Default eval scoring method"
-                  options={EVAL_METHOD_OPTIONS}
-                  value={user?.default_eval_method ?? 'rule'}
-                  onChange={handleDefaultEvalMethodChange}
-                />
-                {preferenceSaveFeedback('eval-method')}
-              </div>
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Auto-run evaluation on Update</div>
-                <div className={styles.rowHint}>
-                  Automatically re-score against the eval set whenever you click Update in
-                  Editor Detail
-                </div>
-              </div>
-              <div className={styles.controlWithFeedback}>
-                <Toggle
-                  checked={user?.auto_run_eval_on_update ?? false}
-                  onChange={handleToggleAutoRunEvalOnUpdate}
-                  label="Auto-run evaluation on Update"
-                />
-                {preferenceSaveFeedback('auto-run')}
-              </div>
-            </div>
-            {prefsError && <div className={styles.error}>{prefsError}</div>}
-          </Card>
-        </section>
-
-        <section className={styles.section} id="s-notifications">
-          <h2 className={styles.sectionLabel}>Notifications</h2>
-          <Card className={styles.card}>
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Run failures</div>
-                <div className={styles.rowHint}>Email me when a Playground run errors out</div>
-              </div>
-              <Toggle
-                checked={user?.notify_run_failure ?? false}
-                onChange={handleToggleNotifyRunFailure}
-                label="Run failures"
-              />
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Weekly summary</div>
-                <div className={styles.rowHint}>
-                  Usage and top prompts, sent weekly by the server&apos;s scheduled job.
-                </div>
-              </div>
-              <Toggle
-                checked={user?.notify_weekly_summary ?? false}
-                onChange={handleToggleNotifyWeeklySummary}
-                label="Weekly summary"
-              />
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Evaluation complete</div>
-                <div className={styles.rowHint}>Confirm when an eval run finishes scoring</div>
-              </div>
-              <Toggle
-                checked={user?.notify_eval_complete ?? false}
-                onChange={handleToggleNotifyEvalComplete}
-                label="Evaluation complete"
-              />
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Score regression</div>
-                <div className={styles.rowHint}>
-                  Alert me if a new eval run scores lower than the last one
-                </div>
-              </div>
-              <Toggle
-                checked={user?.notify_eval_regression ?? false}
-                onChange={handleToggleNotifyEvalRegression}
-                label="Score regression"
-              />
-            </div>
-          </Card>
-        </section>
-
-        <section className={styles.section} id="s-api">
-          <h2 className={styles.sectionLabel}>API access</h2>
-          <Card className={styles.card}>
-            <LLMConnectionForm />
-          </Card>
-        </section>
-
-        <section className={styles.section} id="s-data">
-          <h2 className={styles.sectionLabel}>Data</h2>
-          <Card className={styles.card}>
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Export all prompts</div>
-                <div className={styles.rowHint}>
-                  Download every saved prompt and its version history as JSON
-                </div>
-              </div>
-              <Button
-                variant="secondary"
-                className={styles.iconButton}
-                onClick={handleExport}
-                disabled={isExporting}
-              >
-                <DownloadIcon size={16} tone="inherit" />
-                {isExporting ? 'Exporting…' : 'Export'}
-              </Button>
-            </div>
-            {exportError && <div className={styles.error}>{exportError}</div>}
-            {exportSuccess && <div className={styles.success}>{exportSuccess}</div>}
-          </Card>
-        </section>
-
-        <section className={styles.section} id="s-danger">
-          <h2 className={styles.sectionLabelDanger}>
-            <DangerIcon size={16} tone="inherit" />
-            Danger zone
-          </h2>
-          <Card className={styles.dangerCard}>
-            <div className={styles.row}>
-              <div>
-                <div className={styles.rowLabel}>Delete account</div>
-                <div className={styles.rowHint}>
-                  Permanently remove your account and all saved prompts. This can&apos;t be undone.
-                </div>
-              </div>
-              <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
-                Delete account
-              </Button>
-            </div>
-            {showDeleteConfirm && (
-              <div className={styles.confirmBanner}>
-                <p>Are you sure? This cannot be undone.</p>
-                <Input
-                  type="password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  placeholder="Confirm your password"
-                  aria-label="Confirm your password"
-                  aria-invalid={!!deleteError}
-                  autoComplete="current-password"
-                  disabled={isDeleting}
-                />
-                <div className={styles.confirmActions}>
-                  <Button
-                    variant="danger"
-                    onClick={handleDeleteAccount}
-                    disabled={isDeleting || deletePassword.length === 0}
-                  >
-                    {isDeleting ? 'Deleting…' : 'Yes, delete my account'}
-                  </Button>
-                  <Button variant="secondary" onClick={closeDeleteConfirm} disabled={isDeleting}>
-                    Cancel
-                  </Button>
-                </div>
-                {deleteError && (
-                  <div className={styles.error} role="alert">
-                    {deleteError}
-                  </div>
-                )}
-              </div>
             )}
-          </Card>
-        </section>
-      </div>
+          </div>
+          {showUsernameEdit && (
+            <form onSubmit={handleUsernameChange} className={styles.inlineForm} noValidate>
+              <Input
+                value={newUsernameValue}
+                onChange={(e) => setNewUsernameValue(e.target.value)}
+                aria-label="New username"
+                minLength={3}
+                maxLength={50}
+                required
+                autoFocus
+              />
+              <Button type="submit" variant="primary">
+                Save
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setShowUsernameEdit(false)}>
+                Cancel
+              </Button>
+              <p className={styles.hint}>Changing your username signs you out.</p>
+            </form>
+          )}
+          {usernameError && <div className={styles.error} role="alert">{usernameError}</div>}
+
+          <div className={styles.row}>
+            <div>
+              <div className={styles.rowLabel}>Email</div>
+              <div className={styles.rowValue}>{user?.email || 'No email on file'}</div>
+            </div>
+            {!showEmailEdit && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setNewEmailValue(user?.email ?? '');
+                  setShowEmailEdit(true);
+                  setEmailError('');
+                }}
+              >
+                Edit email
+              </Button>
+            )}
+          </div>
+          {showEmailEdit && (
+            <form onSubmit={handleEmailChange} className={styles.inlineForm} noValidate>
+              <Input
+                type="email"
+                value={newEmailValue}
+                onChange={(e) => setNewEmailValue(e.target.value)}
+                aria-label="New email"
+                placeholder="you@example.com"
+                required
+                autoFocus
+              />
+              <Button type="submit" variant="primary">
+                Save
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setShowEmailEdit(false)}>
+                Cancel
+              </Button>
+            </form>
+          )}
+          {emailError && <div className={styles.error} role="alert">{emailError}</div>}
+        </div>
+      </section>
+
+      <section className={styles.section} id="s-security" aria-labelledby="h-security">
+        <div className={styles.intro}>
+          <h2 id="h-security">Password and sessions</h2>
+          <p>Changing your password signs out every other device.</p>
+        </div>
+        <div className={styles.body}>
+          <ChangePasswordForm />
+          <div className={styles.row}>
+            <div>
+              <div className={styles.rowLabel}>Sign out everywhere</div>
+              <p className={styles.hint}>
+                Including devices you no longer have. You will need to sign in again here.
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={handleSignOutEverywhere}
+              disabled={isSigningOutEverywhere}
+            >
+              {isSigningOutEverywhere ? 'Signing out…' : 'Sign out everywhere'}
+            </Button>
+          </div>
+          {signOutError && <div className={styles.error} role="alert">{signOutError}</div>}
+        </div>
+      </section>
+
+      <section className={styles.section} id="s-preferences" aria-labelledby="h-preferences">
+        <div className={styles.intro}>
+          <h2 id="h-preferences">Appearance and library</h2>
+        </div>
+        <div className={styles.body}>
+          <div className={styles.row}>
+            <div className={styles.rowLabel}>Theme</div>
+            <SegmentedControl aria-label="Theme" options={THEME_OPTIONS} value={theme} onChange={toggleTheme} />
+          </div>
+          <div className={styles.row}>
+            <div>
+              <div className={styles.rowLabel}>Library opens as</div>
+            </div>
+            <div className={styles.withFeedback}>
+              <SegmentedControl
+                aria-label="Default library view"
+                options={LIBRARY_VIEW_OPTIONS}
+                value={user?.default_library_view ?? 'list'}
+                onChange={handleDefaultLibraryViewChange}
+              />
+              <span className={styles.feedback} aria-live="polite">
+                {viewSave === 'saving' && <LoadingIcon size={16} label="Saving preference" />}
+                {viewSave === 'saved' && (
+                  <ActionCompleteIcon size={16} tone="success" label="Preference saved" />
+                )}
+              </span>
+            </div>
+          </div>
+          {prefsError && <div className={styles.error} role="alert">{prefsError}</div>}
+        </div>
+      </section>
+
+      <section className={styles.section} id="s-api" aria-labelledby="h-api">
+        <div className={styles.intro}>
+          <h2 id="h-api">AI connection</h2>
+          <p>Optional. Everything else works without it.</p>
+        </div>
+        <div className={styles.body}>
+          <p className={styles.text}>
+            The AI connection powers <strong>Import text</strong>, which turns a pasted prompt or
+            rough notes into sections you can edit. Connect your own OpenAI-compatible provider, or
+            use this server&apos;s default connection when it offers one.
+          </p>
+          <LLMConnectionForm />
+        </div>
+      </section>
+
+      <section className={styles.section} id="s-data" aria-labelledby="h-data">
+        <div className={styles.intro}>
+          <h2 id="h-data">Your data</h2>
+        </div>
+        <div className={styles.body}>
+          <p className={styles.text}>
+            Download every prompt with its folders and full version history as a JSON file.
+          </p>
+          <div>
+            <Button variant="secondary" onClick={handleExport} disabled={isExporting}>
+              <DownloadIcon size={16} tone="inherit" />
+              {isExporting ? 'Exporting…' : 'Export all prompts'}
+            </Button>
+          </div>
+          {exportError && <div className={styles.error}>{exportError}</div>}
+          {exportSuccess && <div className={styles.success}>{exportSuccess}</div>}
+        </div>
+      </section>
+
+      <section className={styles.section} id="s-danger" aria-labelledby="h-danger">
+        <div className={styles.intro}>
+          <h2 id="h-danger" className={styles.danger}>
+            Delete account
+          </h2>
+        </div>
+        <div className={styles.body}>
+          <p className={styles.text}>
+            Permanently deletes your account and all your prompts. This can&apos;t be undone.
+          </p>
+          {!showDeleteConfirm ? (
+            <div>
+              <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
+                Delete account…
+              </Button>
+            </div>
+          ) : (
+            <div className={styles.confirm}>
+              <p>Enter your password to delete your account and every prompt in it.</p>
+              <Input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Your password"
+                aria-label="Confirm your password"
+                aria-invalid={!!deleteError}
+                autoComplete="current-password"
+                disabled={isDeleting}
+              />
+              <div className={styles.confirmActions}>
+                <Button
+                  variant="danger"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting || deletePassword.length === 0}
+                >
+                  {isDeleting ? 'Deleting…' : 'Delete my account'}
+                </Button>
+                <Button variant="secondary" onClick={closeDeleteConfirm} disabled={isDeleting}>
+                  Cancel
+                </Button>
+              </div>
+              {deleteError && (
+                <div className={styles.error} role="alert">
+                  {deleteError}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

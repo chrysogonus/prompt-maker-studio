@@ -1,7 +1,6 @@
-/* The auth screen deliberately uses the same surface, radius, and control
-   language as the in-app components (ui/Card, ui/Button, ui/Input) rather than
-   a separate "marketing" treatment — logging in should look like the product.
-   The only ambient layers are a static dot grid and a single static glow; all
+/* The auth screen uses the same surfaces and controls as the app rather than a
+   separate "marketing" treatment — logging in should look like the product.
+   Its one motif is the warm dot grid behind a sample of the plum preview; all
    motion is one entrance plus the usual focus/loading/error signals. */
 
 .container {
@@ -11,7 +10,7 @@
   min-height: 100vh;
   min-height: 100svh;
   background:
-    radial-gradient(circle, color-mix(in srgb, var(--color-border) 22%, transparent) 1px, transparent 1px),
+    radial-gradient(circle, color-mix(in srgb, var(--color-border-strong) 45%, transparent) 1px, transparent 1px),
     var(--color-canvas);
   background-size: 26px 26px;
   padding: clamp(var(--space-6), 4vh, 48px);
@@ -19,22 +18,6 @@
   isolation: isolate;
   overflow-x: hidden;
   overflow-y: auto;
-}
-
-.glow {
-  position: absolute;
-  top: -30%;
-  left: -12%;
-  width: min(46vw, 640px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--color-accent-tag) 12%, transparent),
-    transparent 70%
-  );
-  filter: blur(20px);
-  pointer-events: none;
 }
 
 .authShell {
@@ -70,26 +53,12 @@
   letter-spacing: 0.02em;
 }
 
-.promptCard,
 .intro {
   max-width: 440px;
 }
 
-.eyebrow {
-  margin-bottom: var(--space-3);
-  color: var(--accent-text);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs-size);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-/* One step above --text-3xl-size: this is the single display moment in the
-   product, and nothing else on the page competes with it. Tracking stays close
-   to --tracking-tight so it reads as the same typeface system as the app. */
 .heroTitle {
-  max-width: 20ch;
+  max-width: 22ch;
   color: var(--text-primary);
   font-size: clamp(1.875rem, 3.2vw, 2.5rem);
   line-height: 1.15;
@@ -105,67 +74,25 @@
   line-height: 1.6;
 }
 
-.promptCard {
-  margin-top: var(--space-8);
-  padding: var(--space-4);
-  border: 1px solid var(--border-primary);
+.promptSample {
+  max-width: 440px;
+  margin: var(--space-8) 0 0;
+  padding: var(--space-4) 20px;
   border-radius: var(--radius-lg);
-  background: var(--color-panel);
-}
-
-.cardChrome {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding-bottom: var(--space-3);
-  margin-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border-primary);
-  color: var(--text-tertiary);
+  background: var(--pv-bg);
+  color: var(--pv-text);
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12.5px;
+  line-height: 1.65;
+  white-space: pre-wrap;
 }
 
-.chromeDot,
-.readyDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-accent-tag);
+.sampleTag {
+  color: var(--pv-muted);
 }
 
-.promptRow {
-  display: grid;
-  grid-template-columns: minmax(96px, auto) 1fr;
-  gap: var(--space-3);
-  padding: 5px 0;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.promptTag {
-  color: var(--accent-text);
-}
-
-.readyStatus {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: max-content;
-  margin-top: var(--space-3);
-  padding: 5px var(--space-2);
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--color-accent-success) 11%, transparent);
-  color: var(--color-accent-success);
-  font-size: 10px;
-  font-weight: var(--weight-medium);
-}
-
-.readyDot {
-  background: var(--color-accent-success);
+.sampleVariable {
+  color: var(--pv-var);
 }
 
 .card {
@@ -375,16 +302,6 @@
   border-color: var(--color-accent-tag-hover);
 }
 
-.buttonArrow {
-  font-size: 1.1em;
-  line-height: 1;
-  transition: transform var(--motion-fast);
-}
-
-.submitButton:hover:not(:disabled) .buttonArrow {
-  transform: translateX(2px);
-}
-
 .buttonSpinner {
   width: 15px;
   height: 15px;
@@ -518,7 +435,7 @@
     gap: var(--space-8);
   }
 
-  .promptCard {
+  .promptSample {
     display: none;
   }
 
@@ -538,10 +455,6 @@
 
   .wordmark {
     margin-bottom: var(--space-6);
-  }
-
-  .eyebrow {
-    display: none;
   }
 
   .heroTitle {

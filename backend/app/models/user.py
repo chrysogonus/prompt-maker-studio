@@ -41,18 +41,20 @@ class User(Base):
     # only because migration 019 backfills `llm_model` from it and SQLite
     # cannot drop a column without rebuilding the table.
     default_model = Column(String(100), nullable=True)
+    # Retired email-notification preferences. Nothing reads or sends them any
+    # more; kept only because SQLite cannot drop a column without rebuilding
+    # the table.
     notify_run_failure = Column(Boolean, nullable=False, default=False, server_default="0")
-    # Emails are sent by a weekly cron-invoked script, not a background
-    # scheduler in-process. See `make send-weekly-summary` and product/DECISIONS.md.
     notify_weekly_summary = Column(Boolean, nullable=False, default=False, server_default="0")
 
     # 'grid' | 'list' — initial Library view mode; validated at the API layer.
     default_library_view = Column(String(10), nullable=True)
     # 'rule' | 'judge' | 'manual' — default method for newly-added eval cases.
     default_eval_method = Column(String(20), nullable=True)
-    # When true, updating a prompt in the Configuration tab automatically
-    # triggers a real eval run afterward (see EvalService/eval_routes.py).
+    # Kept for when Evaluate returns; nothing starts an evaluation on its own
+    # while Evaluate is deferred.
     auto_run_eval_on_update = Column(Boolean, nullable=False, default=False, server_default="0")
+    # Retired, like the notification preferences above.
     notify_eval_complete = Column(Boolean, nullable=False, default=False, server_default="0")
     notify_eval_regression = Column(Boolean, nullable=False, default=False, server_default="0")
 

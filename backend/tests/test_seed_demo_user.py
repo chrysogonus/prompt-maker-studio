@@ -12,7 +12,7 @@ from app.models.playground_run import PlaygroundRun
 from app.models.prompt import Prompt
 from app.models.prompt_version import PromptVersion
 from app.models.user import User
-from app.services.analytics_service import AnalyticsService
+from app.services.prompt_sections import render_sections
 from scripts.seed_demo_user import EMAIL, PASSWORD, USERNAME, main, seed_alex
 
 
@@ -58,57 +58,62 @@ class TestSeedAlex:
         assert user.username == USERNAME
         assert user.email == EMAIL
         assert verify_password(PASSWORD, user.hashed_password)
-        assert user.notify_run_failure is True
-        assert user.notify_weekly_summary is True
         # Seeded pointing at a provider, but deliberately keyless — provider
         # credentials are bring-your-own.
         assert user.llm_provider == "openai"
         assert user.llm_model is not None
         assert user.llm_api_key_encrypted is None
 
-    def test_seeds_saved_and_history_prompts(self, db_session):
+    def test_seeds_a_library_showing_every_way_to_organise_it(self, db_session):
         user = seed_alex(db_session)
 
         prompts = db_session.query(Prompt).filter(Prompt.user_id == user.id).all()
-        saved = [p for p in prompts if p.name is not None]
-        history_only = [p for p in prompts if p.name is None]
+        folders = {p.folder for p in prompts}
 
-        assert len(saved) >= 6
-        assert len(history_only) >= 2
-        assert any(p.is_favorite for p in saved)
-        assert any(p.folder for p in saved)
-        assert any(p.tags for p in saved)
-        assert any(p.variable_metadata for p in saved)
+        assert len(prompts) >= 10
+        assert all(p.name for p in prompts)
+        assert {"Work", "Writing", "Learning", "Personal", "Recovered history"} <= folders
+        assert None in folders  # an unfiled prompt
+        assert any(p.is_favorite for p in prompts)
+        assert any(p.variable_metadata for p in prompts)
+        assert not any(p.tags for p in prompts)
 
-    def test_seeds_version_history(self, db_session):
+    def test_every_prompt_and_version_text_is_rendered_from_its_sections(self, db_session):
+        """The demo data obeys the same rule as the API: sections are the source."""
         user = seed_alex(db_session)
 
-        prompt_ids = [p.id for p in db_session.query(Prompt).filter(Prompt.user_id == user.id)]
+        prompts = db_session.query(Prompt).filter(Prompt.user_id == user.id).all()
         versions = (
-            db_session.query(PromptVersion).filter(PromptVersion.prompt_id.in_(prompt_ids)).all()
+            db_session.query(PromptVersion)
+            .filter(PromptVersion.prompt_id.in_([p.id for p in prompts]))
+            .all()
         )
-        assert len(versions) >= 2
+        for row in [*prompts, *versions]:
+            assert row.generated_prompt == render_sections(row.fields)
 
-    def test_seeds_playground_runs_and_populates_analytics(self, db_session):
+    def test_seeds_version_histories_worth_comparing(self, db_session):
         user = seed_alex(db_session)
 
-        runs = db_session.query(PlaygroundRun).filter(PlaygroundRun.user_id == user.id).all()
-        assert len(runs) >= 15
-        assert any(r.status == "error" for r in runs)
-        assert any(r.status == "success" for r in runs)
+        weekly = (
+            db_session.query(Prompt)
+            .filter(Prompt.user_id == user.id, Prompt.name == "Weekly status update")
+            .one()
+        )
+        versions = sorted(weekly.versions, key=lambda v: v.version_number)
+        assert [v.version_number for v in versions] == [1, 2]
+        assert versions[1].note == "Added the Asks section"
+        assert all(v.created_at < weekly.updated_at for v in versions)
+        assert all(v.generated_prompt != weekly.generated_prompt for v in versions)
 
-        summary = AnalyticsService.dashboard_summary(db_session, user.id)
-        assert summary["success_rate_pct"] is not None
-        assert summary["top_prompts"] != []
+    def test_seeds_no_playground_runs(self, db_session):
+        seed_alex(db_session)
 
-        prompt_ids = [p.id for p in db_session.query(Prompt).filter(Prompt.user_id == user.id)]
-        counts = AnalyticsService.run_counts_by_prompt_ids(db_session, user.id, prompt_ids)
-        assert any(count > 0 for count in counts.values())
+        assert db_session.query(PlaygroundRun).count() == 0
 
     def test_rerun_is_idempotent_not_duplicated(self, db_session):
         seed_alex(db_session)
         first_prompt_count = db_session.query(Prompt).count()
-        first_run_count = db_session.query(PlaygroundRun).count()
+        first_version_count = db_session.query(PromptVersion).count()
 
         second = seed_alex(db_session)
 
@@ -118,10 +123,29 @@ class TestSeedAlex:
             db_session.query(Prompt).filter(Prompt.user_id == second.id).count()
             == first_prompt_count
         )
-        # No leftover/orphaned playground_runs from the replaced prompt set —
-        # the total count after a re-run matches the total after the first run,
-        # not double it.
-        assert db_session.query(PlaygroundRun).count() == first_run_count
+        assert db_session.query(PromptVersion).count() == first_version_count
+
+    def test_reseeding_clears_runs_left_by_older_seeds(self, db_session):
+        user = seed_alex(db_session)
+        prompt = db_session.query(Prompt).filter(Prompt.user_id == user.id).first()
+        db_session.add(
+            PlaygroundRun(
+                prompt_id=prompt.id,
+                user_id=user.id,
+                model="gpt-4o-mini",
+                output_text="old",
+                latency_ms=1,
+                prompt_tokens=1,
+                completion_tokens=1,
+                cost_usd=0.0,
+                status="success",
+            )
+        )
+        db_session.commit()
+
+        seed_alex(db_session)
+
+        assert db_session.query(PlaygroundRun).count() == 0
 
 
 class TestModelRegistryIsComplete:

@@ -1,144 +1,115 @@
-# Saved Prompts Feature
+# Prompts, the Library, and Versions
 
-This feature lets you save, organize, and switch between multiple prompt configurations, with full version history. As of the 2026-07-12 UI redesign, saved prompts live across three screens: **Library** (browse/organize), **Editor** (compose new / edit existing), and **Dashboard** (favorites + usage).
+How prompts are written, stored, organised and versioned since the 0.3.0 redesign. For the
+complete feature list see [product/FEATURES.md](../product/FEATURES.md); for the reasoning,
+[product/DECISIONS.md](../product/DECISIONS.md).
 
-## Features
+## A prompt is a list of sections
 
-### 💾 Save Prompts
-- Compose a prompt in the Editor (`/editor/new`): add fields with **+ Add Field**, then click **Generate Prompt**
-- Click **Save** in the output panel and give it a name (e.g. "Fantasy Character Creator", "Marketing Copy")
-- You're redirected to the prompt's stable Editor/Detail URL (`/editor/{id}`)
-- Saved prompts are stored in the backend database under your account
+Each prompt has a name and an ordered list of **sections**. A section has a display name
+("Role", "Output format") and text. The text the user copies is rendered from the sections:
 
-### ✏️ Edit a Saved Prompt
-- Open a saved prompt from the Library or Dashboard to land on its Editor/Detail screen
-- Edit the compiled template directly in the monospace textarea, then click **Update**
-- Every content edit to an already-saved prompt automatically snapshots the *prior* state as a new version before applying the change — see **Version history** below
-- Add or remove **tags** via the chip input in the right-hand panel
+```text
+<ROLE>
+You are a patient tutor.
+</ROLE>
 
-### 🕒 Version History & Restore
-- The Editor/Detail screen's **Version history** panel lists every prior state (version number, note, author, date), newest first
-- Click a version row to preview its content in a read-only textarea
-- Click **Restore this version** to bring it back — restoring itself snapshots the state it's replacing first, so a restore is always undoable
+<OUTPUT_FORMAT>
+Explain {{topic}} in three short steps.
+</OUTPUT_FORMAT>
+```
 
-### 📋 Browse & Organize (Library)
-- The **Library** screen (`/library`) shows all saved prompts as a grid or list (toggle in the top-right)
-- Filter by the **search box** (matches name and generated text) or by **tag** (pill row, populated from your own tags)
-- Star a card's ★ to favorite it — favorited prompts appear on the Dashboard
-- Each card/row shows its **folder** label (if set) and **tags**
-- **Rename**, **Duplicate**, and **Delete** are available as inline actions on every card/row
-- A separate **History** tab shows the paginated, searchable log of every prompt generation, including unnamed (not-yet-saved) ones
+- The tag is the display name with whitespace collapsed, spaces turned into underscores and
+  letters upper-cased. Names must start with a letter or underscore and may use letters,
+  digits, spaces, `_` and `-`.
+- Two sections that render to the same tag (`Role` and `role`, `a b` and `a_b`) are rejected.
+- Section text is kept verbatim — `<`, `>` and `&` are never escaped.
+- `{{variable}}` placeholders (letters, digits, `_`, `-`) become fields to fill in.
 
-### ⭐ Favorites
-- Star any saved prompt from the Library
-- Favorited prompts appear in the **Favorites** grid on the Dashboard for one-click access
+The server is the only place text is rendered and stored (`generated_prompt`); clients send
+sections (`fields`) and are rejected with 422 if they send text. The frontend mirrors the same
+rendering for its live preview (`frontend/src/lib/sections.ts`, `backend/app/services/prompt_sections.py`).
 
-### ▶️ Test in the Playground
-- From Editor/Detail, click **▶ Test in playground** to open `/playground/{id}`
-- Fill in values for any `{{variable}}` placeholders detected in the template, pick a model, and click **Run**
-- This makes a real call against your own connected LLM provider, billed to your account — see [the main README](../README.md#api-reference-overview) for details. If you haven't connected a provider under Settings → API access, the Playground shows a disabled notice linking there instead
+## Writing and saving
 
-### ➕ Create New Prompt
-- Click **+ New prompt** (Dashboard, Library, or the nav bar's **Editor** tab) to open `/editor/new`
-- Clears all fields for a fresh start; does not affect your other saved prompts
+- **New prompt** opens the editor with one empty section. Starter templates and Import text sit
+  above it; Import text needs an AI connection and explains how to add one if there is none.
+- **Save** (button or Ctrl/⌘+S) on a new prompt asks for a name and an optional folder, creates
+  it with `POST /api/prompts`, and moves to its stable URL `/editor/{id}`.
+- On a saved prompt, Save sends the sections with `PATCH /api/prompts/{id}`. A version note can be
+  typed beside the button. Saving content that did not change does nothing.
+- Unsaved edits are kept as a local draft per user and prompt. Coming back restores them with a
+  "Discard changes" option, provided the saved prompt has not changed in the meantime. Drafts are
+  cleared on sign-out.
+- If the prompt was saved somewhere else since it was opened (another tab, the ChatGPT plugin),
+  the save is rejected with 409. The editor keeps the edits and offers "Load latest version";
+  saving after that deliberately replaces the other version.
 
-### 🗑️ Delete Prompts
-- Click **Delete** on any Library card/row
-- Deleted prompts (and their version history) cannot be recovered
+## Filling in and copying
 
-## How It Works
+The preview pane shows the exact text that will be copied. For prompts with variables it has two
+modes:
 
-### Saving a New Prompt
-1. From the Dashboard or Library, click **+ New prompt**
-2. Add fields with **+ Add Field** and fill them in
-3. Click **Generate Prompt**
-4. Review the generated XML output
-5. Click **Save** in the output panel and enter a name
+- **Template** — the text with `{{placeholders}}`; "Copy template".
+- **Filled** — an input per variable, using the variable's hint as its placeholder; "Copy filled
+  prompt". Variables left empty are named before you copy and stay as placeholders.
 
-### Editing an Existing Prompt
-1. Open the prompt from the Library, History tab, or Dashboard favorites
-2. Edit the template text directly, or add/remove tags
-3. Click **Update** — this snapshots the prior state as a new version automatically
+Hints are edited in the Variables panel under the sections. A hint whose variable no longer
+appears is kept, marked as unused, until removed. Values typed while filling in are not saved.
 
-### Restoring a Prior Version
-1. On the prompt's Editor/Detail screen, open **Version history**
-2. Click a version to preview it
-3. Click **Restore this version**
+On phones the editor has Edit and Fill and copy tabs, and saved prompts open on Fill and copy.
 
-## Storage
+## Versions
 
-Prompts are saved in the backend database as named prompt records. A prompt is considered saved when its `name` is non-null, and every saved prompt (and its version history) is scoped to the authenticated user's account.
+- Every save that changes the sections snapshots the previous state as a version, with the note
+  given at save time.
+- The History panel lists versions (newest first, the current one on top), shows a word-level
+  diff of any version against the current text, and restores it. A restore snapshots the state it
+  replaces, so it can be undone, and is unavailable while there are unsaved edits.
+- Versions recorded before 0.3.0 can hold hand-edited text that disagrees with their sections.
+  Restoring one recovers sections from its text, the same way migration 023 recovered live prompts.
 
-- Data persists across browser sessions and devices
-- Stored server-side in the `prompts` table, with historical snapshots in `prompt_versions`
-- Each user only sees prompts (and versions) they own
-- Download a full JSON export of everything you own — fields, folder, tags, generated text, and version history — from **Settings → Data → Export**
+## The library
 
-## Saved Prompt Structure
+- `/library` lists every prompt by most recent edit, in a list or a grid (the default is a
+  Settings preference), with search across names, folders and section text.
+- The sidebar narrows it to **Favorites**, a **folder**, or **Unfiled**.
+- Each prompt's menu: Copy template, Rename, Move to folder, Duplicate, Delete. Delete takes effect
+  at once with a 5-second Undo and only then calls the server; a delete still waiting is sent if
+  the page is left.
+- **Folders** are labels on prompts (`prompts.folder`). A folder exists while a prompt is filed in
+  it. A folder view can rename the folder (`PATCH /api/prompts/folders?name=`, merging onto an
+  existing name) or remove it (`DELETE /api/prompts/folders?name=`), which unfiles its prompts and
+  deletes none. Neither changes the prompts' edit times.
+- **Recovered history** holds the unnamed prompts the old History tab listed, named by date by
+  migration 024. Rename, move or delete them like any other prompt.
 
-Each saved prompt contains:
+## Data model
+
 ```typescript
-interface SavedPrompt {
-  id: string;              // UI identifier derived from backend ID
-  name: string;             // Your custom name
-  promptId: number;        // Backend DB ID
-  fields: PromptField[];   // Dynamic field array: [{name, content}, ...]
-  generatedPrompt: string; // The XML output
-  savedAt: string;         // ISO 8601 date string
-  updatedAt?: string | null;
+interface PromptHistoryResponse {
+  id: number;
+  name: string | null;           // set for every prompt since migration 024
+  fields: PromptField[];         // the sections, in order
+  generated_prompt: string;      // rendered by the server from `fields`
+  created_at: string;            // UTC, sent without a zone marker
+  updated_at?: string | null;    // the optimistic-concurrency token
   folder?: string | null;
-  isFavorite?: boolean;
-  tags?: string[];
+  is_favorite?: boolean;
+  variable_metadata?: Record<string, { type: string; description?: string | null }> | null;
 }
 
 interface PromptField {
-  name: string;    // Field label, e.g. "goal", "tone"
-  content: string; // Field body text
+  name: string;    // display name, e.g. "Output format"
+  content: string; // section text, verbatim
 }
 ```
 
-The frontend maps backend `PromptHistoryResponse` records into this UI shape when saved prompts load.
+Tags and per-variable types are still stored for older prompts and appear in the JSON export
+(Settings → Your data), but the app and the API no longer read or write them.
 
-## UI Components
+## Future enhancements
 
-### Library (`frontend/src/app/(app)/library/page.tsx`)
-- Grid/list view of saved prompts with search, tag filters, and favorite toggling
-- Rename, duplicate, and delete actions per card/row
-- A separate History tab for the full generation log
-
-### EditorDetail (`frontend/src/components/EditorDetail.tsx`)
-- Breadcrumb, header (name/folder/edited-date, Update button, "Test in playground" link)
-- Template textarea, Version history panel with restore, Variables panel (auto-derived), tag chips
-
-### SavePromptDialog (`frontend/src/components/SavePromptDialog.tsx`)
-- Modal dialog for naming a prompt when first saving it (only — `EditorDetail`'s subsequent **Update** action PATCHes directly without reopening this dialog, since the name is already set)
-- Input validation (max 100 characters)
-
-### OutputPanel (`frontend/src/components/OutputPanel.tsx`)
-- Shown on the "new prompt" compose flow (`/editor/new`) only
-- **Save** button appears once a prompt has been generated
-
-## Keyboard Shortcuts
-
-While the save dialog is open:
-- **Enter** — Save the prompt
-- Click outside the dialog or use **Cancel** to cancel
-
-## Tips
-
-1. **Descriptive Names**: Use clear names like "Blog Post - Tech Review" instead of "Prompt 1"
-2. **Tags over ad hoc naming**: Use tags to group related prompts (e.g. `customer-facing`, `gpt-4o`) instead of encoding categories into the name
-3. **Version history is automatic**: You don't need to manually track changes — every edit to a saved prompt is preserved and restorable
-4. **Backup**: Prompts live in the backend database; include them in database backups, or use Settings → Data → Export for a personal copy
-5. **New Prompt**: Always start from `/editor/new` when beginning fresh, to avoid accidentally editing an existing prompt
-
-## Future Enhancements
-
-See `product/BACKLOG.md` for the full list. Notable open items relevant to this feature:
-- **Import from file** — the reverse of the existing JSON export
-- **Relational folders/tags** — currently simple columns; may be promoted to managed tables if cross-tag analytics become valuable
-
-Per-variable types and descriptions are **implemented**, not pending: the
-Editor's Configuration tab edits them, and they persist through the
-`variable_metadata` column (`VariableMetadataItem` in
-`backend/app/models/schemas.py`).
+See [product/BACKLOG.md](../product/BACKLOG.md). Open items closest to this area: a cleanup for
+Recovered history (bulk delete, duplicates), version milestones, a trash with restore, importing
+from a file, and a Markdown output option.

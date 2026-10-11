@@ -16,15 +16,13 @@ _USAGE = LLMUsage(
 )
 
 
-def _create_saved_prompt(client, headers, template="Write about {{topic}}") -> int:
+def _create_saved_prompt(client, headers, goal="Write about {{topic}}") -> int:
     response = client.post(
-        "/api/prompts/generate",
+        "/api/prompts",
         headers=headers,
-        json={"fields": [{"name": "goal", "content": "x"}], "name": "Refine Prompt"},
+        json={"fields": [{"name": "goal", "content": goal}], "name": "Refine Prompt"},
     )
-    prompt_id = response.json()["id"]
-    client.patch(f"/api/prompts/{prompt_id}", headers=headers, json={"generated_prompt": template})
-    return prompt_id
+    return response.json()["id"]
 
 
 class TestRefineQuestionsEndpoint:
@@ -68,7 +66,7 @@ class TestRefineQuestionsEndpoint:
             )
 
         assert resp.status_code == 200
-        assert mock_generate.call_args.args[0] == "Write about {{topic}}"
+        assert mock_generate.call_args.args[0] == "<GOAL>\nWrite about {{topic}}\n</GOAL>"
         assert mock_generate.call_args.kwargs == {"force": True}
 
     def test_requires_auth(self, client, auth_headers):
@@ -213,11 +211,11 @@ class TestRefineDraftEndpoint:
         update_resp = client.patch(
             f"/api/prompts/{prompt_id}",
             headers=auth_headers,
-            json={"generated_prompt": draft, "note": "Before AI refinement"},
+            json={"fields": [{"name": "goal", "content": draft}], "note": "Before AI refinement"},
         )
         assert update_resp.status_code == 200
-        assert update_resp.json()["generated_prompt"] == "A revised template"
+        assert update_resp.json()["generated_prompt"] == "<GOAL>\nA revised template\n</GOAL>"
 
         versions = client.get(f"/api/prompts/{prompt_id}/versions", headers=auth_headers).json()
         assert versions[0]["note"] == "Before AI refinement"
-        assert versions[0]["generated_prompt"] == "Write about {{topic}}"
+        assert versions[0]["generated_prompt"] == "<GOAL>\nWrite about {{topic}}\n</GOAL>"

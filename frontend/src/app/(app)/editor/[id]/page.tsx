@@ -1,16 +1,10 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { Suspense } from 'react';
-import EditorDetail from '@/components/EditorDetail';
+import PromptEditor from '@/components/editor/PromptEditor';
 
 export default function EditPromptPage() {
   const params = useParams<{ id: string }>();
-  const promptId = Number(params.id);
-
-  return (
-    <Suspense>
-      <EditorDetail promptId={promptId} />
-    </Suspense>
-  );
+  // Keyed by id so moving between prompts starts from a clean editor.
+  return <PromptEditor key={params.id} promptId={Number(params.id)} />;
 }

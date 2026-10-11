@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, MouseEvent, useEffect, useRef } from 'react';
+import { ReactNode, MouseEvent, useEffect, useLayoutEffect, useRef } from 'react';
 import styles from './Dialog.module.css';
 
 interface DialogProps {
@@ -17,6 +17,13 @@ const FOCUSABLE_SELECTOR =
 export default function Dialog({ isOpen, title, onClose, children, actions }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  // Read through a ref so a parent passing an inline `onClose` doesn't re-run
+  // the focus effect on every render, which threw focus back to the first
+  // field after each keystroke.
+  const onCloseRef = useRef(onClose);
+  useLayoutEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -28,7 +35,7 @@ export default function Dialog({ isOpen, title, onClose, children, actions }: Di
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !dialogEl) return;
@@ -52,7 +59,7 @@ export default function Dialog({ isOpen, title, onClose, children, actions }: Di
       document.removeEventListener('keydown', handleKeyDown);
       previouslyFocused.current?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

@@ -26,6 +26,7 @@ from app.models.playground_run import PlaygroundRun
 from app.models.prompt import Prompt
 from app.models.prompt_version import PromptVersion
 from app.models.user import User
+from app.services.prompt_sections import render_sections, sections_for_text
 
 logger = logging.getLogger(__name__)
 
@@ -735,6 +736,111 @@ def _migration_022_oauth_tables(connection) -> None:
             connection.execute(CreateIndex(index, if_not_exists=True))
 
 
+RECOVERED_HISTORY_FOLDER = "Recovered history"
+SECTION_RECOVERY_NOTE = "Before section recovery"
+
+
+def _migration_023_recover_drifted_prompt_sections(connection) -> None:
+    """Make every prompt's fields the source of its generated text.
+
+    The saved-prompt editor PATCHed `generated_prompt` as raw text, so a prompt
+    could drift from the fields it claims to be built from. From here on the
+    server renders the text from the fields on every write, so each drifted
+    prompt first gets its original fields and text kept as a version snapshot,
+    then its fields are rebuilt from the text: split into sections when that
+    round-trips exactly, otherwise kept whole as a single `prompt` section.
+    Rows are rewritten without touching `updated_at`, so the library order the
+    user knows does not change.
+    """
+    if not _table_exists(connection, "prompts"):
+        return
+
+    rows = connection.execute(
+        text('SELECT id, user_id, fields, generated_prompt FROM "prompts"')
+    ).mappings()
+    now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f")
+    for row in rows.all():
+        fields = json.loads(row["fields"]) if isinstance(row["fields"], str) else row["fields"]
+        original = row["generated_prompt"]
+        if render_sections(fields) == original:
+            continue
+
+        recovered = sections_for_text(original, fields)
+        next_version = connection.execute(
+            text(
+                "SELECT COALESCE(MAX(version_number), 0) + 1 FROM prompt_versions "
+                "WHERE prompt_id = :prompt_id"
+            ),
+            {"prompt_id": row["id"]},
+        ).scalar_one()
+        connection.execute(
+            text(
+                "INSERT INTO prompt_versions "
+                "(prompt_id, version_number, note, author_user_id, fields, generated_prompt, "
+                "created_at) "
+                "VALUES (:prompt_id, :version_number, :note, :author_user_id, :fields, "
+                ":generated_prompt, :created_at)"
+            ),
+            {
+                "prompt_id": row["id"],
+                "version_number": next_version,
+                "note": SECTION_RECOVERY_NOTE,
+                "author_user_id": row["user_id"],
+                "fields": json.dumps(fields),
+                "generated_prompt": original,
+                "created_at": now,
+            },
+        )
+        connection.execute(
+            text(
+                'UPDATE "prompts" SET fields = :fields, generated_prompt = :generated_prompt '
+                "WHERE id = :prompt_id"
+            ),
+            {
+                "fields": json.dumps(recovered),
+                "generated_prompt": render_sections(recovered),
+                "prompt_id": row["id"],
+            },
+        )
+
+
+def _recovered_prompt_name(created_at: str | None) -> str:
+    """`Untitled (14 Mar 2026, 09:12 UTC)` — timestamps are stored as naive UTC."""
+    if not created_at:
+        return "Untitled"
+    moment = datetime.fromisoformat(str(created_at))
+    return f"Untitled ({moment.day} {moment:%b %Y, %H:%M} UTC)"
+
+
+def _migration_024_recover_unnamed_prompts(connection) -> None:
+    """Move unnamed prompts out of the retired History log into the library.
+
+    Every Generate click used to store an unnamed prompt that only the History
+    tab listed. That tab is going away, so each one gets a readable date-based
+    name and lands in the "Recovered history" folder, unless it was already
+    filed somewhere. Nothing is deduplicated: identical fields can still differ
+    in text that was edited by hand.
+    """
+    if not _table_exists(connection, "prompts"):
+        return
+
+    rows = connection.execute(
+        text('SELECT id, created_at FROM "prompts" WHERE name IS NULL')
+    ).mappings()
+    for row in rows.all():
+        connection.execute(
+            text(
+                'UPDATE "prompts" SET name = :name, folder = COALESCE(folder, :folder) '
+                "WHERE id = :prompt_id"
+            ),
+            {
+                "name": _recovered_prompt_name(row["created_at"]),
+                "folder": RECOVERED_HISTORY_FOLDER,
+                "prompt_id": row["id"],
+            },
+        )
+
+
 _MIGRATIONS: tuple[Migration, ...] = (
     ("001_dynamic_prompt_fields", _migration_001_dynamic_prompt_fields),
     ("002_prompt_user_id", _migration_002_prompt_user_id),
@@ -758,4 +864,6 @@ _MIGRATIONS: tuple[Migration, ...] = (
     ("020_delete_cascades", _migration_020_delete_cascades),
     ("021_user_token_version", _migration_021_user_token_version),
     ("022_oauth_tables", _migration_022_oauth_tables),
+    ("023_recover_drifted_prompt_sections", _migration_023_recover_drifted_prompt_sections),
+    ("024_recover_unnamed_prompts", _migration_024_recover_unnamed_prompts),
 )

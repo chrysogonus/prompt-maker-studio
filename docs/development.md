@@ -134,15 +134,13 @@ does not come into it.
 ## Quick Test
 
 1. Open http://localhost:3000
-2. Register a new account (username ≥ 3 chars, password ≥ 8 chars, valid email required) — you land on the **Dashboard**
-3. Click **+ New prompt**, then add fields using **"+ Add Field"**:
-   - Field name: `goal` / Content: `Create a fantasy character`
-   - Field name: `style` / Content: `Epic and heroic`
-4. Click **Generate Prompt**
-5. See the XML-formatted prompt on the right
-6. Click **Copy** to copy the prompt
-7. Click **Save** and name it `Fantasy Template` — you're redirected to its Editor/Detail page
-8. Click **Library** in the nav bar and click the card to reload it
+2. Register a new account (username ≥ 3 chars, password ≥ 8 chars, valid email required) — you land on the empty **library**
+3. Click **New prompt** and write in the first section, for example `Explain {{topic}} to a beginner.`
+   Use **Add section** for another one, named `Output format`
+4. Watch the preview on the right: it shows the tagged text exactly as it will be copied
+5. Press **Ctrl/⌘+S**, name it `Tutor`, and save — you're moved to its `/editor/{id}` page
+6. Switch the preview to **Filled**, type a topic, and click **Copy filled prompt**
+7. Click **All prompts** in the sidebar and open it again from the list
 
 ## Project Structure Overview
 
@@ -224,8 +222,8 @@ python run.py  # Will recreate tables
 ### Seed the demo account
 
 For manual QA and demos, seed (or re-seed) a fully-populated `alex` account
-(prompts across folders/tags, favorites, version history, and 30 days of
-Playground runs so the Dashboard has real data):
+(everyday and long prompts across folders, favorites, variables with hints,
+version histories, an unfiled and a recovered prompt):
 
 ```bash
 make seed-demo-user
@@ -289,7 +287,7 @@ booting), and any other proxy in front of the app can do the same. If you see
 them, check `docker compose ps`/`docker compose logs frontend` for a restart
 around that timestamp rather than looking for an application bug. A burst of
 700 RSC requests (sequential and 50-way concurrent, across `/library`,
-`/editor/{id}`, `/playground/{id}`, and `/dashboard`) against a healthy stack
+`/editor/{id}`, and the then-existing `/playground/{id}` and `/dashboard`) against a healthy stack
 returns 200 every time.
 
 ## Testing
@@ -310,7 +308,7 @@ make test-cov
 make test-file FILE=tests/test_api.py
 ```
 
-**Test suites**: backend pytest (with a 90% coverage gate), frontend Vitest + React Testing Library, and Playwright browser tests covering registration, saving, editing/versioning, concurrent-edit handling, refinement history, eval workflows, settings/dashboard workflows, and accessibility across themes and pages. Exact counts are deliberately not listed here — they went stale within weeks last time; run `make test`, `make test-frontend`, and `make test-e2e` for current figures.
+**Test suites**: backend pytest (with a 90% coverage gate), frontend Vitest + React Testing Library, and Playwright browser tests covering registration and saving, the sidebar shell on desktop and phone, versioning and restore, section-name rules, filling variables and concurrent-edit handling, Import text without a connection, folders and Settings, the Content-Security-Policy, and accessibility across themes and pages. Exact counts are deliberately not listed here — they went stale within weeks last time; run `make test`, `make test-frontend`, and `make test-e2e` for current figures.
 
 ## Dependency Locks
 

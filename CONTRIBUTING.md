@@ -143,7 +143,7 @@ chore/short-description
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-feat(playground): add per-run cost breakdown
+feat(library): add bulk delete for recovered prompts
 fix(auth): reject expired reset tokens
 docs(readme): document ADMIN_DIAGNOSTICS_TOKEN
 chore(backend)(deps): bump openai to 2.46.0

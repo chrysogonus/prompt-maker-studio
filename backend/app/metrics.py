@@ -7,14 +7,9 @@ password_reset_email_failures_total = Counter(
     "Number of password-reset email delivery failures.",
 )
 
-prompts_generated_total = Counter(
-    "prompts_generated_total",
-    "Number of prompts generated via POST /api/prompts/generate.",
-)
-
 prompts_saved_total = Counter(
     "prompts_saved_total",
-    "Number of prompts that transitioned to a named (saved) state.",
+    "Number of prompts saved to a library, from the web app or an MCP client.",
 )
 
 ai_imports_total = Counter(
@@ -35,14 +30,4 @@ user_registrations_total = Counter(
 login_successes_total = Counter(
     "login_successes_total",
     "Number of successful logins.",
-)
-
-playground_runs_total = Counter(
-    "playground_runs_total",
-    "Number of Playground run attempts via POST /api/prompts/{id}/playground/run.",
-)
-
-playground_run_failures_total = Counter(
-    "playground_run_failures_total",
-    "Number of Playground runs that failed.",
 )
