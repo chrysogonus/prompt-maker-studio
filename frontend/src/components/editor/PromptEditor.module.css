@@ -621,6 +621,9 @@ button.title:hover {
   width: 100%;
   min-height: 34px;
   max-height: 200px;
+  /* Grows with what's typed, or with a long hint, instead of clipping it.
+     Browsers without field-sizing keep the manual resize handle. */
+  field-sizing: content;
   resize: vertical;
   padding: 7px 9px;
   border: 1px solid var(--pv-border);
