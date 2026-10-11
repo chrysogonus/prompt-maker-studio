@@ -180,7 +180,7 @@ FRONTEND_PORT=3000
 # Optional monthly usage ceilings (USD). Unset means unlimited. Users pay
 # their own provider, so these cap how much billed activity the app will
 # drive rather than protecting an operator wallet. Enforced before every
-# billed call (Playground run, eval case/judge calls, refinement);
+# billed call (Import text, and the deferred eval and refinement endpoints);
 # GLOBAL_MONTHLY_BUDGET_USD's exhausted state is also reported by
 # GET /api/prompts/config. Operator-controlled only.
 # GLOBAL_MONTHLY_BUDGET_USD=50

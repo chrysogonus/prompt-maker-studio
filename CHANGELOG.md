@@ -10,6 +10,82 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Planned as 0.3.0: a redesign around saving, filling in and copying prompts, with
+features that were shallow or misleading for that job removed. Read **Upgrade
+notes** before deploying.
+
+### Upgrade notes
+
+- Back up the database first (`make backup-db`) and rehearse the upgrade on a
+  copy. Two data migrations run once at startup:
+  `023_recover_drifted_prompt_sections` rebuilds the sections of prompts whose
+  text was edited by hand, keeping the original sections and text as a version
+  noted "Before section recovery"; `024_recover_unnamed_prompts` names old
+  History entries (`Untitled (14 Mar 2026, 09:12 UTC)`) and files them under
+  "Recovered history". Steps in [docs/deployment.md](./docs/deployment.md).
+- Remove any `make send-weekly-summary` cron entry; the target is gone.
+- Breaking API changes: `POST /api/prompts/generate`, `GET /api/prompts/history`,
+  `GET /api/prompts/tags`, `POST /api/prompts/{id}/playground/run`,
+  `GET /api/prompts/{id}/playground/runs` and `GET /api/analytics/dashboard` are
+  removed. `PATCH /api/prompts/{id}` rejects `generated_prompt` and `tags`.
+  Prompt responses no longer include `tags` or `run_count`, and the profile no
+  longer includes the `notify_*` preferences.
+- MCP clients should refresh their tool schemas: `list_saved_prompts` lost its
+  `tag` filter and `tags` output. See [docs/mcp.md](./docs/mcp.md#contract-changes-in-030).
+
+### Added
+
+- One editor for new and saved prompts: named sections you can rename, reorder
+  and remove, a live preview of exactly what will be copied, Template and Filled
+  modes with "Copy template" and "Copy filled prompt", variable hints, inline
+  warnings for empty sections and unevenly opened tags, starter templates, and
+  Import text.
+- Explicit saving with Ctrl/⌘+S and an optional version note, local draft
+  recovery, an edit-conflict banner that keeps your edits, and a History panel
+  with a word-level diff and undoable restore.
+- `POST /api/prompts` to save a prompt from its sections. Section names may
+  contain spaces; the tag replaces them with underscores (`<OUTPUT_FORMAT>`).
+- The library as the home page, with a sidebar of favorites and folders with
+  counts; `PATCH` and `DELETE /api/prompts/folders?name=` rename (merging) and
+  remove folders without deleting prompts.
+- Phone layouts: a sidebar drawer, and an editor that opens saved prompts on a
+  Fill and copy tab.
+- A new look: coral and plum, Hanken Grotesk and JetBrains Mono (self-hosted),
+  light by default.
+
+### Changed
+
+- The server renders a prompt's text from its sections on every write, including
+  restores and MCP updates, so the web app, the ChatGPT plugin and the copied
+  text always agree.
+- Settings is one page: profile, password and sessions, theme, library layout,
+  the optional AI connection, export, and account deletion.
+- The demo seed matches the new model: folders, hints, version histories, and no
+  Playground runs or tags.
+- Version metadata in `package.json`, `pyproject.toml` and the API is now
+  consistent with the release number.
+
+### Removed
+
+- The Generate step and History tab, the dashboard and analytics, the standalone
+  Playground screen, tags, code-snippet export, the compile animation, the output
+  metrics bar, the density setting, variable type pickers, and all notification
+  emails including the weekly summary. Old `/dashboard` and `/playground/{id}`
+  links redirect.
+- The `prompts_generated_total` and Playground Prometheus counters and their
+  Grafana panels.
+
+### Deprecated
+
+- Refinement and evaluation have no UI until they are rebuilt. Their endpoints
+  and data are kept, and evaluations no longer start automatically after a save.
+
+### Fixed
+
+- Dialogs no longer move focus back to their first field on every keystroke.
+- Times from the API, which are UTC without a zone marker, are no longer read as
+  local time.
+
 ## [0.2.0] - 2026-10-07
 
 ### Added

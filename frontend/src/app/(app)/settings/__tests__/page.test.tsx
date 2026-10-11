@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SettingsPage from '../page';
 import { AuthService } from '@/lib/auth';
@@ -44,13 +44,9 @@ function user(overrides: Partial<Record<string, unknown>> = {}) {
     username: 'testuser',
     email: 'testuser@example.com',
     created_at: '2026-07-01T00:00:00Z',
-    notify_run_failure: false,
-    notify_weekly_summary: false,
     default_library_view: null,
     default_eval_method: null,
     auto_run_eval_on_update: false,
-    notify_eval_complete: false,
-    notify_eval_regression: false,
     ...overrides,
   };
 }
@@ -102,104 +98,9 @@ beforeEach(() => {
 });
 
 describe('SettingsPage', () => {
-  it('renders all section anchors in the rail', async () => {
-    renderSettings();
-    const rail = screen.getByRole('navigation', { name: 'Settings sections' });
-    await within(rail).findByRole('link', { name: 'Profile' });
-    expect(screen.getByRole('link', { name: 'Preferences' })).toHaveAttribute(
-      'href',
-      '#s-preferences'
-    );
-    expect(screen.getByRole('link', { name: 'Danger zone' })).toHaveAttribute('href', '#s-danger');
-  });
-
-  it('renders the six rail glyphs at 18px and marks the active location', async () => {
-    renderSettings();
-    const rail = screen.getByRole('navigation', { name: 'Settings sections' });
-    const expectedIcons = [
-      ['Profile', 'lucide-user'],
-      ['Preferences', 'lucide-sliders-horizontal'],
-      ['Notifications', 'lucide-bell'],
-      ['API access', 'lucide-key-round'],
-      ['Data', 'lucide-database'],
-      ['Danger zone', 'lucide-triangle-alert'],
-    ] as const;
-
-    for (const [label, iconClass] of expectedIcons) {
-      const link = within(rail).getByRole('link', { name: label });
-      const icon = link.querySelector('svg');
-      expect(icon).toHaveClass(iconClass);
-      expect(icon).toHaveAttribute('width', '18');
-      expect(icon).toHaveAttribute('height', '18');
-      expect(icon).toHaveAttribute('aria-hidden', 'true');
-    }
-
-    expect(within(rail).getByRole('link', { name: 'Profile' })).toHaveAttribute(
-      'aria-current',
-      'location',
-    );
-    await userEvent.click(within(rail).getByRole('link', { name: 'Preferences' }));
-    expect(within(rail).getByRole('link', { name: 'Preferences' })).toHaveAttribute(
-      'aria-current',
-      'location',
-    );
-  });
-
-  it('updates the active rail location as the Settings page scrolls', async () => {
-    renderSettings();
-    const positions: Record<string, number> = {
-      's-profile': -500,
-      's-preferences': -250,
-      's-notifications': 40,
-      's-api': 500,
-      's-data': 800,
-      's-danger': 1100,
-    };
-
-    for (const [id, top] of Object.entries(positions)) {
-      vi.spyOn(document.getElementById(id)!, 'getBoundingClientRect').mockReturnValue({
-        top,
-      } as DOMRect);
-    }
-
-    fireEvent.scroll(window);
-
-    await waitFor(() => {
-      expect(screen.getByRole('link', { name: 'Notifications' })).toHaveAttribute(
-        'aria-current',
-        'location',
-      );
-    });
-  });
-
-  it('uses icons only for the three visual-outcome segmented controls', async () => {
-    renderSettings();
-    await screen.findByRole('radiogroup', { name: 'Default library view' });
-
-    const expectedIcons = [
-      ['Light', 'lucide-sun'],
-      ['Dark', 'lucide-moon'],
-      ['Comfortable', 'lucide-rows-2'],
-      ['Compact', 'lucide-rows-3'],
-      ['Grid', 'lucide-layout-grid'],
-      ['List', 'lucide-list'],
-    ] as const;
-    for (const [label, iconClass] of expectedIcons) {
-      const radio = screen.getByRole('radio', { name: label });
-      const icon = radio.querySelector('svg');
-      expect(icon).toHaveClass(iconClass);
-      expect(icon).toHaveAttribute('width', '14');
-      expect(icon).toHaveAttribute('aria-hidden', 'true');
-    }
-
-    for (const label of ['Rule', 'Judge', 'Manual']) {
-      expect(screen.getByRole('radio', { name: label }).querySelector('svg')).toBeNull();
-    }
-  });
-
   it('shows the connected provider in the API access section', async () => {
     renderSettings();
-    expect(await screen.findByText(/Connected · OpenAI/)).toBeInTheDocument();
+    expect(await screen.findByText(/Connected to OpenAI/)).toBeInTheDocument();
   });
 
   it('shows Not connected when the user has no provider configured', async () => {
@@ -209,25 +110,6 @@ describe('SettingsPage', () => {
     renderSettings();
 
     expect(await screen.findByText('Not connected')).toBeInTheDocument();
-  });
-
-  it('toggles the run-failure notification preference', async () => {
-    vi.mocked(AuthService.updateProfile).mockResolvedValue(user({ notify_run_failure: true }));
-    renderSettings();
-    await screen.findByRole('switch', { name: 'Run failures' });
-
-    await userEvent.click(screen.getByRole('switch', { name: 'Run failures' }));
-
-    await waitFor(() => {
-      expect(AuthService.updateProfile).toHaveBeenCalledWith({ notify_run_failure: true });
-    });
-  });
-
-  it('describes the weekly summary as sent by the scheduled job', async () => {
-    renderSettings();
-    expect(
-      await screen.findByText(/sent weekly by the server's scheduled job/i)
-    ).toBeInTheDocument();
   });
 
   it('edits the email address', async () => {
@@ -276,15 +158,15 @@ describe('SettingsPage', () => {
 
   it('updates the default library view preference', async () => {
     vi.mocked(AuthService.updateProfile).mockResolvedValue(
-      user({ default_library_view: 'list' })
+      user({ default_library_view: 'grid' })
     );
     renderSettings();
     await screen.findByRole('radiogroup', { name: 'Default library view' });
 
-    await userEvent.click(screen.getByRole('radio', { name: 'List' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Grid' }));
 
     await waitFor(() => {
-      expect(AuthService.updateProfile).toHaveBeenCalledWith({ default_library_view: 'list' });
+      expect(AuthService.updateProfile).toHaveBeenCalledWith({ default_library_view: 'grid' });
     });
   });
 
@@ -298,72 +180,23 @@ describe('SettingsPage', () => {
     renderSettings();
     await screen.findByRole('radiogroup', { name: 'Default library view' });
 
-    await userEvent.click(screen.getByRole('radio', { name: 'List' }));
-    expect(screen.getByText('Saving preference')).toBeInTheDocument();
-    expect(screen.getByText('Saving preference').previousElementSibling).toHaveClass(
-      'lucide-loader-circle',
-    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Grid' }));
+    expect(screen.getByLabelText('Saving preference')).toHaveClass('lucide-loader-circle');
 
-    resolveUpdate(user({ default_library_view: 'list' }));
+    resolveUpdate(user({ default_library_view: 'grid' }));
 
-    expect(await screen.findByText('Preference saved')).toBeInTheDocument();
-    expect(screen.getByText('Preference saved').previousElementSibling).toHaveClass('lucide-check');
+    expect(await screen.findByLabelText('Preference saved')).toHaveClass('lucide-check');
   });
 
-  it('updates the default eval scoring method preference', async () => {
-    vi.mocked(AuthService.updateProfile).mockResolvedValue(
-      user({ default_eval_method: 'judge' })
-    );
+  it('offers only the settings that still do something', async () => {
     renderSettings();
-    await screen.findByRole('radiogroup', { name: 'Default eval scoring method' });
+    await screen.findByRole('radiogroup', { name: 'Default library view' });
 
-    await userEvent.click(screen.getByRole('radio', { name: 'Judge' }));
-
-    await waitFor(() => {
-      expect(AuthService.updateProfile).toHaveBeenCalledWith({ default_eval_method: 'judge' });
-    });
-  });
-
-  it('toggles auto-run evaluation on update', async () => {
-    vi.mocked(AuthService.updateProfile).mockResolvedValue(
-      user({ auto_run_eval_on_update: true })
-    );
-    renderSettings();
-    await screen.findByRole('switch', { name: 'Auto-run evaluation on Update' });
-
-    await userEvent.click(screen.getByRole('switch', { name: 'Auto-run evaluation on Update' }));
-
-    await waitFor(() => {
-      expect(AuthService.updateProfile).toHaveBeenCalledWith({ auto_run_eval_on_update: true });
-    });
-  });
-
-  it('toggles the evaluation-complete notification preference', async () => {
-    vi.mocked(AuthService.updateProfile).mockResolvedValue(
-      user({ notify_eval_complete: true })
-    );
-    renderSettings();
-    await screen.findByRole('switch', { name: 'Evaluation complete' });
-
-    await userEvent.click(screen.getByRole('switch', { name: 'Evaluation complete' }));
-
-    await waitFor(() => {
-      expect(AuthService.updateProfile).toHaveBeenCalledWith({ notify_eval_complete: true });
-    });
-  });
-
-  it('toggles the score-regression notification preference', async () => {
-    vi.mocked(AuthService.updateProfile).mockResolvedValue(
-      user({ notify_eval_regression: true })
-    );
-    renderSettings();
-    await screen.findByRole('switch', { name: 'Score regression' });
-
-    await userEvent.click(screen.getByRole('switch', { name: 'Score regression' }));
-
-    await waitFor(() => {
-      expect(AuthService.updateProfile).toHaveBeenCalledWith({ notify_eval_regression: true });
-    });
+    // Density, eval defaults and email notifications were retired.
+    expect(screen.queryByRole('radiogroup', { name: 'Density' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: /eval/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'AI connection' })).toBeInTheDocument();
   });
 
   it('triggers a download when Export is clicked', async () => {
@@ -371,7 +204,7 @@ describe('SettingsPage', () => {
     vi.mocked(ApiClient.exportPrompts).mockResolvedValue(blob);
 
     renderSettings();
-    const exportButton = await screen.findByRole('button', { name: 'Export' });
+    const exportButton = await screen.findByRole('button', { name: 'Export all prompts' });
     expect(exportButton.querySelector('svg')).toHaveClass('lucide-download');
     expect(exportButton.querySelector('svg')).toHaveAttribute('width', '16');
     await userEvent.click(exportButton);
@@ -383,16 +216,6 @@ describe('SettingsPage', () => {
       // produced an uncaught navigation error from a timer.
       expect(downloadBlob).toHaveBeenCalledWith(blob, expect.stringContaining('.json'));
     });
-  });
-
-  it('renders the danger section header with its 16px risk icon', async () => {
-    renderSettings();
-
-    const heading = await screen.findByRole('heading', { name: 'Danger zone' });
-    const icon = heading.querySelector('svg');
-    expect(icon).toHaveClass('lucide-triangle-alert');
-    expect(icon).toHaveAttribute('width', '16');
-    expect(icon).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('signs out every session and logs out locally', async () => {
@@ -421,9 +244,9 @@ describe('SettingsPage', () => {
     vi.mocked(ApiClient.deleteAccount).mockResolvedValue(undefined);
     renderSettings();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Delete account' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete account…' }));
     await userEvent.type(screen.getByLabelText('Confirm your password'), 'testpass123');
-    await userEvent.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete my account' }));
 
     await waitFor(() => {
       expect(ApiClient.deleteAccount).toHaveBeenCalledWith('testpass123');
@@ -437,9 +260,9 @@ describe('SettingsPage', () => {
     vi.mocked(ApiClient.deleteAccount).mockClear();
     renderSettings();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Delete account' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete account…' }));
 
-    expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Delete my account' })).toBeDisabled();
     expect(ApiClient.deleteAccount).not.toHaveBeenCalled();
   });
 
@@ -447,9 +270,9 @@ describe('SettingsPage', () => {
     vi.mocked(ApiClient.deleteAccount).mockRejectedValue(new Error('Password is incorrect.'));
     renderSettings();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Delete account' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete account…' }));
     await userEvent.type(screen.getByLabelText('Confirm your password'), 'wrong');
-    await userEvent.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete my account' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Password is incorrect.');
     expect(logout).not.toHaveBeenCalled();

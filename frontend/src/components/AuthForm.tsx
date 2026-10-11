@@ -195,12 +195,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
 
           <button type="submit" className={styles.submitButton} disabled={isLoading}>
             <span>{isLoading ? 'Sending…' : 'Send reset link'}</span>
-            <span
-              className={isLoading ? styles.buttonSpinner : styles.buttonArrow}
-              aria-hidden="true"
-            >
-              {isLoading ? '' : '→'}
-            </span>
+            {isLoading && <span className={styles.buttonSpinner} aria-hidden="true" />}
           </button>
         </form>
       )}
@@ -331,12 +326,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           <span>
             {isLoading ? 'Please wait…' : view === 'login' ? 'Sign in' : 'Create account'}
           </span>
-          <span
-            className={isLoading ? styles.buttonSpinner : styles.buttonArrow}
-            aria-hidden="true"
-          >
-            {isLoading ? '' : '→'}
-          </span>
+          {isLoading && <span className={styles.buttonSpinner} aria-hidden="true" />}
         </button>
       </form>
 
@@ -368,47 +358,33 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
 
   return (
     <div className={styles.container}>
-      <div className={styles.glow} aria-hidden="true" />
-
       <main className={styles.authShell}>
         <section className={styles.visualPanel} aria-labelledby="auth-product-title">
           <Wordmark icon="tile" className={styles.wordmark} />
 
           <div className={styles.intro}>
-            <p className={styles.eyebrow}>A focused prompt workspace</p>
             <h1 id="auth-product-title" className={styles.heroTitle}>
-              Turn rough ideas into prompts you can trust.
+              A home for the prompts you keep retyping.
             </h1>
             <p className={styles.heroCopy}>
-              Structure, test, and reuse prompts from one focused workspace.
+              Save them as sections, mark the parts that change, and copy a filled-in version into
+              any chat assistant whenever you need it.
             </p>
           </div>
 
-          {/* A sample of what the product produces, shown as-is. It deliberately
-              does not animate a before/after transformation — the page has one
-              entrance and no ambient motion. */}
-          <div className={styles.promptCard} aria-hidden="true">
-            <div className={styles.cardChrome}>
-              <span className={styles.chromeDot} />
-              <span>Structured prompt</span>
-            </div>
-            <div className={styles.promptRow}>
-              <span className={styles.promptTag}>&lt;GOAL&gt;</span>
-              <span>Write a launch brief</span>
-            </div>
-            <div className={styles.promptRow}>
-              <span className={styles.promptTag}>&lt;AUDIENCE&gt;</span>
-              <span>Developer teams</span>
-            </div>
-            <div className={styles.promptRow}>
-              <span className={styles.promptTag}>&lt;CONSTRAINTS&gt;</span>
-              <span>Clear · concise · actionable</span>
-            </div>
-            <div className={styles.readyStatus}>
-              <span className={styles.readyDot} />
-              Structured prompt · ready
-            </div>
-          </div>
+          {/* What the product hands you to paste, shown as-is on the same deep
+              plum as the editor's preview. */}
+          <pre className={styles.promptSample} aria-hidden="true">
+            <span className={styles.sampleTag}>&lt;ROLE&gt;</span>
+            {'\nYou are a patient tutor.\n'}
+            <span className={styles.sampleTag}>&lt;/ROLE&gt;</span>
+            {'\n\n'}
+            <span className={styles.sampleTag}>&lt;TASK&gt;</span>
+            {'\nExplain '}
+            <span className={styles.sampleVariable}>{'{{topic}}'}</span>
+            {' in three short steps.\n'}
+            <span className={styles.sampleTag}>&lt;/TASK&gt;</span>
+          </pre>
         </section>
 
         <div className={styles.card}>

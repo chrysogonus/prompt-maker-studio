@@ -106,10 +106,12 @@ test.describe('Content-Security-Policy', () => {
     await page.locator('#password').fill(user.password);
     await page.locator('#reg-email').fill(user.email);
     await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page.getByText(`Good to see you, ${user.username}`)).toBeVisible();
-
-    await page.getByRole('navigation').getByRole('link', { name: 'Library' }).click();
+    // The library is the home page.
     await expect(page).toHaveURL(/\/library$/);
+    await expect(page.getByRole('heading', { name: 'Your prompt library is empty' })).toBeVisible();
+
+    await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('link', { name: 'Settings' }).click();
+    await expect(page).toHaveURL(/\/settings$/);
 
     expect(violations, `CSP violations:\n${violations.join('\n')}`).toEqual([]);
   });

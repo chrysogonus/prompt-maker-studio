@@ -6,7 +6,6 @@ enforces that in both directions, so this table cannot silently drift.
 | Module | Coverage area |
 |---|---|
 | `test_admin_routes.py` | Token-protected SMTP diagnostics |
-| `test_analytics.py` | Dashboard usage-analytics aggregation: month-over-month change, success rate, 7-day request volume, top prompts, per-user isolation, per-prompt run counts, and the weekly-summary digest |
 | `test_api.py` | Prompt generation, saved prompts (incl. folder/tag/favorite filters), history, pagination, search, updates, ownership, real per-prompt run counts, and variable_metadata |
 | `test_auth.py` | Registration, JWT lifecycle, profile, account deletion, password reset, password change, and the `SECRET_KEY` startup guard that rejects every published example key |
 | `test_auth_cookies.py` | The browser session path: httpOnly session cookie, the readable CSRF cookie, double-submit CSRF enforcement on cookie-authenticated writes (and its bearer/safe-method exemptions), logout, and the `COOKIE_DOMAIN`/`COOKIE_SECURE` deployment settings |
@@ -14,7 +13,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_budget_service.py` | BudgetService global/per-user monthly spend-ceiling parsing, enforcement, and the config endpoint's remaining-budget snapshot |
 | `test_database_connection.py` | SQLite engine PRAGMA configuration: journal_mode=WAL and busy_timeout |
 | `test_docker_compose_config.py` | Compose service config: neither application container mounts `.env`, the backend database stays on its persistent volume, no operator-wide provider API key is passed in, local ports default to loopback, and the backup worker is non-root with a read-only database mount |
-| `test_email_service.py` | SMTP configuration, reset-email delivery, run-failure email, weekly-summary email, eval-run-complete email, and eval-score-regression email |
+| `test_email_service.py` | SMTP configuration, TLS verification, and password-reset email delivery |
 | `test_error_handling.py` | Request-id correlation middleware, sanitized request-validation logging, and the catch-all handler for unhandled (non-HTTPException) exceptions |
 | `test_eval_generator_service.py` | EvalGeneratorService synthetic test-case proposal generation (standard, edge-case, adversarial, robustness, output-format) with a mocked provider connection and token/cost tracking |
 | `test_eval_routes.py` | Eval case CRUD, run creation (rule/judge/manual scoring), run history, manual star ratings, completion/regression email hooks, and budget-ceiling rejection |
@@ -32,10 +31,10 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_models.py` | User and prompt ORM models |
 | `test_oauth.py` | OAuth account linking for MCP clients: discovery metadata, dynamic registration and its redirect-host allowlist, consent approve/deny, PKCE, single-use codes, audience-bound access tokens rejected by the REST API, refresh-token rotation, revocation, the `offline_access` scope, rate limits on registration/token/consent, and disconnection on sign-out-everywhere or account deletion |
 | `test_optimistic_concurrency.py` | Conflict detection for concurrent prompt writes: `updated_at` advances even when the wall clock steps backwards or two writes land in one instant, and any difference from the client's token is a conflict (no tolerance window to lose an update in) |
-| `test_playground.py` | Template variable compilation, PlaygroundService cost/latency math, the Playground run endpoint (success, failure, ownership, validation, budget-ceiling rejection), and the run-history endpoint (pagination, ownership, failed runs) |
-| `test_prompt_generator.py` | XML prompt generation |
+| `test_playground.py` | Template variable compilation and PlaygroundService cost/latency math (the service evaluations run prompts through) |
 | `test_prompt_parser.py` | Text-to-fields parser service (including non-strict-schema providers and fenced JSON) and the parse-text endpoint |
 | `test_prompt_refiner.py` | PromptRefinerService clarifying-question and draft-generation calls |
+| `test_prompt_sections.py` | Rendering sections to tagged text, display names with spaces, and recovering sections from text only when that round-trips exactly |
 | `test_prompt_versions.py` | Version snapshotting on edit, restore semantics, ownership, cascade delete, run_count passthrough |
 | `test_prompts_config.py` | Per-user AI capability endpoint: connection state, model list, budget status, and per-user scoping |
 | `test_refine_routes.py` | Refine tab clarifying-questions and draft endpoints, the accept-as-new-version flow, and budget-ceiling rejection |
@@ -44,8 +43,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_secret_store.py` | Fernet encryption of stored provider API keys: round-trip, non-determinism, key-rotation failure mode, and display masking |
 | `test_seed_demo_user.py` | `backend/scripts/seed_demo_user.py` — the `SEED_DEMO_USER` opt-in guard, idempotent demo-account seeding, and its downstream analytics |
 | `test_tests_readme_sync.py` | This table itself: every `test_*.py` module has a row, and no row names a deleted module |
-| `test_user_preferences.py` | Settings preferences (notifications, library view, eval defaults), the Playground run-failure email hook, and the full data-export endpoint |
-| `test_weekly_summary_script.py` | `backend/scripts/send_weekly_summary_email.py`'s opt-in filtering and per-user failure isolation |
+| `test_user_preferences.py` | Settings preferences (library view, eval defaults) and the full data-export endpoint |
 
 ## Running Tests
 

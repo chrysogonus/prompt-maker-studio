@@ -1,8 +1,24 @@
 .shell {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
   background: var(--color-canvas);
+}
+
+.column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Phone only: the sidebar becomes a drawer opened from here. */
+.topbar {
+  display: none;
+}
+
+.scrim {
+  display: none;
 }
 
 .skipLink {
@@ -26,8 +42,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: var(--space-6);
-  max-width: 1280px;
+  padding: var(--space-6) var(--space-8);
+  max-width: 1320px;
   width: 100%;
   margin: 0 auto;
 }
@@ -84,29 +100,80 @@
 }
 
 .footer {
-  border-top: 1px solid var(--border-primary);
-  background: var(--color-panel);
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-4) var(--space-8);
   margin-top: auto;
-  flex-shrink: 0;
+  font-size: var(--text-xs-size);
+  color: var(--text-muted);
 }
 
-.footerContent {
-  max-width: 1280px;
-  width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.footerContent a {
+.footer a {
   color: inherit;
   text-underline-offset: 2px;
 }
 
-.footerContent a:hover {
+.footer a:hover {
   color: var(--text-secondary);
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 52px;
+    padding: 0 var(--space-3) 0 var(--space-1);
+    background: var(--color-canvas);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .menuButton {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .topbarTitle {
+    flex: 1;
+    font-weight: var(--weight-semibold);
+  }
+
+  .topbarNew {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: var(--radius-sm);
+    background: var(--color-accent-tag);
+    color: var(--on-accent);
+    font-size: var(--text-sm-size);
+    font-weight: var(--weight-semibold);
+  }
+
+  .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: color-mix(in srgb, #1d1219 38%, transparent);
+  }
+
+  .content {
+    padding: var(--space-4);
+  }
+
+  .footer {
+    padding: var(--space-4);
+  }
 }
 
 .legalLinks {

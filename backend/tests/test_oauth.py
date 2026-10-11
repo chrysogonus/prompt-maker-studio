@@ -283,7 +283,7 @@ class TestTokens:
         self, client, auth_headers, second_auth_headers
     ):
         client.post(
-            "/api/prompts/generate",
+            "/api/prompts",
             headers=second_auth_headers,
             json={"name": "Not yours", "fields": [{"name": "task", "content": "x"}]},
         )

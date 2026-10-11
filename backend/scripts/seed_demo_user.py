@@ -1,12 +1,12 @@
 """
-Seed (or re-seed) a fully-populated "alex" demo account for manual QA and
-feature demos — prompts across folders/tags, favorites, version history, and
-Playground run history spanning the last 30 days, so Dashboard analytics,
-per-prompt run counts, and the weekly-summary digest all have real data to
-show.
+Seed (or re-seed) a fully populated "alex" demo account for manual QA,
+feature demos and the README screenshots: everyday and long prompts across
+folders, favorites, variables with hints, an unfiled prompt, one recovered
+history prompt, and version histories worth comparing.
 
-Safe to re-run: replaces the account's existing data rather than duplicating
-it. Every value here is fabricated — the identity uses the reserved
+Every prompt's text is rendered from its sections, exactly as the API stores
+it. Safe to re-run: replaces the account's existing data rather than
+duplicating it. Every value here is fabricated — the identity uses the reserved
 `example.com` domain and no real person or account is represented.
 
 **Development and manual QA only.** The account it creates has a fixed,
@@ -28,7 +28,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 import logging
 import os
-import random
 import sys
 
 from sqlalchemy.orm import Session
@@ -41,6 +40,7 @@ from app.models.prompt_version import PromptVersion
 from app.models.user import User
 from app.services.llm_providers import PROVIDERS
 from app.services.prompt_id_service import PromptIdService
+from app.services.prompt_sections import render_sections
 
 logger = logging.getLogger(__name__)
 
@@ -54,170 +54,408 @@ PASSWORD = "test1234"
 # Explicit opt-in required to run the script; see the module docstring.
 _OPT_IN_ENV_VAR = "SEED_DEMO_USER"
 
-# Provider the seeded history is attributed to; see the User(...) call below.
+# The demo account points at this provider, deliberately without a key.
 _DEMO_PROVIDER = PROVIDERS["openai"]
-_DEMO_MODELS = list(_DEMO_PROVIDER.models)
 
-# Fixed seed so re-runs produce the same dataset shape (reproducible manual QA).
-_SEED = 20260712
+_STYLE_GUIDE = """Write for a smart reader who is busy, not for a search engine.
 
-_SAVED_PROMPTS = [
+- Short paragraphs, two to four sentences. One idea per paragraph.
+- Prefer concrete nouns and verbs over adjectives. "Exports a 40-page report in two seconds" \
+beats "blazing fast".
+- No superlatives we can't prove: no "revolutionary", "game-changing", "seamless".
+- Say "you" to the reader and "we" for the company. Never "users".
+- Explain any term a non-specialist wouldn't know the first time it appears, in plain words.
+- Use numbers when we have them and say where they come from. If we don't have one, don't imply it.
+- Don't open with a rhetorical question, "Imagine…" or "In today's fast-paced world".
+- Quote customers only if the quote appears in the key points. Never invent quotes or names.
+- If a key point is vague, write around it honestly and list it under "Needs detail" afterwards.
+- End with what the reader can do now, in one sentence, with no exclamation mark."""
+
+_TRANSCRIPT_TASK = (
+    "Summarise for someone who missed the meeting. Separate what was decided from what was "
+    "only discussed. List action items with an owner and a date when the transcript mentions "
+    'one; otherwise write "no owner". Do not attribute opinions to people unless the '
+    "transcript names them."
+)
+
+
+def _sections(*pairs: tuple[str, str]) -> list[dict]:
+    return [{"name": name, "content": content} for name, content in pairs]
+
+
+def _hints(**descriptions: str) -> dict:
+    return {name: {"type": "text", "description": text} for name, text in descriptions.items()}
+
+
+# Each prompt: its current sections, plus earlier states (oldest first) that
+# become its version history. `days_ago` is when it was last edited.
+_PROMPTS: list[dict] = [
     {
-        "name": "Customer Support Reply",
-        "folder": "Support",
-        "tags": ["support", "email"],
+        "name": "Weekly status update",
+        "folder": "Work",
         "is_favorite": True,
-        "fields": [
-            {"name": "tone", "content": "Friendly and professional"},
-            {"name": "issue", "content": "Late delivery"},
+        "days_ago": 2,
+        "sections": _sections(
+            ("Role", "You are a concise engineering lead writing for busy stakeholders who skim."),
+            ("Context", "Team: {{team}}\nWeek: {{week}}\n\nRaw notes from the week:\n{{notes}}"),
+            (
+                "Task",
+                (
+                    "Turn the notes into a status update. Lead with what shipped, then what is at "
+                    "risk and why, then what we need from others. Drop anything routine."
+                ),
+            ),
+            (
+                "Format",
+                (
+                    "Three short sections with plain headings: Shipped, At risk, Asks. At most five "
+                    "bullets per section. No intro sentence and no sign-off."
+                ),
+            ),
+        ),
+        "hints": _hints(
+            team="Team or project name",
+            week="For example 6-10 Oct",
+            notes="Paste standup notes, PR titles or chat snippets",
+        ),
+        "history": [
+            (
+                "",
+                _sections(
+                    ("Role", "You are an engineering lead writing a weekly update."),
+                    ("Context", "Team: {{team}}\nWeek: {{week}}\n\nRaw notes:\n{{notes}}"),
+                    ("Task", "Turn the notes into a status update."),
+                ),
+            ),
+            (
+                "Added the Asks section",
+                _sections(
+                    (
+                        "Role",
+                        "You are a concise engineering lead writing for busy stakeholders who skim.",
+                    ),
+                    (
+                        "Context",
+                        "Team: {{team}}\nWeek: {{week}}\n\nRaw notes from the week:\n{{notes}}",
+                    ),
+                    (
+                        "Task",
+                        (
+                            "Turn the notes into a status update. Lead with what shipped, then what "
+                            "is at risk and why, then what we need from others."
+                        ),
+                    ),
+                    ("Format", "Three short sections with plain headings: Shipped, At risk, Asks."),
+                ),
+            ),
         ],
-        "generated_prompt": (
-            "<TONE>Friendly and professional</TONE>\n"
-            "<ISSUE>Late delivery</ISSUE>\n\n"
-            "Write a reply to {{customer_name}} about their {{issue_type}}, "
-            "promising a response within {{response_time}} hours."
-        ),
-        "variable_metadata": {
-            "customer_name": {
-                "type": "text",
-                "description": "Name of the customer being replied to",
-            },
-            "issue_type": {"type": "text", "description": "Category of the support issue"},
-            "response_time": {
-                "type": "number",
-                "description": "Promised response time in hours",
-            },
-        },
     },
     {
-        "name": "Refund Request Template",
-        "folder": "Support",
-        "tags": ["support"],
-        "is_favorite": False,
-        "fields": [{"name": "policy", "content": "30-day money-back guarantee"}],
-        "generated_prompt": (
-            "<POLICY>30-day money-back guarantee</POLICY>\n\nDraft a refund confirmation email."
-        ),
-        "variable_metadata": None,
-    },
-    {
-        "name": "Escalation Notice",
-        "folder": "Support",
-        "tags": ["support", "urgent"],
-        "is_favorite": False,
-        "fields": [{"name": "severity", "content": "High"}],
-        "generated_prompt": (
-            "<SEVERITY>High</SEVERITY>\n\n" "Escalate ticket {{ticket_id}} to the on-call engineer."
-        ),
-        "variable_metadata": {
-            "ticket_id": {"type": "text", "description": "The support ticket identifier"},
-        },
-    },
-    {
-        "name": "Product Launch Announcement",
-        "folder": "Marketing",
-        "tags": ["marketing", "copy"],
+        "name": "Reply to a tricky email",
+        "folder": "Writing",
         "is_favorite": True,
-        "fields": [{"name": "audience", "content": "Existing customers"}],
-        "generated_prompt": (
-            "<AUDIENCE>Existing customers</AUDIENCE>\n\n"
-            "Announce {{product_name}}, launching {{launch_date}}. "
-            "Limited edition: {{is_limited_edition}}."
+        "days_ago": 0,
+        "sections": _sections(
+            (
+                "Role",
+                (
+                    "You help me write emails that are warm but firm. You never grovel and never "
+                    "sound passive-aggressive."
+                ),
+            ),
+            ("Email", "{{email}}"),
+            ("Goal", "What I want from this reply: {{goal}}"),
+            (
+                "Constraints",
+                (
+                    "Keep it under 150 words. Match the formality of the original email. If the "
+                    "email asks something my goal does not cover, flag it after the draft instead "
+                    "of inventing an answer."
+                ),
+            ),
+            (
+                "Output",
+                (
+                    'One draft reply, then a line starting with "Check:" listing anything I should '
+                    "confirm before sending."
+                ),
+            ),
         ),
-        "variable_metadata": {
-            "product_name": {"type": "text", "description": "Name of the product being launched"},
-            "launch_date": {"type": "text", "description": "Launch date, human-readable"},
-            "is_limited_edition": {
-                "type": "boolean",
-                "description": "Whether this is a limited run",
-            },
-        },
+        "hints": _hints(
+            email="Paste the full email you received",
+            goal="For example: decline politely, move the deadline to Friday",
+        ),
+        "history": [],
     },
     {
-        "name": "Social Media Post",
-        "folder": "Marketing",
-        "tags": ["marketing", "copy"],
-        "is_favorite": False,
-        "fields": [{"name": "platform", "content": "Twitter/X"}],
-        "generated_prompt": (
-            "<PLATFORM>Twitter/X</PLATFORM>\n\n"
-            "Write a post for {{platform}} using these hashtags: {{hashtags}}."
+        "name": "Meeting transcript summary",
+        "folder": "Work",
+        "is_favorite": True,
+        "days_ago": 1,
+        "sections": _sections(
+            ("Role", "You turn messy meeting transcripts into decisions and next steps."),
+            ("Transcript", "{{transcript}}"),
+            ("Task", _TRANSCRIPT_TASK),
+            (
+                "Format",
+                "Decisions, Open questions, Action items as a checklist. Under 250 words in total.",
+            ),
         ),
-        "variable_metadata": {
-            "platform": {"type": "text", "description": "Target social platform"},
-            "hashtags": {"type": "list", "description": "Comma-separated hashtags to include"},
-        },
+        "hints": _hints(transcript="Paste the transcript or your notes. Long is fine."),
+        "history": [
+            (
+                "",
+                _sections(
+                    ("Role", "You summarise meeting transcripts."),
+                    ("Transcript", "{{transcript}}"),
+                    ("Task", "Summarise the meeting and list action items."),
+                ),
+            ),
+        ],
     },
     {
-        "name": "Email Newsletter Intro",
-        "folder": "Marketing",
-        "tags": ["marketing", "email"],
+        "name": "Explain it like a patient tutor",
+        "folder": "Learning",
         "is_favorite": False,
-        "fields": [{"name": "theme", "content": "Monthly product update"}],
-        "generated_prompt": (
-            "<THEME>Monthly product update</THEME>\n\nWrite a 2-sentence newsletter intro."
+        "days_ago": 5,
+        "sections": _sections(
+            ("Role", "You are a patient tutor who checks understanding instead of lecturing."),
+            ("Topic", "{{topic}}"),
+            ("Background", "What I already know: {{background}}"),
+            (
+                "Method",
+                (
+                    "Explain in small steps. After each step, ask me one short question to check I "
+                    "followed, and wait for my answer before continuing. Use one concrete everyday "
+                    "example per idea. Avoid jargon unless you define it first."
+                ),
+            ),
         ),
-        "variable_metadata": None,
+        "hints": _hints(topic="What you want to understand"),
+        "history": [],
     },
     {
-        "name": "Code Review Checklist",
-        "folder": "Engineering",
-        "tags": ["code-review", "docs"],
+        "name": "Product launch blog post",
+        "folder": "Writing",
         "is_favorite": False,
-        "fields": [{"name": "language", "content": "Python"}],
-        "generated_prompt": (
-            "<LANGUAGE>Python</LANGUAGE>\n\n" "List the top 5 things to check in a code review."
+        "days_ago": 9,
+        "sections": _sections(
+            ("Role", "You are a product marketer who writes like a person, not a press release."),
+            (
+                "Product",
+                "Product: {{product_name}}\nWhat it does: {{one_liner}}\nWho it is for: {{audience}}",
+            ),
+            ("Key points", "{{key_points}}"),
+            ("Style guide", _STYLE_GUIDE),
+            (
+                "Structure",
+                (
+                    "1. A first paragraph that names the problem in the reader's words.\n"
+                    "2. What is new, shown through one specific scenario.\n"
+                    "3. How it works, in at most three short paragraphs.\n"
+                    "4. Availability and pricing: {{availability}}\n"
+                    '5. One sentence on what comes next. No "stay tuned".'
+                ),
+            ),
+            (
+                "Output format",
+                (
+                    "Markdown. Title under 60 characters. 600-800 words. Give two alternative "
+                    "titles at the end."
+                ),
+            ),
         ),
-        "variable_metadata": None,
+        "hints": _hints(
+            one_liner="One sentence, no adjectives",
+            key_points="Bullets from the launch brief",
+            availability="Date, plans, regions",
+        ),
+        "history": [
+            (
+                "",
+                _sections(
+                    ("Role", "You are a product marketer."),
+                    ("Product", "Product: {{product_name}}\nWhat it does: {{one_liner}}"),
+                    ("Key points", "{{key_points}}"),
+                    ("Output format", "Markdown, 600-800 words."),
+                ),
+            ),
+            (
+                "Added the style guide",
+                _sections(
+                    (
+                        "Role",
+                        "You are a product marketer who writes like a person, not a press release.",
+                    ),
+                    ("Product", "Product: {{product_name}}\nWhat it does: {{one_liner}}"),
+                    ("Key points", "{{key_points}}"),
+                    ("Style guide", _STYLE_GUIDE),
+                    ("Output format", "Markdown, 600-800 words."),
+                ),
+            ),
+        ],
     },
     {
-        "name": "Bug Report Summary",
-        "folder": "Engineering",
-        "tags": ["code-review", "urgent"],
+        "name": "Pull request review",
+        "folder": "Work",
         "is_favorite": False,
-        "fields": [{"name": "component", "content": "Auth service"}],
-        "generated_prompt": (
-            "<COMPONENT>Auth service</COMPONENT>\n\n"
-            "Summarize a {{severity}} bug affecting version {{affected_version}}."
+        "days_ago": 14,
+        "sections": _sections(
+            (
+                "Role",
+                "You are a senior reviewer who cares about correctness first, then readability.",
+            ),
+            ("Language", "{{language}}"),
+            ("Diff", "{{diff}}"),
+            (
+                "Focus",
+                (
+                    "Point out bugs, missing error handling, and anything that will be hard to change "
+                    "later. Skip style nits a formatter would catch. If something is fine, do not "
+                    "mention it."
+                ),
+            ),
+            (
+                "Format",
+                (
+                    "Findings, most important first. For each: file and line, what is wrong, and a "
+                    "suggested fix as a short code block."
+                ),
+            ),
         ),
-        "variable_metadata": {
-            "severity": {"type": "text", "description": "Bug severity level"},
-            "affected_version": {
-                "type": "text",
-                "description": "Version where the bug was found",
-            },
-        },
+        "hints": _hints(diff="Paste the diff or the changed files"),
+        "history": [],
+    },
+    {
+        "name": "Weekly meal plan",
+        "folder": "Personal",
+        "is_favorite": False,
+        "days_ago": 6,
+        "sections": _sections(
+            ("Role", "You are a practical home cook planning for a busy week."),
+            (
+                "Needs",
+                (
+                    "Diet: {{diet}}\nPeople: {{people}}\nBudget for the week: {{budget}}\n"
+                    "Already in the fridge: {{leftovers}}"
+                ),
+            ),
+            (
+                "Task",
+                (
+                    "Plan five dinners that reuse ingredients so little goes to waste. At least two "
+                    "should take under 30 minutes."
+                ),
+            ),
+            (
+                "Format",
+                (
+                    "A table with day, dish and prep time, then one combined shopping list grouped by "
+                    "supermarket aisle."
+                ),
+            ),
+        ),
+        "hints": _hints(diet="For example vegetarian, no nuts", leftovers="Optional"),
+        "history": [],
+    },
+    {
+        "name": "Trip itinerary",
+        "folder": "Personal",
+        "is_favorite": False,
+        "days_ago": 33,
+        "sections": _sections(
+            (
+                "Context",
+                "Destination: {{destination}}\nDates: {{dates}}\nWho is going: {{travellers}}",
+            ),
+            (
+                "Preferences",
+                (
+                    "We like walking, local food, and at most one museum a day. We do not like early "
+                    "starts or tourist-trap restaurants."
+                ),
+            ),
+            (
+                "Task",
+                (
+                    "Draft a day-by-day plan with a morning, afternoon and evening idea. Note travel "
+                    "time between places and anything that needs booking ahead."
+                ),
+            ),
+        ),
+        "hints": {},
+        "history": [],
+    },
+    {
+        "name": "Behavioural interview practice",
+        "folder": "Learning",
+        "is_favorite": False,
+        "days_ago": 18,
+        "sections": _sections(
+            (
+                "Role",
+                "You are interviewing me for a {{role}} position at a company like {{company}}.",
+            ),
+            (
+                "Task",
+                (
+                    "Ask one behavioural question at a time. After I answer, give feedback on "
+                    "structure (situation, task, action, result), specificity and length, then ask "
+                    "the next question. Stop after five questions and name my strongest and weakest "
+                    "answer."
+                ),
+            ),
+        ),
+        "hints": _hints(role="Job title", company="Company name or type"),
+        "history": [],
+    },
+    {
+        "name": "LinkedIn post from notes",
+        "folder": None,
+        "is_favorite": False,
+        "days_ago": 3,
+        "sections": _sections(
+            ("Task", "Turn my notes into a LinkedIn post:\n{{notes}}"),
+            (
+                "Style",
+                (
+                    'First person. No hashtags, no emojis, no "I\'m thrilled to announce". Short '
+                    "paragraphs. End with a question only if it is a real one."
+                ),
+            ),
+        ),
+        "hints": {},
+        "history": [],
+    },
+    {
+        # What migration 024 makes of an old History entry.
+        "name": "Untitled (14 Mar 2026, 09:12 UTC)",
+        "folder": "Recovered history",
+        "is_favorite": False,
+        "days_ago": 210,
+        "sections": _sections(
+            (
+                "task",
+                (
+                    "Write a short birthday message for my sister, who just moved to Lisbon. Mention "
+                    "the tram she keeps complaining about."
+                ),
+            ),
+            ("tone", "Warm, a bit teasing."),
+        ),
+        "hints": {},
+        "history": [],
     },
 ]
-
-_HISTORY_PROMPTS = [
-    {
-        "fields": [{"name": "goal", "content": "Draft a follow-up email"}],
-        "generated_prompt": "<GOAL>Draft a follow-up email</GOAL>",
-    },
-    {
-        "fields": [{"name": "goal", "content": "Summarize meeting notes"}],
-        "generated_prompt": "<GOAL>Summarize meeting notes</GOAL>",
-    },
-    {
-        "fields": [{"name": "goal", "content": "Write a unit test description"}],
-        "generated_prompt": "<GOAL>Write a unit test description</GOAL>",
-    },
-]
-
-# Relative Playground-run count per saved-prompt index (0-based) — uneven on
-# purpose so Dashboard's "top prompts" ranking and per-prompt run counts have
-# a clear, meaningful shape. Prompts not listed get zero runs.
-_RUN_COUNTS = {0: 6, 1: 3, 2: 2, 3: 5, 4: 2, 6: 1}
 
 
 def _delete_existing(db: Session, user: User) -> None:
     """FK-safe cleanup before reseeding.
 
-    `playground_runs` has no `ON DELETE CASCADE` (unlike `prompts.user_id`),
-    so it must be deleted explicitly before the user row — deleting the user
-    then cascades `prompts` -> `prompt_versions` via the existing ORM
-    relationships.
+    Older versions of this seed also created Playground runs, which databases
+    from before migration 020 hold without `ON DELETE CASCADE`, so they are
+    deleted explicitly before the user row — deleting the user then cascades
+    `prompts` -> `prompt_versions` via the existing ORM relationships.
     """
     prompt_ids = [pid for (pid,) in db.query(Prompt.id).filter(Prompt.user_id == user.id).all()]
     if prompt_ids:
@@ -229,13 +467,11 @@ def _delete_existing(db: Session, user: User) -> None:
 
 
 def seed_alex(db: Session) -> User:
-    """Create (or replace) the `alex` demo account and its sample dataset.
+    """Create (or replace) the `alex` demo account and its sample library.
 
     Returns:
         The created User.
     """
-    rng = random.Random(_SEED)
-
     existing = db.query(User).filter(User.username == USERNAME).first()
     if existing is not None:
         _delete_existing(db, existing)
@@ -245,103 +481,49 @@ def seed_alex(db: Session) -> User:
         username=USERNAME,
         hashed_password=get_password_hash(PASSWORD),
         email=EMAIL,
-        notify_run_failure=True,
-        notify_weekly_summary=True,
-        # Pre-point the demo account at OpenAI, but deliberately without a key:
-        # provider credentials are bring-your-own, so the operator adds theirs
-        # in Settings → API access. Until then the demo data is browsable and
-        # the AI features show their "connect a provider" empty state.
+        # Pointed at OpenAI but deliberately without a key: provider
+        # credentials are bring-your-own, so Import text shows how to connect
+        # one until the operator adds theirs (or configures a server default).
         llm_provider=_DEMO_PROVIDER.handle,
         llm_base_url=_DEMO_PROVIDER.default_base_url,
-        llm_model=_DEMO_MODELS[0],
+        llm_model=next(iter(_DEMO_PROVIDER.models)),
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    saved_prompts: list[Prompt] = []
-    for i, spec in enumerate(_SAVED_PROMPTS):
+    for spec in _PROMPTS:
+        edited_at = now - timedelta(days=spec["days_ago"], hours=1)
+        history = spec["history"]
         prompt = Prompt(
             id=PromptIdService.next_id(db),
             user_id=user.id,
             name=spec["name"],
-            fields=spec["fields"],
-            generated_prompt=spec["generated_prompt"],
+            fields=spec["sections"],
+            generated_prompt=render_sections(spec["sections"]),
             folder=spec["folder"],
-            tags=spec["tags"],
             is_favorite=spec["is_favorite"],
-            variable_metadata=spec["variable_metadata"],
-            created_at=now - timedelta(days=25 - i),
-            updated_at=now - timedelta(days=25 - i),
+            variable_metadata=spec["hints"] or None,
+            created_at=edited_at - timedelta(days=7 * len(history)),
+            updated_at=edited_at,
         )
         db.add(prompt)
-        saved_prompts.append(prompt)
-    db.commit()
-    for prompt in saved_prompts:
-        db.refresh(prompt)
-
-    for spec in _HISTORY_PROMPTS:
-        db.add(
-            Prompt(
-                id=PromptIdService.next_id(db),
-                user_id=user.id,
-                name=None,
-                fields=spec["fields"],
-                generated_prompt=spec["generated_prompt"],
-                created_at=now - timedelta(days=rng.randint(0, 10)),
-                updated_at=now - timedelta(days=rng.randint(0, 10)),
-            )
-        )
-    db.commit()
-
-    # Version history on the two prompts that also demo variable_metadata.
-    for prompt, prior_texts in (
-        (saved_prompts[0], ["<TONE>Neutral</TONE>", "<TONE>Friendly</TONE>"]),
-        (saved_prompts[3], ["<AUDIENCE>All customers</AUDIENCE>"]),
-    ):
-        for version_number, text in enumerate(prior_texts, start=1):
+        db.flush()
+        # Each version is the state before an edit, so the oldest comes first;
+        # its note describes the change that followed it.
+        for number, (note, sections) in enumerate(history, start=1):
             db.add(
                 PromptVersion(
                     prompt_id=prompt.id,
-                    version_number=version_number,
-                    note="Edit",
+                    version_number=number,
+                    note=note or None,
                     author_user_id=user.id,
-                    fields=prompt.fields,
-                    generated_prompt=text,
-                    created_at=now - timedelta(days=20 - version_number),
+                    fields=sections,
+                    generated_prompt=render_sections(sections),
+                    created_at=edited_at - timedelta(days=7 * (len(history) - number + 1)),
                 )
             )
     db.commit()
-
-    # Playground runs spread across the last 30 days (crossing the current
-    # month boundary so Dashboard's month-over-month change is non-null),
-    # mixed models/status/timing, weighted per `_RUN_COUNTS`.
-    statuses = ["success"] * 5 + ["error"]
-    for prompt_index, count in _RUN_COUNTS.items():
-        prompt = saved_prompts[prompt_index]
-        for _ in range(count):
-            created_at = now - timedelta(
-                days=rng.randint(0, 29), hours=rng.randint(0, 23), minutes=rng.randint(0, 59)
-            )
-            status = rng.choice(statuses)
-            db.add(
-                PlaygroundRun(
-                    prompt_id=prompt.id,
-                    user_id=user.id,
-                    model=rng.choice(_DEMO_MODELS),
-                    input_variables={"customer_name": "Jordan"} if prompt_index == 0 else {},
-                    output_text="Sample output." if status == "success" else "",
-                    latency_ms=rng.randint(400, 3200),
-                    prompt_tokens=rng.randint(50, 400),
-                    completion_tokens=rng.randint(50, 400) if status == "success" else 0,
-                    cost_usd=round(rng.uniform(0.0001, 0.02), 6),
-                    status=status,
-                    error_message=None if status == "success" else "Simulated upstream timeout.",
-                    created_at=created_at,
-                )
-            )
-    db.commit()
-
     return user
 
 

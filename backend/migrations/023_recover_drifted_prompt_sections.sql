@@ -1,0 +1,15 @@
+-- Historical reference only — the executed migration lives in
+-- backend/app/database/migrations.py (_migration_023_recover_drifted_prompt_sections).
+--
+-- Not expressible in SQL: the migration renders each prompt's `fields` the way
+-- the generator does and compares the result with `generated_prompt`. For every
+-- prompt where they differ it:
+--
+--   1. inserts a prompt_versions row holding the original fields and text,
+--      noted 'Before section recovery', authored by the prompt's owner;
+--   2. rebuilds `fields` from the text, splitting it into <TAG> sections only
+--      when rendering those sections reproduces the text exactly, and otherwise
+--      keeping the whole text as a single `prompt` section;
+--   3. sets `generated_prompt` to the rendering of the new fields.
+--
+-- `updated_at` is left untouched.

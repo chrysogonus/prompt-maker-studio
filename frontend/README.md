@@ -8,19 +8,19 @@ a code map for frontend contributors.
 
 ## Routes and User Flows
 
-The `(app)` route group supplies the authenticated shell, navigation, session
-revalidation, theme/density initialization, and shared error states.
+The `(app)` route group supplies the authenticated sidebar shell (a drawer on
+phones), session revalidation, theme initialization, and shared error states.
 
 | Route | Responsibility |
 |---|---|
-| `/` | Dashboard analytics, spend, usage, and favorite prompts |
-| `/dashboard` | Compatibility redirect to `/` |
-| `/library` | Saved-prompt grid/list, filters, history, and prompt actions |
-| `/editor/new` | Field-based composition, starter kits, AI import, generation, and first save |
-| `/editor/[id]` | Prompt configuration, versions, preflight, evaluation, and AI refinement |
-| `/playground/[id]` | Variable-aware execution, output metrics, and run history |
-| `/settings` | Profile, preferences, notifications, export, and account deletion |
+| `/` | Redirect to `/library`, the home page |
+| `/library` | The library: all prompts, favorites, a folder, or unfiled (`?view=`, `?folder=`), with search, list/grid, and prompt and folder actions |
+| `/editor/new` | The sections editor for a new prompt; `?starter=` and `?import=1` start from a template or Import text |
+| `/editor/[id]` | The same editor for a saved prompt: preview, fill and copy, versions, rename and move |
+| `/settings` | Profile, password and sessions, theme, library layout, AI connection, export, and account deletion |
+| `/dashboard`, `/playground/[id]` | Compatibility redirects for retired screens |
 | `/reset-password` | Public password-reset completion flow |
+| `/oauth/authorize` | Consent page for linking an MCP client such as ChatGPT |
 
 The implemented behavior behind these routes is maintained in
 [`product/FEATURES.md`](../product/FEATURES.md), not duplicated here.
@@ -33,7 +33,8 @@ frontend/
 ├── src/
 │   ├── app/               # Routes, layouts, global errors, and global styles
 │   ├── components/
-│   │   ├── editor/        # Configuration, evaluation, and refinement tabs
+│   │   ├── editor/        # The sections editor, preview, history panel, and dialogs
+│   │   ├── shell/         # The sidebar
 │   │   └── ui/            # Reusable design-system primitives
 │   ├── lib/               # API/auth clients and pure prompt utilities
 │   └── types/             # Shared frontend domain and API shapes
@@ -54,9 +55,10 @@ cross-stack browser tests live in `e2e/`.
   go through `src/lib/auth.ts`.
 - API and UI shapes live under `src/types/`; keep them aligned with backend
   Pydantic schemas when contracts change.
-- Saved prompts, versions, runs, eval cases, and preferences are server state.
-  Local storage is limited to UI preferences and recoverable in-progress
-  drafts.
+- Prompts, versions, folders, and preferences are server state. The editor
+  sends sections only; `src/lib/sections.ts` mirrors the server's rendering for
+  the preview. Local storage holds the theme and recoverable in-progress
+  drafts, which sign-out clears.
 - Backend calls are same-origin `/api/...` paths built on `src/lib/apiBase.ts`.
   Nothing about the API's location is compiled into the bundle, which is what
   lets one published image serve any domain — see the comment in that file
@@ -64,7 +66,7 @@ cross-stack browser tests live in `e2e/`.
 
 ## Styling and Accessibility
 
-CSS Modules stay beside their components. Global tokens, themes, density, and
+CSS Modules stay beside their components. Global tokens, themes, fonts, and
 base accessibility behavior live in `src/app/globals.css`. Reuse the existing
 UI primitives and semantic status/error patterns before introducing new
 controls.

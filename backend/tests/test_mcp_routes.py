@@ -77,6 +77,13 @@ class TestMCPPromptTools:
         rest = client.get("/api/prompts/saved", headers=auth_headers).json()
         assert [p["id"] for p in rest] == [saved["id"]]
 
+    def test_save_accepts_section_names_with_spaces(self, client, auth_headers):
+        fields = [{"name": "Output format", "content": "Three bullets"}]
+        saved = _ok(client, auth_headers, "save_prompt", name="Spaced", fields=fields)
+
+        assert saved["fields"] == fields
+        assert saved["generated_prompt"] == "<OUTPUT_FORMAT>\nThree bullets\n</OUTPUT_FORMAT>"
+
     def test_save_rejects_duplicate_field_names(self, client, auth_headers):
         text = _error_text(
             client, auth_headers, "save_prompt", name="Dup", fields=TASK_FIELDS + TASK_FIELDS

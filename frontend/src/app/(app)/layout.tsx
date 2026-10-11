@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import AuthForm from '@/components/AuthForm';
-import NavBar from '@/components/NavBar';
+import Sidebar from '@/components/shell/Sidebar';
+import { MenuIcon, NewIcon } from '@/components/ui/icon';
 import EmailReminderBanner from '@/components/EmailReminderBanner';
 import LegalLinks from '@/components/LegalLinks';
 import Button from '@/components/ui/Button';
@@ -18,6 +20,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [authCheckError, setAuthCheckError] = useState('');
   const [sessionWarning, setSessionWarning] = useState('');
   const [isSessionUrgent, setIsSessionUrgent] = useState(false);
+  // Phone only; the sidebar's links close it as they navigate.
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const checkAuth = useCallback(async () => {
     // Keep mount effects free of synchronous state writes; the auth check is
@@ -121,16 +125,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Applied once per mount of the authenticated shell; Settings owns the toggle controls.
+  // Applied once per mount of the authenticated shell; Settings owns the toggle control.
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
-    document.documentElement.setAttribute('data-theme', storedTheme === 'light' ? 'light' : 'dark');
-
-    const storedDensity = localStorage.getItem('density');
-    document.documentElement.setAttribute(
-      'data-density',
-      storedDensity === 'compact' ? 'compact' : 'comfortable'
-    );
+    // Light unless the user chose dark.
+    document.documentElement.setAttribute('data-theme', storedTheme === 'dark' ? 'dark' : 'light');
   }, []);
 
   const logout = () => {
@@ -169,31 +168,52 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <a className={styles.skipLink} href="#main-content">
           Skip to main content
         </a>
-        <NavBar />
-        <EmailReminderBanner />
-        {sessionWarning && (
-          <div
-            className={styles.sessionWarning}
-            data-urgent={isSessionUrgent}
-            role="status"
-            aria-live="polite"
-          >
-            {isSessionUrgent ? 'Warning: ' : 'Session: '}{sessionWarning}
-          </div>
+        <Suspense>
+          <Sidebar open={drawerOpen} onNavigate={() => setDrawerOpen(false)} />
+        </Suspense>
+        {drawerOpen && (
+          <div className={styles.scrim} onClick={() => setDrawerOpen(false)} aria-hidden="true" />
         )}
-        <main id="main-content" className={styles.content}>
-          {children}
-        </main>
-        <footer className={styles.footer} role="contentinfo">
-          <div className={styles.footerContent}>
+        <div className={styles.column}>
+          <header className={styles.topbar}>
+            <button
+              type="button"
+              className={styles.menuButton}
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open navigation"
+              aria-expanded={drawerOpen}
+            >
+              <MenuIcon size={18} tone="inherit" />
+            </button>
+            <span className={styles.topbarTitle}>{APP_NAME}</span>
+            <Link href="/editor/new" className={styles.topbarNew}>
+              <NewIcon size={16} tone="inherit" />
+              New
+            </Link>
+          </header>
+          <EmailReminderBanner />
+          {sessionWarning && (
+            <div
+              className={styles.sessionWarning}
+              data-urgent={isSessionUrgent}
+              role="status"
+              aria-live="polite"
+            >
+              {isSessionUrgent ? 'Warning: ' : 'Session: '}{sessionWarning}
+            </div>
+          )}
+          <main id="main-content" className={styles.content}>
+            {children}
+          </main>
+          <footer className={styles.footer} role="contentinfo">
             &copy; {new Date().getFullYear()} {APP_NAME}. Licensed under{' '}
             <a href="https://github.com/chrysogonus/prompt-maker-studio/blob/main/LICENSE">
               Apache-2.0
             </a>
             .
             <LegalLinks className={styles.legalLinks} />
-          </div>
-        </footer>
+          </footer>
+        </div>
       </div>
     </AuthContext.Provider>
   );

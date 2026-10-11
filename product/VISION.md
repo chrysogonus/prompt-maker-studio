@@ -1,40 +1,36 @@
 # Product Vision
 
-> Last reviewed against the codebase: 2026-07-26.
+> Last reviewed against the codebase: 2026-10-11 (0.3.0 redesign).
 
 ## One-liner
-Prompt Maker Studio helps developers and AI practitioners create, test, evaluate, refine, and reuse structured prompts in one private workspace.
+Prompt Maker Studio is a home for the prompts you keep retyping: save them as sections, mark the parts that change, and copy a filled-in version into any chat assistant whenever you need it.
 
 ## Problem Statement
-Creating high-quality prompts for LLMs is repetitive and inconsistent. Without a dedicated workflow, prompts get rewritten from scratch, changes are hard to compare, and quality judgments are disconnected from the template that produced an output. Users need a guided path from rough idea to structured prompt, plus a reliable way to test, evaluate, refine, version, and retrieve it.
+People who use ChatGPT, Claude or Gemini every day rewrite the same prompts from memory or dig them out of old chats and notes. The good versions get lost, small improvements are not kept, and adapting a prompt to today's details means editing text by hand every time.
 
 ## Target Users
 | Persona | Description | Primary Need |
 |---|---|---|
-| Developer / AI practitioner | Technical user building prompts for personal or professional LLM workflows | Quickly create and iterate on structured, reusable prompts |
-| Prompt hobbyist | Non-expert user exploring AI capabilities | A simple UI that guides them to well-structured prompts without needing to know XML or prompt engineering conventions |
-| Individual contributor | User maintaining a personal prompt library for repeatable work | Retrieve, test, and improve previously working prompts rather than starting fresh |
+| Frequent chat-assistant user | Writes prompts in ChatGPT, Claude or Gemini many times a week for work and personal tasks; comfortable with structure, not a prompt engineer | Keep the prompts that work, tweak them over time, and reuse them in seconds |
+| ChatGPT plugin user | The same person working from inside ChatGPT, saving and fetching prompts through the MCP plugin | One library that the web app and ChatGPT both read and write |
+
+Out of focus: complete newcomers who need guided prompt writing, and engineers who want an LLM workbench with evaluations and model runs.
 
 ## Value Proposition
-Prompt Maker Studio reduces the effort of going from idea to a validated, reusable prompt. Users can compose named fields, import free-form text, generate consistent XML, catch structural problems before execution, connect their own hosted or self-hosted LLM provider, test templates against real models, create repeatable eval sets manually or with AI assistance, compare results and versions, and accept AI-assisted refinements — all in one authenticated, persistent workspace.
+A prompt is a short list of named sections with `{{variables}}`. The library keeps them organised in folders and favourites; the editor shows exactly what will be copied, fills in the variables, and keeps every saved version to compare or restore. Optional AI help imports an existing prompt or rough notes into sections.
 
 ## Success Metrics
-- A structured prompt can be created from scratch in under 2 minutes
-- Users can import free-form text and receive meaningful structured fields in a single action
-- Saved prompts reduce prompt re-work across sessions
-- Prompt history gives users a trail to recover and reuse past work
-- Generated XML is immediately usable in other LLM tools without manual reformatting
-- Evaluation history makes prompt-quality changes measurable across versions
-- AI-assisted eval proposals reduce the effort required to establish useful happy-path, edge-case, and adversarial coverage
-- Preflight feedback catches unresolved inputs and structural mistakes before users spend time or API budget on a run
-- Playground analytics expose reliability, latency, token use, and cost instead of relying on guesswork
-- Users can run every AI-assisted workflow through their own provider connection without depending on an operator-funded API key
+- A saved prompt can be found, filled in and copied in under 15 seconds, including on a phone
+- A new structured prompt can be written and saved in under 2 minutes, from scratch, a starter template, or pasted text
+- What the editor previews, what the ChatGPT plugin saves, and what is copied never disagree
+- Earlier versions of a prompt are always one click from comparison and restore
+- Nothing in the app looks precise without being true (no estimated tokens, no vanity analytics)
 
 ## Non-Goals (Out of Scope)
-- It does not provide operator-funded model access; each user connects their own hosted or self-hosted provider, and hosted credentials are stored encrypted for that account
-- It does not integrate provider-native SDKs; providers must expose an OpenAI-compatible chat-completions endpoint
-- It is not a team collaboration or prompt-sharing platform; each account has an isolated personal workspace
-- It does not guarantee prompt quality; refinement is advisory and evaluations depend on user-configured cases and scoring methods
+- Running prompts or comparing models inside the app; people run prompts in their chat assistant (the deferred evaluation engine is the exception, if it returns)
+- Operator-funded model access; the optional AI connection is the user's own provider or an operator-configured default
+- Team collaboration or sharing; each account is a private library
+- Guaranteeing prompt quality
 
 ## Tech Stack Summary
 - **Backend**: FastAPI (Python), SQLAlchemy, SQLite, JWT authentication, SlowAPI rate limiting, bring-your-own LLM provider over an OpenAI-compatible transport

@@ -40,6 +40,8 @@ multiple times. It currently handles:
 - `018_prompt_id_sequence` — creates a durable SQLite prompt-ID high-water mark so deleted prompt IDs are never reused by later prompts.
 - `019_user_llm_connection` — adds `users.llm_provider`/`llm_base_url`/`llm_api_key_encrypted`/`llm_model` (the per-user bring-your-own provider connection; the key is Fernet ciphertext, never plaintext) and `billed_calls.provider` (pricing is per `(provider, model)`). Existing users are pre-filled with the `openai` provider and their previous `default_model`, but **no key** — the operator's shared credential is deliberately not copied into user rows, so each user re-enters their own.
 - `022_oauth_tables` — creates `oauth_clients`, `oauth_authorization_codes`, and `oauth_refresh_tokens` for MCP OAuth account linking (dynamic client registration, one-time authorization codes, rotating refresh tokens), with `ON DELETE CASCADE` from `users`. Codes and refresh tokens are stored as SHA-256 digests.
+- `023_recover_drifted_prompt_sections` — makes every prompt's `fields` the source of its `generated_prompt`. Prompts whose stored text no longer matches their rendered fields (edited in the old raw-text editor) first get their original fields and text kept as a `prompt_versions` snapshot noted "Before section recovery"; their fields are then rebuilt from the text, split into sections only when that reproduces the text exactly, otherwise kept whole as one `prompt` section. `updated_at` is not changed.
+- `024_recover_unnamed_prompts` — gives every unnamed (History-only) prompt a date-based name such as `Untitled (14 Mar 2026, 09:12 UTC)` and files it under "Recovered history" unless it already has a folder. Nothing is deduplicated.
 
 ## Production Migration Checklist
 

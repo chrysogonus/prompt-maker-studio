@@ -31,19 +31,15 @@ from app.api import routes
 from app.auth.dependencies import user_from_token
 from app.branding import APP_NAME
 from app.database.connection import SessionLocal
-from app.metrics import prompts_generated_total, prompts_saved_total
-from app.models.prompt import Prompt
 from app.models.schemas import (
+    PromptCreateRequest,
     PromptField,
     PromptHistoryResponse,
-    PromptRequest,
     PromptUpdateRequest,
     PromptVersionResponse,
 )
 from app.models.user import User
 from app.services.oauth_provider import ISSUER_URL, RESOURCE_URL, user_from_mcp_access_token
-from app.services.prompt_generator import PromptGeneratorService
-from app.services.prompt_id_service import PromptIdService
 
 MCP_PATH = "/api/mcp"
 # RFC 9728 protected-resource metadata, which the 401 challenge points clients to.
@@ -53,8 +49,8 @@ INSTRUCTIONS = f"""\
 Tools for the user's {APP_NAME} prompt library. You write and refine the prompt
 text in conversation; these tools only store and retrieve it.
 
-A prompt is a list of named fields (for example role, task, context,
-constraints, output_format), each rendered as an XML-tagged section. Save only
+A prompt is a list of named fields (for example Role, Task, Context,
+Constraints, Output format), each rendered as an XML-tagged section. Save only
 when the user asks to. Before updating a prompt, fetch it with get_prompt and
 pass its updated_at (or created_at when updated_at is null) as last_updated_at,
 so edits made elsewhere in the meantime are not overwritten.
@@ -67,7 +63,6 @@ class PromptSummary(BaseModel):
     id: int
     name: str
     folder: str | None
-    tags: list[str] | None
     is_favorite: bool
     updated_at: datetime
 
@@ -146,14 +141,12 @@ _WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHin
 
 
 @mcp_server.tool(annotations=_READ_ONLY)
-def list_saved_prompts(
-    tag: str | None = None, folder: str | None = None, favorite_only: bool = False
-) -> PromptList:
-    """List the user's saved prompts, newest first, optionally filtered by tag,
-    folder, or favorite status. Returns names and metadata, not prompt text."""
+def list_saved_prompts(folder: str | None = None, favorite_only: bool = False) -> PromptList:
+    """List the user's saved prompts, newest first, optionally filtered by
+    folder or favorite status. Returns names and metadata, not prompt text."""
     with _user_session() as (db, user):
         prompts = routes.get_saved_prompts(
-            tag=tag, folder=folder, favorite_only=favorite_only, db=db, current_user=user
+            folder=folder, favorite_only=favorite_only, db=db, current_user=user
         )
         return PromptList(
             prompts=[
@@ -161,7 +154,6 @@ def list_saved_prompts(
                     id=p.id,
                     name=p.name,
                     folder=p.folder,
-                    tags=p.tags,
                     is_favorite=p.is_favorite,
                     updated_at=p.updated_at or p.created_at,
                 )
@@ -181,23 +173,11 @@ def get_prompt(prompt_id: int) -> PromptHistoryResponse:
 @mcp_server.tool(annotations=_WRITE)
 def save_prompt(name: str, fields: list[PromptField]) -> PromptHistoryResponse:
     """Save a new prompt to the user's library under the given name. Field names
-    must be unique identifiers (letters, digits, _ or -)."""
+    must be unique; they may contain letters, digits, spaces, _ or -, and start
+    with a letter or _."""
     with _user_session() as (db, user):
-        body = PromptRequest(name=name, fields=fields)
-        # Mirrors POST /generate, minus its per-IP rate limit: every ChatGPT
-        # call arrives from OpenAI's addresses, so all users would share one bucket.
-        prompt = Prompt(
-            id=PromptIdService.next_id(db),
-            user_id=user.id,
-            fields=[field.model_dump() for field in body.fields],
-            generated_prompt=PromptGeneratorService.generate(fields=body.fields),
-            name=body.name,
-        )
-        db.add(prompt)
-        db.commit()
-        prompts_generated_total.inc()
-        prompts_saved_total.inc()
-        prompt = routes.get_prompt_by_id(prompt_id=prompt.id, db=db, current_user=user)
+        body = PromptCreateRequest(name=name, fields=fields)
+        prompt = routes.create_prompt(body=body, db=db, current_user=user)
         return PromptHistoryResponse.model_validate(prompt)
 
 
@@ -219,11 +199,6 @@ def update_prompt(
         body = PromptUpdateRequest(
             name=name,
             fields=fields,
-            # PATCH stores the rendered text as given, so render it from the new
-            # fields here or it would go stale.
-            generated_prompt=(
-                PromptGeneratorService.generate(fields=fields) if fields is not None else None
-            ),
             note=note,
             last_updated_at=last_updated_at,
         )

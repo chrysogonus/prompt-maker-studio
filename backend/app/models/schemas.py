@@ -3,11 +3,11 @@ Pydantic schemas for request/response validation.
 """
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-TagLabel = Annotated[str, Field(min_length=1, max_length=50)]
+from app.services.prompt_sections import section_tag
 
 
 class VariableMetadataItem(BaseModel):
@@ -18,53 +18,69 @@ class VariableMetadataItem(BaseModel):
 
 
 class PromptField(BaseModel):
-    """Schema for a single prompt field."""
+    """Schema for a single prompt field (a section of the prompt)."""
 
-    # Pattern enforces valid XML tag name characters: start with letter or underscore,
-    # followed by letters, digits, underscores, or hyphens. This prevents malformed
-    # XML output from the generator (e.g. names with spaces or angle brackets).
+    # Names are what the user reads, so spaces are allowed; the rendered tag
+    # turns them into underscores (`Output format` -> `<OUTPUT_FORMAT>`). The
+    # pattern keeps that tag a valid XML name: it starts with a letter or
+    # underscore, followed by letters, digits, underscores, hyphens or spaces.
     name: str = Field(
         ...,
         min_length=1,
         max_length=100,
-        pattern=r"^[A-Za-z_][A-Za-z0-9_-]*$",
-        description="Field name — must be a valid XML identifier (e.g. 'goal', 'my-style')",
+        pattern=r"^[A-Za-z_][A-Za-z0-9_ -]*$",
+        description=(
+            "Section name, e.g. 'Role' or 'Output format'. Rendered as an XML tag with "
+            "spaces turned into underscores and letters upper-cased ('<OUTPUT_FORMAT>')."
+        ),
     )
     content: str = Field(..., max_length=10_000, description="Field content")
 
+    @field_validator("name", mode="before")
+    @classmethod
+    def collapse_whitespace(cls, name: object) -> object:
+        """Trim and collapse runs of whitespace, so `' Output   format '` is `'Output format'`."""
+        return " ".join(name.split()) if isinstance(name, str) else name
 
-class PromptRequest(BaseModel):
-    """Schema for incoming prompt generation requests."""
 
+def _require_unique_section_tags(fields: list[PromptField] | None) -> list[PromptField] | None:
+    """Two sections that render to the same tag (`Role`/`role`, `a b`/`a_b`) would
+    produce two identical blocks in one prompt."""
+    if fields is None:
+        return fields
+    tags = [section_tag(field.name) for field in fields]
+    if len(tags) != len(set(tags)):
+        msg = "Field names must be unique"
+        raise ValueError(msg)
+    return fields
+
+
+class PromptCreateRequest(BaseModel):
+    """Schema for saving a new prompt to the library (POST /api/prompts).
+
+    The prompt's text is rendered from `fields` on the server; it is never sent.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., min_length=1, max_length=100, description="Name in the library")
     fields: list[PromptField] = Field(
-        ..., min_length=1, max_length=100, description="Dynamic prompt fields"
+        ..., min_length=1, max_length=100, description="The prompt's sections, in order"
     )
-    name: str | None = Field(
-        None, max_length=100, description="Optional name to save the prompt as"
+    folder: str | None = Field(None, max_length=255, description="Folder; empty means unfiled")
+    variable_metadata: dict[str, VariableMetadataItem] | None = Field(
+        None, description="Description per template variable, keyed by name"
     )
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, name: object) -> object:
+        return name.strip() if isinstance(name, str) else name
 
     @field_validator("fields")
     @classmethod
     def validate_field_names(cls, fields: list[PromptField]) -> list[PromptField]:
-        """Ensure field names are unique."""
-        names = [field.name for field in fields]
-        if len(names) != len(set(names)):
-            msg = "Field names must be unique"
-            raise ValueError(msg)
-        return fields
-
-
-class PromptResponse(BaseModel):
-    """Schema for prompt generation response."""
-
-    id: int
-    name: str | None
-    generated_prompt: str
-    created_at: datetime
-    updated_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
+        return _require_unique_section_tags(fields)
 
 
 class PromptHistoryResponse(BaseModel):
@@ -78,9 +94,7 @@ class PromptHistoryResponse(BaseModel):
     updated_at: datetime | None = None
     folder: str | None = None
     is_favorite: bool = False
-    tags: list[str] | None = None
     variable_metadata: dict[str, VariableMetadataItem] | None = None
-    run_count: int = 0
 
     class Config:
         from_attributes = True
@@ -90,23 +104,21 @@ class PromptUpdateRequest(BaseModel):
     """Schema for updating an existing prompt (PATCH).
 
     All fields are optional — only provided fields are updated. As with
-    `name`/`fields`/`generated_prompt`, `None` means "not provided"; to
-    clear `folder`, `tags`, or `variable_metadata` explicitly, PATCH with
-    `""` / `[]` / `{}`.
+    `name`/`fields`, `None` means "not provided"; to clear `folder` or
+    `variable_metadata` explicitly, PATCH with `""` / `{}`.
+
+    The prompt's text is rendered from `fields`, so `generated_prompt` is not
+    accepted: unknown keys are rejected rather than silently ignored.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(None, max_length=100, description="New name for the saved prompt")
     fields: list[PromptField] | None = Field(
         None, max_length=100, description="Updated prompt fields"
     )
-    generated_prompt: str | None = Field(
-        None, max_length=50_000, description="Updated generated prompt text"
-    )
     folder: str | None = Field(None, max_length=255, description="Organizational folder label")
     is_favorite: bool | None = Field(None, description="Whether the prompt is starred")
-    tags: list[TagLabel] | None = Field(
-        None, max_length=20, description="Tag labels for organization/filtering"
-    )
     variable_metadata: dict[str, VariableMetadataItem] | None = Field(
         None, description="Type/description per detected template variable, keyed by name"
     )
@@ -116,6 +128,31 @@ class PromptUpdateRequest(BaseModel):
     last_updated_at: datetime | None = Field(
         None, description="Timestamp of the last known update to detect concurrent edit conflicts"
     )
+
+    @field_validator("fields")
+    @classmethod
+    def validate_field_names(cls, fields: list[PromptField] | None) -> list[PromptField] | None:
+        return _require_unique_section_tags(fields)
+
+
+class FolderRenameRequest(BaseModel):
+    """Schema for renaming a folder (PATCH /api/prompts/folders)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., min_length=1, max_length=255, description="New folder name")
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, name: object) -> object:
+        return name.strip() if isinstance(name, str) else name
+
+
+class FolderChangeResponse(BaseModel):
+    """Result of renaming or removing a folder."""
+
+    name: str
+    prompt_count: int = Field(..., description="How many prompts moved")
 
 
 class PromptVersionResponse(BaseModel):
@@ -128,38 +165,6 @@ class PromptVersionResponse(BaseModel):
     fields: list[PromptField]
     generated_prompt: str
     created_at: datetime
-
-
-class DailyRequestCount(BaseModel):
-    """Schema for a single day's entry in the Dashboard's 7-day request-volume series."""
-
-    date: str
-    count: int
-
-
-class TopPromptUsage(BaseModel):
-    """Schema for a single entry in the Dashboard's top-prompts-by-usage list."""
-
-    prompt_id: int
-    name: str
-    run_count: int
-
-
-class DashboardStatsResponse(BaseModel):
-    """Schema for GET /api/analytics/dashboard.
-
-    Fields are `None`/empty when there isn't yet enough data to compute
-    them — never a fabricated placeholder number.
-    """
-
-    runs_this_month: int
-    runs_change_pct: float | None
-    avg_latency_ms: int | None
-    success_rate_pct: float | None
-    total_cost_usd: float
-    avg_cost_per_run_usd: float | None
-    request_volume_7d: list[DailyRequestCount]
-    top_prompts: list[TopPromptUsage]
 
 
 class ExportedPromptVersion(BaseModel):
@@ -307,65 +312,6 @@ _MAX_PLAYGROUND_VARIABLE_NAME_LENGTH = 100
 _MAX_PLAYGROUND_VARIABLE_VALUE_LENGTH = 10_000
 
 
-class PlaygroundRunRequest(BaseModel):
-    """Schema for POST /api/prompts/{id}/playground/run."""
-
-    model: str = Field(..., max_length=100, description="One of the available Playground models")
-    variables: dict[str, str] = Field(
-        default_factory=dict, description="Values for the template's {{variable}} placeholders"
-    )
-
-    @field_validator("variables")
-    @classmethod
-    def validate_variables_size(cls, variables: dict[str, str]) -> dict[str, str]:
-        """Cap variable count/size — this text is sent to a paid external API."""
-        if len(variables) > _MAX_PLAYGROUND_VARIABLES:
-            msg = f"Too many variables (max {_MAX_PLAYGROUND_VARIABLES})"
-            raise ValueError(msg)
-        for name, value in variables.items():
-            if (
-                len(name) > _MAX_PLAYGROUND_VARIABLE_NAME_LENGTH
-                or len(value) > _MAX_PLAYGROUND_VARIABLE_VALUE_LENGTH
-            ):
-                msg = f"Variable '{name}' exceeds allowed size"
-                raise ValueError(msg)
-        return variables
-
-
-class PlaygroundRunResponse(BaseModel):
-    """Schema for a successful Playground run."""
-
-    output_text: str
-    latency_ms: int
-    prompt_tokens: int
-    completion_tokens: int
-    cost_usd: float
-    model: str
-
-
-class PlaygroundRunHistoryResponse(BaseModel):
-    """Schema for a single row of GET /api/prompts/{id}/playground/runs — the
-    Playground history drawer's list, including failed attempts."""
-
-    id: int
-    model: str
-    input_variables: dict[str, str] | None
-    output_text: str
-    latency_ms: int
-    prompt_tokens: int
-    completion_tokens: int
-    cost_usd: float
-    status: Literal["success", "error"]
-    error_message: str | None
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Parse-text Schemas
-
-
 class ParseTextRequest(BaseModel):
     """Schema for natural language text parsing request."""
 
@@ -443,13 +389,9 @@ class UserResponse(BaseModel):
     username: str
     email: str | None = None
     created_at: datetime
-    notify_run_failure: bool = False
-    notify_weekly_summary: bool = False
     default_library_view: Literal["grid", "list"] | None = None
     default_eval_method: Literal["rule", "judge", "manual"] | None = None
     auto_run_eval_on_update: bool = False
-    notify_eval_complete: bool = False
-    notify_eval_regression: bool = False
 
     class Config:
         from_attributes = True
@@ -473,14 +415,6 @@ class UserUpdate(BaseModel):
     # `default_model` was removed here: the model now lives on the user's
     # provider connection (PUT /api/auth/me/llm-connection), so a second,
     # separately-validated model preference had no coherent meaning.
-    notify_run_failure: bool | None = Field(None, description="Email when a Playground run errors")
-    notify_weekly_summary: bool | None = Field(
-        None,
-        description=(
-            "Opt in to a weekly usage-summary email, sent by a cron-invoked "
-            "script (`make send-weekly-summary`). See product/DECISIONS.md."
-        ),
-    )
     default_library_view: Literal["grid", "list"] | None = Field(
         None, description="Initial view mode when opening the Library"
     )
@@ -490,15 +424,9 @@ class UserUpdate(BaseModel):
     auto_run_eval_on_update: bool | None = Field(
         None,
         description=(
-            "Automatically trigger a real eval run after saving an Update in the "
-            "Configuration tab, if the prompt has at least one eval case."
+            "Kept for when Evaluate returns. Nothing starts an evaluation on its own "
+            "while Evaluate is deferred."
         ),
-    )
-    notify_eval_complete: bool | None = Field(
-        None, description="Email when an eval run finishes scoring"
-    )
-    notify_eval_regression: bool | None = Field(
-        None, description="Email when a new eval run scores lower than the previous run"
     )
 
     @field_validator("new_username", mode="before")

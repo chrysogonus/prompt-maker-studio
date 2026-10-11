@@ -8,7 +8,6 @@ from app.metrics import (
     ai_import_failures_total,
     ai_imports_total,
     login_successes_total,
-    prompts_generated_total,
     prompts_saved_total,
     user_registrations_total,
 )
@@ -26,25 +25,12 @@ def _value(counter) -> float:
     return next(sample.value for sample in metric.samples if sample.name.endswith("_total"))
 
 
-def test_generate_prompt_increments_prompts_generated_total(client, auth_headers):
-    """A successful generate call increments prompts_generated_total."""
-    before = _value(prompts_generated_total)
-
-    client.post(
-        "/api/prompts/generate",
-        json={"fields": [{"name": "goal", "content": "x"}]},
-        headers=auth_headers,
-    )
-
-    assert _value(prompts_generated_total) == before + 1
-
-
-def test_generate_prompt_with_name_increments_prompts_saved_total(client, auth_headers):
-    """Generating a prompt that is already named increments prompts_saved_total."""
+def test_saving_a_prompt_increments_prompts_saved_total(client, auth_headers):
+    """Saving a new prompt to the library increments prompts_saved_total."""
     before = _value(prompts_saved_total)
 
     client.post(
-        "/api/prompts/generate",
+        "/api/prompts",
         json={"fields": [{"name": "goal", "content": "x"}], "name": "My Saved Prompt"},
         headers=auth_headers,
     )
@@ -52,38 +38,10 @@ def test_generate_prompt_with_name_increments_prompts_saved_total(client, auth_h
     assert _value(prompts_saved_total) == before + 1
 
 
-def test_generate_prompt_without_name_does_not_increment_prompts_saved_total(client, auth_headers):
-    """Generating an unnamed prompt does not increment prompts_saved_total."""
-    before = _value(prompts_saved_total)
-
-    client.post(
-        "/api/prompts/generate",
-        json={"fields": [{"name": "goal", "content": "x"}]},
-        headers=auth_headers,
-    )
-
-    assert _value(prompts_saved_total) == before
-
-
-def test_update_prompt_naming_it_increments_prompts_saved_total(client, auth_headers):
-    """Naming a previously-unnamed prompt via PATCH increments prompts_saved_total."""
-    gen = client.post(
-        "/api/prompts/generate",
-        json={"fields": [{"name": "goal", "content": "x"}]},
-        headers=auth_headers,
-    )
-    prompt_id = gen.json()["id"]
-
-    before = _value(prompts_saved_total)
-    client.patch(f"/api/prompts/{prompt_id}", json={"name": "Now Named"}, headers=auth_headers)
-
-    assert _value(prompts_saved_total) == before + 1
-
-
 def test_renaming_already_saved_prompt_does_not_double_count(client, auth_headers):
     """Renaming an already-saved prompt must not increment prompts_saved_total again."""
     gen = client.post(
-        "/api/prompts/generate",
+        "/api/prompts",
         json={"fields": [{"name": "goal", "content": "x"}], "name": "Original"},
         headers=auth_headers,
     )

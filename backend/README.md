@@ -1,8 +1,10 @@
 # Prompt Maker Studio Backend
 
 The backend is a FastAPI application that owns authentication, prompt
-persistence and versioning, provider-backed prompt workflows, evaluation,
-analytics, spend controls, and operator diagnostics.
+persistence and versioning, rendering prompt text from sections, the MCP and
+OAuth endpoints, the optional AI import, spend controls, and operator
+diagnostics. The evaluation and refinement backends are kept but deferred: the
+0.3.0 UI does not use them.
 
 Use the [root README](../README.md) for the product overview and public API
 summary. This document is a code map for backend contributors.
@@ -20,7 +22,7 @@ backend/
 │   ├── models/       # ORM entities and Pydantic boundary schemas
 │   └── services/     # Business logic and external integrations
 ├── migrations/       # Historical SQL references; not executed directly
-├── scripts/          # Demo seeding and cron-invoked weekly summaries
+├── scripts/          # Demo-account seeding
 ├── tests/            # pytest unit, component, and ASGI integration tests
 ├── pyproject.toml    # Dependencies and Ruff/Bandit/coverage configuration
 └── run.py            # Uvicorn development entry point
@@ -32,10 +34,11 @@ and these router groups:
 | Router | Prefix / responsibility |
 |---|---|
 | `auth_routes.py` | `/api/auth`: accounts, sessions, profiles, and password recovery |
-| `routes.py` | `/api/prompts`: generation, persistence, versions, Playground, export, and capability config |
-| `eval_routes.py` | Prompt-scoped evaluation cases, AI proposals, runs, history, CSV, and ratings |
-| `refine_routes.py` | Prompt-scoped clarification questions and draft refinements |
-| `analytics_routes.py` | `/api/analytics`: dashboard and usage aggregation |
+| `routes.py` | `/api/prompts`: create, library, folders, versions, import, export, and capability config |
+| `mcp_routes.py` | `/api/mcp`: the library as MCP tools for ChatGPT and other clients |
+| `oauth_routes.py` | `/api/oauth` and `/.well-known/oauth-*`: account linking for MCP clients |
+| `eval_routes.py` | Deferred: prompt-scoped evaluation cases, AI proposals, runs, CSV, and ratings |
+| `refine_routes.py` | Deferred: clarification questions and draft refinements |
 | `admin_routes.py` | `/api/admin`: token-protected operator diagnostics |
 
 FastAPI's generated `/docs` page and the
@@ -44,16 +47,19 @@ references; avoid duplicating a full endpoint inventory here.
 
 ## Service and Data Boundaries
 
-- Prompt creation, compilation, versioning, and monotonic SQLite IDs live in
-  the prompt services.
-- LLM client construction is isolated in `services/llm_client.py`; parser,
-  Playground, eval-generator, evaluator, and refiner services receive the
-  acting user's connection. Every metered path checks `BudgetService` and
+- A prompt's sections (`fields`) are the only content clients write;
+  `services/prompt_sections.py` renders `generated_prompt` from them on every
+  write and recovers sections from older text. Versioning and monotonic SQLite
+  IDs live beside it in the prompt services.
+- LLM client construction is isolated in `services/llm_client.py`; the parser
+  and the deferred Playground execution, eval-generator, evaluator, and refiner
+  services receive the acting user's connection. Every metered path checks `BudgetService` and
   records usage through `spend_ledger`.
 - Evaluation cases, runs, and per-case results are durable records; evaluation
   workers do not use SQLAlchemy sessions outside the request thread.
-- Users, prompts, prompt versions, Playground runs, eval records, billed calls,
-  and the prompt-ID sequence are separate ORM models.
+- Users, prompts, prompt versions, Playground runs (kept for evaluations), eval
+  records, billed calls, OAuth records, and the prompt-ID sequence are separate
+  ORM models.
 - Pydantic schemas in `app/models/schemas.py` validate API inputs and outputs.
 
 The complete implemented-feature map is maintained in

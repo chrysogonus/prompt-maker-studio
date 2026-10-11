@@ -1,914 +1,733 @@
 /**
- * Library — grid/list of saved prompts with tag filtering and favorites,
- * plus a History tab for the append-only generation log. Usage counts are
- * real Playground run counts, computed server-side per prompt.
+ * The library is the home page: every saved prompt, narrowed by the sidebar to
+ * favourites, a folder, or unfiled prompts, newest edits first. Copying a
+ * template is one click; everything else sits in each prompt's menu.
  */
 
 'use client';
 
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Button from '@/components/ui/Button';
+import Dialog from '@/components/ui/Dialog';
 import {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef,
-  FormEvent,
-  KeyboardEvent,
-  Suspense,
-} from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import Button, { ButtonLink } from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Card from '@/components/ui/Card';
-import Tag from '@/components/ui/Tag';
-import SegmentedControl from '@/components/ui/SegmentedControl';
-import PageHeader from '@/components/ui/PageHeader';
+  CopyIcon,
+  FavoriteIcon,
+  GridViewIcon,
+  ListViewIcon,
+  MoreIcon,
+  SearchIcon,
+} from '@/components/ui/icon';
 import { ApiClient } from '@/lib/api';
 import { AuthService } from '@/lib/auth';
-import { useAuth } from '@/lib/auth-context';
-import { PromptField } from '@/types/prompt';
-import { SavedPrompt } from '@/types/saved-prompt';
+import { pageTitle } from '@/lib/branding';
+import { notifyLibraryChanged } from '@/lib/libraryEvents';
+import {
+  RECOVERED_HISTORY_FOLDER,
+  libraryHref,
+  viewFromParams,
+  viewTitle,
+} from '@/lib/libraryViews';
+import { relativeTime } from '@/lib/relativeTime';
+import { variablesIn } from '@/lib/sections';
+import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
+import type { PromptHistoryResponse } from '@/types/prompt';
 import styles from './page.module.css';
-import { pageTitle, storageKey } from '@/lib/branding';
 
-const HISTORY_PAGE_SIZE = 20;
-const HISTORY_SEARCH_DEBOUNCE_MS = 300;
-const DELETE_CONFIRM_TIMEOUT_MS = 4_000;
-const DELETE_UNDO_TIMEOUT_MS = 5_000;
-const TOAST_TIMEOUT_MS = 7_000;
+const UNDO_MS = 5000;
 
-type ViewMode = 'grid' | 'list';
-type LibraryTab = 'saved' | 'history';
+type Prompt = PromptHistoryResponse;
 
-const VIEW_OPTIONS = [
-  { value: 'grid', label: 'Grid' },
-  { value: 'list', label: 'List' },
-] as const;
-
-function toSavedPrompt(p: {
-  id: number;
-  name: string | null;
-  fields: PromptField[];
-  generated_prompt: string;
-  created_at: string;
-  updated_at?: string | null;
-  folder?: string | null;
-  is_favorite?: boolean;
-  tags?: string[] | null;
-  run_count: number;
-}): SavedPrompt {
-  const autoTitleSource =
-    p.fields.find((field) => ['title', 'goal', 'task'].includes(field.name.toLowerCase()))
-      ?.content ?? p.fields.find((field) => field.content.trim())?.content;
-  const autoTitle = autoTitleSource?.replace(/\s+/g, ' ').trim();
-  return {
-    id: String(p.id),
-    name: p.name ?? (autoTitle ? autoTitle.slice(0, 72) : 'Unnamed generation'),
-    promptId: p.id,
-    fields: p.fields,
-    generatedPrompt: p.generated_prompt,
-    savedAt: p.created_at,
-    updatedAt: p.updated_at ?? null,
-    folder: p.folder ?? null,
-    isFavorite: p.is_favorite ?? false,
-    tags: p.tags ?? [],
-    runCount: p.run_count,
-  };
+interface Toast {
+  text: string;
+  action?: { label: string; run: () => void };
 }
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '';
-  try {
-    return new Date(iso).toLocaleDateString();
-  } catch {
-    return '';
-  }
+/** The first section with real text, so a prompt opening with {{email}} still says something. */
+function excerpt(prompt: Prompt): string {
+  const section =
+    prompt.fields.find((f) => f.content.trim() && !/^\s*\{\{[^}]+\}\}\s*$/.test(f.content)) ??
+    prompt.fields[0];
+  return section ? section.content.replace(/\s+/g, ' ').trim() : '';
+}
+
+function editedAt(prompt: Prompt): string {
+  return prompt.updated_at ?? prompt.created_at;
 }
 
 function LibraryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { currentUser: signedInAs } = useAuth();
+  const view = viewFromParams(searchParams);
+  const title = viewTitle(view);
 
-  const initialTab = (searchParams.get('tab') as LibraryTab) || 'saved';
-  const initialQuery = searchParams.get('q') || '';
-  const initialTag = searchParams.get('tag') || null;
+  const [prompts, setPrompts] = useState<Prompt[] | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [search, setSearch] = useState('');
+  const [layout, setLayout] = useState<'list' | 'grid'>('list');
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [menuId, setMenuId] = useState<number | null>(null);
+  const [folderMenuOpen, setFolderMenuOpen] = useState(false);
+  const [moving, setMoving] = useState<{ prompt: Prompt; folder: string } | null>(null);
+  const [folderRename, setFolderRename] = useState<string | null>(null);
+  const [folderRemoveOpen, setFolderRemoveOpen] = useState(false);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const pendingDelete = useRef<{ prompt: Prompt; timer: number } | null>(null);
 
-  const [tab, setTabState] = useState<LibraryTab>(initialTab);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const persistedViewModeRef = useRef<ViewMode>('grid');
-  const selectedViewModeRef = useRef<ViewMode>('grid');
-  const viewModeTouchedRef = useRef(false);
-  const viewPreferenceMutationRef = useRef<Promise<void>>(Promise.resolve());
-  const [searchQuery, setSearchQueryState] = useState(initialQuery);
-  const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
-  const [isLoadingSaved, setIsLoadingSaved] = useState(true);
-  const [savedLoadError, setSavedLoadError] = useState('');
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [activeTag, setActiveTagState] = useState<string | null>(initialTag);
-
-  const updateQueryParams = useCallback((newTab: LibraryTab, newQ: string, newTag: string | null) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (newTab && newTab !== 'saved') {
-      params.set('tab', newTab);
-    } else {
-      params.delete('tab');
-    }
-    if (newQ) {
-      params.set('q', newQ);
-    } else {
-      params.delete('q');
-    }
-    if (newTag) {
-      params.set('tag', newTag);
-    } else {
-      params.delete('tag');
-    }
-    const queryString = params.toString();
-    router.replace(`${pathname}${queryString ? `?${queryString}` : ''}`);
-  }, [pathname, router, searchParams]);
-
-  const setTab = (newTab: LibraryTab) => {
-    setTabState(newTab);
-    updateQueryParams(newTab, searchQuery, activeTag);
-  };
-
-  const setSearchQuery = (newQ: string) => {
-    setSearchQueryState(newQ);
-    updateQueryParams(tab, newQ, activeTag);
-  };
-
-  const setActiveTag = (newTag: string | null) => {
-    setActiveTagState(newTag);
-    updateQueryParams(tab, searchQuery, newTag);
-  };
-
-  // Clearing both filters must be a single URL update: calling setSearchQuery
-  // and setActiveTag back to back would each build the query string from the
-  // other filter's not-yet-updated state, re-adding the param just removed.
-  const clearFilters = () => {
-    setSearchQueryState('');
-    setActiveTagState(null);
-    updateQueryParams(tab, '', null);
-  };
-
-  useEffect(() => {
-    const currentTab = (searchParams.get('tab') as LibraryTab) || 'saved';
-    const currentQ = searchParams.get('q') || '';
-    const currentTag = searchParams.get('tag') || null;
-
-    setTabState(currentTab);
-    setSearchQueryState(currentQ);
-    setActiveTagState(currentTag);
-  }, [searchParams]);
-
-  const [error, setError] = useState('');
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
-  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    message: string;
-    actionLabel?: string;
-    onAction?: () => void;
-    deletePromptId?: number;
-    actionExpiresAt?: number;
-  } | null>(null);
-  const [toastClock, setToastClock] = useState(() => Date.now());
-  const toastRef = useRef<typeof toast>(null);
-  const toastDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const deleteConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const confirmingDeleteRef = useRef<string | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  const handleViewModeChange = (nextView: ViewMode) => {
-    if (nextView === selectedViewModeRef.current) return;
-
-    viewModeTouchedRef.current = true;
-    selectedViewModeRef.current = nextView;
-    setViewMode(nextView);
-    setError('');
-
-    const mutation = viewPreferenceMutationRef.current.then(() =>
-      AuthService.updateProfile({ default_library_view: nextView }),
-    );
-    viewPreferenceMutationRef.current = mutation.then(
-      (updatedUser) => {
-        persistedViewModeRef.current = updatedUser.default_library_view ?? nextView;
-      },
-      (err) => {
-        // A later selection may already be queued. Only roll back when the
-        // failed request still represents what the user sees.
-        if (selectedViewModeRef.current === nextView) {
-          selectedViewModeRef.current = persistedViewModeRef.current;
-          setViewMode(persistedViewModeRef.current);
-          setError(
-            err instanceof Error ? err.message : 'Failed to save the Library view preference.',
-          );
-        }
-      },
-    );
-  };
-
-  useEffect(() => {
-    setIsHydrated(true);
+  const showToast = useCallback((next: Toast, ms = 3500) => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    setToast(next);
+    toastTimer.current = window.setTimeout(() => setToast(null), ms);
   }, []);
 
-  const pendingDeleteRef = useRef<{
-    prompt: SavedPrompt;
-    wasSaved: boolean;
-    wasHistory: boolean;
-    timer: ReturnType<typeof setTimeout>;
-  } | null>(null);
-
-  const [historyPrompts, setHistoryPrompts] = useState<SavedPrompt[]>([]);
-  const [historySearchInput, setHistorySearchInput] = useState('');
-  const [historyHasMore, setHistoryHasMore] = useState(false);
-  const [isLoadingMoreHistory, setIsLoadingMoreHistory] = useState(false);
-  const savedRequestIdRef = useRef(0);
-  const isFirstRenderHistoryRef = useRef(true);
-
-  const dismissToast = useCallback(() => {
-    if (toastDismissTimerRef.current) clearTimeout(toastDismissTimerRef.current);
-    toastDismissTimerRef.current = null;
-    toastRef.current = null;
-    setToast(null);
-  }, []);
-
-  const showToast = useCallback(
-    (nextToast: NonNullable<typeof toast>, durationMs: number | null = TOAST_TIMEOUT_MS) => {
-      if (toastDismissTimerRef.current) clearTimeout(toastDismissTimerRef.current);
-      toastRef.current = nextToast;
-      setToast(nextToast);
-      if (durationMs !== null) {
-        toastDismissTimerRef.current = setTimeout(dismissToast, durationMs);
-      }
-    },
-    [dismissToast],
-  );
-
-  useEffect(() => {
-    if (!toast?.actionExpiresAt) return;
-    setToastClock(Date.now());
-    const timer = setInterval(() => setToastClock(Date.now()), 250);
-    return () => clearInterval(timer);
-  }, [toast?.actionExpiresAt]);
-
-  useEffect(
-    () => () => {
-      if (toastDismissTimerRef.current) clearTimeout(toastDismissTimerRef.current);
-      if (deleteConfirmTimerRef.current) clearTimeout(deleteConfirmTimerRef.current);
-    },
-    [],
-  );
-
-  const loadSavedPrompts = useCallback(async () => {
-    const requestId = ++savedRequestIdRef.current;
-    setIsLoadingSaved(true);
-    setSavedLoadError('');
+  const load = useCallback(async () => {
     try {
-      const data = await ApiClient.getSavedPrompts();
-      if (requestId !== savedRequestIdRef.current) return;
-      setSavedPrompts(data.map(toSavedPrompt));
+      setPrompts(await ApiClient.getSavedPrompts());
+      setLoadError('');
     } catch (err) {
-      console.error('Failed to load saved prompts:', err);
-      if (requestId !== savedRequestIdRef.current) return;
-      setSavedLoadError(
-        err instanceof Error ? err.message : 'Saved prompts could not be loaded.',
-      );
-    } finally {
-      if (requestId === savedRequestIdRef.current) setIsLoadingSaved(false);
-    }
-  }, []);
-
-  const loadTags = useCallback(async () => {
-    try {
-      setAvailableTags(await ApiClient.getTags());
-    } catch (err) {
-      console.error('Failed to load tags:', err);
-    }
-  }, []);
-
-  const loadHistoryPrompts = useCallback(async (search: string = '') => {
-    try {
-      const data = await ApiClient.getHistory(HISTORY_PAGE_SIZE, 0, search);
-      setHistoryPrompts(data.map(toSavedPrompt));
-      setHistoryHasMore(data.length === HISTORY_PAGE_SIZE);
-    } catch (err) {
-      console.error('Failed to load history prompts:', err);
+      setLoadError(err instanceof Error ? err.message : 'Failed to load your prompts.');
     }
   }, []);
 
   useEffect(() => {
-    loadTags();
-  }, [loadTags]);
+    void load();
+    AuthService.getCurrentUser()
+      .then((user) => user.default_library_view && setLayout(user.default_library_view))
+      .catch(() => {});
+  }, [load]);
 
   useEffect(() => {
-    document.title = pageTitle('Library');
+    document.title = pageTitle(title);
     return () => {
       document.title = pageTitle();
     };
-  }, [searchParams]);
+  }, [title]);
 
+  // A delete still inside its undo window must reach the server even if the
+  // user navigates away or closes the tab, or the prompt silently comes back.
   useEffect(() => {
-    AuthService.getCurrentUser()
-      .then((user) => {
-        if (!user.default_library_view) return;
-        persistedViewModeRef.current = user.default_library_view;
-        if (!viewModeTouchedRef.current) {
-          selectedViewModeRef.current = user.default_library_view;
-          setViewMode(user.default_library_view);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    loadSavedPrompts();
-  }, [loadSavedPrompts]);
-
-  useEffect(() => {
-    if (isFirstRenderHistoryRef.current) {
-      isFirstRenderHistoryRef.current = false;
-      loadHistoryPrompts(historySearchInput);
-      return;
-    }
-    const handle = setTimeout(() => {
-      loadHistoryPrompts(historySearchInput);
-    }, HISTORY_SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(handle);
-  }, [historySearchInput, loadHistoryPrompts]);
-
-  useEffect(() => {
-    // A delete inside its undo window hasn't hit the server yet; without this
-    // flush a refresh or tab close silently drops it and the prompt reappears.
-    const flushPendingDelete = () => {
-      const pending = pendingDeleteRef.current;
-      if (!pending?.prompt.promptId) return;
-      clearTimeout(pending.timer);
-      pendingDeleteRef.current = null;
-      ApiClient.flushDeletePrompt(pending.prompt.promptId);
+    const flush = () => {
+      const pending = pendingDelete.current;
+      if (!pending) return;
+      window.clearTimeout(pending.timer);
+      pendingDelete.current = null;
+      ApiClient.flushDeletePrompt(pending.prompt.id);
     };
-    window.addEventListener('pagehide', flushPendingDelete);
-    return () => window.removeEventListener('pagehide', flushPendingDelete);
-  }, []);
-
-  useEffect(() => {
-    if (!confirmingDeleteId) return;
-    const disarmOnOutsideClick = (event: MouseEvent) => {
-      let target = event.target;
-      if (target instanceof Node && target.nodeType === 3) {
-        target = target.parentElement;
-      }
-      if (target instanceof Element && target.closest(`[data-delete-id="${confirmingDeleteId}"]`)) {
-        return;
-      }
-      confirmingDeleteRef.current = null;
-      setConfirmingDeleteId(null);
-    };
-    // Delay adding the event listener to avoid registering during the current event bubble
-    const timer = setTimeout(() => {
-      document.addEventListener('click', disarmOnOutsideClick);
-    }, 0);
+    window.addEventListener('pagehide', flush);
     return () => {
-      clearTimeout(timer);
-      document.removeEventListener('click', disarmOnOutsideClick);
+      window.removeEventListener('pagehide', flush);
+      flush();
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
     };
-  }, [confirmingDeleteId]);
+  }, []);
 
-  const filteredSaved = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return savedPrompts.filter((p) => {
-      const matchesTag = !activeTag || p.tags?.includes(activeTag);
-      const matchesText =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.generatedPrompt.toLowerCase().includes(q) ||
-        (p.folder ?? '').toLowerCase().includes(q) ||
-        (p.tags ?? []).some((tag) => tag.toLowerCase().includes(q));
-      return matchesTag && matchesText;
-    });
-  }, [activeTag, savedPrompts, searchQuery]);
+  useEffect(() => {
+    if (menuId === null && !folderMenuOpen) return;
+    const close = (event: MouseEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent && event.key !== 'Escape') return;
+      if (event instanceof MouseEvent && (event.target as Element).closest('[data-menu]')) return;
+      setMenuId(null);
+      setFolderMenuOpen(false);
+    };
+    document.addEventListener('click', close);
+    document.addEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('click', close);
+      document.removeEventListener('keydown', close);
+    };
+  }, [folderMenuOpen, menuId]);
 
-  const handleLoadMoreHistory = async () => {
-    setIsLoadingMoreHistory(true);
+  const replace = (updated: Prompt) =>
+    setPrompts((current) => current?.map((p) => (p.id === updated.id ? updated : p)) ?? null);
+
+  const inView = useMemo(() => {
+    const all = prompts ?? [];
+    switch (view.type) {
+      case 'favorites':
+        return all.filter((p) => p.is_favorite);
+      case 'unfiled':
+        return all.filter((p) => !p.folder);
+      case 'folder':
+        return all.filter((p) => p.folder === view.folder);
+      default:
+        return all;
+    }
+    // `view` is rebuilt every render; its fields are the real dependencies.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prompts, view.type, view.type === 'folder' ? view.folder : null]);
+
+  const visible = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return inView
+      .filter(
+        (p) =>
+          !query ||
+          [p.name ?? '', p.folder ?? '', ...p.fields.flatMap((f) => [f.name, f.content])]
+            .join(' ')
+            .toLowerCase()
+            .includes(query),
+      )
+      .sort((a, b) => editedAt(b).localeCompare(editedAt(a)));
+  }, [inView, search]);
+
+  const toggleFavorite = async (prompt: Prompt) => {
+    replace({ ...prompt, is_favorite: !prompt.is_favorite });
     try {
-      const data = await ApiClient.getHistory(
-        HISTORY_PAGE_SIZE,
-        historyPrompts.length,
-        historySearchInput
-      );
-      setHistoryPrompts((prev) => [...prev, ...data.map(toSavedPrompt)]);
-      setHistoryHasMore(data.length === HISTORY_PAGE_SIZE);
-    } catch (err) {
-      console.error('Failed to load more history:', err);
-    } finally {
-      setIsLoadingMoreHistory(false);
+      replace(await ApiClient.updatePrompt(prompt.id, { is_favorite: !prompt.is_favorite }));
+      notifyLibraryChanged();
+    } catch {
+      replace(prompt);
+      showToast({ text: 'Could not update favorites. Try again.' });
     }
   };
 
-  const handleSelectPrompt = (promptId: number | null) => {
-    if (promptId !== null) router.push(`/editor/${promptId}`);
-  };
-
-  // Activates a clickable row on Enter/Space, keeping it keyboard-reachable
-  // like the grid's Card component. Ignores keydowns that bubbled up from a
-  // nested interactive element (rename input, favorite/action buttons).
-  const handleRowKeyDown = (
-    e: KeyboardEvent<HTMLDivElement>,
-    onActivate: () => void
-  ) => {
-    if (e.target !== e.currentTarget) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onActivate();
+  const copyTemplate = async (prompt: Prompt) => {
+    setMenuId(null);
+    try {
+      await navigator.clipboard.writeText(prompt.generated_prompt);
+      showToast({ text: `Copied the “${prompt.name}” template` });
+    } catch {
+      showToast({ text: 'Copying failed. Open the prompt and copy it from the preview.' });
     }
   };
 
-  const handleToggleFavorite = async (p: SavedPrompt) => {
-    if (!p.promptId) return;
+  const rename = async (prompt: Prompt, value: string) => {
+    setRenamingId(null);
+    const name = value.trim();
+    if (!name || name === prompt.name) return;
     try {
-      // No `last_updated_at`, deliberately. Favouriting is per-row metadata
-      // with last-writer-wins semantics — there is nothing to merge, so a
-      // conflict prompt would be noise. It would also fire spuriously: the star
-      // has no in-flight guard, so a double-click sends two mutations built
-      // from the same captured `p`, and the second would be rejected for a
-      // conflict the user caused with their own first click. Content edits in
-      // the editor keep the check.
-      const updated = await ApiClient.updatePrompt(p.promptId, {
-        is_favorite: !p.isFavorite,
-      });
-      setSavedPrompts((prev) => prev.map((sp) => (sp.id === p.id ? toSavedPrompt(updated) : sp)));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update favorite.');
-    }
-  };
-
-  const commitPendingDelete = useCallback(async () => {
-    const pending = pendingDeleteRef.current;
-    if (!pending?.prompt.promptId) return;
-    pendingDeleteRef.current = null;
-    try {
-      await ApiClient.deletePrompt(pending.prompt.promptId);
-      if (toastRef.current?.deletePromptId === pending.prompt.promptId) {
-        showToast({ message: `${pending.prompt.name} deleted.` }, 2_500);
+      replace(await ApiClient.updatePrompt(prompt.id, { name }));
+      if (prompts?.some((p) => p.id !== prompt.id && p.name === name)) {
+        showToast({ text: `Another prompt is also called “${name}”.` });
       }
-    } catch (err) {
-      if (pending.wasSaved) setSavedPrompts((prev) => [pending.prompt, ...prev]);
-      if (pending.wasHistory) setHistoryPrompts((prev) => [pending.prompt, ...prev]);
-      setError(err instanceof Error ? err.message : 'Failed to delete prompt.');
-      if (toastRef.current?.deletePromptId === pending.prompt.promptId) dismissToast();
+    } catch {
+      showToast({ text: 'Could not rename the prompt. Try again.' });
     }
-  }, [dismissToast, showToast]);
-
-  const undoPendingDelete = () => {
-    const pending = pendingDeleteRef.current;
-    if (!pending) {
-      showToast({ message: 'Too late to undo — the prompt was deleted.' });
-      return;
-    }
-    clearTimeout(pending.timer);
-    pendingDeleteRef.current = null;
-    if (pending.wasSaved) setSavedPrompts((prev) => [pending.prompt, ...prev]);
-    if (pending.wasHistory) setHistoryPrompts((prev) => [pending.prompt, ...prev]);
-    showToast({ message: 'Deletion undone.' });
   };
 
-  const handleDelete = (p: SavedPrompt, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (!p.promptId) return;
-
-    const isConfirming = confirmingDeleteRef.current === p.id;
-    if (!isConfirming) {
-      confirmingDeleteRef.current = p.id;
-      setConfirmingDeleteId(p.id);
-
-      if (deleteConfirmTimerRef.current) clearTimeout(deleteConfirmTimerRef.current);
-      deleteConfirmTimerRef.current = setTimeout(() => {
-        if (confirmingDeleteRef.current === p.id) {
-          confirmingDeleteRef.current = null;
-          setConfirmingDeleteId(null);
-        }
-      }, DELETE_CONFIRM_TIMEOUT_MS);
-      return;
+  const move = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!moving) return;
+    const folder = moving.folder.trim();
+    setMoving(null);
+    try {
+      replace(await ApiClient.updatePrompt(moving.prompt.id, { folder }));
+      notifyLibraryChanged();
+      showToast({ text: folder ? `Moved to ${folder}` : 'Moved to Unfiled' });
+    } catch {
+      showToast({ text: 'Could not move the prompt. Try again.' });
     }
+  };
 
-    if (deleteConfirmTimerRef.current) clearTimeout(deleteConfirmTimerRef.current);
-    confirmingDeleteRef.current = null;
-    setConfirmingDeleteId(null);
-    if (pendingDeleteRef.current) {
-      clearTimeout(pendingDeleteRef.current.timer);
-      void commitPendingDelete();
+  const duplicate = async (prompt: Prompt) => {
+    setMenuId(null);
+    try {
+      const copy = await ApiClient.duplicatePrompt(prompt.id);
+      setPrompts((current) => [copy, ...(current ?? [])]);
+      notifyLibraryChanged();
+      showToast(
+        {
+          text: `Duplicated as “${copy.name}”`,
+          action: { label: 'Open copy', run: () => router.push(`/editor/${copy.id}`) },
+        },
+        6000,
+      );
+    } catch {
+      showToast({ text: 'Could not duplicate the prompt. Try again.' });
     }
-    const wasSaved = savedPrompts.some((saved) => saved.id === p.id);
-    const wasHistory = historyPrompts.some((historyPrompt) => historyPrompt.id === p.id);
-    setSavedPrompts((prev) => prev.filter((sp) => sp.id !== p.id));
-    setHistoryPrompts((prev) => prev.filter((sp) => sp.id !== p.id));
-    const pending = {
-      prompt: p,
-      wasSaved,
-      wasHistory,
-      timer: setTimeout(() => void commitPendingDelete(), DELETE_UNDO_TIMEOUT_MS),
-    };
-    pendingDeleteRef.current = pending;
+  };
+
+  const commitDelete = async (prompt: Prompt) => {
+    pendingDelete.current = null;
+    try {
+      await ApiClient.deletePrompt(prompt.id);
+      notifyLibraryChanged();
+    } catch {
+      setPrompts((current) => (current ? [prompt, ...current] : current));
+      showToast({ text: `Could not delete “${prompt.name}”. It is back in your library.` });
+    }
+  };
+
+  const remove = (prompt: Prompt) => {
+    setMenuId(null);
+    // Only one delete waits at a time; an earlier one goes through now.
+    const earlier = pendingDelete.current;
+    if (earlier) {
+      window.clearTimeout(earlier.timer);
+      void commitDelete(earlier.prompt);
+    }
+    setPrompts((current) => current?.filter((p) => p.id !== prompt.id) ?? null);
+    const timer = window.setTimeout(() => void commitDelete(prompt), UNDO_MS);
+    pendingDelete.current = { prompt, timer };
     showToast(
       {
-        message: `${p.name} deleted.`,
-        actionLabel: 'Undo',
-        onAction: undoPendingDelete,
-        deletePromptId: p.promptId,
-        actionExpiresAt: Date.now() + DELETE_UNDO_TIMEOUT_MS,
+        text: `Deleted “${prompt.name}”`,
+        action: {
+          label: 'Undo',
+          run: () => {
+            window.clearTimeout(timer);
+            pendingDelete.current = null;
+            setPrompts((current) => (current ? [prompt, ...current] : current));
+          },
+        },
       },
-      null,
+      UNDO_MS,
     );
   };
 
-  const handleDuplicate = async (p: SavedPrompt) => {
-    if (!p.promptId) return;
-    if (duplicatingId) return;
-    setDuplicatingId(p.id);
+  const renameFolder = async (event: FormEvent) => {
+    event.preventDefault();
+    if (view.type !== 'folder' || folderRename === null) return;
+    const name = folderRename.trim();
+    setFolderRename(null);
+    if (!name || name === view.folder) return;
     try {
-      const copy = await ApiClient.duplicatePrompt(p.promptId);
-      setSavedPrompts((prev) => [toSavedPrompt(copy), ...prev]);
-      showToast({
-        message: `Duplicated as “${copy.name ?? 'Untitled Prompt Duplicate'}”.`,
-        actionLabel: 'Open copy',
-        onAction: () => router.push(`/editor/${copy.id}`),
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to duplicate prompt.');
-    } finally {
-      setDuplicatingId(null);
+      await ApiClient.renameFolder(view.folder, name);
+      await load();
+      notifyLibraryChanged();
+      router.replace(libraryHref({ type: 'folder', folder: name }));
+      showToast({ text: `Renamed the folder to ${name}` });
+    } catch {
+      showToast({ text: 'Could not rename the folder. Try again.' });
     }
   };
 
-  const startRename = (p: SavedPrompt) => {
-    setRenamingId(p.id);
-    setRenameValue(p.name);
-  };
-
-  const commitRename = async (p: SavedPrompt, e?: FormEvent) => {
-    e?.preventDefault();
-    const trimmed = renameValue.trim();
-    setRenamingId(null);
-    if (!p.promptId || !trimmed || trimmed === p.name) return;
+  const removeFolder = async () => {
+    if (view.type !== 'folder') return;
+    setFolderRemoveOpen(false);
     try {
-      const updated = await ApiClient.updatePrompt(p.promptId, {
-        name: trimmed,
-        last_updated_at: p.updatedAt || p.savedAt || undefined,
-      });
-      setSavedPrompts((prev) => prev.map((sp) => (sp.id === p.id ? toSavedPrompt(updated) : sp)));
-      const isDuplicateName = savedPrompts.some(
-        (sp) => sp.id !== p.id && sp.name.toLowerCase() === trimmed.toLowerCase()
-      );
+      const result = await ApiClient.removeFolder(view.folder);
+      await load();
+      notifyLibraryChanged();
+      router.replace(libraryHref({ type: 'unfiled' }));
       showToast({
-        message: isDuplicateName
-          ? `Renamed to “${trimmed}”. Another prompt already uses this name.`
-          : `Renamed to “${trimmed}”.`,
+        text: `Removed ${view.folder}. ${result.prompt_count} prompt${result.prompt_count === 1 ? '' : 's'} moved to Unfiled.`,
       });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to rename prompt.');
+    } catch {
+      showToast({ text: 'Could not remove the folder. Try again.' });
     }
   };
 
-  const renderFavoriteButton = (p: SavedPrompt) => (
-    <button
-      type="button"
-      className={styles.favoriteButton}
-      aria-label={p.isFavorite ? `Unfavorite ${p.name}` : `Favorite ${p.name}`}
-      title={p.isFavorite ? 'Unfavorite' : 'Favorite'}
-      data-active={!!p.isFavorite}
-      onClick={(e) => {
-        e.stopPropagation();
-        handleToggleFavorite(p);
-      }}
-    >
-      ★
-    </button>
+  const folders = useMemo(
+    () => [...new Set((prompts ?? []).map((p) => p.folder).filter(Boolean) as string[])].sort(),
+    [prompts],
   );
 
-  // Every action carries the prompt's name. The visible label stays short, but
-  // a whole library of cards otherwise reads as N identical "Delete" buttons in
-  // the accessibility tree, with nothing to say which prompt each one destroys.
-  const renderCardActions = (p: SavedPrompt) => (
-    <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
+  const promptMenu = (prompt: Prompt) => (
+    <div className={styles.menuWrap} data-menu>
       <button
         type="button"
-        className={styles.iconAction}
-        onClick={() => startRename(p)}
-        title="Rename"
-        aria-label={`Rename ${p.name}`}
+        className={styles.iconButton}
+        aria-label={`More actions for ${prompt.name}`}
+        aria-haspopup="menu"
+        aria-expanded={menuId === prompt.id}
+        onClick={(e) => {
+          e.stopPropagation();
+          setMenuId(menuId === prompt.id ? null : prompt.id);
+        }}
       >
-        Rename
+        <MoreIcon tone="inherit" />
       </button>
-      <button
-        type="button"
-        className={styles.iconAction}
-        onClick={() => handleDuplicate(p)}
-        title="Duplicate"
-        aria-label={`Duplicate ${p.name}`}
-        disabled={duplicatingId !== null}
-      >
-        {duplicatingId === p.id ? 'Duplicating…' : 'Duplicate'}
-      </button>
-      <button
-        type="button"
-        className={styles.iconActionDanger}
-        data-delete-id={p.id}
-        onClick={(e) => handleDelete(p, e)}
-        title={confirmingDeleteId === p.id ? 'Confirm deletion' : 'Delete'}
-        aria-label={
-          confirmingDeleteId === p.id ? `Confirm delete ${p.name}?` : `Delete ${p.name}`
-        }
-      >
-        {confirmingDeleteId === p.id ? 'Confirm delete?' : 'Delete'}
-      </button>
+      {menuId === prompt.id && (
+        <div className={styles.menu} role="menu">
+          <button type="button" role="menuitem" onClick={() => copyTemplate(prompt)}>
+            Copy template
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenuId(null);
+              setRenamingId(prompt.id);
+            }}
+          >
+            Rename
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenuId(null);
+              setMoving({ prompt, folder: prompt.folder ?? '' });
+            }}
+          >
+            Move to folder…
+          </button>
+          <button type="button" role="menuitem" onClick={() => duplicate(prompt)}>
+            Duplicate
+          </button>
+          <button type="button" role="menuitem" className={styles.danger} onClick={() => remove(prompt)}>
+            Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 
-  return (
-    <div className={styles.library}>
-      <PageHeader
-        title="Prompt library"
-        actions={
-          <ButtonLink
-            href="/editor/new"
-            variant="primary"
-            // `getCurrentUser()` is async, so this used to build the key
-            // `draft:[object Promise]` from the unawaited promise — a key nothing
-            // ever writes — and silently left the previous draft in place, so
-            // "New prompt" opened the editor pre-filled with the old one.
-            onClick={() => {
-              if (signedInAs) {
-                localStorage.removeItem(storageKey(`draft:${signedInAs}`));
-              }
-            }}
-          >
-            + New prompt
-          </ButtonLink>
-        }
+  const name = (prompt: Prompt) =>
+    renamingId === prompt.id ? (
+      <input
+        className={styles.renameInput}
+        defaultValue={prompt.name ?? ''}
+        aria-label="Prompt name"
+        maxLength={100}
+        autoFocus
+        onClick={(e) => e.stopPropagation()}
+        onBlur={(e) => rename(prompt, e.currentTarget.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+          if (e.key === 'Escape') setRenamingId(null);
+        }}
       />
+    ) : (
+      <Link href={`/editor/${prompt.id}`} className={styles.name}>
+        {prompt.name}
+      </Link>
+    );
 
-      {error && <div className={styles.errorBanner} role="alert">{error}</div>}
-      <div className={styles.liveRegion} role="status" aria-live="polite" aria-atomic="true">
-        {toast && (
-          <div className={styles.toast}>
-            <span>{toast.message}</span>
-            {toast.actionExpiresAt && (
-              <span className={styles.toastCountdown}>
-                {Math.max(0, Math.ceil((toast.actionExpiresAt - toastClock) / 1000))}s
+  const star = (prompt: Prompt) => (
+    <button
+      type="button"
+      className={styles.star}
+      aria-pressed={prompt.is_favorite}
+      aria-label={prompt.is_favorite ? `Remove ${prompt.name} from favorites` : `Add ${prompt.name} to favorites`}
+      onClick={(e) => {
+        e.stopPropagation();
+        void toggleFavorite(prompt);
+      }}
+    >
+      <FavoriteIcon tone="inherit" />
+    </button>
+  );
+
+  // Clicking anywhere on a row opens it; buttons and the name link handle their own clicks.
+  const openOnClick = (prompt: Prompt) => (event: React.MouseEvent) => {
+    if ((event.target as Element).closest('button, a, input')) return;
+    router.push(`/editor/${prompt.id}`);
+  };
+
+  let body: React.ReactNode;
+  if (loadError) {
+    body = (
+      <div className={styles.empty} role="alert">
+        <h2>Your prompts could not be loaded</h2>
+        <p>{loadError}</p>
+        <Button variant="secondary" onClick={load}>
+          Try again
+        </Button>
+      </div>
+    );
+  } else if (prompts === null) {
+    body = <p className={styles.loading}>Loading your prompts…</p>;
+  } else if (visible.length === 0 && search.trim()) {
+    body = (
+      <div className={styles.empty}>
+        <h2>No prompts match “{search.trim()}”</h2>
+        <p>Search looks at names, folders and section text.</p>
+        <Button variant="secondary" onClick={() => setSearch('')}>
+          Clear search
+        </Button>
+      </div>
+    );
+  } else if (visible.length === 0 && view.type === 'favorites') {
+    body = (
+      <div className={styles.empty}>
+        <h2>No favorites yet</h2>
+        <p>Star the prompts you use most and they’ll be collected here.</p>
+      </div>
+    );
+  } else if (visible.length === 0) {
+    body = (
+      <div className={styles.empty}>
+        <h2>Nothing here</h2>
+        <p>No prompts are filed here any more.</p>
+        <Link href="/library" className={styles.textLink}>
+          Go to all prompts
+        </Link>
+      </div>
+    );
+  } else if (layout === 'grid') {
+    body = (
+      <ul className={styles.grid}>
+        {visible.map((prompt) => (
+          <li key={prompt.id} className={styles.card} onClick={openOnClick(prompt)}>
+            <div className={styles.cardTop}>
+              {name(prompt)}
+              {star(prompt)}
+            </div>
+            <p className={styles.cardExcerpt}>{excerpt(prompt)}</p>
+            <div className={styles.cardFoot}>
+              <span>
+                {view.type !== 'folder' && <>{prompt.folder ?? 'Unfiled'}, </>}
+                {relativeTime(editedAt(prompt))}
               </span>
-            )}
-            {toast.actionLabel && toast.onAction && (
-              <button type="button" onClick={toast.onAction}>{toast.actionLabel}</button>
-            )}
-            <button type="button" aria-label="Dismiss notification" onClick={dismissToast}>×</button>
-          </div>
-        )}
-      </div>
-
-      <div className={styles.tabs}>
-        <button
-          type="button"
-          className={styles.tabButton}
-          data-active={tab === 'saved'}
-          onClick={() => setTab('saved')}
-          disabled={!isHydrated}
-        >
-          Saved ({isLoadingSaved ? '…' : savedLoadError ? '!' : `${filteredSaved.length} / ${savedPrompts.length}`})
-        </button>
-        <button
-          type="button"
-          className={styles.tabButton}
-          data-active={tab === 'history'}
-          onClick={() => setTab('history')}
-          disabled={!isHydrated}
-        >
-          History
-        </button>
-      </div>
-
-      {tab === 'saved' && (
-        <>
-          <div className={styles.controls}>
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter…"
-              className={styles.search}
-              aria-label="Filter saved prompts"
-            />
-            <div className={styles.spacer} />
-            <SegmentedControl
-              aria-label="View"
-              options={VIEW_OPTIONS}
-              value={viewMode}
-              onChange={handleViewModeChange}
-            />
-          </div>
-
-          {availableTags.length > 0 && (
-            <div className={styles.tagRow}>
               <button
                 type="button"
-                className={styles.tagFilter}
-                data-active={activeTag === null}
-                onClick={() => setActiveTag(null)}
+                className={styles.iconButton}
+                aria-label={`Copy the ${prompt.name} template`}
+                onClick={() => copyTemplate(prompt)}
               >
-                All
+                <CopyIcon tone="inherit" />
               </button>
-              {availableTags.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={styles.tagFilter}
-                  data-active={activeTag === t}
-                  onClick={() => setActiveTag(t)}
-                >
-                  {t}
-                </button>
-              ))}
+              {promptMenu(prompt)}
             </div>
-          )}
-
-          {(searchQuery.trim() || activeTag) && (
-            <div className={styles.activeFilters} aria-label="Active filters">
-              <span>Showing {filteredSaved.length} of {savedPrompts.length}</span>
-              {searchQuery.trim() && <Tag>Search: {searchQuery.trim()}</Tag>}
-              {activeTag && <Tag>Tag: {activeTag}</Tag>}
-              <button type="button" onClick={clearFilters}>
-                Clear filters
-              </button>
-            </div>
-          )}
-
-          {isLoadingSaved ? (
-            <div className={styles.empty}>Loading saved prompts…</div>
-          ) : savedLoadError ? (
-            <div className={styles.empty} role="alert">
-              <span>Saved prompts could not be loaded. Your prompts have not been deleted.</span>
-              <Button variant="secondary" onClick={loadSavedPrompts}>
-                Retry
-              </Button>
-            </div>
-          ) : filteredSaved.length === 0 ? (
-            <div className={styles.empty}>
-              {searchQuery.trim() || activeTag
-                ? 'No saved prompts match the current filters.'
-                : 'No saved prompts yet.'}
-              {(searchQuery.trim() || activeTag) && (
+          </li>
+        ))}
+      </ul>
+    );
+  } else {
+    body = (
+      <ul className={styles.list}>
+        {visible.map((prompt) => {
+          const variables = variablesIn(prompt.fields).length;
+          return (
+            <li key={prompt.id} className={styles.row} onClick={openOnClick(prompt)}>
+              {star(prompt)}
+              <div className={styles.rowMain}>
+                {name(prompt)}
+                <p className={styles.excerpt}>{excerpt(prompt)}</p>
+              </div>
+              <div className={styles.meta}>
+                {view.type !== 'folder' && <span>{prompt.folder ?? 'Unfiled'}</span>}
+                <span>{variables ? `${variables} variable${variables === 1 ? '' : 's'}` : 'No variables'}</span>
+                <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
+              </div>
+              <div className={styles.actions}>
                 <button
                   type="button"
-                  className={styles.clearFiltersButton}
-                  onClick={clearFilters}
+                  className={styles.copyButton}
+                  onClick={() => copyTemplate(prompt)}
+                  aria-label={`Copy the ${prompt.name} template`}
                 >
-                  Clear filters
+                  <CopyIcon tone="inherit" />
+                  Copy template
                 </button>
-              )}
-            </div>
-          ) : viewMode === 'grid' ? (
-            <div className={styles.grid}>
-              {filteredSaved.map((p) => (
-                <Card
-                  key={p.id}
-                  interactive
-                  role="group"
-                  className={styles.card}
-                  onClick={() => handleSelectPrompt(p.promptId)}
+                {promptMenu(prompt)}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  if (prompts !== null && prompts.length === 0 && !loadError) {
+    return (
+      <div className={styles.page}>
+        <section className={styles.hero}>
+          <h1>Your prompt library is empty</h1>
+          <p>
+            Save the prompts you keep retyping. Split them into sections, mark the parts that change
+            with <code>{'{{variables}}'}</code>, and copy a filled-in version whenever you need it.
+          </p>
+          <div className={styles.heroActions}>
+            <Link href="/editor/new" className={styles.primaryLink}>
+              New prompt
+            </Link>
+            <Link href="/editor/new?import=1" className={styles.secondaryLink}>
+              Import text
+            </Link>
+          </div>
+          <h2>Or start from a template</h2>
+          <ul className={styles.starters}>
+            {STARTER_TEMPLATES.map((template) => (
+              <li key={template.id}>
+                <Link href={`/editor/new?starter=${template.id}`} className={styles.starter}>
+                  <strong>{template.label}</strong>
+                  <span>{template.description}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+        {toast && <ToastView toast={toast} onDone={() => setToast(null)} />}
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.head}>
+        <h1>{title}</h1>
+        {view.type === 'folder' && (
+          <div className={styles.menuWrap} data-menu>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label={`Actions for the ${view.folder} folder`}
+              aria-haspopup="menu"
+              aria-expanded={folderMenuOpen}
+              onClick={() => setFolderMenuOpen((open) => !open)}
+            >
+              <MoreIcon tone="inherit" />
+            </button>
+            {folderMenuOpen && (
+              <div className={styles.menu} role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setFolderMenuOpen(false);
+                    setFolderRename(view.folder);
+                  }}
                 >
-                  <div className={styles.cardTop}>
-                    <div className={styles.folderLabel}>{p.folder || ' '}</div>
-                    {renderFavoriteButton(p)}
-                  </div>
-                  {renamingId === p.id ? (
-                    <form onSubmit={(e) => commitRename(p, e)} onClick={(e) => e.stopPropagation()}>
-                      <Input
-                        autoFocus
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onBlur={() => commitRename(p)}
-                        onKeyDown={(e) => e.key === 'Escape' && setRenamingId(null)}
-                        maxLength={100}
-                      />
-                    </form>
-                  ) : (
-                    <h2 className={styles.cardTitle} title={p.name}>{p.name}</h2>
-                  )}
-                  <div className={styles.cardDesc}>{p.generatedPrompt.slice(0, 140)}</div>
-                  {p.tags && p.tags.length > 0 && (
-                    <div className={styles.cardTags}>
-                      {p.tags.map((t) => (
-                        <Tag key={t}>{t}</Tag>
-                      ))}
-                    </div>
-                  )}
-                  <div className={styles.cardFooter}>
-                    <span>{p.runCount} {p.runCount === 1 ? 'run' : 'runs'}</span>
-                    <span>Edited {formatDate(p.updatedAt ?? p.savedAt)}</span>
-                  </div>
-                  {renderCardActions(p)}
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className={styles.list}>
-              {filteredSaved.map((p) => (
-                <div
-                  key={p.id}
-                  className={styles.listRow}
-                  role="group"
-                  tabIndex={0}
-                  onClick={() => handleSelectPrompt(p.promptId)}
-                  onKeyDown={(e) => handleRowKeyDown(e, () => handleSelectPrompt(p.promptId))}
+                  Rename folder
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.danger}
+                  onClick={() => {
+                    setFolderMenuOpen(false);
+                    setFolderRemoveOpen(true);
+                  }}
                 >
-                  <div className={styles.listMain}>
-                    {renamingId === p.id ? (
-                      <form onSubmit={(e) => commitRename(p, e)} onClick={(e) => e.stopPropagation()}>
-                        <Input
-                          autoFocus
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          onBlur={() => commitRename(p)}
-                          onKeyDown={(e) => e.key === 'Escape' && setRenamingId(null)}
-                          maxLength={100}
-                        />
-                      </form>
-                    ) : (
-                      <h2 className={styles.listTitle} title={p.name}>{p.name}</h2>
-                    )}
-                    <div className={styles.listSub}>
-                      {p.folder ? `${p.folder} · ` : ''}Edited {formatDate(p.updatedAt ?? p.savedAt)}
-                    </div>
-                  </div>
-                  <div className={styles.listTags}>
-                    {(p.tags ?? []).map((t) => (
-                      <Tag key={t}>{t}</Tag>
-                    ))}
-                  </div>
-                  {renderFavoriteButton(p)}
-                  {renderCardActions(p)}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
+                  Remove folder…
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </header>
+
+      {view.type === 'folder' && view.folder === RECOVERED_HISTORY_FOLDER && (
+        <p className={styles.note}>
+          These are unnamed prompts from your old generation history, kept when the History tab was
+          retired. Rename the ones worth keeping, move them to a folder, or delete them.
+        </p>
       )}
 
-      {tab === 'history' && (
-        <>
-          <Input
-            value={historySearchInput}
-            onChange={(e) => setHistorySearchInput(e.target.value)}
-            placeholder="Search history…"
-            aria-label="Search history"
-            className={styles.search}
+      <div className={styles.toolbar}>
+        <label className={styles.search}>
+          <SearchIcon tone="inherit" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search prompts"
+            aria-label="Search prompts"
           />
-          {historyPrompts.length === 0 ? (
-            <div className={styles.empty}>
-              {historySearchInput.trim() ? 'No history matches your search.' : 'No history yet.'}
+        </label>
+        <span className={styles.count}>
+          {search.trim()
+            ? `${visible.length} of ${inView.length}`
+            : `${inView.length} prompt${inView.length === 1 ? '' : 's'}`}
+        </span>
+        <div className={styles.layoutSwitch} role="group" aria-label="Layout">
+          <button type="button" aria-pressed={layout === 'list'} aria-label="List" onClick={() => setLayout('list')}>
+            <ListViewIcon tone="inherit" />
+          </button>
+          <button type="button" aria-pressed={layout === 'grid'} aria-label="Grid" onClick={() => setLayout('grid')}>
+            <GridViewIcon tone="inherit" />
+          </button>
+        </div>
+      </div>
+
+      {body}
+
+      <Dialog isOpen={moving !== null} title="Move to folder" onClose={() => setMoving(null)}>
+        {moving && (
+          <form className={styles.form} onSubmit={move}>
+            <div className={styles.field}>
+              <label htmlFor="library-move-folder">Folder</label>
+              <input
+                id="library-move-folder"
+                value={moving.folder}
+                onChange={(e) => setMoving({ ...moving, folder: e.target.value })}
+                list="library-folders"
+                placeholder="Unfiled"
+                maxLength={255}
+                aria-describedby="library-move-hint"
+                autoFocus
+              />
+              <small id="library-move-hint">
+                Leave empty to keep it unfiled. Type a new name to create a folder.
+              </small>
             </div>
-          ) : (
-            <div className={styles.list}>
-              {historyPrompts.map((p) => (
-                <div
-                  key={p.id}
-                  className={styles.listRow}
-                  role="group"
-                  tabIndex={0}
-                  onClick={() => handleSelectPrompt(p.promptId)}
-                  onKeyDown={(e) => handleRowKeyDown(e, () => handleSelectPrompt(p.promptId))}
-                >
-                  <div className={styles.listMain}>
-                    <h2 className={styles.listTitle} title={p.name}>{p.name}</h2>
-                    <div className={styles.listSub}>{formatDate(p.savedAt)}</div>
-                  </div>
-                  <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className={styles.iconActionDanger}
-                      data-delete-id={p.id}
-                      onClick={(e) => handleDelete(p, e)}
-                      title={confirmingDeleteId === p.id ? 'Confirm deletion' : 'Delete'}
-                      aria-label={
-                        confirmingDeleteId === p.id
-                          ? `Confirm delete ${p.name}?`
-                          : `Delete ${p.name}`
-                      }
-                    >
-                      {confirmingDeleteId === p.id ? 'Confirm delete?' : 'Delete'}
-                    </button>
-                  </div>
-                </div>
-              ))}
+            <div className={styles.formActions}>
+              <Button variant="ghost" onClick={() => setMoving(null)}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit">
+                Move
+              </Button>
             </div>
-          )}
-          {historyHasMore && (
-            <Button variant="secondary" onClick={handleLoadMoreHistory} disabled={isLoadingMoreHistory}>
-              {isLoadingMoreHistory ? 'Loading…' : 'Load more'}
+          </form>
+        )}
+      </Dialog>
+
+      <Dialog isOpen={folderRename !== null} title="Rename folder" onClose={() => setFolderRename(null)}>
+        <form className={styles.form} onSubmit={renameFolder}>
+          <div className={styles.field}>
+            <label htmlFor="library-folder-name">Name</label>
+            <input
+              id="library-folder-name"
+              value={folderRename ?? ''}
+              onChange={(e) => setFolderRename(e.target.value)}
+              maxLength={255}
+              autoFocus
+            />
+            <small>Renaming onto an existing folder merges the two.</small>
+          </div>
+          <div className={styles.formActions}>
+            <Button variant="ghost" onClick={() => setFolderRename(null)}>
+              Cancel
             </Button>
-          )}
-        </>
+            <Button variant="primary" type="submit">
+              Rename
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      <Dialog
+        isOpen={folderRemoveOpen}
+        title={view.type === 'folder' ? `Remove “${view.folder}”?` : 'Remove folder?'}
+        onClose={() => setFolderRemoveOpen(false)}
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setFolderRemoveOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={removeFolder}>
+              Remove folder
+            </Button>
+          </>
+        }
+      >
+        <p className={styles.dialogText}>
+          Its {inView.length} prompt{inView.length === 1 ? '' : 's'} will move to Unfiled. No prompts
+          are deleted.
+        </p>
+      </Dialog>
+
+      <datalist id="library-folders">
+        {folders.map((folder) => (
+          <option key={folder} value={folder} />
+        ))}
+      </datalist>
+
+      {toast && <ToastView toast={toast} onDone={() => setToast(null)} />}
+    </div>
+  );
+}
+
+function ToastView({ toast, onDone }: { toast: Toast; onDone: () => void }) {
+  return (
+    <div className={styles.toast} role="status">
+      {toast.text}
+      {toast.action && (
+        <button
+          type="button"
+          onClick={() => {
+            toast.action!.run();
+            onDone();
+          }}
+        >
+          {toast.action.label}
+        </button>
       )}
     </div>
   );

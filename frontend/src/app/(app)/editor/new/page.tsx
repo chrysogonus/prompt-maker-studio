@@ -1,17 +1,24 @@
 'use client';
 
-import { useEffect } from 'react';
-import EditorWorkspace from '@/components/EditorWorkspace';
-import { useAuth } from '@/lib/auth-context';
-import { pageTitle } from '@/lib/branding';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import PromptEditor from '@/components/editor/PromptEditor';
+
+function NewPrompt() {
+  const params = useSearchParams();
+  // The empty library links here to start from a template or straight into Import text.
+  return (
+    <PromptEditor
+      initialStarter={params.get('starter') ?? undefined}
+      openImport={params.get('import') === '1'}
+    />
+  );
+}
 
 export default function NewPromptPage() {
-  const { currentUser } = useAuth();
-  useEffect(() => {
-    document.title = pageTitle('New prompt');
-    return () => {
-      document.title = pageTitle();
-    };
-  }, []);
-  return <EditorWorkspace currentUser={currentUser} />;
+  return (
+    <Suspense>
+      <NewPrompt />
+    </Suspense>
+  );
 }

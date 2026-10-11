@@ -1,4 +1,4 @@
-.PHONY: help setup install setup-venv lock check-locks check-locks-selftest check-secrets check-docker-context check-backup-worker security-images check-notices screenshots setup-e2e build up down restart sync-restart logs clean test test-cov test-file test-frontend test-e2e dev-backend dev-frontend smoke-smtp backup-db restore-db send-weekly-summary seed-demo-user ci-local lint-backend lint-frontend lint-fix build-local build-frontend build-backend security-backend security-frontend docker-smoke-test compose-check
+.PHONY: help setup install setup-venv lock check-locks check-locks-selftest check-secrets check-docker-context check-backup-worker security-images check-notices screenshots setup-e2e build up down restart sync-restart logs clean test test-cov test-file test-frontend test-e2e dev-backend dev-frontend smoke-smtp backup-db restore-db seed-demo-user ci-local lint-backend lint-frontend lint-fix build-local build-frontend build-backend security-backend security-frontend docker-smoke-test compose-check
 
 # Interpreter used to create .venv. The backend declares requires-python >=3.12,
 # but a distro `python3` is frequently older (e.g. 3.10 on Ubuntu 22.04), which
@@ -63,7 +63,6 @@ help:
 	@echo "smoke-smtp     - Validate SMTP config/connectivity for password reset"
 	@echo "backup-db      - Create a SQLite backup from the backend-data volume"
 	@echo "restore-db     - Restore a backup into backend-data (use BACKUP=path)"
-	@echo "send-weekly-summary - Send the weekly digest email to opted-in users (cron entry point)"
 	@echo "seed-demo-user - Seed (or re-seed) the 'alex' demo account with sample data"
 	@echo ""
 	@echo "CI/CD Commands"
@@ -349,10 +348,6 @@ restore-db:
 		python:3.12-slim \
 		python /scripts/restore_sqlite.py --backup /workspace/$(BACKUP) --db /app/data/prompts.db
 	@docker compose start backend
-
-# Send weekly summary emails to opted-in users (run weekly via host crontab)
-send-weekly-summary:
-	@docker compose exec backend python -m scripts.send_weekly_summary_email
 
 # Seed (or re-seed) the "alex" demo account with realistic sample data
 seed-demo-user:

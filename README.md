@@ -1,6 +1,6 @@
 # Prompt Maker Studio
 
-A self-hosted workspace for creating, testing, evaluating, refining, versioning, and reusing structured AI prompts. Prompt Maker Studio combines a FastAPI backend, a Next.js frontend, SQLite persistence, optional Prometheus/Grafana monitoring, and bring-your-own LLM provider integration — OpenAI, Anthropic, Google Gemini, a self-hosted Ollama or vLLM server, or any OpenAI-compatible endpoint.
+A self-hosted home for the prompts you keep retyping into ChatGPT, Claude or Gemini. Save each prompt as named sections, mark the parts that change with `{{variables}}`, and copy a filled-in version whenever you need it — from the web app or from inside ChatGPT through the MCP plugin. Prompt Maker Studio combines a FastAPI backend, a Next.js frontend, SQLite persistence, optional Prometheus/Grafana monitoring, and an optional bring-your-own AI connection (OpenAI, Anthropic, Google Gemini, a self-hosted Ollama or vLLM server, or any OpenAI-compatible endpoint) for importing existing prompts.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/chrysogonus/prompt-maker-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/chrysogonus/prompt-maker-studio/actions/workflows/ci.yml)
@@ -9,20 +9,20 @@ A self-hosted workspace for creating, testing, evaluating, refining, versioning,
 
 ## Screenshots
 
-![Dark-theme dashboard overview with seeded usage statistics, a seven-day request chart, top prompts, and favorite prompt cards](./docs/assets/dashboard.png)
+![Library in light mode: the sidebar lists All prompts, Favorites and folders with counts; the main list shows prompts by most recent edit with folder, variable count and edit time](./docs/assets/library.png)
 
-**Dashboard** — usage trends, model performance, top prompts, and favorites at a glance.
+**Library** — every prompt by most recent edit, with folders, favorites and search.
 
 | | |
 |---|---|
-| ![Dark-theme sign-in page with empty username and password fields](./docs/assets/login.png) | ![New Prompt workspace after a synthetic AI import, showing three editable fields and the generated structured preview](./docs/assets/new-prompt.png) |
-| **Login** — secure account access with registration and password recovery. | **New Prompt** — turn plain-language intent into editable fields and a structured preview. |
-| ![Prompt Library filtered to populated cards with folders, tags, favorites, run counts, and card actions](./docs/assets/library.png) | ![Customer Support Reply editor with template variables, metadata, tags, usage, version history, and code export controls](./docs/assets/editor.png) |
-| **Library** — organize, filter, favorite, duplicate, rename, and reuse saved prompts. | **Editor** — configure variables and metadata, track versions, and export integration code. |
-| ![Refine workflow at the unsaved word-level diff review stage for the Customer Support Reply prompt](./docs/assets/refine.png) | ![Evaluation workspace with populated cases and two scored runs selected for side-by-side comparison](./docs/assets/evaluation.png) |
-| **Refine** — clarify intent and review every proposed change before saving. | **Evaluation** — score repeatable cases and compare outputs, quality, latency, tokens, and cost. |
+| ![Editor for the Weekly status update prompt: four named sections on the left, a deep-plum preview on the right with team and week filled in and notes flagged as unfilled](./docs/assets/editor.png) | ![History panel comparing version 1 of the Weekly status update prompt with the current text as a word-level diff, with a Restore version 1 button](./docs/assets/history.png) |
+| **Editor** — write named sections and see exactly what will be copied, filled in or as a template. | **History** — compare any saved version with the current text and restore it; restores are undoable. |
+| ![New prompt after Import text: Role, Task and Format sections created from pasted text, with a customer_name variable detected](./docs/assets/new-prompt.png) | ![Phone view of the Reply to a tricky email prompt on the Fill and copy tab, with email and goal inputs above the preview](./docs/assets/phone.png) |
+| **New prompt** — start blank, from a starter template, or from pasted text. | **Phone** — saved prompts open straight to filling in and copying. |
 
-> All captures use isolated synthetic demo data. `make screenshots` rebuilds the seven images without contacting an external LLM provider.
+![Sign-in page with the product headline, a sample prompt on deep plum, and the sign-in form](./docs/assets/login.png)
+
+> All captures use the synthetic `alex` demo account. `make screenshots` rebuilds the six images without contacting an external LLM provider.
 
 ## Project status
 
@@ -39,22 +39,18 @@ before opening a pull request.
 
 ## Features
 
-- **User Authentication**: JWT-based registration and login with sliding session renewal; all prompt data is securely scoped per user.
-- **Dashboard**: Real usage analytics (runs this month, avg latency, success rate, 7-day request volume, top prompts by usage) plus a Favorites grid — computed from real runtime data.
-- **Library**: Grid and list views of saved prompts with search, tag filtering, folder labels, favoriting, rename/duplicate/delete, and a separate paginated/searchable History tab.
-- **Dynamic Fields & Starter Kits**: Compose a prompt from named fields or initialize from curated presets (Role–Task–Context, Chain-of-Thought, Persona).
-- **AI-Powered Import**: Paste free-form text and let your configured model automatically decompose it into structured fields.
-- **XML Output Format**: Fields are compiled into an XML-tagged prompt template block (e.g. `<GOAL>…</GOAL>`).
-- **Editor & Versioning**: Edit templates directly, configure variable metadata and types, inspect preflight warnings, compare/restore versions, and export Python or TypeScript integration snippets.
-- **Preflight Checks**: Advisory warnings flag unresolved variables, malformed XML, empty sections, stale metadata, and large prompt sizes before copying or running.
-- **Playground**: Run saved prompts against your connected provider's models, inspect latency, token count, and cost breakdown, and replay inputs from paginated run history.
-- **Evaluation**: Maintain rule-based, AI-judge, or manual test cases; import/export CSV datasets; generate reviewable cases with AI; execute test runs and compare outputs across prompt versions.
-- **AI Refinement**: Answer clarifying questions, review AI-proposed revisions as word-level diffs, and accept revisions as reversible new prompt versions.
-- **Tags, Favorites & Folder Labels**: Organize prompts with tags and favorites; display and search API-provided folder labels in the Library.
-- **Settings & Preferences**: Manage user profile, UI theme, layout density, model/eval defaults, automated evaluation triggers, email notification toggles, cron-invoked weekly summaries, API status check, and full JSON data export.
-- **Bring Your Own Provider**: Connect OpenAI, Anthropic, Google Gemini, a self-hosted Ollama or vLLM server, or any OpenAI-compatible endpoint. Your key is stored encrypted and used for every AI feature; you are billed by your provider directly.
-- **Cost Guardrails**: Optional global and per-user monthly spend ceilings cap how much billed activity the instance will drive, across import, Playground, evaluation, eval-case generation, and refinement.
-- **Automated Quality Gates**: Full-history and working-tree secret scanning, backend coverage enforcement (90%), frontend Vitest component tests with enforced coverage floors, Playwright browser E2E tests, Ruff & ESLint checks, Bandit & CodeQL static analysis, pip-audit & npm audit dependency scans, Compose validation, and Docker container smoke tests.
+- **Sections editor**: One editor for new and saved prompts. Each prompt is an ordered list of named sections ("Role", "Output format", …) rendered as `<TAG>` blocks; rename, reorder and remove sections, start from a starter template, or import pasted text with your AI connection.
+- **Fill and copy**: A live preview shows exactly the text you will paste. Fill in each `{{variable}}` (with optional hints) and copy the filled prompt, or copy the bare template — the app tells you which variables are still placeholders.
+- **Library**: The home page — every prompt by most recent edit, in a list or grid, with search, favorites, flat folders in the sidebar (rename or remove a folder without deleting its prompts), duplicate, and delete with undo.
+- **Versions**: Saving changed content (button or Ctrl/⌘+S, with an optional note) keeps the previous version. Compare any version with the current text and restore it; a restore can itself be undone.
+- **Never lose an edit**: Unsaved changes are kept as a local draft and restored on return; an edit made in another tab is detected instead of silently overwritten.
+- **ChatGPT plugin (MCP)**: List, fetch, save and update library prompts from ChatGPT or another MCP client, linked to your account over OAuth. Saves follow the same rules as the web app.
+- **Bring your own AI connection (optional)**: Connect OpenAI, Anthropic, Google Gemini, a self-hosted Ollama or vLLM server, or any OpenAI-compatible endpoint for Import text. Keys are stored encrypted; operators can offer a server default instead.
+- **Settings**: Profile and recovery email, password and sign-out-everywhere, light or dark theme, default library layout, full JSON export, and account deletion.
+- **Cost guardrails**: Optional global and per-user monthly spend ceilings for every billed AI call.
+- **Automated quality gates**: Secret scanning, 90% backend coverage, frontend coverage floors, Playwright end-to-end and accessibility tests, Ruff, ESLint, Bandit, CodeQL, pip-audit, npm audit, Compose validation and Docker smoke tests.
+
+Refinement and evaluation are deferred in 0.3.0: their backends are kept and reachable through the API, but they have no UI until they are rebuilt. See [product/FEATURES.md](./product/FEATURES.md).
 
 ## Architecture
 
@@ -62,21 +58,21 @@ before opening a pull request.
 prompt-maker-studio/
 ├── backend/           # FastAPI backend (Python 3.12)
 │   ├── app/
-│   │   ├── api/       # Auth, prompt, eval, refine, analytics, and admin routes
+│   │   ├── api/       # Auth, prompt, MCP, OAuth, admin, and deferred eval/refine routes
 │   │   ├── auth/      # JWT + bcrypt utilities, dependencies, and token logic
 │   │   ├── database/  # SQLAlchemy session engine and custom migration runner
-│   │   ├── models/    # Prompt, version, Playground run, eval, and user ORM models
-│   │   └── services/  # LLM client/providers, compilation, eval, refine, analytics, email
+│   │   ├── models/    # Prompt, version, user, OAuth, spend-ledger, and eval ORM models
+│   │   └── services/  # Section rendering, LLM client/providers, import, versions, eval/refine, email
 │   ├── migrations/    # Historical reference SQL migrations
-│   ├── scripts/       # Demo-data and weekly-summary operator jobs
+│   ├── scripts/       # Demo-account seed
 │   ├── tests/         # pytest unit and integration test suite
 │   ├── pyproject.toml # Dependencies, Ruff, Bandit, Coverage, and pytest configuration
 │   └── run.py         # Uvicorn entry point
 ├── frontend/          # Next.js frontend (React 18 / TypeScript 6)
 │   ├── src/
-│   │   ├── app/       # App Router pages: authenticated shell (dashboard, library, editor, playground, settings)
+│   │   ├── app/       # App Router pages: sidebar shell (library, editor, settings), sign-in, OAuth consent
 │   │   ├── components/# Feature UI components and shared design primitives
-│   │   ├── lib/       # API client, auth service, and variable-placeholder utilities
+│   │   ├── lib/       # API client, auth service, section rendering, and library helpers
 │   │   └── types/     # TypeScript interfaces and schemas
 │   └── package.json   # Dependencies, scripts, and Vitest/Playwright config
 ├── docs/              # System architecture, deployment, docker, auth, and saved-prompts documentation
@@ -89,8 +85,8 @@ prompt-maker-studio/
 
 - **Docker & Docker Compose** (recommended for quick start and containerized runtime)
 - **Node.js 22** (`frontend/.nvmrc` pins 22.14.0) & **Python 3.12** (for non-Docker local development)
-- **An LLM provider account** (OpenAI, Anthropic, Gemini, …) *or* a self-hosted Ollama/vLLM server — configured per user in the app, not in `.env`. Optional to start; required for all AI-backed features
-- **SMTP Credentials** (optional, required for password resets, notifications, and weekly summaries)
+- **An LLM provider account** (OpenAI, Anthropic, Gemini, …) *or* a self-hosted Ollama/vLLM server — configured per user in the app, not in `.env`. Optional; only Import text needs it
+- **SMTP Credentials** (optional, required for password-reset emails)
 
 ## Quick Start with Docker
 
@@ -111,12 +107,12 @@ to the local frontend:
 FRONTEND_URL=http://localhost:3000
 ```
 
-No LLM API key goes in `.env` — AI access is **bring your own**. After
-registering, open Settings → API access and connect a provider (OpenAI,
-Anthropic, Google Gemini, a self-hosted Ollama or vLLM server, or any
-OpenAI-compatible endpoint) with your own key. Every AI-backed feature —
-import, Refine, Playground, evaluation, eval-case generation — runs against
-that connection and is billed to you by that provider.
+No LLM API key goes in `.env` — AI access is **bring your own** and optional.
+After registering, open Settings → AI connection and connect a provider
+(OpenAI, Anthropic, Google Gemini, a self-hosted Ollama or vLLM server, or any
+OpenAI-compatible endpoint) with your own key. Import text runs against that
+connection and is billed to you by that provider. Operators can instead set an
+optional server default (`LLM_*` variables) for users without a connection.
 
 > The frontend calls `/api` on whatever origin serves it, so there is no API
 > URL to configure and the same image works on any domain. Compose routes that
@@ -366,52 +362,48 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 
 ### Prompt Endpoints
 
-| Method | Endpoint | Auth Required | Description |
-|---|---|---|---|
-| `POST` | `/api/prompts/parse-text` | Yes | Decompose natural language text into structured prompt fields |
-| `POST` | `/api/prompts/generate` | Yes | Compile fields into XML prompt and persist to database |
-| `GET` | `/api/prompts/config` | Yes | Query the caller's own AI provider connection state, model list, and budget limits |
-| `GET` | `/api/prompts/saved` | Yes | List saved prompts (supports `tag`, `folder`, `favorite_only` filters) |
-| `GET` | `/api/prompts/tags` | Yes | Retrieve distinct user tags |
-| `GET` | `/api/prompts/folders` | Yes | Retrieve distinct user folder names |
-| `GET` | `/api/prompts/export` | Yes | Download complete JSON export of user prompts and version history |
-| `GET` | `/api/prompts/history` | Yes | Search and paginate prompt creation history |
-| `GET` | `/api/prompts/{id}` | Yes | Fetch single prompt by ID |
-| `PATCH` | `/api/prompts/{id}` | Yes | Update prompt content (auto-snapshots version; supports optimistic locking) |
-| `DELETE` | `/api/prompts/{id}` | Yes | Permanently delete a prompt and its dependent history |
-| `POST` | `/api/prompts/{id}/duplicate` | Yes | Duplicate existing prompt |
-| `GET` | `/api/prompts/{id}/versions` | Yes | Fetch version history for a prompt |
-| `POST` | `/api/prompts/{id}/versions/{version_id}/restore` | Yes | Restore previous prompt version |
-| `POST` | `/api/prompts/{id}/playground/run` | Yes | Execute prompt template in Playground against selected model |
-| `GET` | `/api/prompts/{id}/playground/runs` | Yes | Retrieve historical Playground execution runs |
-
-### Evaluation & Refinement Endpoints
+Prompt text is always rendered by the server from the prompt's sections (`fields`); requests that send `generated_prompt` are rejected.
 
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
-| `GET` | `/api/prompts/{id}/eval/cases` | Yes | List evaluation test cases |
-| `POST` | `/api/prompts/{id}/eval/cases` | Yes | Create new evaluation test case |
-| `PATCH` | `/api/prompts/{id}/eval/cases/{case_id}` | Yes | Modify existing test case |
-| `DELETE` | `/api/prompts/{id}/eval/cases/{case_id}` | Yes | Delete test case |
-| `GET` | `/api/prompts/{id}/eval/cases/export` | Yes | Export evaluation test cases to CSV |
-| `POST` | `/api/prompts/{id}/eval/cases/import` | Yes | Import evaluation test cases from CSV |
-| `POST` | `/api/prompts/{id}/eval/cases/generate` | Yes | Generate reviewable AI test cases |
-| `POST` | `/api/prompts/{id}/eval/runs` | Yes | Execute evaluation suite |
-| `GET` | `/api/prompts/{id}/eval/runs` | Yes | List past evaluation execution runs |
-| `POST` | `/api/prompts/{id}/eval/runs/{run_id}/results/{result_id}/rate` | Yes | Submit manual 1-5 star rating on eval result |
-| `POST` | `/api/prompts/{id}/refine/questions` | Yes | Generate clarifying questions for prompt improvement |
-| `POST` | `/api/prompts/{id}/refine/draft` | Yes | Generate draft revision from answered questions |
+| `POST` | `/api/prompts` | Yes | Save a new prompt from a name, sections, optional folder and variable hints |
+| `POST` | `/api/prompts/parse-text` | Yes | Split pasted text into sections with the caller's AI connection (Import text) |
+| `GET` | `/api/prompts/config` | Yes | The caller's AI connection state, model list, and budget status |
+| `GET` | `/api/prompts/saved` | Yes | List the library (supports `folder` and `favorite_only` filters) |
+| `GET` | `/api/prompts/folders` | Yes | Distinct folder names |
+| `PATCH` | `/api/prompts/folders?name=` | Yes | Rename a folder for all its prompts (merges onto an existing name) |
+| `DELETE` | `/api/prompts/folders?name=` | Yes | Remove a folder; its prompts become unfiled |
+| `GET` | `/api/prompts/export` | Yes | Download every prompt with its version history as JSON |
+| `GET` | `/api/prompts/{id}` | Yes | Fetch one prompt |
+| `PATCH` | `/api/prompts/{id}` | Yes | Update name, sections, folder, favorite or hints (content changes keep a version; supports optimistic locking) |
+| `DELETE` | `/api/prompts/{id}` | Yes | Permanently delete a prompt and its history |
+| `POST` | `/api/prompts/{id}/duplicate` | Yes | Duplicate a prompt |
+| `GET` | `/api/prompts/{id}/versions` | Yes | Version history |
+| `POST` | `/api/prompts/{id}/versions/{version_id}/restore` | Yes | Restore a version (the replaced state becomes a version) |
 
-### Analytics & Admin Endpoints
+### Deferred Evaluation & Refinement Endpoints
+
+Kept for the planned rebuilds; the 0.3.0 UI does not use them.
 
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
-| `GET` | `/api/analytics/dashboard` | Yes | Fetch user dashboard metrics and usage statistics |
-| `POST` | `/api/admin/smtp/check` | Admin Token | Validate SMTP connectivity (requires `X-Admin-Token` header) |
-| `POST` | `/api/mcp` | Yes | MCP server exposing the saved-prompt library as tools (see [docs/mcp.md](docs/mcp.md)) |
+| `GET`, `POST` | `/api/prompts/{id}/eval/cases` | Yes | List or create evaluation cases |
+| `PATCH`, `DELETE` | `/api/prompts/{id}/eval/cases/{case_id}` | Yes | Modify or delete a case |
+| `GET`, `POST` | `/api/prompts/{id}/eval/cases/export`, `/import` | Yes | CSV export and import |
+| `POST` | `/api/prompts/{id}/eval/cases/generate` | Yes | Propose reviewable AI test cases |
+| `GET`, `POST` | `/api/prompts/{id}/eval/runs` | Yes | List runs or run the suite |
+| `POST` | `/api/prompts/{id}/eval/runs/{run_id}/results/{result_id}/rate` | Yes | Manual 1–5 star rating |
+| `POST` | `/api/prompts/{id}/refine/questions`, `/refine/draft` | Yes | Clarifying questions and a draft revision |
+
+### MCP, OAuth & Admin Endpoints
+
+| Method | Endpoint | Auth Required | Description |
+|---|---|---|---|
+| `POST` | `/api/mcp` | Yes | MCP server exposing the library as tools (see [docs/mcp.md](docs/mcp.md)) |
 | `POST` | `/api/oauth/register`, `/api/oauth/token`, `/api/oauth/revoke` | No | OAuth 2.1 endpoints MCP clients such as ChatGPT use to link an account (see [docs/mcp.md](docs/mcp.md)) |
 | `GET` | `/api/oauth/authorize` | No | Start of the OAuth flow; redirects to the consent page |
 | `GET`, `POST` | `/api/oauth/consent` | Yes | Consent-screen details and the user's allow/deny decision |
+| `POST` | `/api/admin/smtp/check` | Admin Token | Validate SMTP connectivity (requires `X-Admin-Token` header) |
 
 ## Additional Documentation
 
