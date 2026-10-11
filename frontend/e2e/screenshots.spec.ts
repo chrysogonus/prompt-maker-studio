@@ -7,8 +7,9 @@
  *
  * The Compose workflow seeds the documented `alex` demo account into a
  * disposable database, and everything shown comes from the real local
- * application. Only Import text's provider-backed call is fulfilled in the
- * browser, so the run is deterministic and never contacts an LLM provider.
+ * application. Only Import text's provider-backed calls (the capability check
+ * and the import itself) are fulfilled in the browser, so the run is
+ * deterministic and never contacts an LLM provider.
  */
 import { expect, test, type Page } from '@playwright/test';
 import path from 'node:path';
@@ -29,11 +30,23 @@ const IMPORT_FIELDS = [
   { name: 'Format', content: 'Under 120 words. No apologies longer than one sentence.' },
 ];
 
+const PROVIDER_CONFIG = {
+  provider_connected: true,
+  provider: 'openai',
+  provider_label: 'OpenAI',
+  model: 'gpt-4.1-mini',
+  available_models: ['gpt-4.1-mini'],
+  budget_exhausted: false,
+  global_budget_remaining_usd: null,
+};
+
 function sidebarLink(page: Page, name: string | RegExp) {
   return page.getByRole('complementary', { name: 'Sidebar' }).getByRole('link', { name });
 }
 
 async function shoot(page: Page, name: string) {
+  // Park the pointer so no row or section shows its hover-only controls.
+  await page.mouse.move(0, 0);
   await page.evaluate(async () => {
     await document.fonts.ready;
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
@@ -52,6 +65,7 @@ test('captures the README screenshots', async ({ page }) => {
   await page.setViewportSize(VIEWPORT);
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
   await page.addInitScript(() => localStorage.setItem('theme', 'light'));
+  await page.route('**/api/prompts/config', (route) => route.fulfill({ json: PROVIDER_CONFIG }));
   let importHits = 0;
   await page.route('**/api/prompts/parse-text', (route) => {
     importHits += 1;
