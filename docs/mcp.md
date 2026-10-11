@@ -13,20 +13,27 @@ runs in stateless, JSON-response mode, so each request is independent.
 
 | Tool | Read-only | Wraps |
 |---|---|---|
-| `list_saved_prompts` | Yes | `GET /api/prompts/saved` (summaries only, no prompt text) |
-| `get_prompt` | Yes | `GET /api/prompts/{id}` |
-| `save_prompt` | No | `POST /api/prompts/generate`, always with a name |
+| `list_saved_prompts` | Yes | `GET /api/prompts/saved` (summaries only, no prompt text; filter by `folder` or `favorite_only`) |
+| `get_prompt` | Yes | `GET /api/prompts/{id}`, including each variable's hint in `variable_metadata` |
+| `save_prompt` | No | `POST /api/prompts` |
 | `update_prompt` | No | `PATCH /api/prompts/{id}` |
 | `list_prompt_versions` | Yes | `GET /api/prompts/{id}/versions` |
 
 The tools call the same route handlers as the REST API, so ownership checks (404 for
-another user's prompt), version snapshots, and edit-conflict detection are shared.
-Two behaviours differ deliberately:
+another user's prompt), section rules, text rendering, version snapshots, and
+edit-conflict detection are shared. The server renders the prompt text from the
+fields for both, and `update_prompt` always requires `last_updated_at`. Field names
+may contain spaces ("Output format"); they become tags such as `<OUTPUT_FORMAT>`.
 
-- `update_prompt` re-renders `generated_prompt` from the new fields, and requires
-  `last_updated_at`. The REST `PATCH` leaves both to the client.
-- `save_prompt` is not subject to `/generate`'s per-IP rate limit, because all
-  ChatGPT traffic arrives from OpenAI's addresses and would share one bucket.
+### Contract changes in 0.3.0
+
+Clients that cached the 0.2.0 tool schemas should refresh them:
+
+- `list_saved_prompts` no longer accepts `tag`, and its summaries no longer include
+  `tags`. Tags were retired from the product; stored tags remain in the data export.
+- `get_prompt` and the save/update results no longer include `tags` or `run_count`.
+- `save_prompt` and `update_prompt` accept field names with spaces, and reject two
+  names that render to the same tag (`Role`/`role`).
 
 Delete and version restore are intentionally not exposed.
 

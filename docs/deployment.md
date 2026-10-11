@@ -274,6 +274,28 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
 ```
 
+### Upgrading to 0.3.0:
+
+0.3.0 changes stored data once, at the first start: migration
+`023_recover_drifted_prompt_sections` rebuilds the sections of prompts whose
+text was edited by hand (keeping the original as a version), and
+`024_recover_unnamed_prompts` names old History entries and files them under
+"Recovered history". It also removes endpoints and the weekly-summary job.
+
+1. Back up first (`make backup-db`) and copy the backup off the host.
+2. Rehearse on a copy: restore that backup into a throwaway stack, start the new
+   release against it, and check the backend log for `Applied database
+   migration 023_…` and `024_…`, then spot-check a few hand-edited prompts and the
+   Recovered history folder.
+3. Remove any `make send-weekly-summary` entry from the host crontab — the
+   target no longer exists, and the job would fail every week.
+4. Deploy, then sign in and open a saved prompt, fill it in and copy it.
+
+API clients of the removed endpoints (`/api/prompts/generate`,
+`/api/prompts/history`, `/api/prompts/tags`, the Playground endpoints, and
+`/api/analytics/dashboard`) stop working; MCP clients should refresh their tool
+schemas (see [mcp.md](./mcp.md#contract-changes-in-030)).
+
 ### Roll back a deployment:
 
 Database migrations are forward-only; deploying an older image does not undo
@@ -326,23 +348,6 @@ make restore-db BACKUP=backups/prompts-YYYYmmddTHHMMSSZ.sqlite3.gz
 ```
 
 The restore script runs `PRAGMA integrity_check` before replacing the DB and keeps a `.pre-restore-<timestamp>` copy of the previous database inside the Docker volume.
-
-### Weekly summary emails:
-
-Users who opt into Settings → Notifications → "Weekly summary" get a digest
-email of their past-7-days usage. There is no in-process scheduler — the send
-is a one-shot script run against the already-running `backend` container:
-
-```bash
-make send-weekly-summary
-```
-
-Schedule it weekly via host crontab (confirm the server's local timezone
-before picking a time — this isn't tracked elsewhere in the deployment):
-
-```cron
-0 8 * * 1 cd /opt/prompt-maker-studio && make send-weekly-summary >> /var/log/prompt-maker-weekly-summary.log 2>&1
-```
 
 ### Demo data
 
