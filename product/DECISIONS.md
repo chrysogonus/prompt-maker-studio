@@ -861,3 +861,18 @@ quietly outliving its reason.
 
 **Source**: `frontend/src/features/editor/RefinePanel.tsx`, `frontend/src/features/editor/usePromptEditor.ts`, `backend/app/api/refine_routes.py`, `backend/app/services/prompt_refiner.py`
 
+
+
+---
+
+## Restore Evaluation as an Explicit Saved-Prompt Workflow
+
+**Status**: Accepted, 2026-10-12
+
+**Context**: The redesign kept evaluation data and API endpoints but removed their UI. Users need a readable way to check saved prompts against examples without rebuilding the backend or introducing another visual system.
+
+**Decision**: Add an Evaluate action to saved prompts and a dedicated workspace with Test cases and Run history. Use the existing API for case editing, CSV transfer, reviewed AI suggestions, explicit runs and manual ratings. Compare historical outputs by case identity, flag changed inputs/scoring or models, and show the recorded run metadata. Keep the existing app palette, typography and shared controls.
+
+**Consequences**: Evaluation is available again, but saving never runs it automatically. The stored evaluation preferences remain inactive. Suggestions are edited and saved individually; scores are shown without invented pass thresholds. Blank inputs retain placeholders, and require acknowledgement before a run. Aggregate scores wait for every pending manual rating; accumulated model time is labelled separately from elapsed duration. Calibration of automated scores remains backlog work.
+
+**Source**: `frontend/src/features/evaluation/`, `frontend/src/lib/api/evaluation.ts`, `backend/app/api/eval_routes.py`

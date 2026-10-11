@@ -10,7 +10,7 @@
 - [ ] **Extend refinement controls** — Questions, section diffs and local Apply/Undo are restored in the editor. Direct change instructions and individual section acceptance remain open
 
 ## Later — Quarterly Horizon
-- [ ] **Rebuild evaluation** — Goal-led evaluation with evidence people can read, calibrated against human judgment
+- [ ] **Calibrate evaluation scores** — The evaluation workspace is restored; validate automated scores against human judgment
 - [ ] **Markdown output option** — Headings instead of XML-style tags for chat assistants that prefer them
 - [ ] **Version milestones** — Pin and label important versions (notes on save shipped in 0.3.0)
 - [ ] **Prompt trash and restore** — A 30-day recovery window for deleted prompts and their history
@@ -24,6 +24,7 @@
 ## Completed (moved from roadmap)
 | Item | Completed | Notes |
 |---|---|---|
+| Evaluation workspace restored | 2026-10-12 | Saved-prompt Evaluate action; plain-language case editing, CSV import/export, reviewed AI suggestions, explicit runs, historical outputs, comparison and manual ratings. Existing backend API unchanged; automatic runs stay disabled |
 | 0.3.0 redesign | 2026-10-11 | One sections editor for new and saved prompts with live fill-and-copy preview and a version History panel; sections became the only thing clients write (migration 023 recovers edited text); library home with sidebar folders, bulk folder rename/remove, and Recovered history (migration 024); coral-and-plum visual system; retired Generate/History, dashboard, Playground, tags, snippets, notifications and density; Refine and Evaluate deferred. Rows below marked "Retired in 0.3.0" no longer exist |
 | User registration & JWT auth | Pre-baseline | Full register/login/me flow with bcrypt and JWT |
 | Dynamic field editor | Pre-baseline | Add/remove fields, validated before submit |

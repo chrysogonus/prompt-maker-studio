@@ -50,7 +50,7 @@ before opening a pull request.
 - **Cost guardrails**: Optional global and per-user monthly spend ceilings for every billed AI call.
 - **Automated quality gates**: Secret scanning, 90% backend coverage, frontend coverage floors, Playwright end-to-end and accessibility tests, Ruff, ESLint, Bandit, CodeQL, pip-audit, npm audit, Compose validation and Docker smoke tests.
 
-Refinement is available inside the editor: answer clarifying questions, review section edits, apply with Undo, then save. Evaluation remains deferred, with its backend kept and reachable through the API. See [product/FEATURES.md](./product/FEATURES.md).
+Refinement is available inside the editor: answer clarifying questions, review section edits, apply with Undo, then save. Evaluation opens from a saved prompt: manage test cases, review AI suggestions, run explicitly, compare historical outputs and rate manual results. The existing backend API is unchanged. See [product/FEATURES.md](./product/FEATURES.md).
 
 ## Architecture
 
@@ -58,7 +58,7 @@ Refinement is available inside the editor: answer clarifying questions, review s
 prompt-maker-studio/
 ├── backend/           # FastAPI backend (Python 3.12)
 │   ├── app/
-│   │   ├── api/       # Auth, prompt, refinement, MCP, OAuth, admin, and deferred eval routes
+│   │   ├── api/       # Auth, prompt, refinement, MCP, OAuth, admin, and evaluation routes
 │   │   ├── auth/      # JWT + bcrypt utilities, dependencies, and token logic
 │   │   ├── database/  # SQLAlchemy session engine and custom migration runner
 │   │   ├── models/    # Prompt, version, user, OAuth, spend-ledger, and eval ORM models
@@ -392,9 +392,9 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 | `POST` | `/api/prompts/refine/draft` | Yes | Revise current `fields` using `qa_pairs`; returns validated section edits without saving |
 | `POST` | `/api/prompts/{id}/refine/questions`, `/refine/draft` | Yes | Retained saved-prompt refinement API; draft returns text |
 
-### Deferred Evaluation Endpoints
+### Evaluation Endpoints
 
-Kept for the planned rebuilds; the 0.3.0 UI does not use them.
+The Evaluate workspace at `/editor/{id}/evaluate` uses these existing endpoints. Runs are always started explicitly; saving a prompt does not trigger an evaluation.
 
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|

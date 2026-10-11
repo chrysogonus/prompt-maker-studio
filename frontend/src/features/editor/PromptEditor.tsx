@@ -1,6 +1,6 @@
 'use client';
 
-import Button from '@/components/ui/Button';
+import Button, { ButtonLink } from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
 import { PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
 
@@ -145,6 +145,13 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
           {dirty && <span className={styles.edited}>Edited</span>}
         </div>
         <div className={styles.headActions}>
+          {prompt && !dirty && !saving ? (
+            <ButtonLink variant="ghost" href={`/editor/${prompt.id}/evaluate`}>Evaluate</ButtonLink>
+          ) : (
+            <Button variant="ghost" disabled title={prompt ? 'Save your changes before evaluating.' : 'Save this prompt before evaluating.'}>
+              Evaluate
+            </Button>
+          )}
           {prompt && dirty && (
             <input
               className={styles.noteInput}

@@ -1,6 +1,6 @@
 # Implemented Features
 
-> Last updated: 2026-10-11 (0.3.0 redesign)
+> Last updated: 2026-10-12 (evaluation workspace restored)
 > Source of truth: codebase scan as of this date.
 
 Prompt Maker Studio is a home for prompts people keep retyping into chat assistants: each prompt
@@ -92,22 +92,22 @@ and the reasoning is in `product/DECISIONS.md`.
 | Section recovery for edited prompts | ✅ Implemented | Migration 023 finds prompts whose stored text no longer matches their sections (edited in the old raw-text editor), keeps the original sections and text as a version noted "Before section recovery", then rebuilds the sections from the text — split into tagged sections only when that reproduces it byte for byte, otherwise kept whole as one `prompt` section. Edit times are untouched | `backend/app/database/migrations/v023_recover_drifted_prompt_sections.py`, `backend/app/database/migrations/recovery.py` |
 | Recovered history | ✅ Implemented | Migration 024 names every unnamed prompt the retired History tab listed — `Untitled (14 Mar 2026, 09:12 UTC)` — and files it under "Recovered history" unless it was already filed. Nothing is deduplicated; the library explains the folder | `backend/app/database/migrations/v024_recover_unnamed_prompts.py`, `frontend/src/app/(app)/library/page.tsx` |
 
-## Deferred (backend kept, no UI)
-Evaluation is planned to return after substantial engineering work; its data and endpoints are
-preserved, but nothing in the app reaches them.
+## Evaluation
+Saved prompts open an Evaluate workspace from the editor. It uses the existing backend API;
+all model calls require an explicit action, and saving a prompt never starts an evaluation.
 
 | Feature | Status | Description | Implemented in |
 |---|---|---|---|
-| Prompt evaluation | ⏸ Deferred | Eval cases (rule, judge, manual), CSV import/export, AI-proposed cases, parallel runs with structured judge feedback and reproducible run metadata | `backend/app/api/eval_routes.py`, `backend/app/services/eval_service.py`, `backend/app/services/eval_generator_service.py` |
-| Model execution service | ⏸ Deferred | `PlaygroundService` compiles a prompt with variable values and runs it on the user's connection, recording latency, tokens and cost; evaluations use it. The standalone Playground screen and endpoints were retired | `backend/app/services/playground_service.py`, `backend/app/services/prompt_compiler.py` |
-| Eval preferences | ⏸ Deferred | `default_eval_method` and `auto_run_eval_on_update` are still stored and returned, but nothing reads them; evaluations never start on their own | `users.default_eval_method`, `users.auto_run_eval_on_update` |
+| Prompt evaluation | ✅ Implemented | Test-case rows and inline editing with Automatic checks, AI review and Manual review; variable hints, intentional-placeholder acknowledgement, CSV import/export, and AI suggestions reviewed and edited before saving. Explicit runs show outputs, scoring reasons, structured judge feedback and historical inputs; run comparison matches case identities and flags changed conditions. Manual ratings finalize the overall score after all pending results are rated. Provider and budget status gate billed actions | `frontend/src/features/evaluation/`, `backend/app/api/eval_routes.py` |
+| Model execution service | ✅ Internal | `PlaygroundService` compiles a prompt with variable values and runs it on the user's connection, recording latency, tokens and cost; evaluations use it. The standalone Playground screen and endpoints were retired | `backend/app/services/playground_service.py`, `backend/app/services/prompt_compiler.py` |
+| Eval preferences | ⏸ Inactive | `default_eval_method` and `auto_run_eval_on_update` are still stored and returned, but nothing reads them; evaluations never start on their own | `users.default_eval_method`, `users.auto_run_eval_on_update` |
 
 ## Infrastructure & Operations
 | Feature | Status | Description | Implemented in |
 |---|---|---|---|
-| Rate limiting | ✅ Implemented | SlowAPI route limits on authentication and profile writes, Import text, export, the deferred refine/eval endpoints, OAuth, and operator diagnostics | `backend/app/limiter.py`, `backend/app/api/` |
+| Rate limiting | ✅ Implemented | SlowAPI route limits on authentication and profile writes, Import text, export, refinement and evaluation endpoints, OAuth, and operator diagnostics | `backend/app/limiter.py`, `backend/app/api/` |
 | API spend budgets & guardrails | ✅ Implemented | Optional `GLOBAL_MONTHLY_BUDGET_USD`/`USER_MONTHLY_BUDGET_USD` ceilings are checked against the spend ledger before each metered call and reject with 402 when exhausted | `backend/app/services/budget_service.py`, `backend/app/services/spend_ledger.py` |
-| Unified AI spend ledger | ✅ Implemented | Every billed LLM call (Import text, connection tests, and the deferred refine/eval paths) records user, source, provider, model, tokens and estimated cost in `billed_calls` | `backend/app/models/billed_call.py`, `backend/app/services/spend_ledger.py` |
+| Unified AI spend ledger | ✅ Implemented | Every billed LLM call (Import text, connection tests, and refinement and evaluation paths) records user, source, provider, model, tokens and estimated cost in `billed_calls` | `backend/app/models/billed_call.py`, `backend/app/services/spend_ledger.py` |
 | Docker containerization | ✅ Implemented | Backend and frontend Dockerfiles orchestrated by Docker Compose | `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile` |
 | Caddy reverse proxy & transport hardening | ✅ Implemented | Managed TLS, HSTS and security headers, body caps, one origin for app and API, `/metrics` blocked publicly | `Caddyfile` |
 | Database migrations | ✅ Implemented | An idempotent, run-once SQLite migration runner applies numbered steps at startup, including the 0.3.0 data recovery (023, 024) | `backend/app/database/migrations/runner.py`, `backend/migrations/` |
@@ -137,7 +137,7 @@ preserved, but nothing in the app reaches them.
 | Code snippet export, compile animation, output metrics bar, density setting | Removed from the frontend |
 | Email notifications | Run-failure, weekly-summary, eval-complete and score-regression emails, the weekly script and `make send-weekly-summary` were removed; the preference columns remain unused |
 | Variable types | No longer editable; stored types are preserved |
-| Former Refine and Evaluate screens | Removed in the redesign. Refine now lives inside the editor; Evaluate remains deferred |
+| Former Refine and Evaluate screens | Removed in the redesign. Refine now lives inside the editor; Evaluate opens a dedicated workspace from a saved prompt |
 
 ---
 

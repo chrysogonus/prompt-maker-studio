@@ -4,9 +4,20 @@ import * as prompts from './api/prompts';
 import * as oauth from './api/oauth';
 import * as accounts from './api/accounts';
 import * as refinement from './api/refinement';
+import * as evaluation from './api/evaluation';
 export { ApiError, PROMPT_NOT_FOUND_MESSAGE, isValidPromptId } from './api/errors';
 
 export class ApiClient {
+  static getEvalCases = evaluation.getEvalCases;
+  static createEvalCase = evaluation.createEvalCase;
+  static updateEvalCase = evaluation.updateEvalCase;
+  static deleteEvalCase = evaluation.deleteEvalCase;
+  static importEvalCases = evaluation.importEvalCases;
+  static exportEvalCases = evaluation.exportEvalCases;
+  static generateEvalCases = evaluation.generateEvalCases;
+  static runEvaluation = evaluation.runEvaluation;
+  static getEvalRuns = evaluation.getEvalRuns;
+  static rateEvalResult = evaluation.rateEvalResult;
   static getRefinementQuestions = refinement.getRefinementQuestions;
   static createRefinementDraft = refinement.createRefinementDraft;
   static createPrompt = prompts.createPrompt;

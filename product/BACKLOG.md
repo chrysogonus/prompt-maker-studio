@@ -16,11 +16,11 @@
 - **Effort**: High
 - **Status**: The editor now offers questions, section diffs, local Apply/Undo and normal Save. Direct change instructions and individual section acceptance remain unimplemented.
 
-### Rebuild Evaluation
+### Calibrate Evaluation Scores
 - **Value**: Shows whether a prompt change helped, with evidence a non-specialist can read.
 - **Approach**: Start from concrete user goals (does this template still produce what I want?), keep the existing eval engine, and check automated scores against human judgments before trusting them.
 - **Effort**: High
-- **Status**: Deferred in 0.3.0 — backend and data kept, no UI; automatic runs removed.
+- **Status**: The evaluation UI is restored with explicit runs, editable cases, reviewed suggestions, CSV tools, historical outputs, run comparison and manual ratings. Score calibration against human judgments remains open; automatic runs remain disabled.
 
 ---
 

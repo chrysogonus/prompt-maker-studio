@@ -35,6 +35,10 @@ notes** before deploying.
 
 ### Added
 
+- Evaluation workspace for saved prompts: readable test-case editing, CSV import/export,
+  AI suggestions reviewed before saving, explicit runs, historical outputs and judge
+  feedback, run comparison and manual ratings. Uses the existing backend API and
+  adapts to phones and both themes.
 - Refinement inside the editor: explicit questions, section-level draft review,
   local Apply and Undo, and normal saving. It works with new and unsaved prompts,
   preserves variable hints and filled values, and adapts to a full-screen modal
@@ -82,8 +86,8 @@ notes** before deploying.
 
 ### Deprecated
 
-- Evaluation has no UI until it is rebuilt. Its endpoints and data are kept,
-  and evaluations no longer start automatically after a save.
+- Automatic evaluation after saving remains disabled. The stored evaluation
+  preferences remain inactive; runs start explicitly in the Evaluate workspace.
 
 ### Fixed
 
