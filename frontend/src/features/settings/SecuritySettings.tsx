@@ -24,21 +24,24 @@ export function SecuritySettings({
         <p>Changing your password signs out every other device.</p>
       </div>
       <div className={styles.body}>
-        <ChangePasswordForm />
         <div className={styles.row}>
-          <div>
-            <div className={styles.rowLabel}>Sign out everywhere</div>
+          <div className={styles.rowLabel}>Password</div>
+          <ChangePasswordForm />
+        </div>
+        <div className={styles.row}>
+          <div className={styles.rowLabel}>Sign out everywhere</div>
+          <div className={styles.settingAction}>
+            <Button
+              variant="secondary"
+              onClick={handleSignOutEverywhere}
+              disabled={isSigningOutEverywhere}
+            >
+              {isSigningOutEverywhere ? 'Signing out…' : 'Sign out everywhere'}
+            </Button>
             <p className={styles.hint}>
               Including devices you no longer have. You will need to sign in again here.
             </p>
           </div>
-          <Button
-            variant="secondary"
-            onClick={handleSignOutEverywhere}
-            disabled={isSigningOutEverywhere}
-          >
-            {isSigningOutEverywhere ? 'Signing out…' : 'Sign out everywhere'}
-          </Button>
         </div>
         {signOutError && <div className={styles.error} role="alert">{signOutError}</div>}
       </div>

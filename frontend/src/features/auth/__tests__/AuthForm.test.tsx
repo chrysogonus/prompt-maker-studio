@@ -44,6 +44,10 @@ describe('AuthForm — login view', () => {
     expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open source on GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/chrysogonus/prompt-maker-studio',
+    );
   });
 
   it('keeps the prompt workspace preview decorative', () => {

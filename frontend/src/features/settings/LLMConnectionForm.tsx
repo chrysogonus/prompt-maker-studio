@@ -176,25 +176,25 @@ export default function LLMConnectionForm() {
   return (
     <form onSubmit={handleSubmit} className={styles.form} noValidate>
       <div className={styles.headerRow}>
-        <div>
-          <div className={styles.label}>AI provider</div>
-          <div className={styles.hint}>
+        <div className={styles.label}>AI provider</div>
+        <div className={styles.connectionState}>
+          <span
+            className={
+              connection?.configured || connection?.server_default
+                ? styles.statusConnected
+                : styles.statusUnavailable
+            }
+          >
+            {connection?.configured
+              ? `Connected to ${connection.provider_label}`
+              : connection?.server_default
+                ? `Using this server’s default connection (${connection.server_default.provider_label}, ${connection.server_default.model})`
+                : 'Not connected'}
+          </span>
+          <p className={styles.hint}>
             Your own OpenAI-compatible account. Calls are billed by your provider.
-          </div>
+          </p>
         </div>
-        <span
-          className={
-            connection?.configured || connection?.server_default
-              ? styles.statusConnected
-              : styles.statusUnavailable
-          }
-        >
-          {connection?.configured
-            ? `Connected to ${connection.provider_label}`
-            : connection?.server_default
-              ? `Using this server’s default connection (${connection.server_default.provider_label}, ${connection.server_default.model})`
-              : 'Not connected'}
-        </span>
       </div>
 
       <label className={styles.field}>
