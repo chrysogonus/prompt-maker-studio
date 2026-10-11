@@ -9,6 +9,7 @@ import { AuthService } from '@/lib/auth';
 import { APP_NAME } from '@/lib/branding';
 import Wordmark from '@/components/ui/Wordmark';
 import LegalLinks from '@/components/LegalLinks';
+import RepositoryLink from '@/components/RepositoryLink';
 import styles from './AuthForm.module.css';
 
 interface AuthFormProps {
@@ -358,6 +359,9 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
 
   return (
     <div className={styles.container}>
+      <div className={styles.repository}>
+        <RepositoryLink />
+      </div>
       <main className={styles.authShell}>
         <section className={styles.visualPanel} aria-labelledby="auth-product-title">
           <Wordmark icon="tile" className={styles.wordmark} />

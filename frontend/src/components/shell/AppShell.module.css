@@ -12,8 +12,20 @@
   min-height: 100vh;
 }
 
-/* Phone only: the sidebar becomes a drawer opened from here. */
 .topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: 1320px;
+  min-height: 64px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-8) 0;
+}
+
+.menuButton,
+.topbarTitle,
+.topbarNew {
   display: none;
 }
 
@@ -123,7 +135,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    height: 52px;
+    min-height: 56px;
     padding: 0 var(--space-3) 0 var(--space-1);
     background: var(--color-canvas);
     border-bottom: 1px solid var(--color-border);
@@ -142,8 +154,14 @@
   }
 
   .topbarTitle {
+    display: block;
     flex: 1;
+    min-width: 0;
     font-weight: var(--weight-semibold);
+    font-size: var(--text-sm-size);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .topbarNew {
@@ -157,6 +175,17 @@
     color: var(--on-accent);
     font-size: var(--text-sm-size);
     font-weight: var(--weight-semibold);
+  }
+
+  .repositoryLink {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .repositoryLink span,
+  .repositoryLink svg:last-child {
+    display: none;
   }
 
   .scrim {

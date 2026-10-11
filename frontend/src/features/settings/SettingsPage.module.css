@@ -1,5 +1,7 @@
 .page {
-  max-width: 760px;
+  --settings-label-width: 148px;
+  container: settings / inline-size;
+  max-width: 960px;
   width: 100%;
 }
 
@@ -12,8 +14,8 @@
 
 .section {
   display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
-  gap: var(--space-6);
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: var(--space-8);
   padding: var(--space-6) 0;
   border-bottom: 1px solid var(--color-border);
   scroll-margin-top: var(--space-6);
@@ -46,20 +48,32 @@
 }
 
 .row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: var(--settings-label-width) minmax(0, 1fr);
+  align-items: start;
   gap: var(--space-4);
-  flex-wrap: wrap;
+}
+
+.row > :last-child {
+  justify-self: start;
+  max-width: 100%;
 }
 
 .rowLabel {
+  padding-top: 6px;
   font-weight: var(--weight-semibold);
+}
+
+.settingAction {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
 }
 
 .rowValue,
 .text {
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .hint {
@@ -72,6 +86,12 @@
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
+  padding-inline-start: calc(var(--settings-label-width) + var(--space-4));
+}
+
+.inlineForm > input {
+  flex: 1;
+  min-width: 140px;
 }
 
 .inlineForm .hint {
@@ -106,6 +126,11 @@
   border: 1px solid color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
   border-radius: var(--radius-md);
   background: var(--danger-bg);
+  margin-inline-start: calc(var(--settings-label-width) + var(--space-4));
+}
+
+.actions {
+  padding-inline-start: calc(var(--settings-label-width) + var(--space-4));
 }
 
 .confirmActions {
@@ -114,9 +139,25 @@
   flex-wrap: wrap;
 }
 
-@media (max-width: 760px) {
+@container settings (max-width: 720px) {
   .section {
     grid-template-columns: 1fr;
     gap: var(--space-3);
+  }
+}
+
+@container settings (max-width: 440px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .inlineForm,
+  .actions {
+    padding-inline-start: 0;
+  }
+
+  .confirm {
+    margin-inline-start: 0;
   }
 }

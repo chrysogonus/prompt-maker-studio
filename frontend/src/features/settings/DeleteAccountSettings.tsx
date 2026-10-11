@@ -38,7 +38,7 @@ export function DeleteAccountSettings({
           Permanently deletes your account and all your prompts. This can&apos;t be undone.
         </p>
         {!showDeleteConfirm ? (
-          <div>
+          <div className={styles.actions}>
             <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
               Delete account…
             </Button>

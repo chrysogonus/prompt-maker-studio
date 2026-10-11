@@ -27,7 +27,7 @@ export function ExportSettings({
         <p className={styles.text}>
           Download every prompt with its folders and full version history as a JSON file.
         </p>
-        <div>
+        <div className={styles.actions}>
           <Button variant="secondary" onClick={handleExport} disabled={isExporting}>
             <DownloadIcon size={16} tone="inherit" />
             {isExporting ? 'Exporting…' : 'Export all prompts'}
