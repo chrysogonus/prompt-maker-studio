@@ -3,9 +3,12 @@
 import * as prompts from './api/prompts';
 import * as oauth from './api/oauth';
 import * as accounts from './api/accounts';
+import * as refinement from './api/refinement';
 export { ApiError, PROMPT_NOT_FOUND_MESSAGE, isValidPromptId } from './api/errors';
 
 export class ApiClient {
+  static getRefinementQuestions = refinement.getRefinementQuestions;
+  static createRefinementDraft = refinement.createRefinementDraft;
   static createPrompt = prompts.createPrompt;
   static getSavedPrompts = prompts.getSavedPrompts;
   static renameFolder = prompts.renameFolder;

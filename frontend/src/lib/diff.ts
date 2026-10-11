@@ -1,7 +1,7 @@
 /**
  * Word-level diff between two strings, for the Refine tab's draft-vs-current
  * comparison. Classic LCS-based diff over whitespace-delimited tokens —
- * simple and adequate for prompt-length text.
+ * Long comparisons fall back to complete replacements to bound memory use.
  */
 
 export interface DiffToken {
@@ -17,10 +17,19 @@ function tokenize(text: string): string[] {
 }
 
 export function diffWords(oldText: string, newText: string): DiffToken[] {
+  if (oldText === newText) return oldText ? [{ type: 'unchanged', text: oldText }] : [];
   const oldTokens = tokenize(oldText);
   const newTokens = tokenize(newText);
   const m = oldTokens.length;
   const n = newTokens.length;
+
+  // ponytail: cap LCS at one million cells; show complete text above that size.
+  if ((m + 1) * (n + 1) > 1_000_000) {
+    return [
+      ...(oldText ? [{ type: 'removed' as const, text: oldText }] : []),
+      ...(newText ? [{ type: 'added' as const, text: newText }] : []),
+    ];
+  }
 
   // lcs[i][j] = length of the longest common subsequence of
   // oldTokens[i:] and newTokens[j:]

@@ -7,8 +7,10 @@ from unittest.mock import patch
 from httpx import Request as HttpxRequest
 from httpx import Response as HttpxResponse
 from openai import OpenAIError, RateLimitError
+import pytest
 
 from app.models.billed_call import BilledCall
+from app.models.prompt import Prompt
 from app.services.spend_ledger import LLMUsage
 
 _USAGE = LLMUsage(
@@ -219,3 +221,141 @@ class TestRefineDraftEndpoint:
         versions = client.get(f"/api/prompts/{prompt_id}/versions", headers=auth_headers).json()
         assert versions[0]["note"] == "Before AI refinement"
         assert versions[0]["generated_prompt"] == "<GOAL>\nWrite about {{topic}}\n</GOAL>"
+
+
+class TestSnapshotRefinement:
+    fields = [{"name": "Goal", "content": "Write about {{topic}}"}]
+
+    def test_questions_use_unsaved_sections_and_force_without_saving(
+        self, client, auth_headers, db_session
+    ):
+        with patch(
+            "app.api.refine_routes.PromptRefinerService.generate_clarifying_questions",
+            return_value=(["Who is reading?"], _USAGE),
+        ) as generate:
+            response = client.post(
+                "/api/prompts/refine/questions",
+                headers=auth_headers,
+                json={"fields": self.fields, "force": True},
+            )
+        assert response.status_code == 200
+        assert response.json() == {"questions": ["Who is reading?"]}
+        assert generate.call_args.args[0] == "<GOAL>\nWrite about {{topic}}\n</GOAL>"
+        assert generate.call_args.kwargs["force"] is True
+        assert db_session.query(Prompt).count() == 0
+        assert db_session.query(BilledCall).one().source == "refine_questions"
+
+    def test_draft_returns_validated_sections_and_does_not_update_saved_prompt(
+        self, client, auth_headers, db_session
+    ):
+        prompt_id = _create_saved_prompt(client, auth_headers)
+        with patch(
+            "app.api.refine_routes.PromptRefinerService.generate_section_draft",
+            return_value=(
+                {"fields": [{"name": "Goal", "content": "Explain {{topic}} to beginners"}]},
+                _USAGE,
+            ),
+        ):
+            response = client.post(
+                "/api/prompts/refine/draft",
+                headers=auth_headers,
+                json={
+                    "fields": self.fields,
+                    "qa_pairs": [{"question": "Audience?", "answer": "Beginners"}],
+                },
+            )
+        assert response.status_code == 200
+        assert response.json() == {
+            "fields": [{"name": "Goal", "content": "Explain {{topic}} to beginners"}]
+        }
+        assert client.get(f"/api/prompts/{prompt_id}", headers=auth_headers).json()["fields"] == [
+            {"name": "goal", "content": "Write about {{topic}}"}
+        ]
+        assert db_session.query(BilledCall).one().source == "refine_draft"
+
+    def test_rejected_draft_still_records_completed_ai_call(self, client, auth_headers, db_session):
+        with patch(
+            "app.api.refine_routes.PromptRefinerService.generate_section_draft",
+            return_value=({"fields": [{"name": "Goal", "content": "Lost the variable"}]}, _USAGE),
+        ):
+            response = client.post(
+                "/api/prompts/refine/draft",
+                headers=auth_headers,
+                json={
+                    "fields": self.fields,
+                    "qa_pairs": [{"question": "Audience?", "answer": "Beginners"}],
+                },
+            )
+        assert response.status_code == 502
+        assert "sections" in response.json()["detail"]
+        assert db_session.query(BilledCall).one().source == "refine_draft"
+
+    @pytest.mark.parametrize("endpoint", ["questions", "draft"])
+    def test_requires_authentication(self, client, endpoint):
+        response = client.post(f"/api/prompts/refine/{endpoint}", json={"fields": self.fields})
+        assert response.status_code == 401
+
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            [],
+            [{"name": "Role", "content": "a"}, {"name": "role", "content": "b"}],
+            [{"name": "bad!", "content": "a"}],
+        ],
+    )
+    def test_validates_snapshot_sections(self, client, auth_headers, fields):
+        response = client.post(
+            "/api/prompts/refine/questions", headers=auth_headers, json={"fields": fields}
+        )
+        assert response.status_code == 422
+
+    def test_requires_at_least_one_answered_question(self, client, auth_headers):
+        response = client.post(
+            "/api/prompts/refine/draft",
+            headers=auth_headers,
+            json={"fields": self.fields, "qa_pairs": [{"question": "Audience?", "answer": "   "}]},
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.parametrize(
+        ("endpoint", "method"),
+        [("questions", "generate_clarifying_questions"), ("draft", "generate_section_draft")],
+    )
+    def test_budget_rejection_makes_no_ai_call(
+        self, client, auth_headers, monkeypatch, endpoint, method
+    ):
+        monkeypatch.setenv("GLOBAL_MONTHLY_BUDGET_USD", "0")
+        with patch(f"app.api.refine_routes.PromptRefinerService.{method}") as generate:
+            response = client.post(
+                f"/api/prompts/refine/{endpoint}",
+                headers=auth_headers,
+                json={
+                    "fields": self.fields,
+                    "qa_pairs": [{"question": "Audience?", "answer": "Beginners"}],
+                }
+                if endpoint == "draft"
+                else {"fields": self.fields},
+            )
+        assert response.status_code == 402
+        generate.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("endpoint", "method"),
+        [("questions", "generate_clarifying_questions"), ("draft", "generate_section_draft")],
+    )
+    def test_provider_failure_is_reported(self, client, auth_headers, endpoint, method):
+        with patch(
+            f"app.api.refine_routes.PromptRefinerService.{method}",
+            side_effect=OpenAIError("offline"),
+        ):
+            response = client.post(
+                f"/api/prompts/refine/{endpoint}",
+                headers=auth_headers,
+                json={
+                    "fields": self.fields,
+                    "qa_pairs": [{"question": "Audience?", "answer": "Beginners"}],
+                }
+                if endpoint == "draft"
+                else {"fields": self.fields},
+            )
+        assert response.status_code == 502

@@ -10,11 +10,11 @@
 
 ## Priority: High
 
-### Rebuild AI Refinement
-- **Value**: People who reuse prompts want help making one sharper without leaving the template they know. The deferred Refine backend asks clarifying questions and drafts a revision, but the experience was closer to a placeholder than a tool.
-- **Approach**: Describe the change you want, review suggested edits as section-level diffs, accept or reject each. Reuse `refine_routes.py`; the UI must write sections, never raw text.
+### Extend AI Refinement Controls
+- **Value**: People who reuse prompts want to direct a specific change and keep only the suggested edits they need.
+- **Approach**: Add direct change instructions and individual section acceptance to the restored question-and-answer flow. The UI must continue writing sections, never raw text.
 - **Effort**: High
-- **Status**: Deferred in 0.3.0 — backend and data kept, no UI.
+- **Status**: The editor now offers questions, section diffs, local Apply/Undo and normal Save. Direct change instructions and individual section acceptance remain unimplemented.
 
 ### Rebuild Evaluation
 - **Value**: Shows whether a prompt change helped, with evidence a non-specialist can read.

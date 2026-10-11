@@ -9,6 +9,43 @@ beforeEach(() => {
   AuthService.logout();
 });
 
+describe('refinement snapshots', () => {
+  const fields = [{ name: 'Task', content: 'Explain {{topic}}' }];
+  beforeEach(() => vi.spyOn(AuthService, 'ensureSessionValidity').mockResolvedValue());
+
+  it('sends unsaved sections and force with CSRF protection', async () => {
+    document.cookie = 'csrf_token=refine-csrf';
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true, json: async () => ({ questions: ['Audience?'] }),
+    } as Response);
+    await expect(ApiClient.getRefinementQuestions(fields, true)).resolves.toEqual({ questions: ['Audience?'] });
+    expect(fetch).toHaveBeenCalledWith('/api/prompts/refine/questions', expect.objectContaining({
+      method: 'POST', credentials: 'include', body: JSON.stringify({ fields, force: true }),
+      headers: expect.objectContaining({ 'X-CSRF-Token': 'refine-csrf' }),
+    }));
+    expect(AuthService.ensureSessionValidity).toHaveBeenCalledWith(120000);
+  });
+
+  it('requests validated draft sections', async () => {
+    const revised = [{ name: 'Task', content: 'Explain {{topic}} to beginners.' }];
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ fields: revised }) } as Response);
+    const pairs = [{ question: 'Audience?', answer: 'Beginners' }];
+    await expect(ApiClient.createRefinementDraft(fields, pairs)).resolves.toEqual({ fields: revised });
+    expect(fetch).toHaveBeenCalledWith('/api/prompts/refine/draft', expect.objectContaining({ body: JSON.stringify({ fields, qa_pairs: pairs }) }));
+  });
+
+  it('preserves actionable provider errors without retrying billed requests', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 402, json: async () => ({ detail: 'Monthly budget reached' }) } as Response);
+    await expect(ApiClient.getRefinementQuestions(fields)).rejects.toThrow('Monthly budget reached');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([async () => ({ detail: [] }), async () => { throw new Error('Not JSON'); }])('handles malformed error responses', async (json) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 502, json } as Response);
+    await expect(ApiClient.getRefinementQuestions(fields)).rejects.toThrow('Refinement failed. Please try again.');
+  });
+});
+
 describe('ApiClient authenticated requests', () => {
   it('refreshes and retries a save once after a 401', async () => {
     // The session cookie is httpOnly and invisible here; what the client does

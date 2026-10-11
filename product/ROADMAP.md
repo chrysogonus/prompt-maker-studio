@@ -7,7 +7,7 @@
 
 ## Next — Coming Soon (next 1–2 sprints)
 - [ ] **Recovered history cleanup** — Let users select several prompts, or find duplicates, to tidy "Recovered history" (see BACKLOG "Bulk Prompt Delete")
-- [ ] **Rebuild AI refinement** — Describe a change, review suggested section edits, accept or reject (backend kept since 0.3.0)
+- [ ] **Extend refinement controls** — Questions, section diffs and local Apply/Undo are restored in the editor. Direct change instructions and individual section acceptance remain open
 
 ## Later — Quarterly Horizon
 - [ ] **Rebuild evaluation** — Goal-led evaluation with evidence people can read, calibrated against human judgment

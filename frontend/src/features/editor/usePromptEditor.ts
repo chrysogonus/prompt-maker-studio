@@ -9,7 +9,7 @@ import { pageTitle, storageKey } from '@/lib/branding';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { sectionNameError, variablesIn } from '@/lib/sections';
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
-import { PromptHistoryResponse, PromptUpdateRequest, PromptVersionResponse } from '@/types/prompt';
+import { PromptField, PromptHistoryResponse, PromptUpdateRequest, PromptVersionResponse } from '@/types/prompt';
 
 import { useDraftPersistence } from './useDraftPersistence';
 import {
@@ -42,6 +42,7 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
   const [mobileTab, setMobileTab] = useState<'edit' | 'use'>(isNew ? 'edit' : 'use');
   const [previewOpen, setPreviewOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [refineOpen, setRefineOpen] = useState(false);
   const [restoredDraft, setRestoredDraft] = useState(false);
   const [loading, setLoading] = useState(!isNew);
   const [loadError, setLoadError] = useState('');
@@ -59,6 +60,8 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
   const [importOpen, setImportOpen] = useState(Boolean(openImport));
   const [aiAvailable, setAiAvailable] = useState(true);
   const mutationChain = useRef<Promise<unknown>>(Promise.resolve());
+  const sectionsRef = useRef(sections);
+  useLayoutEffect(() => { sectionsRef.current = sections; }, [sections]);
 
   const showNotice = useCallback((next: Notice, ms = 4000) => {
     if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
@@ -201,7 +204,7 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
   };
 
   const save = async () => {
-    if (savingRef.current) return;
+    if (savingRef.current || refineOpen) return;
     setSections((current) => current.map((s) => ({ ...s, touched: true })));
     if (nameErrors.some(Boolean)) {
       showNotice({ text: 'Fix the highlighted section names before saving.', tone: 'error' });
@@ -386,6 +389,24 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
     setMetadata({});
     setValues({});
   };
+
+  const applyRefinement = (next: PromptField[]) => {
+    const before = sections;
+    setSections((current) => current.map((section, i) => ({
+      ...section, content: next[i].content, touched: true,
+    })));
+    setRefineOpen(false);
+    showNotice({
+      text: 'Refinement applied',
+      action: { label: 'Undo', run: () => {
+        if (JSON.stringify(toFields(sectionsRef.current)) !== JSON.stringify(next)) {
+          showNotice({ text: 'Your prompt changed. Undo is no longer available.', tone: 'error' });
+          return;
+        }
+        setSections(before);
+      } },
+    }, 8000);
+  };
   return {
     router,
     isNew,
@@ -406,6 +427,8 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
     setPreviewOpen,
     historyOpen,
     setHistoryOpen,
+    refineOpen,
+    setRefineOpen,
     restoredDraft,
     loading,
     loadError,
@@ -443,5 +466,6 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
     moveSection,
     removeSection,
     replaceSections,
+    applyRefinement,
   };
 }

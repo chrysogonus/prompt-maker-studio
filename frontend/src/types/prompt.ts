@@ -7,6 +7,11 @@ export interface PromptField {
   content: string;
 }
 
+export interface RefineQAPair {
+  question: string;
+  answer: string;
+}
+
 export interface VariableMetadataItem {
   type: 'text' | 'number' | 'boolean' | 'list';
   description?: string | null;

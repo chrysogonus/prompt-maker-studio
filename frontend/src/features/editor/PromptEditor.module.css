@@ -238,6 +238,10 @@ button.title:hover {
   max-width: 760px;
   min-width: 0;
   padding-bottom: var(--space-10);
+  margin: 0;
+  border: 0;
+  padding-inline: 0;
+  padding-top: 0;
 }
 
 .startRow {

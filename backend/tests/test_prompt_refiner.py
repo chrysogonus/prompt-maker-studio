@@ -8,6 +8,8 @@ from unittest.mock import MagicMock
 from openai import OpenAIError
 import pytest
 
+from app.schemas.prompts import PromptField
+from app.services.llm_client import LLMResponseFormatError
 from app.services.prompt_refiner import PromptRefinerService
 from tests.conftest import TEST_LLM_MODEL, make_chat_response, make_connection
 
@@ -98,3 +100,119 @@ class TestGenerateDraft:
 
         with pytest.raises(ValueError, match="draft"):
             PromptRefinerService.generate_draft("template", [("q", "a")], connection)
+
+
+class TestSectionDraft:
+    def test_generates_section_objects_with_questions_and_usage(self):
+        fields = [PromptField(name="Task", content="Explain {{topic}}.")]
+        payload = {"fields": [{"name": "Task", "content": "Explain {{topic}} briefly."}]}
+        connection, create = _connection_returning(payload)
+        raw, usage = PromptRefinerService.generate_section_draft(
+            fields, [("Audience?", "Beginners")], connection
+        )
+        assert raw == payload
+        assert usage.prompt_tokens == 80
+        assert usage.completion_tokens == 30
+        request = create.call_args.kwargs
+        assert request["model"] == TEST_LLM_MODEL
+        assert json.loads(request["messages"][1]["content"]) == {
+            "fields": [field.model_dump() for field in fields],
+            "clarifications": [{"question": "Audience?", "answer": "Beginners"}],
+        }
+        assert request["response_format"]["json_schema"]["name"] == "refine_sections"
+
+    def test_accepts_nested_examples_using_the_outer_section_tag(self):
+        source = [
+            PromptField(
+                name="Task",
+                content="Example:\n<TASK>\nExplain {{topic}}\n</TASK>\nUse the example.",
+            )
+        ]
+        revised = "Example:\n<TASK>\nExplain {{topic}}\n</TASK>\nUse the example briefly."
+        assert PromptRefinerService.validate_section_draft(
+            source, {"fields": [{"name": "Task", "content": revised}]}
+        ) == [PromptField(name="Task", content=revised)]
+
+    @pytest.mark.parametrize("token", ["{{topic}}", "{{ topic }}", "{{\n topic \n}}"])
+    def test_preserves_exact_variable_tokens_including_multiline_whitespace(self, token):
+        source = [PromptField(name="Goal", content=f"Explain {token}.")]
+        for content in (
+            "Explain a fixed topic.",
+            f"Explain {token} and {token}.",
+            f"Explain {token} and {{{{extra}}}}.",
+        ):
+            with pytest.raises(LLMResponseFormatError):
+                PromptRefinerService.validate_section_draft(
+                    source, {"fields": [{"name": "Goal", "content": content}]}
+                )
+        assert PromptRefinerService.validate_section_draft(
+            source, {"fields": [{"name": "Goal", "content": f"Explain {token} briefly."}]}
+        )
+
+    def test_preserves_display_names_and_returns_editable_sections(self):
+        source = [PromptField(name="Output format", content="Write about {{topic}}.")]
+        result = PromptRefinerService.validate_section_draft(
+            source,
+            {
+                "fields": [
+                    {"name": "Output format", "content": "Write a concise summary about {{topic}}."}
+                ]
+            },
+        )
+        assert result == [
+            PromptField(name="Output format", content="Write a concise summary about {{topic}}.")
+        ]
+
+    @pytest.mark.parametrize(
+        "draft",
+        [
+            {},
+            {"fields": []},
+            {"fields": "Flattened text"},
+            {"fields": [{"name": "Task", "content": "Explain {{topic}}."}]},
+            {
+                "fields": [
+                    {"name": "Goal", "content": "Explain {{topic}}."},
+                    {"name": "Task", "content": "Extra"},
+                ]
+            },
+            {"fields": [{"name": "Goal", "content": "x" * 10001 + " {{topic}}"}]},
+            {"fields": [{"name": "Goal", "content": "Explain {{ topic }}."}]},
+        ],
+        ids=["missing", "empty", "flattened", "renamed", "added", "too-long", "altered-variable"],
+    )
+    def test_rejects_structural_changes(self, draft):
+        with pytest.raises(LLMResponseFormatError):
+            PromptRefinerService.validate_section_draft(
+                [PromptField(name="Goal", content="Explain {{topic}}.")], draft
+            )
+
+    def test_rejects_reordering_or_moving_variables_between_sections(self):
+        source = [
+            PromptField(name="Role", content="Writer"),
+            PromptField(name="Goal", content="Explain {{topic}}"),
+        ]
+        for fields in (
+            [
+                {"name": "Goal", "content": "Explain {{topic}}"},
+                {"name": "Role", "content": "Writer"},
+            ],
+            [
+                {"name": "Role", "content": "Writer for {{topic}}"},
+                {"name": "Goal", "content": "Explain"},
+            ],
+            [{"name": "Role", "content": "Writer"}],
+        ):
+            with pytest.raises(LLMResponseFormatError):
+                PromptRefinerService.validate_section_draft(source, {"fields": fields})
+
+    def test_preserves_tags_inside_section_content(self):
+        source = [PromptField(name="Goal", content="<example>{{topic}}</example>")]
+        assert PromptRefinerService.validate_section_draft(
+            source,
+            {"fields": [{"name": "Goal", "content": "Use <example>{{topic}}</example> briefly."}]},
+        )
+        with pytest.raises(LLMResponseFormatError):
+            PromptRefinerService.validate_section_draft(
+                source, {"fields": [{"name": "Goal", "content": "Use <sample>{{topic}}</sample>."}]}
+            )

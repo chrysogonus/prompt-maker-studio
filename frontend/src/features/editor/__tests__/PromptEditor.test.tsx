@@ -17,6 +17,8 @@ vi.mock('@/lib/api', async () => ({
     createPrompt: vi.fn(),
     restorePromptVersion: vi.fn(),
     parsePromptText: vi.fn(),
+    getRefinementQuestions: vi.fn(),
+    createRefinementDraft: vi.fn(),
   },
 }));
 
@@ -79,12 +81,197 @@ beforeEach(() => {
     global_budget_remaining_usd: null,
   });
   vi.mocked(ApiClient.getFolders).mockResolvedValue(['Work', 'Writing']);
+  vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValue({ questions: ['Who will read this?'] });
+  vi.mocked(ApiClient.createRefinementDraft).mockResolvedValue({ fields: [
+    { name: 'Role', content: 'You are a concise engineering lead writing for managers.' },
+    prompt().fields[1],
+  ] });
+  // jsdom has no native dialog methods; browsers handle modal focus/inertness.
+  Object.assign(HTMLDialogElement.prototype, {
+    show(this: HTMLDialogElement) { this.setAttribute('open', ''); },
+    showModal(this: HTMLDialogElement) { this.setAttribute('open', ''); },
+    close(this: HTMLDialogElement) { this.removeAttribute('open'); },
+  });
 });
 
 async function renderSaved() {
   render(<PromptEditor promptId={1} />);
   await screen.findByRole('button', { name: 'Weekly status update' });
 }
+
+describe('prompt refinement', () => {
+  it('keeps a pending request when closed and restores focus without starting another call', async () => {
+    const user = userEvent.setup();
+    let finish!: (value: { questions: string[] }) => void;
+    vi.mocked(ApiClient.getRefinementQuestions).mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    await renderSaved();
+    const trigger = screen.getByRole('button', { name: 'Refine' });
+    await user.click(trigger);
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await screen.findByText('Finding questions…');
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Refine prompt' }), { key: 'Escape' });
+    expect(trigger).toHaveFocus();
+    await user.click(trigger);
+    expect(screen.getByRole('button', { name: 'Find questions' })).toBeDisabled();
+    finish({ questions: ['Audience?'] });
+    await screen.findByLabelText('Audience?');
+    expect(ApiClient.getRefinementQuestions).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries finding questions explicitly after failure', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getRefinementQuestions).mockRejectedValueOnce(new Error('Provider unavailable'));
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Provider unavailable');
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await screen.findByLabelText('Who will read this?');
+    expect(ApiClient.getRefinementQuestions).toHaveBeenCalledTimes(2);
+  });
+
+  it('requires an answer, allows skipping individual questions and returning from review', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValueOnce({ questions: ['Audience?', 'Tone?'] });
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await screen.findByLabelText('Audience?');
+    expect(screen.getByRole('button', { name: 'Create draft' })).toBeDisabled();
+    await user.type(screen.getByLabelText('Audience?'), 'Managers');
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
+    await screen.findByRole('button', { name: 'Apply changes' });
+    expect(ApiClient.createRefinementDraft).toHaveBeenCalledWith(prompt().fields, [{ question: 'Audience?', answer: 'Managers' }]);
+    await user.click(screen.getByRole('radio', { name: 'Full draft' }));
+    expect(screen.getByLabelText('Draft Context')).toHaveTextContent('{{team}}');
+    await user.click(screen.getByRole('button', { name: 'Back to answers' }));
+    expect(screen.getByLabelText('Audience?')).toHaveValue('Managers');
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
+    await user.click(await screen.findByRole('button', { name: 'Discard draft' }));
+    expect(screen.getByLabelText('Role text')).toHaveValue(prompt().fields[0].content);
+    expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
+  });
+
+  it('does not allow applying an unchanged draft', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.createRefinementDraft).mockResolvedValueOnce({ fields: prompt().fields });
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.type(await screen.findByLabelText('Who will read this?'), 'Managers');
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
+    await screen.findByText('The draft is identical to your prompt.');
+    expect(screen.getByRole('button', { name: 'Apply changes' })).toBeDisabled();
+    await user.click(screen.getByText('Context', { selector: 'summary' }));
+    expect(screen.getByText('Context', { selector: 'summary' }).closest('details')).toHaveTextContent('Team: {{team}}');
+  });
+
+  it('never overwrites subsequent edits with Undo', async () => {
+    const user = userEvent.setup();
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.type(await screen.findByLabelText('Who will read this?'), 'Managers');
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
+    await user.click(await screen.findByRole('button', { name: 'Apply changes' }));
+    await user.type(screen.getByLabelText('Role text'), ' New edit.');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByLabelText('Role text')).toHaveValue('You are a concise engineering lead writing for managers. New edit.');
+    expect(screen.getByRole('status')).toHaveTextContent('Undo is no longer available');
+  });
+
+  it('refines current edits, reviews changes, applies locally, undoes and saves normally', async () => {
+    const user = userEvent.setup();
+    await renderSaved();
+    await user.type(screen.getByPlaceholderText('Team or project name'), 'Platform team');
+    await user.type(screen.getByLabelText('Role text'), ' Be brief.');
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    expect(ApiClient.getRefinementQuestions).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Role text')).toBeDisabled();
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    expect(ApiClient.getRefinementQuestions).toHaveBeenCalledWith([
+      { name: 'Role', content: 'You are a concise engineering lead. Be brief.' }, prompt().fields[1],
+    ], false);
+    await user.type(await screen.findByLabelText('Who will read this?'), 'Managers');
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
+    await screen.findByRole('button', { name: 'Apply changes' });
+    expect(screen.getByLabelText('Changes to Role').querySelector('ins')).toBeInTheDocument();
+    expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Apply changes' }));
+    expect(screen.getByLabelText('Role text')).toHaveValue('You are a concise engineering lead writing for managers.');
+    expect(screen.getByLabelText('Hint for team')).toHaveValue('Team or project name');
+    expect(screen.getByPlaceholderText('Team or project name')).toHaveValue('Platform team');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByLabelText('Role text')).toHaveValue('You are a concise engineering lead. Be brief.');
+    expect(screen.getByPlaceholderText('Team or project name')).toHaveValue('Platform team');
+    vi.mocked(ApiClient.updatePrompt).mockImplementation(async (_id, body) => prompt({ fields: body.fields! }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(ApiClient.updatePrompt).toHaveBeenCalled());
+    expect(vi.mocked(ApiClient.updatePrompt).mock.calls[0][1].variable_metadata?.team.type).toBe('list');
+  });
+
+  it('works with a new unsaved prompt and keeps answers when closed or a draft fails', async () => {
+    const user = userEvent.setup();
+    render(<PromptEditor />);
+    fireEvent.change(screen.getByLabelText('Task text'), { target: { value: 'Explain {{topic}}' } });
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.type(await screen.findByLabelText('Who will read this?'), 'Beginners');
+    await user.click(screen.getByRole('button', { name: 'Close refinement' }));
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    expect(screen.getByLabelText('Who will read this?')).toHaveValue('Beginners');
+    expect(ApiClient.getRefinementQuestions).toHaveBeenCalledTimes(1);
+    vi.mocked(ApiClient.createRefinementDraft).mockRejectedValueOnce(new Error('Budget exhausted'));
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
+    await screen.findByRole('alert');
+    expect(screen.getByLabelText('Who will read this?')).toHaveValue('Beginners');
+    expect(ApiClient.createPrompt).not.toHaveBeenCalled();
+    expect(ApiClient.createRefinementDraft).toHaveBeenCalledWith(
+      [{ name: 'Task', content: 'Explain {{topic}}' }],
+      [{ question: 'Who will read this?', answer: 'Beginners' }],
+    );
+  });
+
+  it('invalidates a closed session when the source changes', async () => {
+    const user = userEvent.setup();
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await screen.findByLabelText('Who will read this?');
+    await user.click(screen.getByRole('button', { name: 'Close refinement' }));
+    await user.type(screen.getByLabelText('Role text'), ' Changed.');
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    expect(screen.getByText(/Your prompt changed/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Apply changes' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Start again' }));
+    expect(screen.getByRole('button', { name: 'Find questions' })).toBeInTheDocument();
+    expect(ApiClient.getRefinementQuestions).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers optional questions when none are found', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValueOnce({ questions: [] });
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await screen.findByText('No important gaps were identified.');
+    await user.click(screen.getByRole('button', { name: 'Ask more questions' }));
+    await screen.findByLabelText('Who will read this?');
+    expect(ApiClient.getRefinementQuestions).toHaveBeenLastCalledWith(prompt().fields, true);
+  });
+
+  it('explains a missing connection without starting an AI call', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getPromptsConfig).mockResolvedValue({ provider_connected: false } as never);
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    expect(screen.getByText('Refinement needs an AI connection.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute('href', '/settings#s-api');
+    expect(ApiClient.getRefinementQuestions).not.toHaveBeenCalled();
+  });
+});
 
 describe('PromptEditor with a saved prompt', () => {
   it('shows its sections and opens the preview filled in when it has variables', async () => {

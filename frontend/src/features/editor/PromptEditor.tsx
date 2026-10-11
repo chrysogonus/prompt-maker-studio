@@ -9,6 +9,7 @@ import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
 import HistoryPanel from './HistoryPanel';
 import ImportDialog from './ImportDialog';
 import PreviewPane from './PreviewPane';
+import RefinePanel from './RefinePanel';
 import SectionCard from './SectionCard';
 import VariablesPanel from './VariablesPanel';
 import styles from './PromptEditor.module.css';
@@ -36,6 +37,8 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
     setPreviewOpen,
     historyOpen,
     setHistoryOpen,
+    refineOpen,
+    setRefineOpen,
     restoredDraft,
     loading,
     loadError,
@@ -73,6 +76,7 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
     moveSection,
     removeSection,
     replaceSections,
+    applyRefinement,
   } = usePromptEditor({ promptId, initialStarter, openImport });
 
   if (loading) {
@@ -152,20 +156,28 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
             />
           )}
           {prompt && dirty && (
-            <Button variant="ghost" onClick={discardEdits}>
+            <Button variant="ghost" onClick={discardEdits} disabled={refineOpen}>
               Discard
             </Button>
           )}
+          <Button
+            variant="ghost"
+            aria-pressed={refineOpen}
+            disabled={saving || !hasContent || nameErrors.some(Boolean)}
+            onClick={() => { setHistoryOpen(false); setRefineOpen((open) => !open); }}
+          >
+            Refine
+          </Button>
           {prompt && (
             <Button
               variant="ghost"
-              onClick={() => setHistoryOpen((open) => !open)}
+              onClick={() => { setRefineOpen(false); setHistoryOpen((open) => !open); }}
               aria-pressed={historyOpen}
             >
               History
             </Button>
           )}
-          <Button variant="primary" onClick={save} disabled={saving || (!!prompt && !dirty)}>
+          <Button variant="primary" onClick={save} disabled={saving || refineOpen || (!!prompt && !dirty)}>
             {saving ? 'Saving…' : prompt && !dirty ? 'Saved' : 'Save'}
           </Button>
         </div>
@@ -201,8 +213,8 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
         </div>
       )}
 
-      <div className={styles.body} data-preview={previewOpen ? 'open' : 'closed'}>
-        <div className={styles.write}>
+      <div className={styles.body} data-preview={previewOpen || refineOpen ? 'open' : 'closed'}>
+        <fieldset className={styles.write} disabled={refineOpen}>
           {isNew && (
             <div className={styles.startRow}>
               <div className={styles.menuWrap}>
@@ -310,8 +322,9 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
               })
             }
           />
-        </div>
+        </fieldset>
 
+        {!refineOpen && (
         <PreviewPane
           fields={fields}
           variables={variables}
@@ -325,6 +338,15 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
           onCopyFailed={() =>
             showNotice({ text: 'Copying failed. Select the text and copy it instead.', tone: 'error' })
           }
+        />
+        )}
+
+        <RefinePanel
+          open={refineOpen}
+          fields={fields}
+          aiAvailable={aiAvailable}
+          onClose={() => setRefineOpen(false)}
+          onApply={applyRefinement}
         />
 
         {historyOpen && prompt && (
@@ -431,8 +453,8 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
               type="button"
               className={styles.noticeAction}
               onClick={() => {
-                notice.action!.run();
                 setNotice(null);
+                notice.action!.run();
               }}
             >
               {notice.action.label}

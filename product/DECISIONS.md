@@ -845,3 +845,19 @@ quietly outliving its reason.
 
 **Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`
 
+---
+
+## Restore Refinement Inside the Sections Editor
+
+**Status**: Accepted (2026-10-11)
+
+**Context**: The user requested refinement back in the UI, integrated with the redesigned editor. The retained API read saved templates and returned raw text, so simply exposing it would exclude unsaved work and risk section drift.
+
+**Decision**: Refine replaces the desktop preview and becomes a native full-screen modal on phones. Users explicitly request questions and a draft, review section-level diffs, apply locally with Undo, then save normally. Closing retains the session in memory; changed source sections require restarting. Snapshot endpoints accept current sections without saving them; the old saved-prompt endpoints remain compatible. Drafts are requested as section objects and must retain the same section names/order and preserve per-section variable and tag occurrences. Completed draft calls are recorded in the spend ledger even when structural validation rejects the draft.
+
+**Rationale**: Refinement belongs next to the text being improved. Explicit calls, review and ordinary Save make its effects clear while preserving sections as the only writable representation. Structural validation checks preservation, not whether the wording performs better.
+
+**Consequences**: Refinement sessions do not survive navigation or reload. Apply preserves variable metadata and filled values. Evaluate remains deferred; no automatic evaluation is introduced.
+
+**Source**: `frontend/src/features/editor/RefinePanel.tsx`, `frontend/src/features/editor/usePromptEditor.ts`, `backend/app/api/refine_routes.py`, `backend/app/services/prompt_refiner.py`
+

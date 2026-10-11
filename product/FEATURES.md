@@ -42,6 +42,7 @@ and the reasoning is in `product/DECISIONS.md`.
 | Inline checks | ✅ Implemented | Advisory, never blocking: an empty section is flagged once it has been left, tags typed inside a section that open and close unevenly are named, and very long text (over 40,000 characters) gets a quiet notice | `frontend/src/features/editor/SectionCard.tsx`, `frontend/src/features/editor/PreviewPane.tsx` |
 | Starter templates | ✅ Implemented | Role, task, format; Rewrite my text; Summarise something; Persona. Sections start empty with hints as placeholders, so no filler text is saved by accident. Reachable from the editor and from the empty library | `frontend/src/lib/starterTemplates.ts`, `frontend/src/features/editor/PromptEditor.tsx` |
 | Import text | ✅ Implemented | Paste a prompt or rough notes and the user's AI connection splits it into editable sections (`POST /api/prompts/parse-text`, 20/min). Without a connection the dialog explains what it needs and links to Settings | `backend/app/services/prompt_parser.py`, `backend/app/api/routes.py`, `frontend/src/features/editor/ImportDialog.tsx` |
+| AI prompt refinement | ✅ Implemented | Refine current sections, including new and unsaved prompts: explicitly find questions, answer, review section-level word diffs, apply locally with Undo, then save normally. Closing retains the session; changing its source requires restarting. Desktop replaces the preview; mobile uses a full-screen modal. The backend checks section names/order and per-section variables/tags before returning edits | `frontend/src/features/editor/RefinePanel.tsx`, `backend/app/api/refine_routes.py`, `backend/app/services/prompt_refiner.py` |
 | Draft recovery | ✅ Implemented | Unsaved edits are kept in localStorage per user and prompt, restored with a notice and a "Discard changes" action, and only when the saved prompt has not changed since; drafts are wiped on sign-out | `frontend/src/features/editor/usePromptEditor.ts`, `frontend/src/features/editor/useDraftPersistence.ts`, `frontend/src/lib/branding.ts` |
 | Edit conflict handling | ✅ Implemented | Every PATCH carries `last_updated_at`; a change from another tab or session returns 409, the editor keeps the local edits and offers "Load latest version", after which saving deliberately overwrites | `backend/app/api/routes.py`, `frontend/src/features/editor/PromptEditor.tsx` |
 | Version history, compare and restore | ✅ Implemented | Each content-changing save snapshots the previous state. The History panel lists versions with dates and notes, shows a word-level diff against the current text, and restores; a restore is itself snapshotted, so it can be undone, and is blocked while there are unsaved edits. Versions from before 0.3.0 whose text disagrees with their sections are restored from their text | `backend/app/services/prompt_version_service.py`, `frontend/src/features/editor/HistoryPanel.tsx`, `frontend/src/lib/diff.ts` |
@@ -92,12 +93,11 @@ and the reasoning is in `product/DECISIONS.md`.
 | Recovered history | ✅ Implemented | Migration 024 names every unnamed prompt the retired History tab listed — `Untitled (14 Mar 2026, 09:12 UTC)` — and files it under "Recovered history" unless it was already filed. Nothing is deduplicated; the library explains the folder | `backend/app/database/migrations/v024_recover_unnamed_prompts.py`, `frontend/src/app/(app)/library/page.tsx` |
 
 ## Deferred (backend kept, no UI)
-These are planned to return after substantial engineering work; their data and endpoints are
+Evaluation is planned to return after substantial engineering work; its data and endpoints are
 preserved, but nothing in the app reaches them.
 
 | Feature | Status | Description | Implemented in |
 |---|---|---|---|
-| AI prompt refinement | ⏸ Deferred | Clarifying questions and a revised draft from the user's AI connection | `backend/app/api/refine_routes.py`, `backend/app/services/prompt_refiner.py` |
 | Prompt evaluation | ⏸ Deferred | Eval cases (rule, judge, manual), CSV import/export, AI-proposed cases, parallel runs with structured judge feedback and reproducible run metadata | `backend/app/api/eval_routes.py`, `backend/app/services/eval_service.py`, `backend/app/services/eval_generator_service.py` |
 | Model execution service | ⏸ Deferred | `PlaygroundService` compiles a prompt with variable values and runs it on the user's connection, recording latency, tokens and cost; evaluations use it. The standalone Playground screen and endpoints were retired | `backend/app/services/playground_service.py`, `backend/app/services/prompt_compiler.py` |
 | Eval preferences | ⏸ Deferred | `default_eval_method` and `auto_run_eval_on_update` are still stored and returned, but nothing reads them; evaluations never start on their own | `users.default_eval_method`, `users.auto_run_eval_on_update` |
@@ -137,7 +137,7 @@ preserved, but nothing in the app reaches them.
 | Code snippet export, compile animation, output metrics bar, density setting | Removed from the frontend |
 | Email notifications | Run-failure, weekly-summary, eval-complete and score-regression emails, the weekly script and `make send-weekly-summary` were removed; the preference columns remain unused |
 | Variable types | No longer editable; stored types are preserved |
-| Refine and Evaluate screens | Hidden until rebuilt; see Deferred |
+| Former Refine and Evaluate screens | Removed in the redesign. Refine now lives inside the editor; Evaluate remains deferred |
 
 ---
 

@@ -35,6 +35,11 @@ notes** before deploying.
 
 ### Added
 
+- Refinement inside the editor: explicit questions, section-level draft review,
+  local Apply and Undo, and normal saving. It works with new and unsaved prompts,
+  preserves variable hints and filled values, and adapts to a full-screen modal
+  on phones. Snapshot API endpoints validate section and placeholder preservation;
+  existing saved-prompt refinement endpoints remain compatible.
 - One editor for new and saved prompts: named sections you can rename, reorder
   and remove, a live preview of exactly what will be copied, Template and Filled
   modes with "Copy template" and "Copy filled prompt", variable hints, inline
@@ -77,8 +82,8 @@ notes** before deploying.
 
 ### Deprecated
 
-- Refinement and evaluation have no UI until they are rebuilt. Their endpoints
-  and data are kept, and evaluations no longer start automatically after a save.
+- Evaluation has no UI until it is rebuilt. Its endpoints and data are kept,
+  and evaluations no longer start automatically after a save.
 
 ### Fixed
 

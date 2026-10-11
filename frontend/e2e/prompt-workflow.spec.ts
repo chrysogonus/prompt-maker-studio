@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 interface TestUser {
   username: string;
@@ -36,6 +37,83 @@ async function register(page: Page, user: TestUser) {
   // The library is the home page; a new account starts with it empty.
   await expect(page).toHaveURL(/\/library$/);
   await expect(page.getByRole('heading', { name: 'Your prompt library is empty' })).toBeVisible();
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`refines unsaved sections with review, undo and normal saving (${theme})`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.addInitScript((value) => localStorage.setItem('theme', value), theme);
+    await register(page, uniqueUser('refine'));
+    // Only AI capability/results are mocked; auth, saving and version history are real.
+    await page.route('**/api/prompts/config', (route) => route.fulfill({ json: {
+      provider_connected: true, provider: 'ollama', provider_label: 'Ollama', model: 'local',
+      available_models: [], budget_exhausted: false, global_budget_remaining_usd: null,
+    } }));
+    let calls = 0;
+    await page.route('**/api/prompts/refine/questions', (route) => {
+      calls += 1;
+      expect(route.request().postDataJSON().fields).toEqual([{ name: 'Task', content: 'Explain {{topic}}.' }]);
+      return route.fulfill({ json: { questions: ['Who will read this?', 'What should the answer look like?'] } });
+    });
+    await page.route('**/api/prompts/refine/draft', (route) => route.fulfill({ json: {
+      fields: [{ name: 'Task', content: 'Explain {{topic}} to beginners in three short paragraphs.' }],
+    } }));
+    await sidebarLink(page, 'New prompt').click();
+    await page.getByLabel('Task text').fill('Explain {{topic}}.');
+    await page.getByRole('button', { name: 'Refine', exact: true }).click();
+    const panel = page.getByRole('dialog', { name: 'Refine prompt' });
+    expect(calls).toBe(0);
+    await expect(page.getByLabel('Task text')).toBeDisabled();
+    await panel.getByRole('button', { name: 'Find questions' }).click();
+    await panel.getByLabel('Who will read this?').fill('Beginners');
+    await panel.getByLabel('What should the answer look like?').fill('Three short paragraphs');
+    await expect(panel.getByLabel('Who will read this?')).toBeVisible();
+    expect((await new AxeBuilder({ page }).include('dialog[open]').analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`refine-questions-${theme}.png`) });
+
+    // The same session becomes a native full-screen modal at phone widths.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(panel).toHaveAttribute('aria-modal', 'true');
+    await expect(panel.getByLabel('Who will read this?')).toHaveValue('Beginners');
+    await page.keyboard.press('Tab');
+    expect(await panel.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(panel).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Refine', exact: true })).toBeFocused();
+    await page.getByRole('button', { name: 'Refine', exact: true }).click();
+    expect(calls).toBe(1);
+    await panel.getByRole('button', { name: 'Create draft' }).click();
+    await expect(panel.getByRole('button', { name: 'Apply changes' })).toBeVisible();
+    await expect(panel.getByLabel('Changes to Task').locator('ins').filter({ hasText: 'beginners' })).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    const panelBox = await panel.boundingBox();
+    expect(panelBox?.width).toBe(390);
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollbarGutter)).toBe('auto');
+    await page.screenshot({ path: testInfo.outputPath(`refine-review-phone-${theme}.png`) });
+    await panel.getByRole('button', { name: 'Apply changes' }).click();
+    await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}} to beginners in three short paragraphs.');
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}}.');
+
+    await page.getByRole('button', { name: 'Refine', exact: true }).click();
+    await panel.getByRole('button', { name: 'Find questions' }).click();
+    await panel.getByLabel('Who will read this?').fill('Beginners');
+    await panel.getByRole('button', { name: 'Create draft' }).click();
+    await panel.getByRole('button', { name: 'Apply changes' }).click();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    const save = page.getByRole('dialog', { name: 'Save prompt' });
+    await save.getByLabel('Name', { exact: true }).fill('Refined explanation');
+    await save.getByRole('button', { name: 'Save prompt' }).click();
+    await expect(page).toHaveURL(/\/editor\/\d+$/);
+    await page.reload();
+    await page.getByRole('tab', { name: 'Edit', exact: true }).click();
+    await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}} to beginners in three short paragraphs.');
+    await page.getByLabel('Task text').fill('Explain {{topic}} to beginners briefly.');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'History', exact: true }).click();
+    await expect(page.getByRole('button', { name: /Version 1/ })).toBeVisible();
+  });
 }
 
 test('keeps page headings in one place across navigation and adapts the shell to phones', async ({

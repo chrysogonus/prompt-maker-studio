@@ -34,12 +34,12 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_optimistic_concurrency.py` | Conflict detection for concurrent prompt writes: `updated_at` advances even when the wall clock steps backwards or two writes land in one instant, and any difference from the client's token is a conflict (no tolerance window to lose an update in) |
 | `test_playground.py` | Template variable compilation and PlaygroundService cost/latency math (the service evaluations run prompts through) |
 | `test_prompt_parser.py` | Text-to-fields parser service (including non-strict-schema providers and fenced JSON) and the parse-text endpoint |
-| `test_prompt_refiner.py` | PromptRefinerService clarifying-question and draft-generation calls |
+| `test_prompt_refiner.py` | PromptRefinerService question/draft calls and structural validation of section edits, variables and embedded tags |
 | `test_prompt_sections.py` | Rendering sections to tagged text, display names with spaces, and recovering sections from text only when that round-trips exactly |
 | `test_prompt_service.py` | Transport-independent prompt operations, ownership, versions, and failed-write rollback |
 | `test_prompt_versions.py` | Version snapshotting on edit, restore semantics, ownership, cascade delete, run_count passthrough |
 | `test_prompts_config.py` | Per-user AI capability endpoint: connection state, model list, budget status, and per-user scoping |
-| `test_refine_routes.py` | Refine tab clarifying-questions and draft endpoints, the accept-as-new-version flow, and budget-ceiling rejection |
+| `test_refine_routes.py` | Saved-prompt and unsaved-snapshot refinement, authentication, section/answer validation, spend recording (including rejected drafts), separate save/versioning, and budget rejection |
 | `test_safe_regex.py` | Time-bounded matching for user-supplied eval regexes: catastrophic patterns are abandoned within a fixed budget regardless of input length, the runaway worker is killed rather than merely abandoned, workers come from a fork server rather than a fork of the threaded server, the pool recovers, and `re` semantics (backreferences, lookaround) are preserved |
 | `test_schemas.py` | Pydantic request and response validation, including `VariableMetadataItem`, eval case/rating, and refine draft schemas |
 | `test_secret_store.py` | Fernet encryption of stored provider API keys: round-trip, non-determinism, key-rotation failure mode, and display masking |

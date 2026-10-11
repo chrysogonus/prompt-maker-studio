@@ -50,7 +50,7 @@ before opening a pull request.
 - **Cost guardrails**: Optional global and per-user monthly spend ceilings for every billed AI call.
 - **Automated quality gates**: Secret scanning, 90% backend coverage, frontend coverage floors, Playwright end-to-end and accessibility tests, Ruff, ESLint, Bandit, CodeQL, pip-audit, npm audit, Compose validation and Docker smoke tests.
 
-Refinement and evaluation are deferred in 0.3.0: their backends are kept and reachable through the API, but they have no UI until they are rebuilt. See [product/FEATURES.md](./product/FEATURES.md).
+Refinement is available inside the editor: answer clarifying questions, review section edits, apply with Undo, then save. Evaluation remains deferred, with its backend kept and reachable through the API. See [product/FEATURES.md](./product/FEATURES.md).
 
 ## Architecture
 
@@ -58,7 +58,7 @@ Refinement and evaluation are deferred in 0.3.0: their backends are kept and rea
 prompt-maker-studio/
 ├── backend/           # FastAPI backend (Python 3.12)
 │   ├── app/
-│   │   ├── api/       # Auth, prompt, MCP, OAuth, admin, and deferred eval/refine routes
+│   │   ├── api/       # Auth, prompt, refinement, MCP, OAuth, admin, and deferred eval routes
 │   │   ├── auth/      # JWT + bcrypt utilities, dependencies, and token logic
 │   │   ├── database/  # SQLAlchemy session engine and custom migration runner
 │   │   ├── models/    # Prompt, version, user, OAuth, spend-ledger, and eval ORM models
@@ -388,8 +388,11 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 | `POST` | `/api/prompts/{id}/duplicate` | Yes | Duplicate a prompt |
 | `GET` | `/api/prompts/{id}/versions` | Yes | Version history |
 | `POST` | `/api/prompts/{id}/versions/{version_id}/restore` | Yes | Restore a version (the replaced state becomes a version) |
+| `POST` | `/api/prompts/refine/questions` | Yes | Ask clarifying questions about current editor `fields`; optional `force` |
+| `POST` | `/api/prompts/refine/draft` | Yes | Revise current `fields` using `qa_pairs`; returns validated section edits without saving |
+| `POST` | `/api/prompts/{id}/refine/questions`, `/refine/draft` | Yes | Retained saved-prompt refinement API; draft returns text |
 
-### Deferred Evaluation & Refinement Endpoints
+### Deferred Evaluation Endpoints
 
 Kept for the planned rebuilds; the 0.3.0 UI does not use them.
 
@@ -401,7 +404,6 @@ Kept for the planned rebuilds; the 0.3.0 UI does not use them.
 | `POST` | `/api/prompts/{id}/eval/cases/generate` | Yes | Propose reviewable AI test cases |
 | `GET`, `POST` | `/api/prompts/{id}/eval/runs` | Yes | List runs or run the suite |
 | `POST` | `/api/prompts/{id}/eval/runs/{run_id}/results/{result_id}/rate` | Yes | Manual 1–5 star rating |
-| `POST` | `/api/prompts/{id}/refine/questions`, `/refine/draft` | Yes | Clarifying questions and a draft revision |
 
 ### MCP, OAuth & Admin Endpoints
 
