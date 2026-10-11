@@ -2,12 +2,12 @@
 
 The backend is a FastAPI application that owns authentication, prompt
 persistence and versioning, rendering prompt text from sections, the MCP and
-OAuth endpoints, the optional AI import, spend controls, and operator
-diagnostics. The evaluation and refinement backends are kept but deferred: the
-0.3.0 UI does not use them.
+OAuth endpoints, optional AI import and refinement, evaluation, spend controls,
+and operator diagnostics.
 
-Use the [root README](../README.md) for the product overview and public API
-summary. This document is a code map for backend contributors.
+Use the [root README](../README.md) for the product overview and the
+[API reference](../docs/api.md) for routes. This document is a code map for
+backend contributors.
 
 ## Architecture
 
@@ -39,12 +39,12 @@ metrics. The factory assembles these router groups:
 | `routes.py` | `/api/prompts`: create, library, folders, versions, import, export, and capability config |
 | `mcp_routes.py` | `/api/mcp`: the library as MCP tools for ChatGPT and other clients |
 | `oauth_routes.py` | `/api/oauth` and `/.well-known/oauth-*`: account linking for MCP clients |
-| `eval_routes.py` | Deferred: prompt-scoped evaluation cases, AI proposals, runs, CSV, and ratings |
-| `refine_routes.py` | Deferred: clarification questions and draft refinements |
+| `eval_routes.py` | Prompt-scoped evaluation cases, AI proposals, runs, CSV, and ratings |
+| `refine_routes.py` | Clarification questions and draft refinements |
 | `admin_routes.py` | `/api/admin`: token-protected operator diagnostics |
 
 FastAPI's generated `/docs` page and the
-[root API overview](../README.md#api-reference-overview) are the endpoint
+[API reference](../docs/api.md) are the endpoint
 references; avoid duplicating a full endpoint inventory here.
 
 ## Service and Data Boundaries
