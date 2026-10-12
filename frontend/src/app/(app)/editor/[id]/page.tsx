@@ -1,16 +1,15 @@
 'use client';
 
-import { useParams } from 'next/navigation';
 import { Suspense } from 'react';
-import EditorDetail from '@/components/EditorDetail';
+import { useParams, useSearchParams } from 'next/navigation';
+import PromptEditor from '@/features/editor/PromptEditor';
+
+function EditorContent() {
+  const params = useParams<{ id: string }>();
+  const initialMode = useSearchParams().get('mode') === 'filled' ? 'filled' : undefined;
+  return <PromptEditor key={`${params.id}:${initialMode ?? ''}`} promptId={Number(params.id)} initialMode={initialMode} />;
+}
 
 export default function EditPromptPage() {
-  const params = useParams<{ id: string }>();
-  const promptId = Number(params.id);
-
-  return (
-    <Suspense>
-      <EditorDetail promptId={promptId} />
-    </Suspense>
-  );
+  return <Suspense fallback={<p>Loading prompt…</p>}><EditorContent /></Suspense>;
 }

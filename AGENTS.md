@@ -37,8 +37,18 @@ needs tests.
 
 ## Repository etiquette
 
-Branch from `main` as `feat|fix|ref|docs|chore/short-description`. Commits follow Conventional
-Commits (`fix(auth): reject expired reset tokens`). Full rules in `CONTRIBUTING.md`.
+The ongoing broader refactoring started with UI cleanup and simplification. For this effort:
+
+- Make all refactoring changes on `dev`.
+- Develop each new feature on a separate `feat/short-description` branch created from `dev`.
+- Merge completed feature branches back into `dev`.
+
+This workflow takes precedence over the `main` branch base and rebase guidance in
+`CONTRIBUTING.md` for this effort. Otherwise, branch from `main` using
+`feat|fix|ref|docs|chore/short-description`.
+
+Commits follow Conventional Commits (`fix(auth): reject expired reset tokens`). Full rules
+in `CONTRIBUTING.md`.
 
 Keep commit messages short and concise. Never add a `Co-Authored-By` trailer.
 

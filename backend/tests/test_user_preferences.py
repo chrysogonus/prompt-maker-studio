@@ -1,26 +1,21 @@
 """
-Tests for Settings preferences (PATCH /api/auth/me), the Playground
-run-failure email hook, and GET /api/prompts/export.
+Tests for Settings preferences (PATCH /api/auth/me) and GET /api/prompts/export.
 """
 
-from unittest.mock import patch
-
-from openai import OpenAIError
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
+
+from app.models.prompt import Prompt
 
 
 class TestUserPreferences:
     def test_defaults_are_off_and_unset(self, client, auth_headers):
         me = client.get("/api/auth/me", headers=auth_headers).json()
         assert "default_model" not in me  # superseded by the provider connection
-        assert me["notify_run_failure"] is False
-        assert me["notify_weekly_summary"] is False
+        assert "notify_run_failure" not in me  # email notifications were retired
         assert me["default_library_view"] is None
         assert me["default_eval_method"] is None
         assert me["auto_run_eval_on_update"] is False
-        assert me["notify_eval_complete"] is False
-        assert me["notify_eval_regression"] is False
 
     def test_patch_sets_eval_and_library_preferences(self, client, auth_headers):
         resp = client.patch(
@@ -30,8 +25,6 @@ class TestUserPreferences:
                 "default_library_view": "list",
                 "default_eval_method": "judge",
                 "auto_run_eval_on_update": True,
-                "notify_eval_complete": True,
-                "notify_eval_regression": True,
             },
         )
         assert resp.status_code == 200
@@ -39,8 +32,6 @@ class TestUserPreferences:
         assert data["default_library_view"] == "list"
         assert data["default_eval_method"] == "judge"
         assert data["auto_run_eval_on_update"] is True
-        assert data["notify_eval_complete"] is True
-        assert data["notify_eval_regression"] is True
 
     def test_patch_rejects_invalid_default_library_view(self, client, auth_headers):
         resp = client.patch(
@@ -73,104 +64,15 @@ class TestUserPreferences:
         assert resp.status_code == 200
         assert "default_model" not in resp.json()
 
-    def test_patch_toggles_notification_preferences_independently(self, client, auth_headers):
-        resp = client.patch("/api/auth/me", headers=auth_headers, json={"notify_run_failure": True})
-        data = resp.json()
-        assert data["notify_run_failure"] is True
-        assert data["notify_weekly_summary"] is False
-
-        resp = client.patch(
-            "/api/auth/me", headers=auth_headers, json={"notify_weekly_summary": True}
-        )
-        data = resp.json()
-        assert data["notify_run_failure"] is True
-        assert data["notify_weekly_summary"] is True
-
     def test_preferences_persist_across_requests(self, client, auth_headers):
         client.patch(
             "/api/auth/me",
             headers=auth_headers,
-            json={"notify_run_failure": True, "default_eval_method": "judge"},
+            json={"default_library_view": "grid", "default_eval_method": "judge"},
         )
         me = client.get("/api/auth/me", headers=auth_headers).json()
         assert me["default_eval_method"] == "judge"
-        assert me["notify_run_failure"] is True
-
-
-class TestRunFailureEmailHook:
-    def _create_saved_prompt(self, client, headers) -> int:
-        resp = client.post(
-            "/api/prompts/generate",
-            headers=headers,
-            json={"fields": [{"name": "goal", "content": "x"}], "name": "Notify Me"},
-        )
-        return resp.json()["id"]
-
-    def test_sends_email_when_opted_in_and_email_on_file(self, client, auth_headers):
-        client.patch(
-            "/api/auth/me",
-            headers=auth_headers,
-            json={"notify_run_failure": True, "email": "testuser@example.com"},
-        )
-        prompt_id = self._create_saved_prompt(client, auth_headers)
-
-        with (
-            patch("app.services.llm_client.OpenAI") as mock_openai_cls,
-            patch("app.api.routes.send_playground_run_failure_email") as mock_send,
-        ):
-            mock_openai_cls.return_value.chat.completions.create.side_effect = OpenAIError("boom")
-            resp = client.post(
-                f"/api/prompts/{prompt_id}/playground/run",
-                headers=auth_headers,
-                json={"model": "gpt-4o-mini", "variables": {}},
-            )
-
-        assert resp.status_code == 502
-        mock_send.assert_called_once()
-        assert mock_send.call_args[0][0] == "testuser@example.com"
-        assert mock_send.call_args[0][1] == "Notify Me"
-
-    def test_does_not_send_email_when_not_opted_in(self, client, auth_headers):
-        client.patch("/api/auth/me", headers=auth_headers, json={"email": "testuser@example.com"})
-        prompt_id = self._create_saved_prompt(client, auth_headers)
-
-        with (
-            patch("app.services.llm_client.OpenAI") as mock_openai_cls,
-            patch("app.api.routes.send_playground_run_failure_email") as mock_send,
-        ):
-            mock_openai_cls.return_value.chat.completions.create.side_effect = OpenAIError("boom")
-            client.post(
-                f"/api/prompts/{prompt_id}/playground/run",
-                headers=auth_headers,
-                json={"model": "gpt-4o-mini", "variables": {}},
-            )
-
-        mock_send.assert_not_called()
-
-    def test_run_still_fails_with_502_even_if_email_send_itself_errors(self, client, auth_headers):
-        """A broken SMTP config must not turn a 502 into a 500."""
-        client.patch(
-            "/api/auth/me",
-            headers=auth_headers,
-            json={"notify_run_failure": True, "email": "testuser@example.com"},
-        )
-        prompt_id = self._create_saved_prompt(client, auth_headers)
-
-        with (
-            patch("app.services.llm_client.OpenAI") as mock_openai_cls,
-            patch(
-                "app.api.routes.send_playground_run_failure_email",
-                side_effect=RuntimeError("SMTP not configured"),
-            ),
-        ):
-            mock_openai_cls.return_value.chat.completions.create.side_effect = OpenAIError("boom")
-            resp = client.post(
-                f"/api/prompts/{prompt_id}/playground/run",
-                headers=auth_headers,
-                json={"model": "gpt-4o-mini", "variables": {}},
-            )
-
-        assert resp.status_code == 502
+        assert me["default_library_view"] == "grid"
 
 
 class TestExportEndpoint:
@@ -181,9 +83,11 @@ class TestExportEndpoint:
         assert data["prompts"] == []
         assert "exported_at" in data
 
-    def test_export_includes_fields_folder_tags_and_versions(self, client, auth_headers):
+    def test_export_includes_fields_folder_tags_and_versions(
+        self, client, auth_headers, db_session
+    ):
         create = client.post(
-            "/api/prompts/generate",
+            "/api/prompts",
             headers=auth_headers,
             json={"fields": [{"name": "goal", "content": "v1"}], "name": "Exportable"},
         )
@@ -191,12 +95,11 @@ class TestExportEndpoint:
         client.patch(
             f"/api/prompts/{prompt_id}",
             headers=auth_headers,
-            json={
-                "folder": "Support",
-                "tags": ["a", "b"],
-                "fields": [{"name": "goal", "content": "v2"}],
-            },
+            json={"folder": "Support", "fields": [{"name": "goal", "content": "v2"}]},
         )
+        # Tags are no longer editable, but stored ones stay in the export.
+        db_session.query(Prompt).filter(Prompt.id == prompt_id).update({Prompt.tags: ["a", "b"]})
+        db_session.commit()
 
         data = client.get("/api/prompts/export", headers=auth_headers).json()
 
@@ -220,7 +123,7 @@ class TestExportEndpoint:
         how many prompts have version history."""
         for i in range(4):
             create = client.post(
-                "/api/prompts/generate",
+                "/api/prompts",
                 headers=auth_headers,
                 json={"fields": [{"name": "goal", "content": "v1"}], "name": f"Exportable {i}"},
             )
@@ -249,7 +152,7 @@ class TestExportEndpoint:
 
     def test_export_scoped_to_owner(self, client, auth_headers, second_auth_headers):
         client.post(
-            "/api/prompts/generate",
+            "/api/prompts",
             headers=auth_headers,
             json={"fields": [{"name": "goal", "content": "mine"}], "name": "Mine"},
         )

@@ -2,76 +2,62 @@
 API route handlers for prompt operations.
 """
 
-from copy import deepcopy
-from datetime import UTC, datetime
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import String, cast, or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
-from app.api.deps import get_llm_connection, llm_http_error
-from app.api.deps import get_owned_prompt as _get_owned_prompt
+from app.api.deps import call_service, get_llm_connection, llm_http_error
 from app.auth.dependencies import get_current_user
 from app.database.connection import get_db
 from app.limiter import limiter
 from app.metrics import (
     ai_import_failures_total,
     ai_imports_total,
-    playground_run_failures_total,
-    playground_runs_total,
-    prompts_generated_total,
-    prompts_saved_total,
-)
-from app.models.eval_case import EvalCase
-from app.models.playground_run import PlaygroundRun
-from app.models.prompt import Prompt
-from app.models.prompt_version import PromptVersion
-from app.models.schemas import (
-    DataExportResponse,
-    ExportedPrompt,
-    ExportedPromptVersion,
-    ParseTextRequest,
-    ParseTextResponse,
-    PlaygroundRunHistoryResponse,
-    PlaygroundRunRequest,
-    PlaygroundRunResponse,
-    PromptHistoryResponse,
-    PromptRequest,
-    PromptResponse,
-    PromptsConfigResponse,
-    PromptUpdateRequest,
-    PromptVersionResponse,
 )
 from app.models.user import User
-from app.services.analytics_service import AnalyticsService
+from app.schemas.connections import PromptsConfigResponse
+from app.schemas.import_text import ParseTextRequest, ParseTextResponse, PromptConversionResponse
+from app.schemas.prompts import (
+    DataExportResponse,
+    FolderChangeResponse,
+    FolderRenameRequest,
+    PromptCreateRequest,
+    PromptHistoryResponse,
+    PromptUpdateRequest,
+    PromptVersionResponse,
+    TryPromptRequest,
+    TryPromptResponse,
+)
 from app.services.budget_service import BudgetExceededError, BudgetService
-from app.services.email_service import send_playground_run_failure_email
-from app.services.llm_client import active_provider_and_model, available_models_for
-from app.services.optimistic_concurrency import is_stale, next_write_stamp
-from app.services.playground_service import PlaygroundRunError, PlaygroundService
-from app.services.prompt_compiler import compile_prompt
-from app.services.prompt_generator import PromptGeneratorService
-from app.services.prompt_id_service import PromptIdService
+from app.services.llm_client import (
+    LLMResponseFormatError,
+    active_provider_and_model,
+    available_models_for,
+)
+from app.services.playground_service import try_once
 from app.services.prompt_parser import PromptParserService as TextParserService
-from app.services.prompt_version_service import PromptVersionService
-from app.services.spend_ledger import LLMUsage, record_billed_call
+from app.services.prompts import export, folders, library, versions
+from app.services.spend_ledger import record_billed_call
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/prompts", tags=["prompts"])
 
 
-def _attach_run_counts(db: Session, user_id: int, prompts: list[Prompt]) -> list[Prompt]:
-    """Set `.run_count` (a plain, non-mapped attribute) on each prompt from real
-    Playground run data, for `PromptHistoryResponse`'s `from_attributes` pickup."""
-    counts = AnalyticsService.run_counts_by_prompt_ids(db, user_id, [p.id for p in prompts])
-    for p in prompts:
-        p.run_count = counts.get(p.id, 0)
-    return prompts
+@router.post("/try", response_model=TryPromptResponse)
+@limiter.limit("10/minute")
+def try_prompt(
+    request: Request,
+    body: TryPromptRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Try the filled editor text once without creating or modifying a prompt."""
+    return call_service(try_once, body.text, get_llm_connection(current_user), db, current_user.id)
 
 
-@router.post("/parse-text", response_model=ParseTextResponse)
+@router.post("/parse-text", response_model=ParseTextResponse | PromptConversionResponse)
 @limiter.limit("20/minute")
 def parse_prompt_text(
     request: Request,
@@ -104,7 +90,10 @@ def parse_prompt_text(
 
     ai_imports_total.inc()
     try:
-        fields, usage = TextParserService.parse(body.text, connection)
+        if body.extract_variables:
+            raw, usage = TextParserService.convert(body.text, connection)
+        else:
+            fields, usage = TextParserService.parse(body.text, connection)
     except Exception as exc:
         ai_import_failures_total.inc()
         raise llm_http_error(exc, connection, "parse-text") from exc
@@ -112,70 +101,57 @@ def parse_prompt_text(
     record_billed_call(db, current_user.id, "parse", usage)
     db.commit()
 
+    if body.extract_variables:
+        try:
+            return TextParserService.validate_conversion(body.text, raw)
+        except Exception as exc:
+            ai_import_failures_total.inc()
+            # Validation errors can include the user's source text; keep it out of logs.
+            failure = LLMResponseFormatError(
+                f"{connection.provider_label} returned an invalid template or extracted inputs. "
+                "Try again or choose a more capable model in Settings → API access."
+            )
+            raise llm_http_error(failure, connection, "parse-text conversion validation") from exc
     return ParseTextResponse(fields=fields)
 
 
-@router.post("/generate", response_model=PromptResponse)
-@limiter.limit("30/minute")
-def generate_prompt(
-    request: Request,
-    body: PromptRequest,
+@router.post("", response_model=PromptHistoryResponse, status_code=status.HTTP_201_CREATED)
+def create_prompt(
+    body: PromptCreateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Generate a new prompt based on user inputs and save to database.
+    Save a new prompt to the calling user's library.
+
+    The prompt's text is rendered from its sections here, never taken from the
+    client, so the two cannot disagree.
 
     Args:
-        request: Starlette request (used by rate limiter)
-        body: Prompt generation parameters (fields and optional name)
+        body: Name, sections, and optional folder and variable descriptions
         db: Database session
         current_user: Current authenticated user; the prompt is stored under their account
 
     Returns:
-        Generated prompt with metadata
+        The saved prompt
     """
-    generated_text = PromptGeneratorService.generate(fields=body.fields)
-
-    fields_data = [{"name": field.name, "content": field.content} for field in body.fields]
-
-    prompt = Prompt(
-        id=PromptIdService.next_id(db),
-        user_id=current_user.id,
-        fields=fields_data,
-        generated_prompt=generated_text,
-        name=body.name,
-    )
-
-    db.add(prompt)
-    db.commit()
-    db.refresh(prompt)
-
-    prompts_generated_total.inc()
-    if prompt.name is not None:
-        prompts_saved_total.inc()
-
-    return prompt
+    return call_service(library.create_prompt, body=body, db=db, user_id=current_user.id)
 
 
 @router.get("/saved", response_model=list[PromptHistoryResponse])
 def get_saved_prompts(
-    tag: str | None = Query(default=None, max_length=50),
     folder: str | None = Query(default=None, max_length=255),
     favorite_only: bool = Query(default=False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Retrieve all named (saved) prompts belonging to the calling user.
+    Retrieve every prompt in the calling user's library.
 
-    A prompt is considered "saved" when it has a non-null name.  Unnamed
-    prompts appear only in the history view.
+    Every prompt has a name; migration 024 named the unnamed ones the retired
+    History tab used to list, and new prompts cannot be saved without one.
 
     Args:
-        tag: Optional tag label to filter by (matched in Python since `tags`
-            is a JSON column and this app's scale doesn't warrant a
-            database-level JSON query)
         folder: Optional exact folder label to filter by
         favorite_only: If true, only return favorited prompts
         db: Database session
@@ -184,47 +160,13 @@ def get_saved_prompts(
     Returns:
         List of named prompts ordered newest first
     """
-    query = db.query(Prompt).filter(Prompt.user_id == current_user.id, Prompt.name.isnot(None))
-
-    if folder:
-        query = query.filter(Prompt.folder == folder)
-    if favorite_only:
-        query = query.filter(Prompt.is_favorite.is_(True))
-
-    prompts = query.order_by(Prompt.created_at.desc()).all()
-
-    if tag:
-        prompts = [p for p in prompts if p.tags and tag in p.tags]
-
-    return _attach_run_counts(db, current_user.id, prompts)
-
-
-@router.get("/tags", response_model=list[str])
-def get_prompt_tags(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Distinct tag labels used across the calling user's prompts, for the
-    Library's tag filter row.
-
-    Args:
-        db: Database session
-        current_user: Current authenticated user
-
-    Returns:
-        Sorted list of distinct tag labels
-    """
-    rows = (
-        db.query(Prompt.tags)
-        .filter(Prompt.user_id == current_user.id, Prompt.tags.isnot(None))
-        .all()
+    return call_service(
+        library.get_saved_prompts,
+        folder=folder,
+        favorite_only=favorite_only,
+        db=db,
+        user_id=current_user.id,
     )
-    tags: set[str] = set()
-    for (prompt_tags,) in rows:
-        if prompt_tags:
-            tags.update(prompt_tags)
-    return sorted(tags)
 
 
 @router.get("/folders", response_model=list[str])
@@ -242,13 +184,59 @@ def get_prompt_folders(
     Returns:
         Sorted list of distinct folder labels
     """
-    rows = (
-        db.query(Prompt.folder)
-        .filter(Prompt.user_id == current_user.id, Prompt.folder.isnot(None))
-        .distinct()
-        .all()
-    )
-    return sorted({row[0] for row in rows if row[0]})
+    return call_service(folders.get_prompt_folders, db=db, user_id=current_user.id)
+
+
+@router.patch("/folders", response_model=FolderChangeResponse)
+def rename_folder(
+    body: FolderRenameRequest,
+    name: str = Query(..., min_length=1, max_length=255, description="Folder to rename"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Rename a folder by moving every prompt in it to the new name.
+
+    Folders are labels on prompts, so renaming onto a name already in use
+    merges the two. Prompts keep their `updated_at`: filing is not an edit, and
+    bumping it would reorder the library and invalidate open editors.
+
+    Args:
+        body: The new folder name
+        name: Current folder name, matched exactly
+        db: Database session
+        current_user: Current authenticated user; only their prompts move
+
+    Returns:
+        The folder's new name and how many prompts moved
+
+    Raises:
+        HTTPException: 404 if the caller has no prompts in that folder
+    """
+    return call_service(folders.rename_folder, body=body, name=name, db=db, user_id=current_user.id)
+
+
+@router.delete("/folders", response_model=FolderChangeResponse)
+def remove_folder(
+    name: str = Query(..., min_length=1, max_length=255, description="Folder to remove"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Remove a folder. Its prompts move to Unfiled; none are deleted.
+
+    Args:
+        name: Folder name, matched exactly
+        db: Database session
+        current_user: Current authenticated user; only their prompts move
+
+    Returns:
+        The removed folder's name and how many prompts became unfiled
+
+    Raises:
+        HTTPException: 404 if the caller has no prompts in that folder
+    """
+    return call_service(folders.remove_folder, name=name, db=db, user_id=current_user.id)
 
 
 @router.get("/export", response_model=DataExportResponse)
@@ -271,56 +259,7 @@ def export_prompts(
     Returns:
         A timestamped JSON dump of every owned prompt and its version history
     """
-    prompts = (
-        db.query(Prompt)
-        .filter(Prompt.user_id == current_user.id)
-        .order_by(Prompt.created_at.asc())
-        .all()
-    )
-
-    # Batch-load every version (with its author) for all prompts in one query
-    # instead of one query per prompt — this scaled linearly with a user's
-    # saved-prompt count, unlike the aggregate queries in analytics_service.py.
-    prompt_ids = [prompt.id for prompt in prompts]
-    versions_by_prompt_id: dict[int, list[PromptVersion]] = {pid: [] for pid in prompt_ids}
-    if prompt_ids:
-        all_versions = (
-            db.query(PromptVersion)
-            .options(joinedload(PromptVersion.author))
-            .filter(PromptVersion.prompt_id.in_(prompt_ids))
-            .order_by(PromptVersion.prompt_id.asc(), PromptVersion.version_number.asc())
-            .all()
-        )
-        for version in all_versions:
-            versions_by_prompt_id[version.prompt_id].append(version)
-
-    exported = [
-        ExportedPrompt(
-            id=prompt.id,
-            name=prompt.name,
-            fields=prompt.fields,
-            generated_prompt=prompt.generated_prompt,
-            folder=prompt.folder,
-            tags=prompt.tags,
-            is_favorite=prompt.is_favorite,
-            created_at=prompt.created_at,
-            updated_at=prompt.updated_at,
-            versions=[
-                ExportedPromptVersion(
-                    version_number=v.version_number,
-                    note=v.note,
-                    author=v.author.username if v.author else None,
-                    fields=v.fields,
-                    generated_prompt=v.generated_prompt,
-                    created_at=v.created_at,
-                )
-                for v in versions_by_prompt_id[prompt.id]
-            ],
-        )
-        for prompt in prompts
-    ]
-
-    return DataExportResponse(exported_at=datetime.now(UTC), prompts=exported)
+    return call_service(export.export_prompts, db=db, user_id=current_user.id)
 
 
 @router.get("/config", response_model=PromptsConfigResponse)
@@ -356,46 +295,6 @@ def get_prompts_config(
     )
 
 
-@router.get("/history", response_model=list[PromptHistoryResponse])
-def get_prompt_history(
-    limit: int = Query(default=10, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-    search: str | None = Query(default=None, max_length=200),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Retrieve the calling user's recent prompt generation history.
-
-    Args:
-        limit: Maximum number of records to return
-        offset: Number of records to skip, for paging past the first page
-        search: Optional case-insensitive substring match against visible
-            history fields (display name or created date)
-        db: Database session
-        current_user: Current authenticated user
-
-    Returns:
-        List of historical prompts belonging to the current user
-    """
-    query = db.query(Prompt).filter(Prompt.user_id == current_user.id)
-
-    if search and search.strip():
-        normalized_search = search.strip()
-        like_pattern = f"%{normalized_search}%"
-        visible_matches = [
-            Prompt.name.ilike(like_pattern),
-            cast(Prompt.fields, String).ilike(like_pattern),
-            cast(Prompt.created_at, String).ilike(like_pattern),
-        ]
-        if normalized_search.lower() in "unnamed generation":
-            visible_matches.append(Prompt.name.is_(None))
-        query = query.filter(or_(*visible_matches))
-
-    prompts = query.order_by(Prompt.created_at.desc()).offset(offset).limit(limit).all()
-    return _attach_run_counts(db, current_user.id, prompts)
-
-
 @router.get("/{prompt_id}", response_model=PromptHistoryResponse)
 def get_prompt_by_id(
     prompt_id: int,
@@ -416,9 +315,9 @@ def get_prompt_by_id(
     Raises:
         HTTPException: If prompt not found or not owned by the current user
     """
-    prompt = _get_owned_prompt(prompt_id, current_user.id, db)
-    _attach_run_counts(db, current_user.id, [prompt])
-    return prompt
+    return call_service(
+        library.get_prompt_by_id, prompt_id=prompt_id, db=db, user_id=current_user.id
+    )
 
 
 @router.patch("/{prompt_id}", response_model=PromptHistoryResponse)
@@ -429,10 +328,11 @@ def update_prompt(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Update name, fields, and/or generated_prompt of an owned prompt.
+    Update an owned prompt's name, sections, or organisation.
 
     Only the fields included in the request body are updated; omitted
-    fields retain their current values.
+    fields retain their current values. New sections re-render the prompt's
+    text, and snapshot the previous state as a version when they change it.
 
     Args:
         prompt_id: Unique identifier of the prompt to update
@@ -446,56 +346,9 @@ def update_prompt(
     Raises:
         HTTPException: If prompt not found or not owned by the current user
     """
-    prompt = _get_owned_prompt(prompt_id, current_user.id, db)
-
-    # Optimistic concurrency check
-    if body.last_updated_at is not None:
-        db_time = prompt.updated_at or prompt.created_at
-        if is_stale(db_time, body.last_updated_at):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="This prompt has been modified by another session. Please reload to merge or overwrite.",
-            )
-
-    was_unnamed = prompt.name is None
-    next_fields = (
-        [{"name": field.name, "content": field.content} for field in body.fields]
-        if body.fields is not None
-        else None
+    return call_service(
+        library.update_prompt, prompt_id=prompt_id, body=body, db=db, user_id=current_user.id
     )
-    content_changing = (next_fields is not None and next_fields != prompt.fields) or (
-        body.generated_prompt is not None and body.generated_prompt != prompt.generated_prompt
-    )
-    # Only version already-saved prompts — an unnamed history entry has no
-    # prior "saved" state worth preserving.
-    if not was_unnamed and content_changing:
-        PromptVersionService.snapshot(db, prompt, current_user.id, note=body.note)
-
-    if body.name is not None:
-        prompt.name = body.name
-    if next_fields is not None:
-        prompt.fields = next_fields
-    if body.generated_prompt is not None:
-        prompt.generated_prompt = body.generated_prompt
-    if body.folder is not None:
-        prompt.folder = body.folder
-    if body.is_favorite is not None:
-        prompt.is_favorite = body.is_favorite
-    if body.tags is not None:
-        prompt.tags = body.tags
-    if body.variable_metadata is not None:
-        prompt.variable_metadata = {k: v.model_dump() for k, v in body.variable_metadata.items()}
-
-    prompt.updated_at = next_write_stamp(prompt.updated_at or prompt.created_at)
-
-    db.commit()
-    db.refresh(prompt)
-
-    if was_unnamed and body.name is not None:
-        prompts_saved_total.inc()
-
-    _attach_run_counts(db, current_user.id, [prompt])
-    return prompt
 
 
 @router.get("/{prompt_id}/versions", response_model=list[PromptVersionResponse])
@@ -521,25 +374,9 @@ def get_prompt_versions(
     Raises:
         HTTPException: If prompt not found or not owned by the current user
     """
-    prompt = _get_owned_prompt(prompt_id, current_user.id, db)
-    versions = (
-        db.query(PromptVersion)
-        .filter(PromptVersion.prompt_id == prompt.id)
-        .order_by(PromptVersion.version_number.desc())
-        .all()
+    return call_service(
+        versions.get_prompt_versions, prompt_id=prompt_id, db=db, user_id=current_user.id
     )
-    return [
-        PromptVersionResponse(
-            id=v.id,
-            version_number=v.version_number,
-            note=v.note,
-            author=v.author.username if v.author else None,
-            fields=v.fields,
-            generated_prompt=v.generated_prompt,
-            created_at=v.created_at,
-        )
-        for v in versions
-    ]
 
 
 @router.post("/{prompt_id}/versions/{version_id}/restore", response_model=PromptHistoryResponse)
@@ -550,7 +387,11 @@ def restore_prompt_version(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Restore an owned prompt to a prior version's fields/generated_prompt.
+    Restore an owned prompt to a prior version's content.
+
+    Versions recorded before sections became the source of the text may not
+    match their own sections; those are restored from their text, the way
+    migration 023 recovered live prompts.
 
     The state being replaced is itself snapshotted first, so restoring never
     loses data — it can always be undone by restoring the newly-created
@@ -568,172 +409,12 @@ def restore_prompt_version(
     Raises:
         HTTPException: If the prompt or version is not found/not owned
     """
-    prompt = _get_owned_prompt(prompt_id, current_user.id, db)
-    version = (
-        db.query(PromptVersion)
-        .filter(PromptVersion.id == version_id, PromptVersion.prompt_id == prompt.id)
-        .first()
-    )
-    if not version:
-        raise HTTPException(status_code=404, detail="Version not found")
-
-    PromptVersionService.restore(db, prompt, version, current_user.id)
-    prompt.updated_at = next_write_stamp(prompt.updated_at or prompt.created_at)
-
-    db.commit()
-    db.refresh(prompt)
-    _attach_run_counts(db, current_user.id, [prompt])
-    return prompt
-
-
-@router.post("/{prompt_id}/playground/run", response_model=PlaygroundRunResponse)
-@limiter.limit("10/minute")
-def run_playground(
-    request: Request,
-    prompt_id: int,
-    body: PlaygroundRunRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Compile an owned prompt's template with the given variables and run it
-    against a model, recording latency/token/cost for Playground history and
-    Dashboard usage analytics.
-
-    Conservatively rate-limited (10/minute) since each call is a real,
-    billed request against the user's own provider account.
-
-    Args:
-        request: Starlette request (used by rate limiter)
-        prompt_id: Unique identifier of the prompt to test
-        body: Model choice and template variable values
-        db: Database session
-        current_user: Current authenticated user
-
-    Returns:
-        The run's output text, latency, token usage, and computed cost
-
-    Raises:
-        HTTPException: If the prompt isn't found/owned, no provider is
-            connected, the model isn't one this user's provider offers, a
-            spend ceiling has been reached, or the API call fails
-    """
-    prompt = _get_owned_prompt(prompt_id, current_user.id, db)
-
-    # The picker only offers models we know the user's provider serves; a
-    # request for anything else is a stale client, not a valid free-text model.
-    if body.model not in available_models_for(current_user):
-        raise HTTPException(status_code=422, detail="Unsupported model")
-
-    connection = get_llm_connection(current_user, body.model)
-
-    try:
-        BudgetService.check(db, current_user.id)
-    except BudgetExceededError as exc:
-        raise HTTPException(status_code=402, detail=str(exc)) from exc
-
-    compiled_prompt = compile_prompt(prompt.generated_prompt, body.variables)
-
-    playground_runs_total.inc()
-    try:
-        result = PlaygroundService.run(compiled_prompt, connection)
-    except PlaygroundRunError as exc:
-        playground_run_failures_total.inc()
-        db.add(
-            PlaygroundRun(
-                prompt_id=prompt.id,
-                user_id=current_user.id,
-                model=body.model,
-                input_variables=body.variables,
-                status="error",
-                error_message=str(exc),
-            )
-        )
-        db.commit()
-
-        if current_user.notify_run_failure and current_user.email:
-            try:
-                send_playground_run_failure_email(
-                    current_user.email, prompt.name or "Untitled", str(exc)
-                )
-            except Exception:
-                logger.exception("Failed to send Playground run-failure email")
-
-        # PlaygroundRunError wraps the upstream exception, so unwrap it to get
-        # provider-specific copy (bad key, unreachable endpoint, rate limit)
-        # rather than a generic failure message.
-        raise llm_http_error(exc.__cause__ or exc, connection, "playground run") from exc
-
-    db.add(
-        PlaygroundRun(
-            prompt_id=prompt.id,
-            user_id=current_user.id,
-            model=body.model,
-            input_variables=body.variables,
-            output_text=result.output_text,
-            latency_ms=result.latency_ms,
-            prompt_tokens=result.prompt_tokens,
-            completion_tokens=result.completion_tokens,
-            cost_usd=result.cost_usd,
-            status="success",
-        )
-    )
-    record_billed_call(
-        db,
-        current_user.id,
-        "playground",
-        LLMUsage(
-            provider=result.provider,
-            model=result.model,
-            prompt_tokens=result.prompt_tokens,
-            completion_tokens=result.completion_tokens,
-        ),
-    )
-    db.commit()
-
-    return PlaygroundRunResponse(
-        output_text=result.output_text,
-        latency_ms=result.latency_ms,
-        prompt_tokens=result.prompt_tokens,
-        completion_tokens=result.completion_tokens,
-        cost_usd=result.cost_usd,
-        model=body.model,
-    )
-
-
-@router.get("/{prompt_id}/playground/runs", response_model=list[PlaygroundRunHistoryResponse])
-def get_playground_runs(
-    prompt_id: int,
-    limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Retrieve the calling user's prior Playground runs for an owned prompt,
-    newest first, for the Playground's history drawer / replay feature.
-
-    Args:
-        prompt_id: Unique identifier of the prompt whose runs to list
-        limit: Maximum number of records to return
-        offset: Number of records to skip, for paging past the first page
-        db: Database session
-        current_user: Current authenticated user
-
-    Returns:
-        List of historical Playground runs (including failed attempts)
-
-    Raises:
-        HTTPException: If the prompt isn't found/owned
-    """
-    _get_owned_prompt(prompt_id, current_user.id, db)
-    return (
-        db.query(PlaygroundRun)
-        .filter(PlaygroundRun.prompt_id == prompt_id, PlaygroundRun.user_id == current_user.id)
-        .order_by(PlaygroundRun.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
+    return call_service(
+        versions.restore_prompt_version,
+        prompt_id=prompt_id,
+        version_id=version_id,
+        db=db,
+        user_id=current_user.id,
     )
 
 
@@ -759,9 +440,7 @@ def delete_prompt(
     Raises:
         HTTPException: If prompt not found or not owned by the current user
     """
-    prompt = _get_owned_prompt(prompt_id, current_user.id, db)
-    db.delete(prompt)
-    db.commit()
+    return call_service(library.delete_prompt, prompt_id=prompt_id, db=db, user_id=current_user.id)
 
 
 @router.post("/{prompt_id}/duplicate", response_model=PromptHistoryResponse)
@@ -787,60 +466,6 @@ def duplicate_prompt(
     Raises:
         HTTPException: If prompt not found or not owned by the current user
     """
-    original = _get_owned_prompt(prompt_id, current_user.id, db)
-    # 100 matches the name length cap enforced elsewhere (PromptRequest/PromptUpdateRequest).
-    base_name = f"{original.name or 'Untitled Prompt'} Duplicate"[:100]
-    existing_names = {
-        row[0]
-        for row in db.query(Prompt.name)
-        .filter(Prompt.user_id == current_user.id, Prompt.name.isnot(None))
-        .all()
-    }
-    duplicate_name = base_name
-    suffix = 1
-    while duplicate_name in existing_names:
-        suffix_text = f" {suffix}"
-        duplicate_name = f"{base_name[: 100 - len(suffix_text)]}{suffix_text}"
-        suffix += 1
-
-    duplicated = Prompt(
-        id=PromptIdService.next_id(db),
-        user_id=current_user.id,
-        fields=deepcopy(original.fields),
-        generated_prompt=original.generated_prompt,
-        name=duplicate_name,
-        folder=original.folder,
-        is_favorite=False,
-        tags=deepcopy(original.tags),
-        variable_metadata=deepcopy(original.variable_metadata),
+    return call_service(
+        library.duplicate_prompt, prompt_id=prompt_id, db=db, user_id=current_user.id
     )
-
-    db.add(duplicated)
-    db.flush()
-
-    original_cases = (
-        db.query(EvalCase)
-        .filter(EvalCase.prompt_id == original.id)
-        .order_by(EvalCase.position)
-        .all()
-    )
-    db.add_all(
-        [
-            EvalCase(
-                prompt_id=duplicated.id,
-                method=case.method,
-                name=case.name,
-                criteria=case.criteria,
-                variables=deepcopy(case.variables),
-                intentionally_empty=case.intentionally_empty,
-                position=case.position,
-            )
-            for case in original_cases
-        ]
-    )
-    db.commit()
-    db.refresh(duplicated)
-
-    prompts_saved_total.inc()
-    _attach_run_counts(db, current_user.id, [duplicated])
-    return duplicated

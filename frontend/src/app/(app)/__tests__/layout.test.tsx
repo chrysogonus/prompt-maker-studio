@@ -5,11 +5,11 @@ import userEvent from '@testing-library/user-event';
 import AppLayout from '../layout';
 import { AuthService } from '@/lib/auth';
 
-vi.mock('@/components/AuthForm', () => ({
+vi.mock('@/features/auth/AuthForm', () => ({
   default: () => <div>Auth form</div>,
 }));
 
-vi.mock('@/components/NavBar', () => ({
+vi.mock('@/components/shell/Sidebar', () => ({
   default: () => <nav>Navigation</nav>,
 }));
 
@@ -62,6 +62,10 @@ describe('AppLayout', () => {
     );
     expect(screen.getByRole('contentinfo')).toHaveTextContent('Licensed under Apache-2.0');
     expect(screen.getByRole('contentinfo')).not.toHaveTextContent('All rights reserved');
+    expect(screen.getByRole('link', { name: 'Open source on GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/chrysogonus/prompt-maker-studio',
+    );
   });
 
   it('links the legal pages the deployment provides from the application footer', async () => {

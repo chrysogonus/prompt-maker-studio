@@ -15,7 +15,7 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import AuthForm from '@/components/AuthForm';
+import AuthForm from '@/features/auth/AuthForm';
 import Button from '@/components/ui/Button';
 import { ApiClient } from '@/lib/api';
 import { AuthService } from '@/lib/auth';

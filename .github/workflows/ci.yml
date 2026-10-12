@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: ['*']
   push:
-    branches: [main, development]
+    branches: [main, dev, development]
     # Publishing is gated on a version tag, not on landing a commit — see the
     # publish job.
     tags: ['v*']
@@ -116,6 +116,9 @@ jobs:
 
       # ---- TESTING ----
       - name: Run unit tests with coverage
+        # The suite takes ~3 minutes; a hang should fail fast, not hold the
+        # runner for the 6-hour default.
+        timeout-minutes: 15
         env:
           TESTING: "true"
         run: |

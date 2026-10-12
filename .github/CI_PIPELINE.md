@@ -9,7 +9,7 @@ equivalents without duplicating every YAML step.
 The workflow runs for:
 
 - every pull request, regardless of target branch;
-- pushes to `main` and `development`;
+- pushes to `main`, `dev`, and `development`;
 - pushes of a `v*` version tag, which is what triggers publishing;
 - manual `workflow_dispatch` runs.
 

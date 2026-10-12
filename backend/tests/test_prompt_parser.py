@@ -12,7 +12,7 @@ import pytest
 
 from app.models.billed_call import BilledCall
 from app.models.prompt import Prompt
-from app.models.schemas import PromptField
+from app.schemas.prompts import PromptField
 from app.services.prompt_parser import PromptParserService
 from app.services.spend_ledger import LLMUsage
 from tests.conftest import TEST_LLM_MODEL, make_chat_response, make_connection
@@ -378,3 +378,131 @@ class TestParseTextEndpoint:
 
         assert response.status_code == 402
         mock_parse.assert_not_called()
+
+
+class TestPromptConversion:
+    source = "Plan a 3-day trip to Lisbon."
+    payload = {
+        "fields": [{"name": "Task", "content": "Plan a {{duration}} trip to {{destination}}."}],
+        "variables": [
+            {
+                "name": "duration",
+                "value": "3-day",
+                "description": "Trip length",
+                "source_text": "3-day",
+            },
+            {
+                "name": "destination",
+                "value": "Lisbon",
+                "description": "Destination",
+                "source_text": "Lisbon",
+            },
+        ],
+    }
+
+    def test_converts_and_returns_original_values_without_saving(
+        self, client, auth_headers, db_session, mock_llm
+    ):
+        mock_llm.return_value.chat.completions.create.return_value = make_chat_response(
+            json.dumps(self.payload)
+        )
+        response = client.post(
+            "/api/prompts/parse-text",
+            headers=auth_headers,
+            json={"text": self.source, "extract_variables": True},
+        )
+        assert response.status_code == 200
+        assert response.json() == self.payload
+        assert db_session.query(Prompt).count() == 0
+        assert db_session.query(BilledCall).count() == 1
+        messages = mock_llm.return_value.chat.completions.create.call_args.kwargs["messages"]
+        assert messages[-1]["content"] == self.source
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            {
+                "name": "destination",
+                "value": "Madrid",
+                "description": "Place",
+                "source_text": "Madrid",
+            },
+            {
+                "name": "destination",
+                "value": "Lissabon",
+                "description": "Place",
+                "source_text": "Lisbon",
+            },
+            {"name": "destination", "value": "", "description": "Place", "source_text": None},
+            {"name": "orphan", "value": "Lisbon", "description": "Place", "source_text": "Lisbon"},
+            {
+                "name": "bad name",
+                "value": "Lisbon",
+                "description": "Place",
+                "source_text": "Lisbon",
+            },
+        ],
+    )
+    def test_rejects_ungrounded_or_unmatched_variables_and_records_spend(
+        self, client, auth_headers, mock_llm, db_session, bad, caplog
+    ):
+        payload = {**self.payload, "variables": [self.payload["variables"][0], bad]}
+        mock_llm.return_value.chat.completions.create.return_value = make_chat_response(
+            json.dumps(payload)
+        )
+        response = client.post(
+            "/api/prompts/parse-text",
+            headers=auth_headers,
+            json={"text": self.source, "extract_variables": True},
+        )
+        assert response.status_code == 502
+        assert "invalid template or extracted inputs" in response.json()["detail"]
+        assert "input_value" not in caplog.text
+        assert self.source not in caplog.text
+        assert db_session.query(BilledCall).count() == 1
+        assert db_session.query(Prompt).count() == 0
+
+    def test_preserves_unfilled_existing_placeholders_and_exact_multiline_values(self):
+        source = "Summarize {{topic}}. Text: first line\nsecond line & more"
+        payload = {
+            "fields": [{"name": "Task", "content": "Summarize {{topic}}. Text: {{text}}"}],
+            "variables": [
+                {"name": "topic", "value": "", "description": "Topic", "source_text": None},
+                {
+                    "name": "text",
+                    "value": "first line\nsecond line & more",
+                    "description": "Source",
+                    "source_text": "first line\nsecond line & more",
+                },
+            ],
+        }
+        result = PromptParserService.validate_conversion(source, payload)
+        assert result.variables[0].value == ""
+        assert result.variables[1].value == "first line\nsecond line & more"
+
+    def test_rejects_duplicate_variables_section_tags_and_dropped_placeholders(self):
+        from copy import deepcopy
+
+        duplicate_variables = deepcopy(self.payload)
+        duplicate_variables["variables"].append(duplicate_variables["variables"][0])
+        duplicate_sections = deepcopy(self.payload)
+        duplicate_sections["fields"].append({"name": "task", "content": "Other"})
+        for payload in [duplicate_variables, duplicate_sections]:
+            with pytest.raises(ValueError, match=r"match the template|Field names must be unique"):
+                PromptParserService.validate_conversion(self.source, payload)
+        with pytest.raises(ValueError, match="preserve existing placeholders"):
+            PromptParserService.validate_conversion(self.source + " {{topic}}", self.payload)
+
+    def test_no_variables_is_a_valid_conversion(self):
+        result = PromptParserService.validate_conversion(
+            "Be concise.", {"fields": [{"name": "Task", "content": "Be concise."}], "variables": []}
+        )
+        assert result.variables == []
+
+    def test_conversion_schema_enforces_strict_objects(self):
+        from app.services.prompt_parser import _CONVERSION_SCHEMA
+
+        schema = _CONVERSION_SCHEMA["json_schema"]["schema"]
+        for item in [schema, *schema["$defs"].values()]:
+            assert item["additionalProperties"] is False
+            assert set(item["required"]) == set(item["properties"])

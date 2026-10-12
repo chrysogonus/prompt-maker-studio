@@ -1,0 +1,18 @@
+[
+  {"name": "empty", "sections": [], "rendered": ""},
+  {
+    "name": "display names and empty content",
+    "sections": [{"name": "Role", "content": "Tutor"}, {"name": "Output format", "content": ""}],
+    "rendered": "<ROLE>\nTutor\n</ROLE>\n\n<OUTPUT_FORMAT>\n\n</OUTPUT_FORMAT>"
+  },
+  {
+    "name": "whitespace normalization",
+    "sections": [{"name": "  Output   format ", "content": "  keep spaces  \n"}],
+    "rendered": "<OUTPUT_FORMAT>\n  keep spaces  \n\n</OUTPUT_FORMAT>"
+  },
+  {
+    "name": "literal markup and variables",
+    "sections": [{"name": "my-style", "content": "Use <b>bold</b> & {{tone}}\n\"quotes\" and 'apostrophes'"}],
+    "rendered": "<MY-STYLE>\nUse <b>bold</b> & {{tone}}\n\"quotes\" and 'apostrophes'\n</MY-STYLE>"
+  }
+]

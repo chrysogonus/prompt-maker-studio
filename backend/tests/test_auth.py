@@ -241,8 +241,8 @@ def test_get_current_user(client):
 def test_protected_endpoint_without_auth(client):
     """Test accessing protected prompt endpoint without authentication."""
     response = client.post(
-        "/api/prompts/generate",
-        json={"fields": [{"name": "test", "content": "test content"}]},
+        "/api/prompts",
+        json={"name": "Anon", "fields": [{"name": "test", "content": "test content"}]},
     )
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -267,14 +267,14 @@ def test_protected_endpoint_with_auth(client):
     token = client.cookies["access_token"]
     client.cookies.clear()
 
-    # Generate prompt with authentication
+    # Save a prompt with authentication
     response = client.post(
-        "/api/prompts/generate",
-        json={"fields": [{"name": "goal", "content": "test content"}]},
+        "/api/prompts",
+        json={"name": "Mine", "fields": [{"name": "goal", "content": "test content"}]},
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert "generated_prompt" in data
 
@@ -282,8 +282,8 @@ def test_protected_endpoint_with_auth(client):
 def test_protected_endpoint_with_invalid_token(client):
     """Test accessing protected endpoint with invalid token."""
     response = client.post(
-        "/api/prompts/generate",
-        json={"fields": [{"name": "test", "content": "test content"}]},
+        "/api/prompts",
+        json={"name": "Nope", "fields": [{"name": "test", "content": "test content"}]},
         headers={"Authorization": "Bearer invalid_token"},
     )
 
@@ -511,8 +511,8 @@ def test_delete_account_cascades_prompts(client):
 
     headers = {"Authorization": f"Bearer {token}"}
     client.post(
-        "/api/prompts/generate",
-        json={"fields": [{"name": "goal", "content": "some content"}]},
+        "/api/prompts",
+        json={"name": "Owned", "fields": [{"name": "goal", "content": "some content"}]},
         headers=headers,
     )
 
@@ -523,12 +523,12 @@ def test_delete_account_cascades_prompts(client):
 
     # A new registration should not inherit any prompts
     new_token = _register_and_login(client, username="promptowner", password="newpass99")
-    history = client.get(
-        "/api/prompts/history",
+    library = client.get(
+        "/api/prompts/saved",
         headers={"Authorization": f"Bearer {new_token}"},
     )
-    assert history.status_code == status.HTTP_200_OK
-    assert history.json() == []
+    assert library.status_code == status.HTTP_200_OK
+    assert library.json() == []
 
 
 def _populate_every_user_owned_table(db, user_id: int) -> None:
@@ -855,10 +855,12 @@ def test_update_profile_is_rate_limited(client, monkeypatch):
     monkeypatch.setenv("TESTING", "false")
 
     for _ in range(10):
-        response = client.patch("/api/auth/me", json={"notify_run_failure": True}, headers=headers)
+        response = client.patch(
+            "/api/auth/me", json={"default_library_view": "grid"}, headers=headers
+        )
         assert response.status_code == status.HTTP_200_OK
 
-    response = client.patch("/api/auth/me", json={"notify_run_failure": True}, headers=headers)
+    response = client.patch("/api/auth/me", json={"default_library_view": "grid"}, headers=headers)
     assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
 
 
@@ -1154,7 +1156,7 @@ def test_change_password_keeps_the_calling_session_signed_in(client):
 def test_password_reset_revokes_tokens_issued_before_it(client, monkeypatch):
     """Account recovery has to recover the account: a session stolen before the
     reset must stop working, not survive until its own expiry."""
-    from app.api import auth_routes
+    from app.services.accounts import passwords as auth_routes
 
     token = _register_and_login(client, username="resetrevoke", password="oldpass123")
     captured: dict[str, str] = {}

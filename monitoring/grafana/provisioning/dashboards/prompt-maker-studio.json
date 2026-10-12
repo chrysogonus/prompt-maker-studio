@@ -121,22 +121,10 @@
       "fieldConfig": { "defaults": { "unit": "reqps" } }
     },
     {
-      "id": 9,
-      "type": "stat",
-      "title": "Prompts Generated (rate)",
-      "gridPos": { "x": 0, "y": 20, "w": 4, "h": 6 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "rate(prompts_generated_total[5m])", "legendFormat": "prompts/s" }
-      ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "short" } }
-    },
-    {
       "id": 10,
       "type": "stat",
       "title": "Prompts Saved (rate)",
-      "gridPos": { "x": 4, "y": 20, "w": 4, "h": 6 },
+      "gridPos": { "x": 0, "y": 20, "w": 8, "h": 6 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "expr": "rate(prompts_saved_total[5m])", "legendFormat": "saves/s" }
@@ -192,33 +180,6 @@
       "targets": [
         { "expr": "rate(ai_imports_total[5m])", "legendFormat": "attempts" },
         { "expr": "rate(ai_import_failures_total[5m])", "legendFormat": "failures" }
-      ],
-      "fieldConfig": { "defaults": { "unit": "short" } }
-    },
-    {
-      "id": 15,
-      "type": "stat",
-      "title": "Playground Runs — Failure Rate (%)",
-      "gridPos": { "x": 0, "y": 26, "w": 4, "h": 6 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        {
-          "expr": "100 * rate(playground_run_failures_total[15m]) / rate(playground_runs_total[15m])",
-          "legendFormat": "failure %"
-        }
-      ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
-      "fieldConfig": { "defaults": { "unit": "percent", "color": { "mode": "thresholds" }, "thresholds": { "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 30}] } } }
-    },
-    {
-      "id": 16,
-      "type": "timeseries",
-      "title": "Playground Runs: Attempts vs Failures",
-      "gridPos": { "x": 4, "y": 26, "w": 4, "h": 6 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "rate(playground_runs_total[5m])", "legendFormat": "attempts" },
-        { "expr": "rate(playground_run_failures_total[5m])", "legendFormat": "failures" }
       ],
       "fieldConfig": { "defaults": { "unit": "short" } }
     }

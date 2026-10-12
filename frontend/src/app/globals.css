@@ -6,17 +6,33 @@
   /* The lighter brand coral needs a darker substitute on light app chrome. */
   --pm-mark-color: var(--accent-text);
 
-  --color-canvas: #f7f7f9;
+  /* Blush paper, plum ink. Every text colour below clears WCAG AA (4.5:1) on
+     canvas, panel and panel-raised; muted is the tightest at 4.4:1+ on the
+     sidebar tint, so it is never used for body copy there. */
+  --color-canvas: #fbf5f4;
   --color-panel: #ffffff;
-  --color-panel-raised: #f0f0f4;
-  --color-overlay: #fbfbfd;
-  --color-border: #e1e1e8;
-  --color-text-primary: #1a1c24;
-  --color-text-secondary: #5c6270;
-  /* #9a9fae (the original value) is only ~2.6:1 against white/panel — darkened to
-     clear WCAG AA's 4.5:1 for normal text (with margin against panel-raised, the
-     darker of the two neutral surfaces) while staying lighter than text-secondary. */
-  --color-text-muted: #64697a;
+  --color-panel-raised: #f7eef0;
+  --color-overlay: #fffdfb;
+  --color-border: #ecdce3;
+  --color-border-strong: #dcc5d1;
+  --color-text-primary: #2b1b28;
+  --color-text-secondary: #6e5868;
+  --color-text-muted: #735d6c;
+  --color-sidebar: #f4e9ef;
+  /* Plum is for navigation and selected states only; coral stays the one
+     colour that means "you can act on this". */
+  --color-plum: #6b2d5c;
+  --color-plum-wash: #eadae4;
+  --color-coral-wash: #fde6dc;
+  --color-coral-wash-text: #9e3b17;
+  /* The preview pane holds the text that gets copied. It sits on deep plum in
+     both themes so what you write and what you paste never look alike. */
+  --pv-bg: #2a1626;
+  --pv-text: #f6e9f0;
+  --pv-muted: #c9afc0;
+  --pv-var: #ff9b7a;
+  --pv-border: #3e2738;
+  --pv-input: #352030;
 
   /* Accent usage rule: --color-accent-tag (coral) is the ONLY actionable/
      interactive accent - primary buttons, links, focus rings, active nav/
@@ -26,7 +42,7 @@
      focusable, or for a hover/active state. */
   --color-accent-tag: #e8632c;
   --color-accent-tag-hover: #f17a44;
-  --color-accent-value: #1c7ea6;
+  --color-accent-value: #6b2d5c;
   /* #4f8f3d (the original value) is used as TEXT on the low-alpha --success-bg
      tint in a dozen places (status pills, connection state, eval method tags),
      and cleared 4.5:1 on none of them — 2.97:1 over the tint on panel-raised,
@@ -34,14 +50,14 @@
      on; the worst case is now 4.77:1. Still used as a solid fill for decorative
      dots, where contrast does not apply. */
   --color-accent-success: #33691e;
-  --color-danger: #c7395a;
+  --color-danger: #b3364e;
   /* Darker coral for TEXT set directly on light/neutral surfaces (links, active-tab
      labels, tag labels). --color-accent-tag itself fails 4.5:1 as text-on-white
      (measured 3.35:1) even though it works fine as a button background. */
   --accent-text: #a8461d;
 
-  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Berkeley Mono', 'Fira Code', ui-monospace, monospace;
+  --font-display: var(--font-hanken), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
   --text-xs-size: 12px;
   --text-xs-line: 1.4;
@@ -78,10 +94,12 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-pill: 20px;
-  --shadow-panel: 0 1px 2px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.10);
-  --shadow-panel-hover: 0 2px 4px rgba(0,0,0,0.20), 0 6px 16px rgba(0,0,0,0.14);
+  --shadow-panel: 0 1px 2px rgba(43,27,40,0.08), 0 2px 6px rgba(43,27,40,0.06);
+  --shadow-panel-hover: 0 2px 4px rgba(43,27,40,0.10), 0 6px 16px rgba(43,27,40,0.10);
+  /* Only floating layers (menus, dialogs, side panels) cast a shadow. */
+  --shadow-float: 0 1px 2px rgba(43,27,40,0.08), 0 8px 28px rgba(43,27,40,0.14);
 
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%235c6270' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236e5868' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --bg-primary: var(--color-panel);
   --bg-secondary: var(--color-canvas);
   --bg-tertiary: var(--color-panel-raised);
@@ -101,11 +119,11 @@
   /* Text/icon color for content placed on a solid --color-accent-tag background.
      White fails WCAG AA contrast against this coral in both themes (~2.3:1 and
      ~3.6:1 measured); a dark near-black clears 4.5:1 against both. */
-  --on-accent: #1a1c24;
+  --on-accent: #2b1b28;
   --success: var(--color-accent-success);
   --success-hover: var(--color-accent-success);
   --success-bg: color-mix(in srgb, var(--color-accent-success) 14%, transparent);
-  --warning: #a66a00;
+  --warning: #8a5300;
   --danger: var(--color-danger);
   --danger-hover: var(--color-danger);
   --danger-bg: color-mix(in srgb, var(--color-danger) 14%, transparent);
@@ -119,35 +137,34 @@
 [data-theme="dark"] {
   --pm-mark-color: var(--pm-coral);
 
-  --color-canvas: #0f1117;
-  --color-panel: #171a23;
-  --color-panel-raised: #1d2130;
-  --color-overlay: #232837;
-  --color-border: #2a2e3a;
-  --color-text-primary: #e8e6e3;
-  --color-text-secondary: #b0b5c4;
-  /* #9fa4b3 clears WCAG AA's 4.5:1 contrast floor against panel-raised. */
-  --color-text-muted: #9fa4b3;
+  --color-canvas: #1d1219;
+  --color-panel: #261923;
+  --color-panel-raised: #2e1f2a;
+  --color-overlay: #352030;
+  --color-border: #3b2935;
+  --color-border-strong: #4e3747;
+  --color-text-primary: #f3e9ee;
+  --color-text-secondary: #cdb9c5;
+  --color-text-muted: #b79faf;
+  --color-sidebar: #170e14;
+  --color-plum: #e5b5d4;
+  --color-plum-wash: #3a2234;
+  --color-coral-wash: #3f2320;
+  --color-coral-wash-text: #ffb59c;
+  --pv-bg: #120a10;
+  --pv-border: #34212f;
+  --pv-input: #22141e;
   --color-accent-tag: #ff8a65;
   --color-accent-tag-hover: #ff9e80;
-  --color-accent-value: #7ec8e3;
+  --color-accent-value: #e5b5d4;
   --color-accent-success: #b4e197;
-  --color-danger: #e5637a;
+  --color-danger: #f07a90;
+  --on-accent: #1d1219;
+  --warning: #e7b45c;
+  --shadow-float: 0 1px 2px rgba(0,0,0,0.3), 0 10px 32px rgba(0,0,0,0.45);
   /* Dark theme's coral already has ample contrast against dark backgrounds as text. */
   --accent-text: var(--color-accent-tag);
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239a9fae' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
-
-/* Settings > Preferences > Density: tightens the spacing scale everywhere
-   components consume --space-* vars, rather than a purely decorative toggle. */
-[data-density="compact"] {
-  --space-1: 3px;
-  --space-2: 6px;
-  --space-3: 9px;
-  --space-4: 12px;
-  --space-6: 18px;
-  --space-8: 24px;
-  --space-10: 30px;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23b79faf' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 *,
@@ -170,7 +187,6 @@ html {
 
 body {
   font-family: var(--font-display);
-  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--color-canvas);

@@ -2,7 +2,7 @@
 
 Lightweight decision log (ADR-style). Records significant choices and their rationale to guide future development.
 
-> Last reviewed against the codebase: 2026-07-26.
+> Last reviewed against the codebase: 2026-10-11.
 
 ---
 
@@ -254,7 +254,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 ## Dual Instrumentation Point for `prompts_saved_total`
 
-**Status**: Accepted
+**Status**: Superseded 2026-10-11 — prompts are only saved through `POST /api/prompts` (also used by MCP); see "Sections Are the Only Thing Clients Write" below
 
 **Context**: Adding a business metric for "how many prompts get saved" is ambiguous in this codebase: a prompt becomes "saved" (non-null `name`) either at creation time (`POST /api/prompts/generate` with a `name` in the body — possible via the public API even though today's frontend never does this) or later via `PATCH /api/prompts/{id}` when a previously-unnamed prompt is given a name.
 
@@ -286,7 +286,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 ## Dashboard "Success Rate" Means Playground Runs Without Error
 
-**Status**: Accepted
+**Status**: Superseded 2026-10-11 — the dashboard was retired; see "Retire Shallow and Misleading Features" below
 
 **Context**: The source mockup's Dashboard stat card was labeled "Success rate" with the hint "valid JSON / schema match" — implying the product enforces a JSON output schema. This app's core output format is XML (`prompt_generator.py` wraps fields in uppercase XML tags); there is no JSON schema anywhere in the generation path.
 
@@ -318,7 +318,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 ## Folders and Tags Are Columns on `prompts`, Not Relational Tables
 
-**Status**: Accepted
+**Status**: Accepted for folders; tags retired from the product 2026-10-11 — see "Folders Stay Labels; Tags Leave the Product" below
 
 **Context**: The mockup shows folder and tag labels on prompt cards throughout the Dashboard and Library, but no folder/tag *management* UI (no "create folder," no tag color-coding, no tag merge/rename tooling). The existing `fields` column already established a precedent: dynamic, user-defined structure stored as JSON rather than a fully normalized schema.
 
@@ -350,7 +350,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 ## Real Per-Prompt Run Counts
 
-**Status**: Accepted
+**Status**: Superseded 2026-10-11 — run counts were removed with the Playground; see "Retire Shallow and Misleading Features" below
 
 **Context**: Library cards and the Editor's Usage card shipped 2026-07-12 with a hardcoded `—` in place of a per-prompt Playground run count, explicitly deferred as "a later phase" once run data existed. `playground_runs` rows have existed since migration 010, and the Dashboard's "top prompts by usage" already aggregated them — only the per-prompt display elsewhere was unwired.
 
@@ -366,7 +366,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 ## Weekly-Summary Email Delivery via Cron-Invoked Script
 
-**Status**: Accepted — supersedes "Weekly-Summary Notification Is Stored, Not Sent"
+**Status**: Superseded 2026-10-11 — all notification emails were removed; see "Retire Shallow and Misleading Features" below
 
 **Context**: The `notify_weekly_summary` preference (shipped 2026-07-12) was deliberately left unimplemented because this codebase has no scheduler, task queue, or background-job runner — only synchronous request-time SMTP calls. `product/BACKLOG.md` proposed "a cron-driven script (analogous to `scripts/backup_sqlite.py`) that runs weekly, aggregates each opted-in user's usage from `AnalyticsService`, and sends via a new `send_weekly_summary_email`."
 
@@ -382,7 +382,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 ## Real Per-Variable Type and Description
 
-**Status**: Accepted — supersedes "Editor Variables Panel Has No Persisted Type or Description"
+**Status**: Partly superseded 2026-10-11 — descriptions remain as hints; types are stored but no longer edited
 
 **Context**: The Variables panel's type badge (shipped 2026-07-12) was a static, non-enforced `"text"` label with no persisted description, deliberately left that way rather than building "fake-looking type validation ... a trap for users." `product/BACKLOG.md` proposed a `variable_metadata` JSON column for description only; this pass extended the scope to also make *type* real, since type was the other half of the original gap.
 
@@ -462,7 +462,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 ## Prompt Preflight Is Deterministic, Advisory, and Shared in the Frontend
 
-**Status**: Accepted
+**Status**: Superseded 2026-10-11 — replaced by inline, per-section checks in the editor
 
 **Context**: Users can copy or execute templates containing unresolved placeholders, unbalanced XML, empty sections, stale variable metadata, or unusually large content. Some of those conditions may be intentional, and turning every warning into a backend validation error would break existing prompt workflows.
 
@@ -716,3 +716,163 @@ exposure and its cause are stated in `SECURITY.md`, and `frontend/e2e/csp.spec.t
 asserts the current policy — including a test that fails, on purpose, if
 `'unsafe-inline'` is ever removed, so this entry gets revisited rather than
 quietly outliving its reason.
+
+---
+
+## Redesign Around the Person Who Reuses Chat Prompts — 0.3.0
+
+**Status**: Accepted (2026-10-11)
+
+**Context**: The app had grown into a broad "prompt workbench" (dashboard, Playground, evaluations, refinement, analytics, notifications) with a generic look. Much of it was shallow, unused, or misleading for the people who actually use it.
+
+**Decision**: Design for someone who writes prompts in ChatGPT, Claude or Gemini every day and wants a home for structured templates — moderately technical, not a prompt engineer. The core job is building, storing, finding and copying templates. Everything is judged against that job.
+
+**Rationale**: A clear audience lets the product drop hand-holding copy and analytics, and makes "fill in and copy" the central action instead of in-app model runs the audience does not need.
+
+**Consequences**: The library is the home page; one editor replaces two; features that do not serve the job were retired or deferred (see the next decisions). Validated with a clickable prototype before implementation.
+
+**Source**: `product/VISION.md`, `frontend/src/components/editor/`, `frontend/src/app/(app)/library/page.tsx`
+
+---
+
+## Sections Are the Only Thing Clients Write — 0.3.0
+
+**Status**: Accepted (2026-10-11)
+
+**Context**: New prompts were built from fields, but saved prompts were edited as raw text, so `fields` and `generated_prompt` drifted apart. The MCP tools already re-rendered text from fields; the web editor did not.
+
+**Decision**: The server renders `generated_prompt` from `fields` on every content write — create, PATCH, restore and MCP. Create and PATCH reject a client-sent `generated_prompt` (and other unknown keys) with 422 rather than ignoring it. Drifted data is recovered once by migration 023: originals are kept as a version, then sections are rebuilt from the text, split into tags only when that reproduces the text byte for byte and otherwise kept whole as one `prompt` section. Restoring an older drifted version applies the same recovery.
+
+**Rationale**: One representation makes the web app, the ChatGPT plugin and the copied text agree by construction. Arbitrary edited XML does not round-trip safely, so a parse is trusted only when it is exact.
+
+**Consequences**: Prompts recovered as one section copy with a `<PROMPT>` wrapper; the original text stays in their history. Output stays XML-style only.
+
+**Source**: `backend/app/services/prompt_sections.py`, `backend/app/api/routes.py`, `backend/app/database/migrations.py` (023)
+
+---
+
+## Section Names Are Display Names; Only the Tag Is Normalised — 0.3.0
+
+**Status**: Accepted (2026-10-11)
+
+**Context**: Field names had to be XML identifiers, so "Output format" became `Output_format` while typing.
+
+**Decision**: Names may contain spaces (collapsed, must start with a letter or underscore); the rendered tag joins words with underscores and upper-cases them. Uniqueness is checked on the rendered tag, so `Role`/`role` and `a b`/`a_b` clash.
+
+**Rationale**: Section names are what people read; only the model needs the tag.
+
+**Consequences**: The MCP `save_prompt` contract accepts spaced names. Existing names are unchanged.
+
+**Source**: `backend/app/models/schemas.py`, `frontend/src/lib/sections.ts`
+
+---
+
+## Generate and History Give Way to Named Prompts — 0.3.0
+
+**Status**: Accepted (2026-10-11)
+
+**Context**: Every Generate click stored an unnamed prompt that only the History tab listed — a third notion of "past versions" next to saved prompts and version history.
+
+**Decision**: Remove `POST /api/prompts/generate` and `GET /api/prompts/history`; the preview is live and prompts are saved explicitly by name (`POST /api/prompts`). Migration 024 names existing unnamed prompts by date and files them under "Recovered history" without deduplicating, since identical fields can still differ in edited text.
+
+**Rationale**: Version history already covers going back; the History log mostly recorded clicks.
+
+**Consequences**: Saving is explicit (button or Ctrl/⌘+S) with local draft recovery instead of autosave or an unsaved-changes prompt. Users can delete recovered prompts they do not need.
+
+**Source**: `backend/app/api/routes.py`, `backend/app/database/migrations.py` (024), `frontend/src/components/editor/PromptEditor.tsx`
+
+---
+
+## Folders Stay Labels; Tags Leave the Product — 0.3.0
+
+**Status**: Accepted (2026-10-11)
+
+**Context**: The library offered folders, tags and favorites — three overlapping ways to organise a personal list.
+
+**Decision**: Keep flat folders as the `prompts.folder` label, shown in the sidebar, with bulk rename (merging onto an existing name) and remove (unfiling) endpoints that leave edit times alone. Retire tags from the UI, REST API and MCP tools, keeping stored tags in the database and the export.
+
+**Rationale**: One home per prompt matches how chat assistants organise projects; favorites cover the cross-cutting case. A folders table is only worth it if empty or nested folders become a requirement.
+
+**Consequences**: Empty folders cannot exist. MCP `list_saved_prompts` lost its `tag` filter and output — a tool-contract change.
+
+**Source**: `backend/app/api/routes.py`, `backend/app/api/mcp_routes.py`, `frontend/src/components/shell/Sidebar.tsx`
+
+---
+
+## Retire Shallow and Misleading Features — 0.3.0
+
+**Status**: Accepted (2026-10-11)
+
+**Context**: Several features looked precise without serving the core job: usage dashboards and run counts, the standalone Playground for an audience that runs prompts in chat apps, OpenAI code snippets, a characters÷4 token estimate, a density setting, a compile animation, and four kinds of notification email.
+
+**Decision**: Remove them end to end — UI, endpoints, services, metrics and Grafana panels, scripts and tests. Keep `PlaygroundService` because evaluations use it, and keep retired preference columns because SQLite cannot drop a column without a table rebuild.
+
+**Rationale**: Leftover endpoints and settings are themselves misleading surface, and dead code still costs tests under the coverage gate.
+
+**Consequences**: Operators must remove any `make send-weekly-summary` cron entry. API clients of the removed endpoints break; this is a 0.x release with the changes listed in the changelog.
+
+**Source**: `CHANGELOG.md` (0.3.0), `backend/app/models/user.py`, `monitoring/grafana/provisioning/dashboards/prompt-maker-studio.json`
+
+---
+
+## Refine and Evaluate Are Deferred, Not Removed — 0.3.0
+
+**Status**: Accepted (2026-10-11)
+
+**Context**: Refinement and evaluation are expected to matter, but their behaviour was closer to placeholder than useful.
+
+**Decision**: Hide their UI and keep their backends, data and tests until a rebuild around clear user goals and understandable evidence. Remove the automatic evaluation trigger so stored preferences can never cause invisible spending, but keep the preference columns.
+
+**Rationale**: Restyling screens that will be re-engineered is wasted work; deleting working backends and data would be destructive.
+
+**Consequences**: The deferred endpoints remain reachable through the API only. When they return, automated scoring should be checked against human judgments.
+
+**Source**: `backend/app/api/refine_routes.py`, `backend/app/api/eval_routes.py`
+
+---
+
+## Coral and Plum, One Typeface, Restyled in Place — 0.3.0
+
+**Status**: Accepted (2026-10-11)
+
+**Context**: The previous blue-black theme, Inter everywhere, gradients, glows and all-caps labels read as a generated app.
+
+**Decision**: Keep the coral brand and mark; add plum for navigation and selected states and a deep-plum preview pane in both themes; use Hanken Grotesk for UI and prompt prose and JetBrains Mono only for tags and the preview, self-hosted at build time; default to light. Restyle the existing CSS Modules and tokens rather than adopting Tailwind or a component kit; allow one decorative motif (the dot grid behind the sign-in sample).
+
+**Rationale**: Distinct colour and a writing-tool feel for the text people work on, without decoration on working screens. Swapping styling systems would have added churn without addressing the real problem.
+
+**Consequences**: Existing token names were kept and remapped, so all screens changed palette together. Every text pairing was checked against WCAG AA.
+
+**Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`
+
+---
+
+## Restore Refinement Inside the Sections Editor
+
+**Status**: Accepted (2026-10-11)
+
+**Context**: The user requested refinement back in the UI, integrated with the redesigned editor. The retained API read saved templates and returned raw text, so simply exposing it would exclude unsaved work and risk section drift.
+
+**Decision**: Refine replaces the desktop preview and becomes a native full-screen modal on phones. Users explicitly request questions and a draft, review section-level diffs, apply locally with Undo, then save normally. Closing retains the session in memory; changed source sections require restarting. Snapshot endpoints accept current sections without saving them; the old saved-prompt endpoints remain compatible. Drafts are requested as section objects and must retain the same section names/order and preserve per-section variable and tag occurrences. Completed draft calls are recorded in the spend ledger even when structural validation rejects the draft.
+
+**Rationale**: Refinement belongs next to the text being improved. Explicit calls, review and ordinary Save make its effects clear while preserving sections as the only writable representation. Structural validation checks preservation, not whether the wording performs better.
+
+**Consequences**: Refinement sessions do not survive navigation or reload. Apply preserves variable metadata and filled values. Evaluate remains deferred; no automatic evaluation is introduced.
+
+**Source**: `frontend/src/features/editor/RefinePanel.tsx`, `frontend/src/features/editor/usePromptEditor.ts`, `backend/app/api/refine_routes.py`, `backend/app/services/prompt_refiner.py`
+
+
+
+---
+
+## Restore Evaluation as an Explicit Saved-Prompt Workflow
+
+**Status**: Accepted, 2026-10-12
+
+**Context**: The redesign kept evaluation data and API endpoints but removed their UI. Users need a readable way to check saved prompts against examples without rebuilding the backend or introducing another visual system.
+
+**Decision**: Add an Evaluate action to saved prompts and a dedicated workspace with Test cases and Run history. Use the existing API for case editing, CSV transfer, reviewed AI suggestions, explicit runs and manual ratings. Compare historical outputs by case identity, flag changed inputs/scoring or models, and show the recorded run metadata. Keep the existing app palette, typography and shared controls.
+
+**Consequences**: Evaluation is available again, but saving never runs it automatically. The stored evaluation preferences remain inactive. Suggestions are edited and saved individually; scores are shown without invented pass thresholds. Blank inputs retain placeholders, and require acknowledgement before a run. Aggregate scores wait for every pending manual rating; accumulated model time is labelled separately from elapsed duration. Calibration of automated scores remains backlog work.
+
+**Source**: `frontend/src/features/evaluation/`, `frontend/src/lib/api/evaluation.ts`, `backend/app/api/eval_routes.py`

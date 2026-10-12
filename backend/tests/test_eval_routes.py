@@ -19,15 +19,13 @@ def _generator_usage() -> LLMUsage:
     )
 
 
-def _create_saved_prompt(client, headers, template="Say {{thing}}") -> int:
+def _create_saved_prompt(client, headers, goal="Say {{thing}}") -> int:
     response = client.post(
-        "/api/prompts/generate",
+        "/api/prompts",
         headers=headers,
-        json={"fields": [{"name": "goal", "content": "x"}], "name": "Eval Prompt"},
+        json={"fields": [{"name": "goal", "content": goal}], "name": "Eval Prompt"},
     )
-    prompt_id = response.json()["id"]
-    client.patch(f"/api/prompts/{prompt_id}", headers=headers, json={"generated_prompt": template})
-    return prompt_id
+    return response.json()["id"]
 
 
 def _mock_playground_result(output_text="hello world"):
@@ -468,66 +466,6 @@ class TestCreateEvalRun:
         assert "budget" in resp.json()["detail"].lower()
         mock_run.assert_not_called()
 
-    def test_run_sends_completion_email_when_opted_in(self, client, auth_headers):
-        prompt_id = _create_saved_prompt(client, auth_headers)
-        client.post(
-            f"/api/prompts/{prompt_id}/eval/cases",
-            headers=auth_headers,
-            json={"method": "rule", "criteria": "hello", "variables": {}},
-        )
-        client.patch("/api/auth/me", headers=auth_headers, json={"notify_eval_complete": True})
-
-        with (
-            patch("app.services.eval_service.PlaygroundService.run") as mock_run,
-            patch("app.api.eval_routes.send_eval_run_complete_email") as mock_email,
-        ):
-            mock_run.return_value = _mock_playground_result("hello there")
-            resp = client.post(f"/api/prompts/{prompt_id}/eval/runs", headers=auth_headers)
-
-        assert resp.status_code == 200
-        mock_email.assert_called_once()
-
-    def test_run_does_not_send_completion_email_when_opted_out(self, client, auth_headers):
-        prompt_id = _create_saved_prompt(client, auth_headers)
-        client.post(
-            f"/api/prompts/{prompt_id}/eval/cases",
-            headers=auth_headers,
-            json={"method": "rule", "criteria": "hello", "variables": {}},
-        )
-
-        with (
-            patch("app.services.eval_service.PlaygroundService.run") as mock_run,
-            patch("app.api.eval_routes.send_eval_run_complete_email") as mock_email,
-        ):
-            mock_run.return_value = _mock_playground_result("hello there")
-            client.post(f"/api/prompts/{prompt_id}/eval/runs", headers=auth_headers)
-
-        mock_email.assert_not_called()
-
-    def test_run_sends_regression_email_when_score_drops(self, client, auth_headers):
-        prompt_id = _create_saved_prompt(client, auth_headers)
-        client.post(
-            f"/api/prompts/{prompt_id}/eval/cases",
-            headers=auth_headers,
-            json={"method": "rule", "criteria": "hello", "variables": {}},
-        )
-        client.patch("/api/auth/me", headers=auth_headers, json={"notify_eval_regression": True})
-
-        with patch("app.services.eval_service.PlaygroundService.run") as mock_run:
-            mock_run.return_value = _mock_playground_result("hello there")
-            client.post(f"/api/prompts/{prompt_id}/eval/runs", headers=auth_headers)
-
-        with (
-            patch("app.services.eval_service.PlaygroundService.run") as mock_run,
-            patch("app.api.eval_routes.send_eval_score_regression_email") as mock_email,
-        ):
-            mock_run.return_value = _mock_playground_result("nothing matches")
-            resp = client.post(f"/api/prompts/{prompt_id}/eval/runs", headers=auth_headers)
-
-        assert resp.status_code == 200
-        assert resp.json()["score"] == 0.0
-        mock_email.assert_called_once()
-
 
 class TestListEvalRuns:
     def test_list_runs_returns_newest_first(self, client, auth_headers):
@@ -550,8 +488,8 @@ class TestListEvalRuns:
         assert runs[0]["id"] > runs[1]["id"]
 
     def test_list_runs_never_includes_another_prompts_results(self, client, auth_headers):
-        first_prompt_id = _create_saved_prompt(client, auth_headers, template="first {{thing}}")
-        second_prompt_id = _create_saved_prompt(client, auth_headers, template="second {{thing}}")
+        first_prompt_id = _create_saved_prompt(client, auth_headers, goal="first {{thing}}")
+        second_prompt_id = _create_saved_prompt(client, auth_headers, goal="second {{thing}}")
         for prompt_id, criterion in (
             (first_prompt_id, "first-only"),
             (second_prompt_id, "second-only"),

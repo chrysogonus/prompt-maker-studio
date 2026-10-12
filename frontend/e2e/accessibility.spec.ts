@@ -16,8 +16,9 @@ function uniqueUser(prefix: string): TestUser {
   };
 }
 
-function navLink(page: Page, name: string) {
-  return page.getByRole('navigation').getByRole('link', { name });
+/** Links in the sidebar, so page content with the same name can't match. */
+function sidebarLink(page: Page, name: string | RegExp) {
+  return page.getByRole('complementary', { name: 'Sidebar' }).getByRole('link', { name });
 }
 
 async function register(page: Page, user: TestUser) {
@@ -30,7 +31,8 @@ async function register(page: Page, user: TestUser) {
   await page.locator('#reg-email').fill(user.email);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  await expect(page.getByText(`Good to see you, ${user.username}`)).toBeVisible();
+  // The library is the home page; a new account starts with it empty.
+  await expect(page.getByRole('heading', { name: 'Your prompt library is empty' })).toBeVisible();
 }
 
 /** Mirrors the app's own imperative theme toggle (see `(app)/layout.tsx`) rather than
@@ -99,6 +101,7 @@ test.describe('accessibility audit', () => {
   test('login page has no serious a11y violations, in dark and light theme', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+    await setTheme(page, 'dark');
     await auditPage(page, 'login (dark)');
 
     await setTheme(page, 'light');
@@ -112,40 +115,43 @@ test.describe('accessibility audit', () => {
     const promptName = 'A11y Audit ' + user.username;
 
     await register(page, user);
-    await auditPage(page, 'dashboard (dark)');
+    await setTheme(page, 'dark');
+    await auditPage(page, 'empty library (dark)');
 
-    await page.getByRole('link', { name: '+ New prompt' }).click();
+    await sidebarLink(page, 'New prompt').click();
     await expect(page).toHaveURL(/\/editor\/new$/);
     await auditPage(page, 'editor-new (dark)');
 
-    await page.getByPlaceholder(/field name/i).fill('goal');
-    await page.getByPlaceholder(/enter content for this field/i).fill('accessibility audit content');
-    await page.getByRole('button', { name: 'Generate Prompt' }).click();
+    await page.getByLabel('Task text').fill('Audit {{subject}} for accessibility');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await page.getByLabel('Prompt Name').fill(promptName);
-    await page.getByLabel('Prompt Name').press('Enter');
+    await auditPage(page, 'editor save dialog (dark)');
+    const dialog = page.getByRole('dialog', { name: 'Save prompt' });
+    await dialog.getByLabel('Name', { exact: true }).fill(promptName);
+    await dialog.getByLabel('Name', { exact: true }).press('Enter');
     await expect(page).toHaveURL(/\/editor\/\d+$/);
-    await auditPage(page, 'editor-detail (dark)');
+    await auditPage(page, 'editor saved prompt (dark)');
 
-    await page.getByRole('link', { name: /test in playground/i }).click();
-    await expect(page).toHaveURL(/\/playground\/\d+$/);
-    await auditPage(page, 'playground (dark)');
+    await page.getByRole('button', { name: 'History' }).click();
+    await auditPage(page, 'editor history (dark)');
 
-    await navLink(page, 'Library').click();
+    const promptId = page.url().match(/\/editor\/(\d+)$/)![1];
+
+    await sidebarLink(page, /All prompts/).click();
     await expect(page).toHaveURL(/\/library$/);
     await auditPage(page, 'library (dark)');
 
-    await navLink(page, 'Settings').click();
+    await sidebarLink(page, 'Settings').click();
     await expect(page).toHaveURL(/\/settings$/);
     await auditPage(page, 'settings (dark)');
 
     await setTheme(page, 'light');
 
-    await page.goto('/');
-    await auditPage(page, 'dashboard (light)');
-
     await page.goto('/library');
     await auditPage(page, 'library (light)');
+
+    await page.goto(`/editor/${promptId}`);
+    await expect(page.getByLabel('Task text')).toBeVisible();
+    await auditPage(page, 'editor saved prompt (light)');
 
     await page.goto('/settings');
     await auditPage(page, 'settings (light)');

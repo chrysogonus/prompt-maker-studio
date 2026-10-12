@@ -29,6 +29,8 @@ class PromptVersion(Base):
     note = Column(String(255), nullable=True)
     # Nulled rather than cascaded when the author is deleted: the version
     # belongs to the prompt, which has its own owner cascade.
+    legacy_note = Column(String(255), nullable=True)
+    variable_metadata = Column(JSONB().with_variant(JSON, "sqlite"), nullable=True)
     author_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     fields = Column(JSONB().with_variant(JSON, "sqlite"), nullable=False)
     generated_prompt = Column(Text, nullable=False)

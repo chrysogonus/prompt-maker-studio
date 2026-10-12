@@ -1,24 +1,11 @@
-"""
-FastAPI application entry point.
-Configures CORS, database, and routes.
-"""
+"""Application composition and startup lifecycle."""
 
 from contextlib import asynccontextmanager
-import logging
 import os
-import uuid
 
-from fastapi import FastAPI, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from prometheus_fastapi_instrumentator import Instrumentator
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from fastapi import FastAPI
 
 from app.api.admin_routes import router as admin_router
-from app.api.analytics_routes import router as analytics_router
 from app.api.auth_routes import router as auth_router
 from app.api.eval_routes import router as eval_router
 from app.api.mcp_routes import MCP_PATH, PROTECTED_RESOURCE_METADATA_PATH, mcp_endpoint
@@ -26,123 +13,11 @@ from app.api.oauth_routes import oauth_protocol_app, well_known_router
 from app.api.oauth_routes import router as oauth_router
 from app.api.refine_routes import router as refine_router
 from app.api.routes import router
-from app.auth.cookies import CSRF_HEADER_NAME
 from app.auth.utils import SECRET_KEY, is_insecure_secret_key
 from app.branding import APP_NAME
 from app.database.connection import Base, engine
 from app.database.migrations import run_migrations
-from app.limiter import limiter
-
-logger = logging.getLogger(__name__)
-
-
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    async with mcp_endpoint.lifespan():
-        yield
-
-
-app = FastAPI(
-    title=f"{APP_NAME} API",
-    description="API for generating structured prompts",
-    version="0.1.0",
-    lifespan=lifespan,
-)
-
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# Instrument FastAPI application for metrics
-Instrumentator().instrument(app).expose(app, include_in_schema=False, should_gzip=True)
-
-
-class RequestIdMiddleware:
-    """Attach a correlation id to every HTTP request and response.
-
-    This is a pure ASGI middleware rather than ``BaseHTTPMiddleware``. The
-    latter coordinates request handling through AnyIO memory streams and can
-    deadlock with the Starlette/AnyIO versions supported by this project.
-    """
-
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-
-        request_id = uuid.uuid4().hex
-        scope.setdefault("state", {})["request_id"] = request_id
-
-        async def send_with_request_id(message: Message) -> None:
-            if message["type"] == "http.response.start":
-                message["headers"] = [
-                    *message.get("headers", []),
-                    (b"x-request-id", request_id.encode("ascii")),
-                ]
-            await send(message)
-
-        await self.app(scope, receive, send_with_request_id)
-
-
-app.add_middleware(RequestIdMiddleware)
-
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    """Catch-all for anything not already handled by a more specific handler
-    (HTTPException, RequestValidationError). Previously these fell through to
-    Starlette's bare default 500 with no way to correlate the failure to a
-    server-side log entry."""
-    request_id = getattr(request.state, "request_id", "unknown")
-    logger.exception(
-        "Unhandled %s on %s %s [request_id=%s]",
-        type(exc).__name__,
-        request.method,
-        request.url.path,
-        request_id,
-    )
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "detail": "An unexpected error occurred. Please try again.",
-            "request_id": request_id,
-        },
-        # RequestIdMiddleware's header-setting code doesn't run for this path:
-        # the exception unwinds to ServerErrorMiddleware, which invokes this
-        # handler directly, so the error response needs the header here too.
-        headers={"X-Request-ID": request_id},
-    )
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    errors = exc.errors()
-    error_types = sorted({str(error.get("type", "unknown")) for error in errors})
-    logger.warning(
-        "Request validation error on %s %s: count=%d types=%s",
-        request.method,
-        request.url.path,
-        len(errors),
-        error_types,
-    )
-
-    for error in errors:
-        if error.get("type") == "value_error" and "Field names must be unique" in error.get(
-            "msg", ""
-        ):
-            return JSONResponse(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={
-                    "detail": "Field Duplication Error: You cannot have two fields with the exact same name."
-                },
-            )
-
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"detail": [{"loc": e["loc"], "msg": e["msg"], "type": e["type"]} for e in errors]},
-    )
+from app.http import configure_http
 
 
 def init_db():
@@ -170,40 +45,44 @@ def enforce_secret_key_policy():
         raise RuntimeError(msg)
 
 
-# Create database tables (skip in test environment)
-if os.getenv("TESTING") != "true":
-    init_db()
-    enforce_secret_key_policy()
-
-# Configure CORS
-origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    # Required only for an explicitly cross-origin frontend/API topology. The
-    # default Caddy and Next-proxy paths are same-origin.
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", CSRF_HEADER_NAME],
-)
-
-# Include routes
-app.include_router(auth_router)
-app.include_router(router)
-app.include_router(admin_router)
-app.include_router(analytics_router)
-app.include_router(eval_router)
-app.include_router(refine_router)
-app.include_router(oauth_router)
-app.include_router(well_known_router)
-# After oauth_router, whose /api/oauth/consent would otherwise fall into this mount.
-app.mount("/api/oauth", oauth_protocol_app)
-app.add_route(MCP_PATH, mcp_endpoint, include_in_schema=False)
-app.add_route(PROTECTED_RESOURCE_METADATA_PATH, mcp_endpoint, include_in_schema=False)
-
-
-@app.get("/")
 def root():
     """Health check endpoint."""
     return {"status": "healthy", "service": f"{APP_NAME} API"}
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    if os.getenv("TESTING") != "true":
+        init_db()
+        enforce_secret_key_policy()
+    async with mcp_endpoint.lifespan():
+        yield
+
+
+def create_app() -> FastAPI:
+    application = FastAPI(
+        title=f"{APP_NAME} API",
+        description="API for generating structured prompts",
+        version="0.3.0",
+        lifespan=lifespan,
+    )
+    configure_http(application)
+    for routes in (
+        auth_router,
+        router,
+        admin_router,
+        eval_router,
+        refine_router,
+        oauth_router,
+        well_known_router,
+    ):
+        application.include_router(routes)
+    # Consent routes must precede the OAuth protocol mount.
+    application.mount("/api/oauth", oauth_protocol_app)
+    application.add_route(MCP_PATH, mcp_endpoint, include_in_schema=False)
+    application.add_route(PROTECTED_RESOURCE_METADATA_PATH, mcp_endpoint, include_in_schema=False)
+    application.get("/")(root)
+    return application
+
+
+app = create_app()

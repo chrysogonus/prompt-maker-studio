@@ -1,5 +1,5 @@
 -- Historical reference only — the executed migration lives in
--- backend/app/database/migrations.py (_migration_016_billed_calls).
+-- backend/app/database/migrations/v016_billed_calls.py (_migration_016_billed_calls).
 --
 -- Unified AI spend ledger: one row per billed OpenAI call from any feature
 -- (Playground, eval case runs, judge grading, eval-case generation,

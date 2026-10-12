@@ -109,7 +109,7 @@ class TestLLMConnectionModels:
         assert mock_llm.return_value.models.list.call_count == 2
 
     def test_update_route_invalidates_the_callers_cache(self, client, auth_headers):
-        with patch("app.api.auth_routes.invalidate_model_cache") as invalidate:
+        with patch("app.services.accounts.connections.invalidate_model_cache") as invalidate:
             response = client.put(
                 "/api/auth/me/llm-connection",
                 headers=auth_headers,
@@ -120,7 +120,7 @@ class TestLLMConnectionModels:
         invalidate.assert_called_once_with(1)
 
     def test_delete_route_invalidates_the_callers_cache(self, client, auth_headers):
-        with patch("app.api.auth_routes.invalidate_model_cache") as invalidate:
+        with patch("app.services.accounts.connections.invalidate_model_cache") as invalidate:
             response = client.delete("/api/auth/me/llm-connection", headers=auth_headers)
 
         assert response.status_code == 200

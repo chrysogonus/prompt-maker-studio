@@ -7,7 +7,6 @@ took ~0.9s and grew exponentially, so a saved pattern could monopolise request
 threads for minutes.
 """
 
-from concurrent.futures import ProcessPoolExecutor
 import re
 import subprocess
 import sys
@@ -98,13 +97,18 @@ def test_private_process_attribute_still_exists():
     """The kill above reaches into ProcessPoolExecutor._processes. If a future
     Python removes it the kill silently degrades to abandon-only, so fail here
     rather than in production."""
-    executor = ProcessPoolExecutor(max_workers=1)
-    try:
-        executor.submit(int, 1).result(timeout=30)
-        assert hasattr(executor, "_processes")
-        assert executor._processes
-    finally:
-        executor.shutdown(wait=True)
+    executor = safe_regex._get_executor()
+    executor.submit(int, 1).result(timeout=30)
+    assert hasattr(executor, "_processes")
+    assert executor._processes
+
+
+def test_workers_are_not_forked_from_a_threaded_process():
+    """Forking copies whatever locks other threads hold at that instant, so a
+    worker forked from the server (or from the previous pool's manager thread)
+    can block before it runs anything. That hung CI with the pool waiting on a
+    worker that never started; under load it would time out honest patterns."""
+    assert safe_regex._get_executor()._mp_context.get_start_method() == "forkserver"
 
 
 def test_a_rule_that_cannot_be_evaluated_is_not_scored_as_a_failure():

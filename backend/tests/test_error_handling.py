@@ -10,7 +10,6 @@ from fastapi.testclient import TestClient
 
 from app.database.connection import get_db
 from app.main import app
-from app.services.prompt_generator import PromptGeneratorService
 
 
 class TestRequestIdMiddleware:
@@ -47,16 +46,15 @@ class TestUnhandledExceptionHandler:
         try:
             with (
                 TestClient(app, raise_server_exceptions=False) as no_raise_client,
-                patch.object(
-                    PromptGeneratorService,
-                    "generate",
+                patch(
+                    "app.services.prompts.library.render_sections",
                     side_effect=RuntimeError("sensitive internal detail: db-password=hunter2"),
                 ),
             ):
                 response = no_raise_client.post(
-                    "/api/prompts/generate",
+                    "/api/prompts",
                     headers=auth_headers,
-                    json={"fields": [{"name": "goal", "content": "x"}]},
+                    json={"name": "Boom", "fields": [{"name": "goal", "content": "x"}]},
                 )
         finally:
             app.dependency_overrides.clear()

@@ -1,0 +1,212 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  background: var(--color-canvas);
+}
+
+.column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: 1320px;
+  min-height: 64px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-8) 0;
+}
+
+.menuButton,
+.topbarTitle,
+.topbarNew {
+  display: none;
+}
+
+.scrim {
+  display: none;
+}
+
+.skipLink {
+  position: fixed;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: 1000;
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-canvas);
+  background: var(--color-text-primary);
+  border-radius: var(--radius-sm);
+  transform: translateY(calc(-100% - var(--space-6)));
+}
+
+.skipLink:focus-visible {
+  transform: translateY(0);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6) var(--space-8);
+  max-width: 1320px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.sessionWarning {
+  margin: var(--space-3) var(--space-6) 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-accent-tag) 12%, var(--color-panel));
+  border: 1px solid color-mix(in srgb, var(--color-accent-tag) 35%, var(--border-primary));
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sessionWarning[data-urgent='true'] {
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-danger) 35%, var(--border-primary));
+  color: var(--color-danger);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: var(--space-4);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.authError {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-primary);
+  border-top-color: var(--color-accent-tag);
+  border-radius: 50%;
+  animation: spin var(--motion-spin) infinite;
+}
+
+.footer {
+  padding: var(--space-4) var(--space-8);
+  margin-top: auto;
+  font-size: var(--text-xs-size);
+  color: var(--text-muted);
+}
+
+.footer a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
+
+.footer a:hover {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 56px;
+    padding: 0 var(--space-3) 0 var(--space-1);
+    background: var(--color-canvas);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .menuButton {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .topbarTitle {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm-size);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .topbarNew {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: var(--radius-sm);
+    background: var(--color-accent-tag);
+    color: var(--on-accent);
+    font-size: var(--text-sm-size);
+    font-weight: var(--weight-semibold);
+  }
+
+  .repositoryLink {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .repositoryLink span,
+  .repositoryLink svg:last-child {
+    display: none;
+  }
+
+  .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: color-mix(in srgb, #1d1219 38%, transparent);
+  }
+
+  .content {
+    padding: var(--space-4);
+  }
+
+  .footer {
+    padding: var(--space-4);
+  }
+}
+
+.legalLinks {
+  display: inline-flex;
+  gap: var(--space-3);
+  margin-left: var(--space-3);
+}

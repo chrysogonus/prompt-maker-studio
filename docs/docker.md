@@ -180,7 +180,7 @@ FRONTEND_PORT=3000
 # Optional monthly usage ceilings (USD). Unset means unlimited. Users pay
 # their own provider, so these cap how much billed activity the app will
 # drive rather than protecting an operator wallet. Enforced before every
-# billed call (Playground run, eval case/judge calls, refinement);
+# billed call (Import text, and the deferred eval and refinement endpoints);
 # GLOBAL_MONTHLY_BUDGET_USD's exhausted state is also reported by
 # GET /api/prompts/config. Operator-controlled only.
 # GLOBAL_MONTHLY_BUDGET_USD=50
@@ -275,7 +275,7 @@ For production deployment:
 
 1. Use proper secrets management (not `.env` files)
 2. Plan around **SQLite only**. Prompt Maker Studio has no PostgreSQL or MySQL
-   support: `backend/app/database/migrations.py` is a SQLite-specific migration
+   support: `backend/app/database/migrations/runner.py` is a SQLite-specific migration
    runner, and the schema, backup, and restore tooling all assume a single
    database file. That also caps you at one backend replica — see
    [`product/DECISIONS.md`](../product/DECISIONS.md). Persist the

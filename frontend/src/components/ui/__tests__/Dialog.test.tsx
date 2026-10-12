@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Dialog from '../Dialog';
@@ -37,4 +38,61 @@ describe('Dialog', () => {
     await userEvent.click(screen.getByRole('dialog').parentElement as HTMLElement);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps focus in the field being typed in when the parent re-renders', async () => {
+    // A parent re-rendering on every keystroke passes a new inline onClose each
+    // time; that must not re-run the open-focus logic and steal focus.
+    function Form() {
+      const [folder, setFolder] = useState('');
+      return (
+        <Dialog isOpen title="Save prompt" onClose={() => setFolder('')}>
+          <input aria-label="Name" />
+          <input aria-label="Folder" value={folder} onChange={(e) => setFolder(e.target.value)} />
+        </Dialog>
+      );
+    }
+    render(<Form />);
+
+    await userEvent.click(screen.getByLabelText('Folder'));
+    await userEvent.type(screen.getByLabelText('Folder'), 'Work');
+
+    expect(screen.getByLabelText('Folder')).toHaveValue('Work');
+    expect(screen.getByLabelText('Folder')).toHaveFocus();
+  });
+
+  it('closes on Escape and keeps Tab focus inside the dialog', async () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog isOpen title="Save prompt" onClose={onClose}>
+        <input aria-label="First" />
+        <button type="button">Last</button>
+      </Dialog>
+    );
+
+    expect(screen.getByLabelText('First')).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'Last' })).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.getByLabelText('First')).toHaveFocus();
+
+    await userEvent.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+it('keeps focus inside when Tab starts on a review heading', async () => {
+  render(<>
+    <button>Outside</button>
+    <Dialog isOpen title="Review" onClose={vi.fn()}>
+      <h3 tabIndex={-1}>Review heading</h3>
+      <input aria-label="First input" />
+      <button>Last action</button>
+    </Dialog>
+  </>);
+  screen.getByRole('heading', { name: 'Review heading' }).focus();
+  await userEvent.tab({ shift: true });
+  expect(screen.getByRole('button', { name: 'Last action' })).toHaveFocus();
+  screen.getByRole('heading', { name: 'Review heading' }).focus();
+  await userEvent.tab();
+  expect(screen.getByLabelText('First input')).toHaveFocus();
 });

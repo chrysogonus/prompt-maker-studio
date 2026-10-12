@@ -1,5 +1,5 @@
 -- Historical reference only — the executed migration lives in
--- backend/app/database/migrations.py (_migration_019_user_llm_connection).
+-- backend/app/database/migrations/v019_user_llm_connection.py (_migration_019_user_llm_connection).
 
 ALTER TABLE users ADD COLUMN llm_provider VARCHAR(30);
 ALTER TABLE users ADD COLUMN llm_base_url VARCHAR(500);

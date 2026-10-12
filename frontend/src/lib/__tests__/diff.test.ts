@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { diffWords } from '../diff';
 
 describe('diffWords', () => {
+  it('compares long sections as complete replacements while preserving both texts', () => {
+    const oldText = 'old '.repeat(1000);
+    const newText = 'new '.repeat(1000);
+    expect(diffWords(oldText, newText)).toEqual([
+      { type: 'removed', text: oldText },
+      { type: 'added', text: newText },
+    ]);
+  });
+
+  it('returns long identical text unchanged without computing a comparison matrix', () => {
+    const text = 'same '.repeat(1000);
+    expect(diffWords(text, text)).toEqual([{ type: 'unchanged', text }]);
+  });
+
   it('returns all unchanged tokens for identical strings', () => {
     const result = diffWords('hello world', 'hello world');
     expect(result.every((t) => t.type === 'unchanged')).toBe(true);
