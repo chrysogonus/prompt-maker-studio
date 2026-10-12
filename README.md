@@ -16,6 +16,14 @@ versions let you compare edits and restore an earlier approach.
 
 ![Prompt library with search, favourites, folders and reusable variables](./docs/assets/prompt-management.png)
 
+## Turn a working prompt into a reusable template
+
+Choose **Paste a prompt** in the library or editor. AI turns unstructured text
+into XML-style sections and identifies variables with their original values
+filled in. Review and edit the variables, keep an input fixed, and copy either
+the template or filled prompt. Apply to the draft with Undo; Save keeps it.
+Example inputs are separate from template content and require an explicit choice.
+
 ## Refine with a clear view of what changes
 
 Answer clarifying questions, then review a proposed draft section by section.
@@ -33,8 +41,8 @@ the effect of an edit. Keep your test cases reusable with CSV import and export.
 
 *Screenshots use synthetic demo data, including illustrative AI outputs and scores.*
 
-Prompt management works without an AI connection. Import, refinement and
-evaluation use your configured provider: OpenAI, Anthropic, Gemini, Ollama,
+Prompt management works without an AI connection. Prompt conversion, refinement,
+Try once and evaluation use your configured provider: OpenAI, Anthropic, Gemini, Ollama,
 vLLM or another OpenAI-compatible endpoint. Hosted calls may incur provider
 charges; operators can set monthly spending limits.
 
@@ -86,7 +94,9 @@ REST and MCP share the same prompt services. AI calls are optional.
 ## Project status
 
 Early-stage, `0.x`. APIs and database schemas may change between releases.
-Back up before upgrading; see the [changelog](./CHANGELOG.md).
+Back up before upgrading; see the [changelog](./CHANGELOG.md). The
+[0.3.0 release preparation](./docs/releases/0.3.0.md) records the merge, migration
+and publication checks. The release is pending until its tag is published.
 
 ## License
 

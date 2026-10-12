@@ -37,8 +37,9 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
-| `POST` | `/api/prompts` | Yes | Save a new prompt from a name, sections, optional folder and variable hints |
-| `POST` | `/api/prompts/parse-text` | Yes | Split pasted text into sections with the caller's AI connection (Import text) |
+| `POST` | `/api/prompts` | Yes | Save a new prompt from a name, sections, optional folder and variable metadata (hints, required inputs and examples) |
+| `POST` | `/api/prompts/parse-text` | Yes | Convert pasted text into sections; optional `extract_variables: true` also returns original input values and source phrases |
+| `POST` | `/api/prompts/try` | Yes | Run filled editor `text` once with the configured AI connection; records spend without saving a prompt |
 | `GET` | `/api/prompts/config` | Yes | The caller's AI connection state, model list, and budget status |
 | `GET` | `/api/prompts/saved` | Yes | List the library (supports `folder` and `favorite_only` filters) |
 | `GET` | `/api/prompts/folders` | Yes | Distinct folder names |
@@ -46,7 +47,7 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 | `DELETE` | `/api/prompts/folders?name=` | Yes | Remove a folder; its prompts become unfiled |
 | `GET` | `/api/prompts/export` | Yes | Download every prompt with its version history as JSON |
 | `GET` | `/api/prompts/{id}` | Yes | Fetch one prompt |
-| `PATCH` | `/api/prompts/{id}` | Yes | Update name, sections, folder, favorite or hints (content changes keep a version; supports optimistic locking) |
+| `PATCH` | `/api/prompts/{id}` | Yes | Update name, sections, folder, favorite or variable metadata (section/metadata changes keep a version; notes describe the resulting state; supports optimistic locking) |
 | `DELETE` | `/api/prompts/{id}` | Yes | Permanently delete a prompt and its history |
 | `POST` | `/api/prompts/{id}/duplicate` | Yes | Duplicate a prompt |
 | `GET` | `/api/prompts/{id}/versions` | Yes | Version history |
@@ -54,6 +55,14 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 | `POST` | `/api/prompts/refine/questions` | Yes | Ask clarifying questions about current editor `fields`; optional `force` |
 | `POST` | `/api/prompts/refine/draft` | Yes | Revise current `fields` using `qa_pairs`; returns validated section edits without saving |
 | `POST` | `/api/prompts/{id}/refine/questions`, `/refine/draft` | Yes | Retained saved-prompt refinement API; draft returns text |
+
+`parse-text` defaults to the existing fields-only response. Extraction responses
+contain `fields` and `variables` with `name`, `value`, `description` and
+`source_text`; an existing unfilled placeholder has an empty value and null
+source text. Conversion never saves a prompt. Variable metadata defaults to
+`required: false`; an optional `example` is separate from section content.
+Prompt responses expose `current_note`; history exposes corrected `note` and
+preserved `legacy_note`.
 
 ## Evaluation Endpoints
 

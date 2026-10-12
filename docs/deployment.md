@@ -280,16 +280,28 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
 `023_recover_drifted_prompt_sections` rebuilds the sections of prompts whose
 text was edited by hand (keeping the original as a version), and
 `024_recover_unnamed_prompts` names old History entries and files them under
-"Recovered history". It also removes endpoints and the weekly-summary job.
+"Recovered history". Migration `025_version_notes` moves edit notes to the
+versions they describe, stores the current-version note separately, and keeps
+original notes in `legacy_note` for history and export. New snapshots include
+variable settings; restoring older snapshots retains current settings. The
+release also removes endpoints and the weekly-summary job.
 
 1. Back up first (`make backup-db`) and copy the backup off the host.
 2. Rehearse on a copy: restore that backup into a throwaway stack, start the new
    release against it, and check the backend log for `Applied database
-   migration 023_…` and `024_…`, then spot-check a few hand-edited prompts and the
-   Recovered history folder.
+   migration 023_…`, `024_…` and `025_…`, then spot-check a few hand-edited
+   prompts, the Recovered history folder, current/historical notes and exports.
+   Restart the throwaway backend and confirm the migrations do not run again.
+   Use an isolated stack and copied volume; never point a rehearsal at the live
+   database. Do not copy credentials into release notes or logs.
 3. Remove any `make send-weekly-summary` entry from the host crontab — the
    target no longer exists, and the job would fail every week.
-4. Deploy, then sign in and open a saved prompt, fill it in and copy it.
+4. After rehearsal and release approval, deploy, then sign in and open a saved
+   prompt, fill it in and copy it. Check draft recovery, save/reload, version
+   notes and restore, and historical evaluation labels before resuming normal use.
+
+See [the release checklist](releases/0.3.0.md) for the pending publication and
+production-data rehearsal gates.
 
 API clients of the removed endpoints (`/api/prompts/generate`,
 `/api/prompts/history`, `/api/prompts/tags`, the Playground endpoints, and

@@ -10,19 +10,23 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
-Planned as 0.3.0: a redesign around saving, filling in and copying prompts, with
-features that were shallow or misleading for that job removed. Read **Upgrade
-notes** before deploying.
+Planned as 0.3.0: a library-first sections editor with prompt conversion,
+refinement, evaluation and reversible history. Features that were shallow or
+misleading for that job were removed. Read **Upgrade notes** before deploying.
 
 ### Upgrade notes
 
 - Back up the database first (`make backup-db`) and rehearse the upgrade on a
-  copy. Two data migrations run once at startup:
+  copy. Three data migrations run once at startup:
   `023_recover_drifted_prompt_sections` rebuilds the sections of prompts whose
   text was edited by hand, keeping the original sections and text as a version
   noted "Before section recovery"; `024_recover_unnamed_prompts` names old
   History entries (`Untitled (14 Mar 2026, 09:12 UTC)`) and files them under
-  "Recovered history". Steps in [docs/deployment.md](./docs/deployment.md).
+  "Recovered history". `025_version_notes` associates edit notes with the resulting
+  version, keeps original notes in `legacy_note`, and stores the current note
+  separately. Recovery snapshot notes stay anchored; older snapshots retain
+  current variable settings when restored. Steps in
+  [docs/deployment.md](./docs/deployment.md#upgrading-to-030).
 - Remove any `make send-weekly-summary` cron entry; the target is gone.
 - Breaking API changes: `POST /api/prompts/generate`, `GET /api/prompts/history`,
   `GET /api/prompts/tags`, `POST /api/prompts/{id}/playground/run`,
@@ -35,6 +39,19 @@ notes** before deploying.
 
 ### Added
 
+- Paste a prompt from the library or editor: convert unstructured text into
+  XML-style sections and reusable variables with verbatim original values.
+  Review Filled or Template output, rename variables, keep an input fixed,
+  copy immediately, or apply to the draft with Undo. Source text, review edits
+  and converted inputs recover locally; inputs become saved examples only by
+  explicit choice. `parse-text` variable extraction is opt-in, so existing
+  fields-only API callers remain compatible.
+- Required and optional variables, missing-required-input feedback, explicit
+  Copy with placeholders, and prompt-specific examples loaded on request.
+  Existing variables stay optional by default.
+- A compact Try once action uses the filled prompt and configured AI connection,
+  with loading, output, errors and billing context. `POST /api/prompts/try`
+  records spend without saving a prompt or creating Playground history.
 - Evaluation workspace for saved prompts: readable test-case editing, CSV import/export,
   AI suggestions reviewed before saving, explicit runs, historical outputs and judge
   feedback, run comparison and manual ratings. Uses the existing backend API and
@@ -48,7 +65,7 @@ notes** before deploying.
   and remove, a live preview of exactly what will be copied, Template and Filled
   modes with "Copy template" and "Copy filled prompt", variable hints, inline
   warnings for empty sections and unevenly opened tags, starter templates, and
-  Import text.
+  Paste a prompt.
 - Explicit saving with Ctrl/⌘+S and an optional version note, local draft
   recovery, an edit-conflict banner that keeps your edits, and a History panel
   with a word-level diff and undoable restore.
@@ -67,8 +84,20 @@ notes** before deploying.
 - The server renders a prompt's text from its sections on every write, including
   restores and MCP updates, so the web app, the ChatGPT plugin and the copied
   text always agree.
-- Settings is one page: profile, password and sessions, theme, library layout,
-  the optional AI connection, export, and account deletion.
+- Settings is one page with section navigation: profile, password and sessions,
+  theme, library layout, the optional AI connection, export, and account deletion.
+  Discovered models are grouped by likely text-generation compatibility;
+  self-hosted custom model entry remains available. Connection-test success is
+  distinguished from selected-model compatibility.
+- Library cards expose Fill and copy alongside Copy template. Section actions
+  remain visible on phones, with accessible labels and 44-pixel touch targets.
+- AI-backed actions show the configured provider/model and provider-charge
+  context. Refinement Apply explicitly updates the draft; Save persists it.
+- Evaluation results show tested and current saved versions and offer Run current
+  version while retaining historical results.
+- Backend services, schemas, routes and migrations, and frontend feature UI,
+  controllers and API transport are reorganised around existing responsibilities.
+  Shared REST/MCP services and section-rendering fixtures protect their contracts.
 - The demo seed matches the new model: folders, hints, version histories, and no
   Playground runs or tags.
 - Version metadata in `package.json`, `pyproject.toml` and the API is now
@@ -91,6 +120,16 @@ notes** before deploying.
 
 ### Fixed
 
+- Save notes now describe the resulting version, including the current version;
+  original legacy notes remain available in history and JSON export.
+- Text import stages a review before replacing draft content and offers Undo.
+  Applying a library conversion consumes its one-time URL flag so reload opens
+  the recovered filled prompt instead of an empty import dialog.
+- Conversion validates original values, section tags and placeholder records;
+  malformed responses leave the source intact, and validation logs omit source
+  text. Completed invalid calls still count toward provider charges.
+- Regex evaluation uses fork-server workers so it remains safe when checks run
+  from evaluation threads.
 - Dialogs no longer move focus back to their first field on every keystroke.
 - Times from the API, which are UTC without a zone marker, are no longer read as
   local time.
