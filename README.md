@@ -95,8 +95,9 @@ REST and MCP share the same prompt services. AI calls are optional.
 
 Early-stage, `0.x`. APIs and database schemas may change between releases.
 Back up before upgrading; see the [changelog](./CHANGELOG.md). The
-[0.3.0 release preparation](./docs/releases/0.3.0.md) records the merge, migration
-and publication checks. The release is pending until its tag is published.
+[0.3.0 release record](./docs/releases/0.3.0.md) records publication and migration
+checks. Rehearse the migrations on an isolated production-backup copy before
+upgrading a live instance.
 
 ## License
 
