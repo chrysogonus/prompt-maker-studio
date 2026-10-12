@@ -300,7 +300,7 @@ release also removes endpoints and the weekly-summary job.
    prompt, fill it in and copy it. Check draft recovery, save/reload, version
    notes and restore, and historical evaluation labels before resuming normal use.
 
-See [the release checklist](releases/0.3.0.md) for the pending publication and
+See [the release checklist](releases/0.3.0.md) for the publication record and
 production-data rehearsal gates.
 
 API clients of the removed endpoints (`/api/prompts/generate`,

@@ -10,7 +10,9 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
-Planned as 0.3.0: a library-first sections editor with prompt conversion,
+## [0.3.0] - 2026-10-13
+
+0.3.0: a library-first sections editor with prompt conversion,
 refinement, evaluation and reversible history. Features that were shallow or
 misleading for that job were removed. Read **Upgrade notes** before deploying.
 
@@ -437,7 +439,8 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.3.0
 [0.2.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.2.0
 [0.1.4]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.4
 [0.1.3]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.3
