@@ -50,6 +50,8 @@ It currently handles:
 - `023_recover_drifted_prompt_sections` — makes every prompt's `fields` the source of its `generated_prompt`. Prompts whose stored text no longer matches their rendered fields (edited in the old raw-text editor) first get their original fields and text kept as a `prompt_versions` snapshot noted "Before section recovery"; their fields are then rebuilt from the text, split into sections only when that reproduces the text exactly, otherwise kept whole as one `prompt` section. `updated_at` is not changed.
 - `024_recover_unnamed_prompts` — gives every unnamed (History-only) prompt a date-based name such as `Untitled (14 Mar 2026, 09:12 UTC)` and files it under "Recovered history" unless it already has a folder. Nothing is deduplicated.
 
+- `025_version_notes` — associates save/restore notes with the resulting version and stores the newest note on `prompts.current_note`. Original notes remain in `prompt_versions.legacy_note` and the API/export; recovery snapshot notes stay anchored. New snapshots include variable settings. Older snapshots have no metadata, so restoring them retains current settings. Prompt text, IDs, evaluations and timestamps are untouched.
+
 ## Production Migration Checklist
 
 Before deploying a build with database changes:

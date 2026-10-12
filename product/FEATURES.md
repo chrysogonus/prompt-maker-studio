@@ -41,7 +41,7 @@ and the reasoning is in `product/DECISIONS.md`.
 | Variables and hints | ✅ Implemented | `{{variables}}` are detected across all sections; each can have an optional hint shown while filling it in. A hint whose variable disappeared is kept, marked as unused, until removed. Stored variable types are preserved but no longer edited | `frontend/src/features/editor/VariablesPanel.tsx`, `prompts.variable_metadata` |
 | Inline checks | ✅ Implemented | Advisory, never blocking: an empty section is flagged once it has been left, tags typed inside a section that open and close unevenly are named, and very long text (over 40,000 characters) gets a quiet notice | `frontend/src/features/editor/SectionCard.tsx`, `frontend/src/features/editor/PreviewPane.tsx` |
 | Starter templates | ✅ Implemented | Role, task, format; Rewrite my text; Summarise something; Persona. Sections start empty with hints as placeholders, so no filler text is saved by accident. Reachable from the editor and from the empty library | `frontend/src/lib/starterTemplates.ts`, `frontend/src/features/editor/PromptEditor.tsx` |
-| Import text | ✅ Implemented | Paste a prompt or rough notes and the user's AI connection splits it into editable sections (`POST /api/prompts/parse-text`, 20/min). Without a connection the dialog explains what it needs and links to Settings | `backend/app/services/prompt_parser.py`, `backend/app/api/routes.py`, `frontend/src/features/editor/ImportDialog.tsx` |
+| Paste a prompt | ✅ Implemented | Review AI-created XML-style sections and detected variables with exact original values; rename variables, keep inputs fixed, copy immediately, or apply to a recoverable draft with Undo. Examples require explicit opt-in and Save. Existing parse-text callers retain fields-only output (`POST /api/prompts/parse-text`, 20/min) | `backend/app/services/prompt_parser.py`, `backend/app/api/routes.py`, `frontend/src/features/editor/ImportDialog.tsx` |
 | AI prompt refinement | ✅ Implemented | Refine current sections, including new and unsaved prompts: explicitly find questions, answer, review section-level word diffs, apply locally with Undo, then save normally. Closing retains the session; changing its source requires restarting. Desktop replaces the preview; mobile uses a full-screen modal. The backend checks section names/order and per-section variables/tags before returning edits | `frontend/src/features/editor/RefinePanel.tsx`, `backend/app/api/refine_routes.py`, `backend/app/services/prompt_refiner.py` |
 | Draft recovery | ✅ Implemented | Unsaved edits are kept in localStorage per user and prompt, restored with a notice and a "Discard changes" action, and only when the saved prompt has not changed since; drafts are wiped on sign-out | `frontend/src/features/editor/usePromptEditor.ts`, `frontend/src/features/editor/useDraftPersistence.ts`, `frontend/src/lib/branding.ts` |
 | Edit conflict handling | ✅ Implemented | Every PATCH carries `last_updated_at`; a change from another tab or session returns 409, the editor keeps the local edits and offers "Load latest version", after which saving deliberately overwrites | `backend/app/api/routes.py`, `frontend/src/features/editor/PromptEditor.tsx` |
@@ -59,7 +59,7 @@ and the reasoning is in `product/DECISIONS.md`.
 | Folders | ✅ Implemented | Flat folders are labels on prompts, listed with counts in the sidebar with Unfiled and Recovered history last. Prompts are filed when saved or moved; `PATCH /api/prompts/folders?name=` renames a folder (renaming onto an existing one merges them) and `DELETE /api/prompts/folders?name=` removes one, unfiling its prompts — both scoped to the caller and leaving edit times alone | `backend/app/api/routes.py`, `frontend/src/components/shell/Sidebar.tsx`, `frontend/src/app/(app)/library/page.tsx` |
 | Prompt actions | ✅ Implemented | Each prompt's menu: Copy template, Rename (inline; a duplicate name is allowed but flagged), Move to folder, Duplicate (with "Open copy"), Delete. Delete removes the prompt at once with a 5-second Undo, and only then calls the server; a delete still inside its window is sent on navigation or tab close | `frontend/src/app/(app)/library/page.tsx`, `frontend/src/lib/api.ts` (`flushDeletePrompt`) |
 | Prompt duplication | ✅ Implemented | Deep-copies sections, folder, hints and stored metadata under a collision-free copy name; favorite and version history start fresh | `backend/app/api/routes.py` (`duplicate_prompt`) |
-| Empty library start | ✅ Implemented | A new account sees what the library is for, with New prompt, Import text, and the starter templates | `frontend/src/app/(app)/library/page.tsx` |
+| Empty library start | ✅ Implemented | A new account sees what the library is for, with New prompt, Paste a prompt, and the starter templates | `frontend/src/app/(app)/library/page.tsx` |
 | Data export | ✅ Implemented | Downloads every prompt with its folder, stored tags and full version history as JSON (10/min) | `GET /api/prompts/export`, `frontend/src/app/(app)/settings/page.tsx` |
 
 ## ChatGPT Plugin (MCP)
@@ -149,14 +149,28 @@ all model calls require an explicit action, and saving a prompt never starts an 
 - **Technical location**: `backend/app/services/prompt_sections.py`, `frontend/src/lib/sections.ts`
 - **Limitations / known gaps**: One output format (XML-style tags). A prompt recovered as a single `prompt` section now copies with a `<PROMPT>` wrapper around its old text; the original is in its version history.
 
-### Import text
-- **What it does**: Pasted text goes to the user's AI connection with a prompt-carried JSON contract and comes back as named sections.
-- **User benefit**: Turns a prompt someone already uses, or rough notes, into an editable template in one step.
-- **Technical location**: `backend/app/services/prompt_parser.py`, `frontend/src/features/editor/ImportDialog.tsx`
-- **Limitations / known gaps**: Quality depends on the connected model; small local models can fail both parse attempts.
+### Paste a prompt
+- **What it does**: Paste a working prompt from the library or editor, see the configured provider/model and charge notice, and choose Create template. Review XML-style sections with original inputs filled in; edit variable names/values or keep an input fixed. Copy filled text or the template directly, or choose Use in editor to update the draft with Undo. Save persists the template.
+- **User benefit**: Reuse a prompt without retyping its original inputs or saving an AI conversion before reviewing it. Source text, staged review edits and converted inputs recover through the existing account-scoped browser draft keys, including after saving a new prompt.
+- **Persistence**: Converted inputs remain local to the browser. Keep these inputs as examples is unchecked by default; checking it stores examples separately in variable metadata on Save. Existing templates, legacy drafts and fields-only API callers need no migration; variable extraction is opt-in with `extract_variables: true`.
+- **Technical location**: `backend/app/services/prompt_parser.py`, `backend/app/schemas/import_text.py`, `frontend/src/features/editor/ImportDialog.tsx`, `ImportReview.tsx`, `usePromptEditor.ts`, `useDraftPersistence.ts`.
+- **Limitations / known gaps**: Quality depends on the connected model. Extracted values are validated against exact source substrings and existing placeholders must survive, but users should review the model's interpretation of instructions. Local recovery is browser-specific and cleared on sign-out. Completed calls with invalid conversion data still count toward provider charges and the spend ledger.
 
 ### Folders
 - **What it does**: A folder is a label on each prompt. Folders appear when a prompt is filed in them and disappear when the last prompt leaves.
 - **User benefit**: One home per prompt, the way chat assistants organise projects, without managing folder objects.
 - **Technical location**: `prompts.folder`, `backend/app/api/routes.py`
 - **Limitations / known gaps**: Empty folders cannot exist and folders cannot nest; a folders table would be needed for either.
+
+### Editor usability (October 2026)
+
+| Feature | Status | Implementation |
+|---|---|---|
+| Mobile section controls | Implemented | Visible, labeled 44px reorder/remove controls in `frontend/src/features/editor/SectionCard.tsx` and its CSS |
+| Fill and copy | Implemented | Library cards and rows open variable inputs; template copying stays available in `frontend/src/features/library/LibraryPage.tsx` |
+| Draft import and refinement Undo | Implemented | Explicit apply/save distinction and persistent Undo in `frontend/src/features/editor/usePromptEditor.ts` |
+| Version notes and variable settings | Implemented | Resulting-version notes, preserved legacy notes, metadata snapshots and migration 025 in `backend/app/services/prompt_version_service.py` |
+| Required inputs and examples | Implemented | Optional by default; explicit example loading and placeholder copying in `frontend/src/features/editor/PreviewPane.tsx` |
+| Try once | Implemented | `POST /api/prompts/try` runs a bounded filled draft through the existing LLM transport and spend ledger; no prompt is saved |
+| Historical evaluation context | Implemented | Tested/current versions and Run current version in `frontend/src/features/evaluation/EvaluationPage.tsx` |
+| Model selection guidance | Implemented | Name-based operation groups, custom entry and separate configuration/test status in `frontend/src/features/settings/LLMConnectionForm.tsx`; discovery is not proof of compatibility |

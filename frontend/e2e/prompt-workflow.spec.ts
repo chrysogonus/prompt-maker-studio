@@ -358,14 +358,14 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
   await tabB.close();
 });
 
-test('explains Import text when no AI connection exists', async ({ page }) => {
+test('explains Paste a prompt when no AI connection exists', async ({ page }) => {
   await register(page, uniqueUser('aiunavailable'));
 
   await sidebarLink(page, 'New prompt').click();
   await expect(page).toHaveURL(/\/editor\/new$/);
-  await page.getByRole('button', { name: 'Import text' }).click();
+  await page.getByRole('button', { name: 'Paste a prompt' }).click();
 
-  const dialog = page.getByRole('dialog', { name: 'Import text needs an AI connection' });
+  const dialog = page.getByRole('dialog', { name: 'Paste a prompt needs an AI connection' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
     'href',

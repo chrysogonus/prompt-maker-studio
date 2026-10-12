@@ -25,6 +25,54 @@ class TestPromptVersioning:
         assert resp.status_code == 200
         assert resp.json() == []
 
+    def test_save_note_belongs_to_result_and_survives_next_save(self, client, auth_headers):
+        prompt_id = self._create_saved_prompt(client, auth_headers)
+        path = f"/api/prompts/{prompt_id}"
+        updated = client.patch(
+            path,
+            headers=auth_headers,
+            json={"fields": [{"name": "goal", "content": "v2"}], "note": "Shortened the task"},
+        ).json()
+        assert updated["current_note"] == "Shortened the task"
+        assert client.get(path + "/versions", headers=auth_headers).json()[0]["note"] is None
+        client.patch(
+            path, headers=auth_headers, json={"fields": [{"name": "goal", "content": "v3"}]}
+        )
+        history = client.get(path + "/versions", headers=auth_headers).json()
+        assert history[0]["note"] == "Shortened the task"
+        assert history[0]["fields"][0]["content"] == "v2"
+        assert client.get(path, headers=auth_headers).json()["current_note"] is None
+
+    def test_variable_settings_are_versioned_and_restored(self, client, auth_headers):
+        prompt_id = self._create_saved_prompt(client, auth_headers)
+        path = f"/api/prompts/{prompt_id}"
+        settings = {"topic": {"type": "text", "required": True, "example": "Climate"}}
+        client.patch(
+            path,
+            headers=auth_headers,
+            json={"variable_metadata": settings, "note": "Require topic"},
+        )
+        saved = client.get(path, headers=auth_headers).json()
+        assert saved["variable_metadata"]["topic"]["required"] is True
+        assert saved["variable_metadata"]["topic"]["example"] == "Climate"
+        first = client.get(path + "/versions", headers=auth_headers).json()[0]
+        client.post(path + f"/versions/{first['id']}/restore", headers=auth_headers)
+        assert client.get(path, headers=auth_headers).json()["variable_metadata"] == {}
+
+    def test_legacy_variable_defaults_do_not_create_a_spurious_version(
+        self, client, auth_headers, db_session
+    ):
+        from app.models.prompt import Prompt
+
+        prompt_id = self._create_saved_prompt(client, auth_headers)
+        row = db_session.query(Prompt).filter_by(id=prompt_id).one()
+        row.variable_metadata = {"topic": {"type": "text", "description": "Subject"}}
+        db_session.commit()
+        path = f"/api/prompts/{prompt_id}"
+        metadata = client.get(path, headers=auth_headers).json()["variable_metadata"]
+        client.patch(path, headers=auth_headers, json={"variable_metadata": metadata})
+        assert client.get(path + "/versions", headers=auth_headers).json() == []
+
     def test_editing_content_creates_a_version_of_the_prior_state(self, client, auth_headers):
         """Editing fields/generated_prompt on a saved prompt snapshots the old state."""
         prompt_id = self._create_saved_prompt(client, auth_headers)
@@ -132,7 +180,8 @@ class TestPromptVersioning:
         ).json()
         assert len(versions_after) == 2
         assert versions_after[0]["fields"][0]["content"] == "v2 content"
-        assert versions_after[0]["note"] == "Restore to v1"
+        assert versions_after[0]["note"] is None
+        assert resp.json()["current_note"] == "Restore to v1"
 
     @pytest.mark.parametrize(
         ("old_text", "restored_fields"),

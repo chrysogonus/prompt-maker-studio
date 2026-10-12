@@ -4,6 +4,8 @@ import type { EvalCase, EvalRun } from '../src/types/evaluation';
 
 // Deterministic responses exercise the UI without making paid provider calls.
 test.beforeEach(async ({ page }) => {
+  // Audit the settled theme rather than colors midway through its transition.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(() => {
     localStorage.setItem('prompt-maker-studio:client-session-expiry', String(Date.now() + 3_600_000));
   });
@@ -137,4 +139,28 @@ test('comparison keeps outputs readable on desktop and phones', async ({ page },
       await page.screenshot({ path: testInfo.outputPath(`comparison-${theme}-${width}.png`), fullPage: true });
     }
   }
+});
+
+test('historical results show tested and current versions on desktop and phones', async ({ page }) => {
+  await page.getByRole('button', { name: 'Run evaluation', exact: true }).click();
+  await expect(page.getByText('Tested version 3. Current saved version 3.')).toBeVisible();
+  await page.route('**/api/prompts/1/versions', (route) => route.fulfill({ json: [{
+    id: 3, version_number: 3, note: null, author: null, fields: [], generated_prompt: '', created_at: '2026-10-12T10:00:00',
+  }] }));
+  await page.reload();
+  await page.getByRole('radio', { name: 'Run history' }).click();
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(page.getByText('Tested version 3. Current saved version 4.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Run current version' })).toBeEnabled();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.route('**/api/prompts/1/eval/runs', (route) => route.fulfill({ json: {
+    id: 99, prompt_id: 1, prompt_version_number: 4, created_at: '2026-10-12T11:00:00',
+    score: null, model: 'gpt-4.1-mini', total_latency_ms: 1, total_prompt_tokens: 1,
+    total_completion_tokens: 1, total_cost_usd: 0, results: [],
+  } }));
+  await page.getByRole('button', { name: 'Run current version' }).click();
+  await expect(page.getByText('Tested version 4. Current saved version 4.')).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Past evaluations' }).getByRole('button')).toHaveCount(2);
 });

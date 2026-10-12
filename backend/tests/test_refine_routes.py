@@ -197,7 +197,7 @@ class TestRefineDraftEndpoint:
         assert "budget" in resp.json()["detail"].lower()
         mock_generate.assert_not_called()
 
-    def test_accept_flow_labels_the_pre_refine_snapshot(self, client, auth_headers):
+    def test_accept_flow_labels_the_resulting_version(self, client, auth_headers):
         prompt_id = _create_saved_prompt(client, auth_headers)
 
         with patch(
@@ -213,13 +213,14 @@ class TestRefineDraftEndpoint:
         update_resp = client.patch(
             f"/api/prompts/{prompt_id}",
             headers=auth_headers,
-            json={"fields": [{"name": "goal", "content": draft}], "note": "Before AI refinement"},
+            json={"fields": [{"name": "goal", "content": draft}], "note": "Applied AI refinement"},
         )
         assert update_resp.status_code == 200
         assert update_resp.json()["generated_prompt"] == "<GOAL>\nA revised template\n</GOAL>"
 
         versions = client.get(f"/api/prompts/{prompt_id}/versions", headers=auth_headers).json()
-        assert versions[0]["note"] == "Before AI refinement"
+        assert versions[0]["note"] is None
+        assert update_resp.json()["current_note"] == "Applied AI refinement"
         assert versions[0]["generated_prompt"] == "<GOAL>\nWrite about {{topic}}\n</GOAL>"
 
 

@@ -14,6 +14,7 @@ type Editing = { caseId?: number; initial?: EvalCaseInput; proposalIndex?: numbe
 
 export function useEvaluation(promptId: number) {
   const [prompt, setPrompt] = useState<PromptHistoryResponse | null>(null);
+  const [currentVersion, setCurrentVersion] = useState(1);
   const [config, setConfig] = useState<PromptsConfigResponse | null>(null);
   const [cases, setCases] = useState<EvalCase[]>([]);
   const [runs, setRuns] = useState<EvalRun[]>([]);
@@ -42,10 +43,11 @@ export function useEvaluation(promptId: number) {
     }
     Promise.all([
       ApiClient.getPromptById(promptId), ApiClient.getEvalCases(promptId),
-      ApiClient.getEvalRuns(promptId), ApiClient.getPromptsConfig(),
-    ]).then(([loaded, testCases, history, capability]) => {
+      ApiClient.getEvalRuns(promptId), ApiClient.getPromptsConfig(), ApiClient.getPromptVersions(promptId),
+    ]).then(([loaded, testCases, history, capability, versions]) => {
       if (!active) return;
       setPrompt(loaded);
+      setCurrentVersion(Math.max(0, ...versions.map((version) => version.version_number)) + 1);
       setCases(testCases);
       setRuns(history);
       setConfig(capability);
@@ -117,7 +119,15 @@ export function useEvaluation(promptId: number) {
       setRuns((current) => [result, ...current]);
       setSelectedRunId(result.id);
       setView('runs');
+      setCurrentVersion(result.prompt_version_number);
       setNotice('Evaluation finished.');
+      try {
+        const [latest, versions] = await Promise.all([ApiClient.getPromptById(promptId), ApiClient.getPromptVersions(promptId)]);
+        setPrompt(latest);
+        setCurrentVersion(Math.max(result.prompt_version_number, ...versions.map((version) => version.version_number + 1)));
+      } catch {
+        setError('Evaluation results are kept. Could not refresh the current saved version; reload to compare it.');
+      }
     });
   }
 
@@ -146,7 +156,7 @@ export function useEvaluation(promptId: number) {
   }
 
   return {
-    prompt, config, cases, runs, loading, loadError, retry: () => setLoadAttempt((n) => n + 1),
+    prompt, currentVersion, config, cases, runs, loading, loadError, retry: () => setLoadAttempt((n) => n + 1),
     error, setError, notice, busy, view, setView, editing, setEditing, deleting, setDeleting,
     suggesting, setSuggesting, proposals, setProposals, selectedRunId, setSelectedRunId,
     saveCase, deleteCase, generate, run, rate, importCsv, exportCsv,

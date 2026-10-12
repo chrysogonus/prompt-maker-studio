@@ -47,6 +47,8 @@ class Prompt(Base):
     # frontend/src/lib/placeholders.ts. Shape: {name: {type, description}}.
     variable_metadata = Column(JSONB().with_variant(JSON, "sqlite"), nullable=True)
 
+    current_note = Column(String(255), nullable=True)
+
     owner = relationship("User", back_populates="prompts")
     versions = relationship("PromptVersion", back_populates="prompt", cascade="all, delete-orphan")
     playground_runs = relationship(

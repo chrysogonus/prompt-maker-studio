@@ -24,6 +24,8 @@ def get_prompt_versions(prompt_id: int, db: Session, user_id: int):
             id=v.id,
             version_number=v.version_number,
             note=v.note,
+            legacy_note=v.legacy_note,
+            variable_metadata=v.variable_metadata,
             author=v.author.username if v.author else None,
             fields=v.fields,
             generated_prompt=v.generated_prompt,

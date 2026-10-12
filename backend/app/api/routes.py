@@ -17,7 +17,7 @@ from app.metrics import (
 )
 from app.models.user import User
 from app.schemas.connections import PromptsConfigResponse
-from app.schemas.import_text import ParseTextRequest, ParseTextResponse
+from app.schemas.import_text import ParseTextRequest, ParseTextResponse, PromptConversionResponse
 from app.schemas.prompts import (
     DataExportResponse,
     FolderChangeResponse,
@@ -26,9 +26,16 @@ from app.schemas.prompts import (
     PromptHistoryResponse,
     PromptUpdateRequest,
     PromptVersionResponse,
+    TryPromptRequest,
+    TryPromptResponse,
 )
 from app.services.budget_service import BudgetExceededError, BudgetService
-from app.services.llm_client import active_provider_and_model, available_models_for
+from app.services.llm_client import (
+    LLMResponseFormatError,
+    active_provider_and_model,
+    available_models_for,
+)
+from app.services.playground_service import try_once
 from app.services.prompt_parser import PromptParserService as TextParserService
 from app.services.prompts import export, folders, library, versions
 from app.services.spend_ledger import record_billed_call
@@ -38,7 +45,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/prompts", tags=["prompts"])
 
 
-@router.post("/parse-text", response_model=ParseTextResponse)
+@router.post("/try", response_model=TryPromptResponse)
+@limiter.limit("10/minute")
+def try_prompt(
+    request: Request,
+    body: TryPromptRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Try the filled editor text once without creating or modifying a prompt."""
+    return call_service(try_once, body.text, get_llm_connection(current_user), db, current_user.id)
+
+
+@router.post("/parse-text", response_model=ParseTextResponse | PromptConversionResponse)
 @limiter.limit("20/minute")
 def parse_prompt_text(
     request: Request,
@@ -71,7 +90,10 @@ def parse_prompt_text(
 
     ai_imports_total.inc()
     try:
-        fields, usage = TextParserService.parse(body.text, connection)
+        if body.extract_variables:
+            raw, usage = TextParserService.convert(body.text, connection)
+        else:
+            fields, usage = TextParserService.parse(body.text, connection)
     except Exception as exc:
         ai_import_failures_total.inc()
         raise llm_http_error(exc, connection, "parse-text") from exc
@@ -79,6 +101,17 @@ def parse_prompt_text(
     record_billed_call(db, current_user.id, "parse", usage)
     db.commit()
 
+    if body.extract_variables:
+        try:
+            return TextParserService.validate_conversion(body.text, raw)
+        except Exception as exc:
+            ai_import_failures_total.inc()
+            # Validation errors can include the user's source text; keep it out of logs.
+            failure = LLMResponseFormatError(
+                f"{connection.provider_label} returned an invalid template or extracted inputs. "
+                "Try again or choose a more capable model in Settings → API access."
+            )
+            raise llm_http_error(failure, connection, "parse-text conversion validation") from exc
     return ParseTextResponse(fields=fields)
 
 

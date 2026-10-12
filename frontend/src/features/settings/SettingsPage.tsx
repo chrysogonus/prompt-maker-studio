@@ -17,6 +17,11 @@ export default function SettingsPage() {
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>Settings</h1>
+      <nav className={styles.sectionNav} aria-label="Settings sections">
+        {[['profile', 'Profile'], ['security', 'Password and sessions'], ['preferences', 'Appearance and library'], ['api', 'AI connection'], ['data', 'Your data'], ['danger', 'Delete account']].map(([id, label]) => (
+          <a key={id} href={`#s-${id}`}>{label}</a>
+        ))}
+      </nav>
 
       <ProfileSettings
         currentUser={settings.currentUser}

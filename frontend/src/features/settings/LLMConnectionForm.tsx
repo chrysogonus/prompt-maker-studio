@@ -17,6 +17,7 @@ import { HideIcon, RevealIcon } from '@/components/ui/icon';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import styles from './LLMConnectionForm.module.css';
+import { modelCompatibility } from '@/lib/modelCompatibility';
 
 function formatPrice(price: number): string {
   return price.toLocaleString('en-US', {
@@ -45,11 +46,13 @@ export default function LLMConnectionForm() {
   const [isTesting, setIsTesting] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [testedSelection, setTestedSelection] = useState('');
   const catalogueRequest = useRef(0);
 
   const applyConnection = useCallback((next: LLMConnection) => {
     catalogueRequest.current += 1;
     setModelCatalogue([]);
+    setTestedSelection('');
     setConnection(next);
     setProviderHandle(next.provider ?? '');
     setBaseUrl(next.base_url ?? '');
@@ -98,6 +101,10 @@ export default function LLMConnectionForm() {
     selected?.requires_api_key && (providerChanged || !connection?.has_api_key),
   );
 
+  const unsaved = providerHandle !== (connection?.provider ?? '') || baseUrl !== (connection?.base_url ?? '') || model !== (connection?.model ?? '') || Boolean(apiKey.trim());
+  const compatibility = modelCompatibility(model);
+  const selectionTested = testedSelection === `${providerHandle}|${baseUrl}|${model}`;
+
   const handleProviderChange = (handle: string) => {
     catalogueRequest.current += 1;
     setModelCatalogue([]);
@@ -139,11 +146,13 @@ export default function LLMConnectionForm() {
   const handleTest = async () => {
     setError('');
     setStatus('');
+    setTestedSelection('');
     setIsTesting(true);
     try {
       const result = await AuthService.testLLMConnection();
       if (result.ok) {
-        setStatus(result.message);
+        setTestedSelection(`${connection?.provider ?? ''}|${connection?.base_url ?? ''}|${connection?.model ?? ''}`);
+        setStatus(`Text-generation test passed for ${connection?.model ?? connection?.server_default?.model}. ${result.message}`);
         void refreshModelCatalogue();
       } else {
         setError(result.message);
@@ -186,7 +195,7 @@ export default function LLMConnectionForm() {
             }
           >
             {connection?.configured
-              ? `Connected to ${connection.provider_label}`
+              ? `Configured for ${connection.provider_label}`
               : connection?.server_default
                 ? `Using this server’s default connection (${connection.server_default.provider_label}, ${connection.server_default.model})`
                 : 'Not connected'}
@@ -234,10 +243,12 @@ export default function LLMConnectionForm() {
               aria-label="Available models"
             >
               <option value="">Choose a listed model or type one below…</option>
-              {modelCatalogue.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {modelOptionLabel(item)}
-                </option>
+              {(['text', 'unknown', 'other'] as const).map((group) => (
+                <optgroup key={group} label={group === 'text' ? 'Text-generation candidates' : group === 'unknown' ? 'Unknown compatibility — test before use' : 'Other operations — unavailable here'}>
+                  {modelCatalogue.filter((item) => modelCompatibility(item.id) === group).map((item) => (
+                    <option key={item.id} value={item.id} disabled={group === 'other'}>{modelOptionLabel(item)}</option>
+                  ))}
+                </optgroup>
               ))}
             </Select>
             <Input
@@ -268,6 +279,14 @@ export default function LLMConnectionForm() {
           </div>
         )}
       </div>
+
+      <p className={styles.hint}>
+        {compatibility === 'other' ? 'This model name indicates an operation other than text generation. Choose a chat/text model for Import, Refine, Evaluate and Try once.'
+          : selectionTested ? 'The saved provider and selected model passed a text-generation test. Structured operations still depend on provider support.' : 'Model discovery and saved credentials do not verify compatibility. Model compatibility has not been tested for this selection; use Test connection after saving.'}
+        {' '}Model-name grouping is guidance only. Custom models remain available for self-hosted providers.
+      </p>
+      {unsaved && <p className={styles.hint}>Save changes before testing. Test connection uses the saved provider and model.</p>}
+      <p className={styles.hint}>Test connection sends a text-generation request using {connection?.provider_label ?? connection?.server_default?.provider_label ?? 'the saved provider'} / {connection?.model ?? connection?.server_default?.model ?? 'saved model'} and may incur provider charges.</p>
 
       <div className={styles.field}>
         <label className={styles.fieldLabel} htmlFor="llm-api-key">
@@ -336,7 +355,7 @@ export default function LLMConnectionForm() {
           type="button"
           variant="secondary"
           onClick={handleTest}
-          disabled={isTesting || !(connection?.configured || connection?.server_default)}
+          disabled={isTesting || unsaved || !(connection?.configured || connection?.server_default)}
         >
           {isTesting ? 'Testing…' : 'Test connection'}
         </Button>

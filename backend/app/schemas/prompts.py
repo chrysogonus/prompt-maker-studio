@@ -13,6 +13,8 @@ class VariableMetadataItem(BaseModel):
 
     type: Literal["text", "number", "boolean", "list"] = "text"
     description: str | None = Field(None, max_length=500)
+    required: bool = False
+    example: str | None = Field(None, max_length=10_000)
 
 
 class PromptField(BaseModel):
@@ -90,6 +92,7 @@ class PromptHistoryResponse(BaseModel):
     generated_prompt: str
     created_at: datetime
     updated_at: datetime | None = None
+    current_note: str | None = None
     folder: str | None = None
     is_favorite: bool = False
     variable_metadata: dict[str, VariableMetadataItem] | None = None
@@ -159,6 +162,8 @@ class PromptVersionResponse(BaseModel):
     id: int
     version_number: int
     note: str | None
+    legacy_note: str | None = None
+    variable_metadata: dict[str, VariableMetadataItem] | None = None
     author: str | None
     fields: list[PromptField]
     generated_prompt: str
@@ -170,6 +175,8 @@ class ExportedPromptVersion(BaseModel):
 
     version_number: int
     note: str | None
+    legacy_note: str | None = None
+    variable_metadata: dict[str, VariableMetadataItem] | None = None
     author: str | None
     fields: list[PromptField]
     generated_prompt: str
@@ -188,6 +195,8 @@ class ExportedPrompt(BaseModel):
     is_favorite: bool
     created_at: datetime
     updated_at: datetime | None
+    current_note: str | None = None
+    variable_metadata: dict[str, VariableMetadataItem] | None = None
     versions: list[ExportedPromptVersion]
 
 
@@ -196,3 +205,22 @@ class DataExportResponse(BaseModel):
 
     exported_at: datetime
     prompts: list[ExportedPrompt]
+
+
+class TryPromptRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(..., min_length=1, max_length=100_000)
+
+    @field_validator("text")
+    @classmethod
+    def require_content(cls, value: str) -> str:
+        if not value.strip():
+            message = "Enter some prompt text before running"
+            raise ValueError(message)
+        return value
+
+
+class TryPromptResponse(BaseModel):
+    output_text: str
+    provider: str
+    model: str

@@ -9,12 +9,13 @@ interface DialogProps {
   onClose: () => void;
   children: ReactNode;
   actions?: ReactNode;
+  className?: string;
 }
 
 const FOCUSABLE_SELECTOR =
-  'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+  'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])';
 
-export default function Dialog({ isOpen, title, onClose, children, actions }: DialogProps) {
+export default function Dialog({ isOpen, title, onClose, children, actions, className }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   // Read through a ref so a parent passing an inline `onClose` doesn't re-run
@@ -41,11 +42,19 @@ export default function Dialog({ isOpen, title, onClose, children, actions }: Di
       if (e.key !== 'Tab' || !dialogEl) return;
 
       const items = dialogEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (items.length === 0) return;
+      if (items.length === 0) {
+        e.preventDefault();
+        dialogEl.focus();
+        return;
+      }
       const first = items[0];
       const last = items[items.length - 1];
 
-      if (e.shiftKey && document.activeElement === first) {
+      const active = document.activeElement;
+      if (!dialogEl.contains(active) || active === dialogEl || active?.getAttribute('tabindex') === '-1') {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && active === first) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
@@ -69,7 +78,7 @@ export default function Dialog({ isOpen, title, onClose, children, actions }: Di
     <div className={styles.overlay} onClick={onClose}>
       <div
         ref={dialogRef}
-        className={styles.dialog}
+        className={[styles.dialog, className].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="true"
         aria-label={title}

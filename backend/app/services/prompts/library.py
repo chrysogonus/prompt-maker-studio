@@ -10,7 +10,7 @@ from app.metrics import (
 )
 from app.models.eval_case import EvalCase
 from app.models.prompt import Prompt
-from app.schemas.prompts import PromptCreateRequest, PromptUpdateRequest
+from app.schemas.prompts import PromptCreateRequest, PromptUpdateRequest, VariableMetadataItem
 from app.services.errors import OperationError
 from app.services.optimistic_concurrency import is_stale, next_write_stamp
 from app.services.prompt_id_service import PromptIdService
@@ -79,7 +79,19 @@ def update_prompt(prompt_id: int, body: PromptUpdateRequest, db: Session, user_i
         if body.fields is not None
         else None
     )
-    if next_fields is not None and next_fields != prompt.fields:
+    next_metadata = (
+        {k: v.model_dump() for k, v in body.variable_metadata.items()}
+        if body.variable_metadata is not None
+        else None
+    )
+    if (next_fields is not None and next_fields != prompt.fields) or (
+        next_metadata is not None
+        and next_metadata
+        != {
+            name: VariableMetadataItem.model_validate(item).model_dump()
+            for name, item in (prompt.variable_metadata or {}).items()
+        }
+    ):
         PromptVersionService.snapshot(db, prompt, user_id, note=body.note)
 
     if body.name is not None:
@@ -91,8 +103,8 @@ def update_prompt(prompt_id: int, body: PromptUpdateRequest, db: Session, user_i
         prompt.folder = body.folder
     if body.is_favorite is not None:
         prompt.is_favorite = body.is_favorite
-    if body.variable_metadata is not None:
-        prompt.variable_metadata = {k: v.model_dump() for k, v in body.variable_metadata.items()}
+    if next_metadata is not None:
+        prompt.variable_metadata = next_metadata
 
     prompt.updated_at = next_write_stamp(prompt.updated_at or prompt.created_at)
 

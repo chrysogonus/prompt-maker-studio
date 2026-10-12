@@ -1,0 +1,32 @@
+.dialog {
+  width: min(1040px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+.dialog button { min-height: 44px; }
+.reviewHeading { margin: var(--space-3) 0; color: var(--text-primary); }
+.reviewLayout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "variables preview"; gap: var(--space-6); margin: var(--space-4) 0; }
+.variables { grid-area: variables; min-width: 0; }
+.variable { display: grid; gap: var(--space-3); padding: var(--space-4) 0; border-bottom: 1px solid var(--color-border); }
+.variable label { display: grid; gap: var(--space-1); }
+.variable input:not([type='checkbox']), .variable textarea {
+  width: 100%; min-width: 0; min-height: 44px; padding: 9px 10px; border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm); background: var(--color-panel); color: var(--text-primary); font: inherit;
+}
+.variable textarea { resize: vertical; }
+.variable .reuseToggle, .reuseToggle { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; }
+.reuseToggle input { width: 20px; height: 20px; accent-color: var(--color-accent-tag); }
+.variable summary { min-height: 44px; padding-top: var(--space-2); cursor: pointer; }
+.sourcePhrase { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: var(--space-2); }
+.preview { grid-area: preview; min-width: 0; }
+.preview pre {
+  background: var(--pv-bg); color: var(--pv-text); padding: var(--space-4); border-radius: var(--radius-md);
+  margin: var(--space-3) 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 13px;
+}
+.actions { position: sticky; bottom: 0; padding: var(--space-3) 0; background: var(--color-panel); border-top: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+.error { color: var(--color-danger); }
+@media (max-width: 760px) {
+  .reviewLayout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "preview" "variables"; }
+  .actions > * { flex: 1 1 auto; }
+}

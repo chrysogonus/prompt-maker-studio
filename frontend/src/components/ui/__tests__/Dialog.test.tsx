@@ -79,3 +79,20 @@ describe('Dialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+it('keeps focus inside when Tab starts on a review heading', async () => {
+  render(<>
+    <button>Outside</button>
+    <Dialog isOpen title="Review" onClose={vi.fn()}>
+      <h3 tabIndex={-1}>Review heading</h3>
+      <input aria-label="First input" />
+      <button>Last action</button>
+    </Dialog>
+  </>);
+  screen.getByRole('heading', { name: 'Review heading' }).focus();
+  await userEvent.tab({ shift: true });
+  expect(screen.getByRole('button', { name: 'Last action' })).toHaveFocus();
+  screen.getByRole('heading', { name: 'Review heading' }).focus();
+  await userEvent.tab();
+  expect(screen.getByLabelText('First input')).toHaveFocus();
+});

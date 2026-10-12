@@ -27,9 +27,9 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
       {
         name: 'Task',
         content: '',
-        hint: 'What should it do? Put the parts that change each time in {{double_braces}}',
+        hint: 'For example: Explain {{topic}} to {{audience}} in plain language. Write your own task.',
       },
-      { name: 'Format', content: '', hint: 'How should the answer look? Length, structure, tone' },
+      { name: 'Format', content: '', hint: 'For example: Three short paragraphs, followed by one question. Specify your length, structure and tone.' },
     ],
   },
   {
@@ -58,8 +58,8 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     label: 'Persona',
     description: 'A consistent character, voice and set of limits.',
     sections: [
-      { name: 'Persona', content: '', hint: 'Name, background, how they think' },
-      { name: 'Voice', content: '', hint: 'How they speak. Words they would and would not use' },
+      { name: 'Persona', content: '', hint: 'For example: A curious museum guide who connects exhibits to everyday life. Describe your character.' },
+      { name: 'Voice', content: '', hint: 'For example: Warm and precise; define jargon and avoid slang. Describe the voice you need.' },
       { name: 'Task', content: '', hint: 'What they help with in this conversation' },
     ],
   },

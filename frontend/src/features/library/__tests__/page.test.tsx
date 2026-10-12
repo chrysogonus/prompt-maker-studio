@@ -288,7 +288,7 @@ describe('LibraryPage', () => {
     await renderLibrary();
 
     expect(screen.getByRole('heading', { name: 'Your prompt library is empty' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Import text' })).toHaveAttribute('href', '/editor/new?import=1');
+    expect(screen.getByRole('link', { name: 'Paste a prompt' })).toHaveAttribute('href', '/editor/new?import=1');
     expect(screen.getByRole('link', { name: /Rewrite my text/ })).toHaveAttribute(
       'href',
       '/editor/new?starter=rewrite',

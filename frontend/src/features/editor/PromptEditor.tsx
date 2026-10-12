@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import Button, { ButtonLink } from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
 import { PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
@@ -16,7 +18,7 @@ import styles from './PromptEditor.module.css';
 import { usePromptEditor } from './usePromptEditor';
 import { toEditorSections, uniqueName, PromptEditorProps } from './editorState';
 
-export default function PromptEditor({ promptId, initialStarter, openImport }: PromptEditorProps) {
+export default function PromptEditor({ promptId, initialStarter, initialMode, openImport }: PromptEditorProps) {
   const {
     router,
     isNew,
@@ -48,6 +50,8 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
     conflict,
     notice,
     setNotice,
+    draftAction,
+    setDraftAction,
     saveDialog,
     setSaveDialog,
     moveDialog,
@@ -59,7 +63,11 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
     setStarterOpen,
     importOpen,
     setImportOpen,
+    importSession,
+    setImportSession,
     aiAvailable,
+    aiConfig,
+    importSections,
     showNotice,
     fields,
     variables,
@@ -77,7 +85,16 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
     removeSection,
     replaceSections,
     applyRefinement,
-  } = usePromptEditor({ promptId, initialStarter, openImport });
+  } = usePromptEditor({ promptId, initialStarter, initialMode, openImport });
+
+  const editorRef = useRef<HTMLDivElement>(null);
+  const focusImported = useRef(false);
+  useEffect(() => {
+    if (!importOpen && focusImported.current) {
+      focusImported.current = false;
+      editorRef.current?.querySelector<HTMLElement>('[aria-label="Preview"] textarea, [aria-label="Prompt text"]')?.focus();
+    }
+  }, [importOpen]);
 
   if (loading) {
     return <div className={styles.status}>Loading prompt…</div>;
@@ -99,7 +116,7 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
   const hasContent = fields.some((field) => field.content.trim());
 
   return (
-    <div className={styles.editor} data-tab={mobileTab}>
+    <div ref={editorRef} className={styles.editor} data-tab={mobileTab}>
       <header className={styles.head}>
         <div className={styles.crumbs}>
           {prompt && (
@@ -162,6 +179,7 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
               maxLength={255}
             />
           )}
+          {prompt && <Button variant="ghost" disabled={refineOpen || saving} onClick={() => setImportOpen(true)}>Paste a prompt</Button>}
           {prompt && dirty && (
             <Button variant="ghost" onClick={discardEdits} disabled={refineOpen}>
               Discard
@@ -208,6 +226,14 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
           Fill and copy
         </button>
       </div>
+
+      {draftAction && <div className={styles.banner} role="status">
+        <span>{draftAction.text}</span>
+        <Button variant="secondary" disabled={refineOpen || saving} onClick={() => {
+          setDraftAction(null);
+          draftAction.action?.run();
+        }}>Undo</Button>
+      </div>}
 
       {conflict && (
         <div className={`${styles.banner} ${styles.conflict}`} role="alert">
@@ -261,7 +287,7 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
                 )}
               </div>
               <Button variant="ghost" onClick={() => setImportOpen(true)}>
-                Import text
+                Paste a prompt
               </Button>
             </div>
           )}
@@ -307,20 +333,21 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
             metadata={metadata}
             onDescribe={(name, description) =>
               setMetadata((current) => {
-                // Clearing a hint returns to what was saved, so typing and
-                // deleting one doesn't leave the prompt marked as edited.
+                // Clear only the hint; requirements and examples belong to the same variable.
                 const saved = promptRef.current?.variable_metadata?.[name];
                 const next = { ...current };
-                if (description) {
-                  next[name] = { type: current[name]?.type ?? saved?.type ?? 'text', description };
-                } else if (saved) {
-                  next[name] = { ...saved, description: null };
-                } else {
+                const item = { ...saved, ...current[name], type: current[name]?.type ?? saved?.type ?? 'text', description: description || null };
+                if (!saved && !description && !item.required && !item.example) {
                   delete next[name];
+                } else {
+                  next[name] = item;
                 }
                 return next;
               })
             }
+            onChangeMetadata={(name, change) => setMetadata((current) => ({
+              ...current, [name]: { ...current[name], type: current[name]?.type ?? 'text', ...change },
+            }))}
             onRemove={(name) =>
               setMetadata((current) => {
                 const next = { ...current };
@@ -334,9 +361,13 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
         {!refineOpen && (
         <PreviewPane
           fields={fields}
+          aiConfig={aiConfig}
           variables={variables}
           metadata={metadata}
           values={values}
+          onLoadExamples={() => setValues((current) => ({
+            ...current, ...Object.fromEntries(variables.filter((name) => metadata[name]?.example).map((name) => [name, metadata[name].example!])),
+          }))}
           onValueChange={(name, value) => setValues((current) => ({ ...current, [name]: value }))}
           mode={mode}
           onModeChange={setMode}
@@ -352,6 +383,7 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
           open={refineOpen}
           fields={fields}
           aiAvailable={aiAvailable}
+          aiConfig={aiConfig}
           onClose={() => setRefineOpen(false)}
           onApply={applyRefinement}
         />
@@ -473,14 +505,14 @@ export default function PromptEditor({ promptId, initialStarter, openImport }: P
       <ImportDialog
         isOpen={importOpen}
         aiAvailable={aiAvailable}
+        aiConfig={aiConfig}
         replacesContent={hasContent}
         onClose={() => setImportOpen(false)}
-        onImport={(imported) => {
-          replaceSections(imported);
-          setImportOpen(false);
-          showNotice({
-            text: `Imported ${imported.length} section${imported.length === 1 ? '' : 's'}. Review and rename them as needed.`,
-          });
+        session={importSession}
+        onSessionChange={setImportSession}
+        onImport={(result) => {
+          focusImported.current = true;
+          importSections(result);
         }}
       />
     </div>

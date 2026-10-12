@@ -6,6 +6,7 @@ import {
   PromptUpdateRequest,
   PromptsConfigResponse,
   PromptVersionResponse,
+  TryPromptResponse,
 } from '@/types/prompt';
 
 import { API_URL } from '../apiBase';
@@ -254,4 +255,15 @@ export async function exportPrompts(): Promise<Blob> {
   }
 
   return response.blob();
+}
+
+export async function tryPrompt(text: string): Promise<TryPromptResponse> {
+  const response = await authenticatedFetch(`${API_URL}/api/prompts/try`, {
+    method: 'POST', body: JSON.stringify({ text }),
+  }, LONG_OPERATION_SESSION_VALIDITY_MS);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new ApiError(typeof error.detail === 'string' ? error.detail : 'Could not run the prompt. Try once accepts up to 100,000 characters.', response.status);
+  }
+  return response.json();
 }

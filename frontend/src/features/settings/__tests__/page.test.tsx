@@ -100,7 +100,7 @@ beforeEach(() => {
 describe('SettingsPage', () => {
   it('shows the connected provider in the API access section', async () => {
     renderSettings();
-    expect(await screen.findByText(/Connected to OpenAI/)).toBeInTheDocument();
+    expect(await screen.findByText(/Configured for OpenAI/)).toBeInTheDocument();
   });
 
   it('shows Not connected when the user has no provider configured', async () => {

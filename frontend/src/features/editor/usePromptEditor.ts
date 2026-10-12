@@ -9,11 +9,14 @@ import { pageTitle, storageKey } from '@/lib/branding';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { sectionNameError, variablesIn } from '@/lib/sections';
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
-import { PromptField, PromptHistoryResponse, PromptUpdateRequest, PromptVersionResponse } from '@/types/prompt';
+import { PromptField, PromptHistoryResponse, PromptUpdateRequest, PromptVersionResponse, PromptsConfigResponse } from '@/types/prompt';
 
 import { useDraftPersistence } from './useDraftPersistence';
 import {
   EditorSection,
+  Draft,
+  ImportedPrompt,
+  ImportSession,
   Metadata,
   Notice,
   toEditorSections,
@@ -24,7 +27,7 @@ import {
   PromptEditorProps,
 } from './editorState';
 
-export function usePromptEditor({ promptId, initialStarter, openImport }: PromptEditorProps) {
+export function usePromptEditor({ promptId, initialStarter, initialMode, openImport }: PromptEditorProps) {
   const router = useRouter();
   const { currentUser } = useAuth();
   const isNew = promptId === undefined;
@@ -38,7 +41,9 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
   const [sections, setSections] = useState<EditorSection[]>(blankSections);
   const [metadata, setMetadata] = useState<Metadata>({});
   const [values, setValues] = useState<Record<string, string>>({});
-  const [mode, setMode] = useState<'template' | 'filled'>('template');
+  const [rememberValues, setRememberValues] = useState(false);
+  const [importSession, setImportSession] = useState<ImportSession>({ text: '' });
+  const [mode, setMode] = useState<'template' | 'filled'>(initialMode ?? 'template');
   const [mobileTab, setMobileTab] = useState<'edit' | 'use'>(isNew ? 'edit' : 'use');
   const [previewOpen, setPreviewOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -50,6 +55,7 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
   const savingRef = useRef(false);
   const [note, setNote] = useState('');
   const [conflict, setConflict] = useState(false);
+  const [draftAction, setDraftAction] = useState<Notice | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const noticeTimer = useRef<number | null>(null);
   const [saveDialog, setSaveDialog] = useState<{ name: string; folder: string; error: string } | null>(null);
@@ -58,9 +64,14 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
   const [renaming, setRenaming] = useState(false);
   const [starterOpen, setStarterOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(Boolean(openImport));
-  const [aiAvailable, setAiAvailable] = useState(true);
+  const [aiConfig, setAiConfig] = useState<PromptsConfigResponse | null>(null);
+  const aiAvailable = Boolean(aiConfig?.provider_connected && !aiConfig.budget_exhausted);
   const mutationChain = useRef<Promise<unknown>>(Promise.resolve());
   const sectionsRef = useRef(sections);
+  const metadataRef = useRef(metadata);
+  const valuesRef = useRef(values);
+  useLayoutEffect(() => { valuesRef.current = values; }, [values]);
+  useLayoutEffect(() => { metadataRef.current = metadata; }, [metadata]);
   useLayoutEffect(() => { sectionsRef.current = sections; }, [sections]);
 
   const showNotice = useCallback((next: Notice, ms = 4000) => {
@@ -96,6 +107,18 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
     ),
   );
 
+  const restoreInputs = useCallback((draft: Draft) => {
+    setValues(draft.values ?? {});
+    setRememberValues(draft.values !== undefined);
+    setImportSession(draft.importSession ?? { text: '' });
+    if (draft.importSession?.text) setImportOpen(true);
+    if (draft.values !== undefined) {
+      setMode('filled');
+      setMobileTab('use');
+      setPreviewOpen(true);
+    }
+  }, []);
+
   // Load a saved prompt, preferring a draft made against the same saved state.
   useEffect(() => {
     if (promptId === undefined) return;
@@ -119,12 +142,14 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
         if (draft && draft.base === base) {
           setSections(toEditorSections(draft.sections, true));
           setMetadata(draft.metadata);
-          setRestoredDraft(true);
+          setNote(draft.note ?? '');
+          restoreInputs(draft);
+          setRestoredDraft(snapshot(draft.sections, draft.metadata) !== base || !!draft.importSession?.text);
         } else {
           setSections(toEditorSections(loaded.fields, true));
           setMetadata(loaded.variable_metadata ?? {});
         }
-        if (variablesIn(loaded.fields).length > 0) setMode('filled');
+        if (variablesIn(draft?.base === base ? draft.sections : loaded.fields).length > 0) setMode('filled');
       } catch (err) {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load prompt.');
       } finally {
@@ -136,7 +161,7 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
     };
     // `draftKey` only changes when the signed-in user does, which remounts anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applyPrompt, promptId]);
+  }, [applyPrompt, promptId, restoreInputs]);
 
   // A new prompt picks up where the last unsaved one left off, and otherwise
   // starts from the template it was opened with.
@@ -147,18 +172,20 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
     if (draft) {
       setSections(toEditorSections(draft.sections, true));
       setMetadata(draft.metadata);
+      setNote(draft.note ?? '');
+      restoreInputs(draft);
       setRestoredDraft(true);
     } else if (starter) {
       setSections(toEditorSections(starter.sections, false));
     }
-  }, [draftKey, initialStarter, isNew]);
+  }, [draftKey, initialStarter, isNew, restoreInputs]);
 
-  useDraftPersistence({ dirty, draftKey, fields, loadError, loading, metadata, savedSnapshot });
+  useDraftPersistence({ dirty, draftKey, fields, loadError, loading, metadata, note, savedSnapshot, values, rememberValues, importSession });
 
   useEffect(() => {
     ApiClient.getPromptsConfig()
-      .then((config) => setAiAvailable(config.provider_connected))
-      .catch(() => setAiAvailable(true));
+      .then(setAiConfig)
+      .catch(() => setAiConfig(null));
     ApiClient.getFolders()
       .then(setFolders)
       .catch(() => setFolders([]));
@@ -229,6 +256,7 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
       setNote('');
       setRestoredDraft(false);
       setConflict(false);
+      setDraftAction(null);
       setVersions(await ApiClient.getPromptVersions(updated.id));
       showNotice({ text: 'Saved' });
     } catch (err) {
@@ -272,6 +300,13 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
         folder: saveDialog.folder.trim() || null,
         variable_metadata: metadata,
       });
+      if (currentUser && rememberValues) {
+        const savedDraft: Draft = {
+          base: snapshot(created.fields, created.variable_metadata), sections: created.fields,
+          metadata: created.variable_metadata ?? {}, values, note: '',
+        };
+        localStorage.setItem(storageKey(`editor-draft:${currentUser}:${created.id}`), JSON.stringify(savedDraft));
+      }
       if (draftKey) localStorage.removeItem(draftKey);
       router.replace(`/editor/${created.id}`);
     } catch (err) {
@@ -286,6 +321,12 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
 
   const discardEdits = () => {
     if (draftKey) localStorage.removeItem(draftKey);
+    setNote('');
+    setImportSession({ text: '' });
+    setRememberValues(false);
+    setValues({});
+    setNotice(null);
+    setDraftAction(null);
     setRestoredDraft(false);
     setConflict(false);
     if (prompt) {
@@ -388,6 +429,7 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
     setSections(toEditorSections(next, false));
     setMetadata({});
     setValues({});
+    setRememberValues(false);
   };
 
   const applyRefinement = (next: PromptField[]) => {
@@ -396,8 +438,8 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
       ...section, content: next[i].content, touched: true,
     })));
     setRefineOpen(false);
-    showNotice({
-      text: 'Refinement applied',
+    setDraftAction({
+      text: 'Applied to draft—save to keep',
       action: { label: 'Undo', run: () => {
         if (JSON.stringify(toFields(sectionsRef.current)) !== JSON.stringify(next)) {
           showNotice({ text: 'Your prompt changed. Undo is no longer available.', tone: 'error' });
@@ -405,7 +447,43 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
         }
         setSections(before);
       } },
-    }, 8000);
+    });
+  };
+
+  const importSections = (next: ImportedPrompt) => {
+    const before = { sections, metadata, values, rememberValues, mode, mobileTab, previewOpen, importSession };
+    setSections(toEditorSections(next.fields, false));
+    setMetadata(next.metadata);
+    setValues(next.values);
+    setRememberValues(true);
+    setMode('filled');
+    setMobileTab('use');
+    setPreviewOpen(true);
+    setImportSession({ text: '' });
+    setImportOpen(false);
+    if (isNew && openImport) {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('import');
+      router.replace(`/editor/new${params.size ? `?${params}` : ''}`, { scroll: false });
+    }
+    setDraftAction({
+      text: `Imported ${next.fields.length} section${next.fields.length === 1 ? '' : 's'} into draft—save to keep.`,
+      action: { label: 'Undo', run: () => {
+        if (snapshot(toFields(sectionsRef.current), metadataRef.current) !== snapshot(next.fields, next.metadata)
+          || JSON.stringify(valuesRef.current) !== JSON.stringify(next.values)) {
+          showNotice({ text: 'Your prompt changed. Undo is no longer available.', tone: 'error' });
+          return;
+        }
+        setSections(before.sections);
+        setMetadata(before.metadata);
+        setValues(before.values);
+        setRememberValues(before.rememberValues);
+        setMode(before.mode);
+        setMobileTab(before.mobileTab);
+        setPreviewOpen(before.previewOpen);
+        setImportSession(before.importSession);
+      } },
+    });
   };
   return {
     router,
@@ -438,6 +516,8 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
     conflict,
     notice,
     setNotice,
+    draftAction,
+    setDraftAction,
     saveDialog,
     setSaveDialog,
     moveDialog,
@@ -449,7 +529,11 @@ export function usePromptEditor({ promptId, initialStarter, openImport }: Prompt
     setStarterOpen,
     importOpen,
     setImportOpen,
+    importSession,
+    setImportSession,
     aiAvailable,
+    aiConfig,
+    importSections,
     showNotice,
     fields,
     variables,

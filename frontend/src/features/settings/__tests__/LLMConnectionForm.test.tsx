@@ -62,13 +62,28 @@ beforeEach(() => {
 });
 
 describe('LLMConnectionForm', () => {
+  it('groups non-text models separately and distinguishes configuration from a successful test', async () => {
+    const user = userEvent.setup();
+    vi.mocked(AuthService.getLLMModels).mockResolvedValue(['gpt-4o-mini', 'text-embedding-3-small', 'whisper-1', 'custom-local'].map((id) => ({
+      id, input_price_per_1m: null, output_price_per_1m: null,
+    })));
+    render(<LLMConnectionForm />);
+    expect(await screen.findByRole('option', { name: /text-embedding/ })).toBeDisabled();
+    expect(screen.getByRole('option', { name: /whisper/ })).toBeDisabled();
+    expect(screen.getByRole('option', { name: /custom-local/ })).toBeEnabled();
+    expect(screen.getByText(/Model compatibility has not been tested/)).toBeInTheDocument();
+    await user.clear(screen.getByLabelText('Model'));
+    await user.type(screen.getByLabelText('Model'), 'my-self-hosted-model');
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
+    expect(screen.getByText(/Save changes before testing/)).toBeInTheDocument();
+  });
   it('populates the form from the saved connection', async () => {
     render(<LLMConnectionForm />);
 
     expect(await screen.findByLabelText('Provider')).toHaveValue('openai');
     expect(screen.getByLabelText('Base URL')).toHaveValue('https://api.openai.com/v1');
     expect(screen.getByLabelText('Model')).toHaveValue('gpt-4o-mini');
-    expect(screen.getByText(/Connected to OpenAI/)).toBeInTheDocument();
+    expect(screen.getByText(/Configured for OpenAI/)).toBeInTheDocument();
   });
 
   it('shows live models with pricing while keeping free-text entry available', async () => {

@@ -118,10 +118,9 @@ class TestMCPPromptTools:
         )
 
         assert updated["generated_prompt"] == "<TASK>\nSummarize in three bullets\n</TASK>"
+        assert updated["current_note"] == "Tighter output"
         versions = _ok(client, auth_headers, "list_prompt_versions", prompt_id=saved["id"])
-        assert [(v["note"], v["fields"]) for v in versions["versions"]] == [
-            ("Tighter output", TASK_FIELDS)
-        ]
+        assert [(v["note"], v["fields"]) for v in versions["versions"]] == [(None, TASK_FIELDS)]
 
     def test_update_from_a_stale_read_is_rejected(self, client, auth_headers):
         saved = _ok(client, auth_headers, "save_prompt", name="Summarizer", fields=TASK_FIELDS)

@@ -8,6 +8,7 @@ import * as evaluation from './api/evaluation';
 export { ApiError, PROMPT_NOT_FOUND_MESSAGE, isValidPromptId } from './api/errors';
 
 export class ApiClient {
+  static tryPrompt = prompts.tryPrompt;
   static getEvalCases = evaluation.getEvalCases;
   static createEvalCase = evaluation.createEvalCase;
   static updateEvalCase = evaluation.updateEvalCase;

@@ -36,6 +36,7 @@ from app.database.migrations.v023_recover_drifted_prompt_sections import (
 from app.database.migrations.v024_recover_unnamed_prompts import (
     _migration_024_recover_unnamed_prompts,
 )
+from app.database.migrations.v025_version_notes import _migration_025_version_notes
 
 Migration = tuple[str, Callable]
 
@@ -64,4 +65,5 @@ _MIGRATIONS: tuple[Migration, ...] = (
     ("022_oauth_tables", _migration_022_oauth_tables),
     ("023_recover_drifted_prompt_sections", _migration_023_recover_drifted_prompt_sections),
     ("024_recover_unnamed_prompts", _migration_024_recover_unnamed_prompts),
+    ("025_version_notes", _migration_025_version_notes),
 )

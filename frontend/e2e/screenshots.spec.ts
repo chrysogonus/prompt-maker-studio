@@ -7,7 +7,7 @@
  *
  * The Compose workflow seeds the documented `alex` demo account into a
  * disposable database, and everything shown comes from the real local
- * application. Only Import text's provider-backed calls (the capability check
+ * application. Only Paste a prompt's provider-backed calls (the capability check
  * and the import itself) are fulfilled in the browser, so the run is
  * deterministic and never contacts an LLM provider.
  */
@@ -103,10 +103,11 @@ test('captures the README screenshots', async ({ page }) => {
 
   // A new prompt built from pasted text.
   await sidebarLink(page, 'New prompt').click();
-  await page.getByRole('button', { name: 'Import text' }).click();
-  const importDialog = page.getByRole('dialog', { name: 'Import text' });
-  await importDialog.getByLabel('Text to import').fill(IMPORT_TEXT);
-  await importDialog.getByRole('button', { name: 'Import' }).click();
+  await page.getByRole('button', { name: 'Paste a prompt' }).click();
+  const importDialog = page.getByRole('dialog', { name: 'Paste a prompt' });
+  await importDialog.getByLabel('Prompt to convert').fill(IMPORT_TEXT);
+  await importDialog.getByRole('button', { name: 'Create template' }).click();
+  await page.getByRole('dialog', { name: 'Review your template' }).getByRole('button', { name: 'Use in editor' }).click();
   await expect(page.getByLabel('Task text')).toHaveValue(/late order/);
   expect(importHits).toBe(1);
   await shoot(page, 'new-prompt');

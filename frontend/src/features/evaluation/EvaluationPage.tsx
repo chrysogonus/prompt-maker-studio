@@ -22,7 +22,7 @@ const runDate = (date: string) => parseServerDate(date).toLocaleString(undefined
 export default function EvaluationPage({ promptId }: { promptId: number }) {
   const evaluation = useEvaluation(promptId);
   const {
-    prompt, config, cases, runs, loading, loadError, retry, error, setError, notice, busy,
+    prompt, currentVersion, config, cases, runs, loading, loadError, retry, error, setError, notice, busy,
     view, setView, editing, setEditing, deleting, setDeleting, suggesting, setSuggesting,
     proposals, setProposals, selectedRunId, setSelectedRunId,
     saveCase, deleteCase, generate, run, rate, importCsv, exportCsv,
@@ -172,6 +172,9 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
             </button>)}
           </nav>
           <div className={styles.results}>
+            <p className={styles.banner}>Tested version {selectedRun.prompt_version_number}. Current saved version {currentVersion}.</p>
+            {selectedRun.prompt_version_number !== currentVersion && <Button variant="secondary" onClick={() => void run()}
+              disabled={!!busy || !canUseAI || !cases.length || incomplete.length > 0}>Run current version</Button>}
             {runs.length > 1 && <div className={styles.compareControl}>
               <label htmlFor="compare-run">Compare with</label>
               <Select id="compare-run" value={comparedRun ? comparisonId : ''} onChange={(event) => setComparisonId(event.target.value)}>

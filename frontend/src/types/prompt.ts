@@ -15,6 +15,8 @@ export interface RefineQAPair {
 export interface VariableMetadataItem {
   type: 'text' | 'number' | 'boolean' | 'list';
   description?: string | null;
+  required?: boolean;
+  example?: string | null;
 }
 
 export interface PromptHistoryResponse {
@@ -24,6 +26,7 @@ export interface PromptHistoryResponse {
   generated_prompt: string;
   created_at: string;
   updated_at?: string | null;
+  current_note?: string | null;
   folder?: string | null;
   is_favorite?: boolean;
   variable_metadata?: Record<string, VariableMetadataItem> | null;
@@ -31,10 +34,12 @@ export interface PromptHistoryResponse {
 
 export interface ParseTextRequest {
   text: string;
+  extract_variables?: boolean;
 }
 
 export interface ParseTextResponse {
   fields: PromptField[];
+  variables?: ExtractedVariable[];
 }
 
 export interface PromptCreateRequest {
@@ -72,8 +77,23 @@ export interface PromptVersionResponse {
   id: number;
   version_number: number;
   note: string | null;
+  legacy_note?: string | null;
+  variable_metadata?: Record<string, VariableMetadataItem> | null;
   author: string | null;
   fields: PromptField[];
   generated_prompt: string;
   created_at: string;
+}
+
+export interface TryPromptResponse {
+  output_text: string;
+  provider: string;
+  model: string;
+}
+
+export interface ExtractedVariable {
+  name: string;
+  value: string;
+  description: string;
+  source_text: string | null;
 }

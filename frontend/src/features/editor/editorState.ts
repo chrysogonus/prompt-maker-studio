@@ -1,6 +1,6 @@
 import { normalizeSectionName } from '@/lib/sections';
 
-import { PromptField, VariableMetadataItem } from '@/types/prompt';
+import { PromptField, VariableMetadataItem, ParseTextResponse, ExtractedVariable } from '@/types/prompt';
 
 export interface EditorSection {
   /** Stable React key; names can change and repeat while being typed. */
@@ -19,6 +19,10 @@ export interface Draft {
   base: string | null;
   sections: PromptField[];
   metadata: Metadata;
+  note?: string;
+  /** Converted inputs are browser-local unless explicitly kept as examples. */
+  values?: Record<string, string>;
+  importSession?: ImportSession;
 }
 
 export interface Notice {
@@ -50,14 +54,23 @@ export function toFields(sections: EditorSection[]): PromptField[] {
 export function snapshot(fields: PromptField[], metadata: Metadata | null | undefined): string {
   const sorted = Object.keys(metadata ?? {})
     .sort()
-    .map((key) => [key, metadata![key]]);
+    .map((key) => {
+      const item = metadata![key];
+      return [key, { type: item.type, ...(item.description ? { description: item.description } : {}),
+        ...(item.required ? { required: true } : {}), ...(item.example ? { example: item.example } : {}) }];
+    });
   return JSON.stringify({ fields, metadata: sorted });
 }
 
 export function readDraft(key: string | null): Draft | null {
   if (!key) return null;
   try {
-    return JSON.parse(localStorage.getItem(key) ?? 'null') as Draft | null;
+    const draft = JSON.parse(localStorage.getItem(key) ?? 'null') as Draft | null;
+    if (draft?.base) {
+      const base = JSON.parse(draft.base);
+      draft.base = snapshot(base.fields, Object.fromEntries(base.metadata));
+    }
+    return draft;
   } catch {
     localStorage.removeItem(key);
     return null;
@@ -76,6 +89,26 @@ export interface PromptEditorProps {
   promptId?: number;
   /** New prompts only: a starter template id to begin from, unless a draft exists. */
   initialStarter?: string;
-  /** New prompts only: open Import text straight away. */
+  initialMode?: 'filled';
+  /** New prompts only: open Paste a prompt straight away. */
   openImport?: boolean;
+}
+
+export interface ImportVariable extends ExtractedVariable {
+  originalName: string;
+  reuse: boolean;
+}
+
+export interface ImportSession {
+  text: string;
+  conversion?: ParseTextResponse;
+  variables?: ImportVariable[];
+  keepExamples?: boolean;
+  reviewing?: boolean;
+}
+
+export interface ImportedPrompt {
+  fields: PromptField[];
+  metadata: Metadata;
+  values: Record<string, string>;
 }

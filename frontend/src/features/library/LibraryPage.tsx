@@ -211,13 +211,17 @@ function LibraryContent() {
                 {view.type !== 'folder' && <>{prompt.folder ?? 'Unfiled'}, </>}
                 {relativeTime(editedAt(prompt))}
               </span>
+              {variablesIn(prompt.fields).length > 0 && (
+                <Link className={styles.copyButton} href={`/editor/${prompt.id}?mode=filled`}>Fill and copy</Link>
+              )}
               <button
                 type="button"
-                className={styles.iconButton}
+                className={styles.copyButton}
                 aria-label={`Copy the ${prompt.name} template`}
                 onClick={() => copyTemplate(prompt)}
               >
                 <CopyIcon tone="inherit" />
+                Copy template
               </button>
               {promptMenu(prompt)}
             </div>
@@ -243,6 +247,9 @@ function LibraryContent() {
                 <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
               </div>
               <div className={styles.actions}>
+                {variables > 0 && (
+                  <Link className={styles.copyButton} href={`/editor/${prompt.id}?mode=filled`}>Fill and copy</Link>
+                )}
                 <button
                   type="button"
                   className={styles.copyButton}
@@ -275,7 +282,7 @@ function LibraryContent() {
               New prompt
             </Link>
             <Link href="/editor/new?import=1" className={styles.secondaryLink}>
-              Import text
+              Paste a prompt
             </Link>
           </div>
           <h2>Or start from a template</h2>
@@ -299,6 +306,7 @@ function LibraryContent() {
     <div className={styles.page}>
       <header className={styles.head}>
         <h1>{title}</h1>
+        <Link href="/editor/new?import=1" className={styles.secondaryLink}>Paste a prompt</Link>
         {view.type === 'folder' && (
           <div className={styles.menuWrap} data-menu>
             <button

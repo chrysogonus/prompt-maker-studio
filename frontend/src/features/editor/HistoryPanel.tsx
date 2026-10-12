@@ -6,6 +6,7 @@ import { diffWords } from '@/lib/diff';
 import { parseServerDate } from '@/lib/relativeTime';
 import { PromptHistoryResponse, PromptVersionResponse } from '@/types/prompt';
 import styles from './PromptEditor.module.css';
+import { snapshot } from './editorState';
 
 interface HistoryPanelProps {
   current: PromptHistoryResponse;
@@ -38,7 +39,8 @@ export default function HistoryPanel({
   const [restoring, setRestoring] = useState(false);
   const selected = versions.find((version) => version.id === selectedId) ?? null;
   // Version rows are the states before each edit, so the live prompt is one newer.
-  const currentNumber = versions.length + 1;
+  const sameSettings = !selected || selected.variable_metadata == null || snapshot([], selected.variable_metadata) === snapshot([], current.variable_metadata);
+  const currentNumber = Math.max(0, ...versions.map((version) => version.version_number)) + 1;
 
   const restore = async (version: PromptVersionResponse) => {
     setRestoring(true);
@@ -69,6 +71,12 @@ export default function HistoryPanel({
             {formatDate(selected.created_at)}
             {selected.note ? `. ${selected.note}` : ''}
           </p>
+          {selected.legacy_note && (
+            <details className={styles.diffMeta}><summary>Original history note</summary>
+              <p>{selected.legacy_note} (recorded before this version was replaced)</p>
+            </details>
+          )}
+          {!sameSettings && <p className={styles.diffMeta}>Variable settings also differ from the current version. Restoring brings back this version’s saved settings.</p>}
           <p className={styles.diffLegend}>
             <ins>Added</ins> and <del>removed</del> since this version.
           </p>
@@ -92,7 +100,7 @@ export default function HistoryPanel({
               variant="secondary"
               onClick={() => restore(selected)}
               disabled={
-                dirty || restoring || selected.generated_prompt === current.generated_prompt
+                dirty || restoring || (sameSettings && selected.generated_prompt === current.generated_prompt)
               }
             >
               {restoring ? 'Restoring…' : `Restore version ${selected.version_number}`}
@@ -110,6 +118,7 @@ export default function HistoryPanel({
             <div className={styles.version} data-current="true">
               <span className={styles.versionTitle}>Version {currentNumber}, current</span>
               <span className={styles.versionMeta}>{formatDate(current.updated_at ?? current.created_at)}</span>
+              {current.current_note && <span className={styles.versionNote}>{current.current_note}</span>}
             </div>
           </li>
           {versions.map((version) => (

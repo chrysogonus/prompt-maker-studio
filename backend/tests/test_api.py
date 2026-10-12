@@ -243,6 +243,8 @@ class TestDuplicatePromptEndpoint:
         assert duplicate_data["variable_metadata"]["count"] == {
             "type": "number",
             "description": "Item count",
+            "required": False,
+            "example": None,
         }
         duplicate_cases = (
             db_session.query(EvalCase).filter(EvalCase.prompt_id == duplicate_data["id"]).all()
@@ -481,7 +483,12 @@ class TestCreatePromptEndpoint:
         )
         assert data["folder"] == "Learning"
         assert data["variable_metadata"] == {
-            "topic": {"type": "text", "description": "What to explain"}
+            "topic": {
+                "type": "text",
+                "description": "What to explain",
+                "required": False,
+                "example": None,
+            }
         }
         saved = client.get("/api/prompts/saved", headers=auth_headers).json()
         assert [p["id"] for p in saved] == [data["id"]]
@@ -892,8 +899,18 @@ class TestVariableMetadata:
         )
         assert resp.status_code == 200
         data = resp.json()["variable_metadata"]
-        assert data["customer_name"] == {"type": "text", "description": "Who to address"}
-        assert data["age"] == {"type": "number", "description": None}
+        assert data["customer_name"] == {
+            "type": "text",
+            "description": "Who to address",
+            "required": False,
+            "example": None,
+        }
+        assert data["age"] == {
+            "type": "number",
+            "description": None,
+            "required": False,
+            "example": None,
+        }
 
     def test_patch_clears_variable_metadata_with_empty_dict(self, client, auth_headers):
         prompt_id = self._create_prompt(client, auth_headers)
@@ -1024,3 +1041,53 @@ class TestFolderEndpoints:
 
     def test_requires_authentication(self, client):
         assert client.delete("/api/prompts/folders", params={"name": "Work"}).status_code == 401
+
+
+def test_try_once_uses_filled_snapshot_without_saving(client, auth_headers, mock_llm, db_session):
+    from app.models.billed_call import BilledCall
+    from app.models.prompt import Prompt
+    from tests.conftest import make_chat_response
+
+    mock_llm.return_value.chat.completions.create.return_value = make_chat_response("Explanation")
+    response = client.post(
+        "/api/prompts/try", headers=auth_headers, json={"text": "Explain space."}
+    )
+    assert response.status_code == 200
+    assert response.json()["model"] == "gpt-4o-mini"
+    assert "output_text" in response.json()
+    assert db_session.query(Prompt).count() == 0
+    assert db_session.query(BilledCall).filter_by(source="try_once").count() == 1
+    assert mock_llm.return_value.chat.completions.create.call_args.kwargs["messages"] == [
+        {"role": "user", "content": "Explain space."}
+    ]
+
+
+def test_try_once_requires_auth_and_nonempty_bounded_text(client, auth_headers):
+    assert client.post("/api/prompts/try", json={"text": "hello"}).status_code == 401
+    for text in ["", "   ", "x" * 100_001]:
+        assert (
+            client.post("/api/prompts/try", headers=auth_headers, json={"text": text}).status_code
+            == 422
+        )
+
+
+def test_try_once_budget_failure_does_not_call_provider(
+    client, auth_headers, mock_llm, monkeypatch
+):
+    monkeypatch.setenv("GLOBAL_MONTHLY_BUDGET_USD", "0")
+    response = client.post("/api/prompts/try", headers=auth_headers, json={"text": "Hello"})
+    assert response.status_code == 402
+    mock_llm.return_value.chat.completions.create.assert_not_called()
+
+
+def test_try_once_provider_failure_is_reported_without_saving(
+    client, auth_headers, mock_llm, db_session
+):
+    from openai import OpenAIError
+
+    from app.models.billed_call import BilledCall
+
+    mock_llm.return_value.chat.completions.create.side_effect = OpenAIError("Provider failure")
+    response = client.post("/api/prompts/try", headers=auth_headers, json={"text": "Hello"})
+    assert response.status_code == 502
+    assert db_session.query(BilledCall).count() == 0

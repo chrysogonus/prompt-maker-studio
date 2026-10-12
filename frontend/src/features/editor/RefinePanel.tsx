@@ -3,16 +3,18 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
+import AICallContext from '@/components/ui/AICallContext';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import { ApiClient } from '@/lib/api';
 import { diffWords } from '@/lib/diff';
-import type { PromptField } from '@/types/prompt';
+import type { PromptField, PromptsConfigResponse } from '@/types/prompt';
 import styles from './RefinePanel.module.css';
 
 interface RefinePanelProps {
   open: boolean;
   fields: PromptField[];
   aiAvailable: boolean;
+  aiConfig: PromptsConfigResponse | null;
   onClose: () => void;
   onApply: (fields: PromptField[]) => void;
 }
@@ -22,7 +24,7 @@ const REVIEW_OPTIONS = [
   { value: 'full', label: 'Full draft' },
 ] as const;
 
-export default function RefinePanel({ open, fields, aiAvailable, onClose, onApply }: RefinePanelProps) {
+export default function RefinePanel({ open, fields, aiAvailable, aiConfig, onClose, onApply }: RefinePanelProps) {
   const [source, setSource] = useState<PromptField[] | null>(null);
   const [questions, setQuestions] = useState<string[] | null>(null);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -146,9 +148,10 @@ export default function RefinePanel({ open, fields, aiAvailable, onClose, onAppl
       </div>
 
       <div className={styles.body} aria-busy={busy !== null}>
+        <AICallContext config={aiConfig} />
         {!aiAvailable ? (
           <>
-            <p>Refinement needs an AI connection.</p>
+            <p>{aiConfig?.budget_exhausted ? 'The API budget has been reached.' : 'Refinement needs an AI connection.'}</p>
             <p className={styles.hint}>Connect a provider in Settings to find questions and create a revised draft.</p>
             <Link href="/settings#s-api" className={styles.link}>Open Settings</Link>
           </>
@@ -160,7 +163,7 @@ export default function RefinePanel({ open, fields, aiAvailable, onClose, onAppl
           </>
         ) : review && draft && source ? (
           <>
-            <p className={styles.hint}>Review the wording before applying it. Your prompt is unchanged until you apply.</p>
+            <p className={styles.hint}>Applying updates your draft. Save in the editor to keep the changes. You can Undo after applying.</p>
             <SegmentedControl aria-label="Draft view" options={REVIEW_OPTIONS} value={view} onChange={setView} />
             {!changed && <p className={styles.empty}>The draft is identical to your prompt.</p>}
             {draft.map((field, i) => {

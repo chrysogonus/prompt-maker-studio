@@ -146,6 +146,7 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
             "022_oauth_tables",
             "023_recover_drifted_prompt_sections",
             "024_recover_unnamed_prompts",
+            "025_version_notes",
         }
         assert "updated_at" in _columns(connection, "prompts")
         assert _table_exists(connection, "prompt_versions")
@@ -301,7 +302,7 @@ def test_run_migrations_is_idempotent_on_current_database(tmp_path):
 
     with engine.connect() as connection:
         versions = connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
-        assert len(versions) == 24
+        assert len(versions) == 25
         assert {
             "fields",
             "user_id",
@@ -579,3 +580,48 @@ def test_migration_024_files_unnamed_prompts_under_recovered_history(tmp_path):
         4: ("Untitled", "Recovered history", unchanged),
         5: ("Kept", None, unchanged),
     }
+
+
+def test_version_note_migration_preserves_originals_and_is_idempotent(tmp_path):
+    from app.database.migrations.v025_version_notes import _migration_025_version_notes
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'notes.db'}")
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE prompts (id INTEGER PRIMARY KEY)"))
+        connection.execute(
+            text(
+                "CREATE TABLE prompt_versions (id INTEGER PRIMARY KEY, prompt_id INTEGER, version_number INTEGER, note TEXT)"
+            )
+        )
+        connection.execute(text("INSERT INTO prompts VALUES (1), (2)"))
+        connection.execute(
+            text(
+                "INSERT INTO prompt_versions VALUES (11, 1, 1, 'Create v2'), (12, 1, 2, 'Create v3'), (21, 2, 1, 'Before section recovery')"
+            )
+        )
+        _migration_025_version_notes(connection)
+        _migration_025_version_notes(connection)
+        rows = connection.execute(
+            text("SELECT note, legacy_note FROM prompt_versions ORDER BY id")
+        ).all()
+        assert rows == [
+            (None, "Create v2"),
+            ("Create v2", "Create v3"),
+            ("Before section recovery", "Before section recovery"),
+        ]
+        assert connection.execute(text("SELECT current_note FROM prompts ORDER BY id")).all() == [
+            ("Create v3",),
+            (None,),
+        ]
+        assert "variable_metadata" in _columns(connection, "prompt_versions")
+
+
+def test_version_note_migration_tolerates_missing_tables(tmp_path):
+    from app.database.migrations.v025_version_notes import _migration_025_version_notes
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'empty.db'}")
+    with engine.begin() as connection:
+        _migration_025_version_notes(connection)
+        connection.execute(text("CREATE TABLE prompts (id INTEGER PRIMARY KEY)"))
+        _migration_025_version_notes(connection)
+        assert "current_note" in _columns(connection, "prompts")

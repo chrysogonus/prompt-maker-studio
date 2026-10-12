@@ -9,7 +9,7 @@ import type { EvalCase, EvalRun } from '@/types/evaluation';
 vi.mock('@/lib/api', async () => ({
   ...(await vi.importActual<typeof import('@/lib/api')>('@/lib/api')),
   ApiClient: Object.fromEntries([
-    'getPromptById', 'getPromptsConfig', 'getEvalCases', 'getEvalRuns', 'createEvalCase',
+    'getPromptById', 'getPromptVersions', 'getPromptsConfig', 'getEvalCases', 'getEvalRuns', 'createEvalCase',
     'updateEvalCase', 'deleteEvalCase', 'importEvalCases', 'exportEvalCases',
     'generateEvalCases', 'runEvaluation', 'rateEvalResult',
   ].map((name) => [name, vi.fn()])),
@@ -43,6 +43,7 @@ beforeEach(() => {
   });
   vi.mocked(ApiClient.getEvalCases).mockResolvedValue([]);
   vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([]);
+  vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([]);
   vi.mocked(ApiClient.createEvalCase).mockResolvedValue(example);
   vi.mocked(ApiClient.updateEvalCase).mockResolvedValue({ ...example, name: 'Updated case' });
   vi.mocked(ApiClient.runEvaluation).mockResolvedValue(run);
@@ -53,6 +54,19 @@ async function open(cases: EvalCase[] = []) {
   render(<EvaluationPage promptId={1} />);
   await screen.findByRole('heading', { name: 'Evaluate' });
 }
+
+it('labels historical results with tested and current versions and runs current without discarding history', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([run]);
+  vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([{ id: 1, version_number: 3, note: null, author: null, fields: [], generated_prompt: '', created_at: '' }]);
+  vi.mocked(ApiClient.runEvaluation).mockResolvedValue({ ...run, id: 13, prompt_version_number: 4 });
+  await open([example]);
+  await user.click(screen.getByRole('radio', { name: 'Run history' }));
+  expect(screen.getByText('Tested version 2. Current saved version 4.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Run current version' }));
+  await screen.findByText('Tested version 4. Current saved version 4.');
+  expect(within(screen.getByRole('navigation', { name: 'Past evaluations' })).getAllByRole('button')).toHaveLength(2);
+});
 
 it('explains an empty evaluation and never starts a paid call automatically', async () => {
   await open();

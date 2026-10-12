@@ -2,6 +2,8 @@
 Service for snapshotting and restoring prompt version history.
 """
 
+from copy import deepcopy
+
 from sqlalchemy.orm import Session
 
 from app.models.prompt import Prompt
@@ -45,7 +47,7 @@ class PromptVersionService:
             db: Database session
             prompt: The prompt whose current state should be preserved
             author_user_id: User making the edit that supersedes this snapshot
-            note: Optional free-text note describing the change
+            note: Note describing the resulting live version
 
         Returns:
             The newly created version row (not yet committed — caller commits)
@@ -55,11 +57,13 @@ class PromptVersionService:
         version = PromptVersion(
             prompt_id=prompt.id,
             version_number=next_version_number,
-            note=note,
+            note=prompt.current_note,
+            variable_metadata=deepcopy(prompt.variable_metadata or {}),
             author_user_id=author_user_id,
             fields=prompt.fields,
             generated_prompt=prompt.generated_prompt,
         )
+        prompt.current_note = note
         db.add(version)
         return version
 
@@ -79,3 +83,5 @@ class PromptVersionService:
         )
         prompt.fields = sections_for_text(version.generated_prompt, version.fields)
         prompt.generated_prompt = render_sections(prompt.fields)
+        if version.variable_metadata is not None:
+            prompt.variable_metadata = deepcopy(version.variable_metadata)
