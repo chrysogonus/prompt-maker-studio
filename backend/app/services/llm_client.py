@@ -38,6 +38,7 @@ from openai import (
     RateLimitError,
 )
 
+from app.metrics import provider_attempt
 from app.models.user import User
 from app.services.llm_providers import (
     STRUCTURED_JSON_OBJECT,
@@ -292,11 +293,13 @@ def text_completion(
     connection: LLMConnection, messages: list[dict[str, str]]
 ) -> tuple[str, LLMUsage]:
     """Plain chat completion — the Playground's unstructured path."""
-    response = connection.client.chat.completions.create(
-        model=connection.model,
-        messages=messages,
-    )
-    return _content_of(response), usage_from(response, connection)
+    with provider_attempt(connection) as attempt:
+        response = connection.client.chat.completions.create(
+            model=connection.model,
+            messages=messages,
+        )
+        attempt.usage = usage_from(response, connection)
+    return _content_of(response), attempt.usage
 
 
 def _content_of(response) -> str:
@@ -425,11 +428,13 @@ def json_completion(
         response_format = _response_format_for(connection.provider, schema, degraded=degraded)
         kwargs = {"response_format": response_format} if response_format else {}
         try:
-            response = connection.client.chat.completions.create(
-                model=connection.model,
-                messages=messages,
-                **kwargs,
-            )
+            with provider_attempt(connection) as attempt:
+                response = connection.client.chat.completions.create(
+                    model=connection.model,
+                    messages=messages,
+                    **kwargs,
+                )
+                attempt.usage = usage_from(response, connection)
         except BadRequestError as exc:
             # A gateway that rejects `response_format` outright: drop it and
             # rely on the prompt-side contract. Any other 400 is the caller's
@@ -444,7 +449,7 @@ def json_completion(
             last_error = exc
             continue
 
-        attempt_usage = usage_from(response, connection)
+        attempt_usage = attempt.usage
         total = LLMUsage(
             provider=total.provider,
             model=total.model,

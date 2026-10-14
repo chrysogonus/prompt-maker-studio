@@ -188,12 +188,18 @@ services:
       - monitoring
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules.json:/etc/prometheus/rules.json:ro
       - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
     ports:
       - "127.0.0.1:9090:9090"
     networks:
       - prompt-maker-studio-network
     restart: unless-stopped
+    logging: *default-logging
 
   grafana:
     image: grafana/grafana:12.4.0@sha256:7ce8f1687d7aab0f1f16a7f1db64bf655a3de77b03e87bf474fdd883e3203cba
@@ -210,6 +216,7 @@ services:
     networks:
       - prompt-maker-studio-network
     restart: unless-stopped
+    logging: *default-logging
 
 networks:
   prompt-maker-studio-network:

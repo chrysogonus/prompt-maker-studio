@@ -12,6 +12,7 @@ from app.api.deps import call_service, get_llm_connection, get_owned_prompt, llm
 from app.auth.dependencies import get_current_user
 from app.database.connection import get_db
 from app.limiter import limiter
+from app.metrics import observe_operation
 from app.models.eval_case import EvalCase
 from app.models.user import User
 from app.schemas.evaluation import (
@@ -79,6 +80,7 @@ def import_eval_cases(
 
 @router.post("/{prompt_id}/eval/cases/generate", response_model=EvalCaseGenerateResponse)
 @limiter.limit("10/minute")
+@observe_operation("eval_generate")
 def generate_eval_cases(
     request: Request,
     prompt_id: int,
@@ -165,6 +167,7 @@ def delete_eval_case(
 
 @router.post("/{prompt_id}/eval/runs", response_model=EvalRunResponse)
 @limiter.limit("10/minute")
+@observe_operation("eval_run")
 def create_eval_run(
     request: Request,
     prompt_id: int,

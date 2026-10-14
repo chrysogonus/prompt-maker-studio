@@ -169,11 +169,17 @@ def _live_pricing_index() -> dict[tuple[str, str], Rates]:
         return _pricing_cache.index
 
 
-def rates_for(provider: str, model: str) -> Rates | None:
+def rates_for(provider: str, model: str, *, refresh: bool = True) -> Rates | None:
     """Published rates for a (provider, model) pair, or None if unpriced."""
     if provider in _FREE_PROVIDERS:
         return {"input": 0.0, "output": 0.0}
-    return _live_pricing_index().get((provider, model)) or FALLBACK_PRICING.get((provider, model))
+    if refresh:
+        index = _live_pricing_index()
+    else:
+        # The index is replaced atomically, never mutated after publication.
+        # Telemetry reads the last good value without waiting on an HTTP refresh.
+        index = (_pricing_cache.index or {}) if pricing_refresh_enabled() else {}
+    return index.get((provider, model)) or FALLBACK_PRICING.get((provider, model))
 
 
 # Used only when a spend ceiling is configured and the real figures are
@@ -202,6 +208,7 @@ def cost_usd_for(
     completion_tokens: int,
     *,
     assume_cost_when_unknown: bool = False,
+    refresh: bool = True,
 ) -> float:
     """Compute a call's USD cost.
 
@@ -210,7 +217,7 @@ def cost_usd_for(
     FALLBACK_RATES_USD_PER_MILLION. Callers set it when a budget ceiling is
     configured, so "we do not know" cannot read as "free".
     """
-    rates = rates_for(provider, model)
+    rates = rates_for(provider, model, refresh=refresh)
     if rates is None:
         if not assume_cost_when_unknown:
             return 0.0

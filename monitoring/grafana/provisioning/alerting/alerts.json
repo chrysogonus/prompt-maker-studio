@@ -1,0 +1,418 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "prompt-maker-studio",
+      "folder": "Prompt Maker Studio",
+      "interval": "30s",
+      "rules": [
+        {
+          "uid": "pms-backendunavailable",
+          "title": "BackendUnavailable",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "expr": "ALERTS{job=\"fastapi-backend\",alertname=\"BackendUnavailable\",alertstate=\"firing\"} or on(job,instance) (0 * up{job=\"fastapi-backend\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 15000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ],
+                "intervalMs": 15000,
+                "maxDataPoints": 43200
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "0s",
+          "annotations": {
+            "summary": "Backend metrics scrape unavailable or target missing",
+            "description": "Check backend health, Prometheus targets and Docker networking. A missing target also fires this alert. Source: Prometheus ALERTS; configure an operator contact point and notification policy."
+          },
+          "labels": {
+            "severity": "critical",
+            "service": "prompt-maker-studio"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "pms-sustainedservererrors",
+          "title": "SustainedServerErrors",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "expr": "ALERTS{job=\"fastapi-backend\",alertname=\"SustainedServerErrors\",alertstate=\"firing\"} or on(job,instance) (0 * up{job=\"fastapi-backend\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 15000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ],
+                "intervalMs": 15000,
+                "maxDataPoints": 43200
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Alerting",
+          "for": "0s",
+          "annotations": {
+            "summary": "Sustained HTTP 5xx rate above 5%",
+            "description": "At least 100 requests in the last 5 minutes, above 5% 5xx for 5 minutes. Inspect sanitized route/status logs. Source: Prometheus ALERTS; configure an operator contact point and notification policy."
+          },
+          "labels": {
+            "severity": "warning",
+            "service": "prompt-maker-studio"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "pms-providerfailurerate",
+          "title": "ProviderFailureRate",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "expr": "ALERTS{job=\"fastapi-backend\",alertname=\"ProviderFailureRate\",alertstate=\"firing\"} or on(job,instance) (0 * up{job=\"fastapi-backend\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 15000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ],
+                "intervalMs": 15000,
+                "maxDataPoints": 43200
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Alerting",
+          "for": "0s",
+          "annotations": {
+            "summary": "Provider explicit call failure rate above 10%",
+            "description": "At least 20 explicit calls in 10 minutes, above 10% errors for 5 minutes. Internal SDK retries are not separately observed. Source: Prometheus ALERTS; configure an operator contact point and notification policy."
+          },
+          "labels": {
+            "severity": "warning",
+            "service": "prompt-maker-studio"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "pms-passwordresetdeliveryfailures",
+          "title": "PasswordResetDeliveryFailures",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "expr": "ALERTS{job=\"fastapi-backend\",alertname=\"PasswordResetDeliveryFailures\",alertstate=\"firing\"} or on(job,instance) (0 * up{job=\"fastapi-backend\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 15000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ],
+                "intervalMs": 15000,
+                "maxDataPoints": 43200
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Alerting",
+          "for": "0s",
+          "annotations": {
+            "summary": "Password reset email delivery failed",
+            "description": "Inspect sanitized email delivery events and SMTP configuration; do not copy raw provider errors or credentials. Source: Prometheus ALERTS; configure an operator contact point and notification policy."
+          },
+          "labels": {
+            "severity": "warning",
+            "service": "prompt-maker-studio"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "pms-snapshotstale",
+          "title": "SnapshotStale",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "expr": "ALERTS{job=\"fastapi-backend\",alertname=\"SnapshotStale\",alertstate=\"firing\"} or on(job,instance) (0 * up{job=\"fastapi-backend\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 15000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ],
+                "intervalMs": 15000,
+                "maxDataPoints": 43200
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Alerting",
+          "for": "0s",
+          "annotations": {
+            "summary": "Database aggregate snapshot is stale",
+            "description": "Snapshot is over 2 minutes old for 2 minutes. Cached account/prompt/pending-rating gauges may be outdated; inspect collection errors. Source: Prometheus ALERTS; configure an operator contact point and notification policy."
+          },
+          "labels": {
+            "severity": "warning",
+            "service": "prompt-maker-studio"
+          },
+          "isPaused": false
+        }
+      ]
+    }
+  ]
+}

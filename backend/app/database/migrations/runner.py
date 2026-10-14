@@ -31,7 +31,7 @@ def run_migrations(engine: Engine) -> None:
         if version in applied_versions:
             continue
 
-        logger.info("Applying database migration %s", version)
+        logger.info("Applying database migration %s", version, extra={"migration_version": version})
         if version in _NEEDS_FOREIGN_KEYS_DISABLED:
             _apply_with_foreign_keys_disabled(engine, migration)
         else:
@@ -46,7 +46,7 @@ def run_migrations(engine: Engine) -> None:
                 ),
                 {"version": version, "applied_at": datetime.now(UTC).isoformat()},
             )
-        logger.info("Applied database migration %s", version)
+        logger.info("Applied database migration %s", version, extra={"migration_version": version})
 
 
 def _apply_with_foreign_keys_disabled(engine: Engine, migration: Callable) -> None:

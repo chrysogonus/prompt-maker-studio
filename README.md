@@ -86,6 +86,7 @@ REST and MCP share the same prompt services. AI calls are optional.
 
 - [Development](./docs/development.md) — local setup, commands and tests.
 - [Deployment](./docs/deployment.md) — hosting, HTTPS and backups.
+- [Monitoring](./docs/monitoring.md) — dashboards, metrics, alerts and operator logs.
 - [Configuration template](./.env.example) — available settings and defaults.
 - [API reference](./docs/api.md) — REST routes; interactive schemas at [localhost:8000/docs](http://localhost:8000/docs).
 - [MCP integration](./docs/mcp.md) — use your library from ChatGPT and other clients.

@@ -4,6 +4,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
+from app.metrics import classify_error, observe_operation, operation_context
 from app.models.user import User
 from app.schemas.connections import (
     LLMConnectionResponse,
@@ -130,6 +131,7 @@ def delete_llm_connection(current_user: User, db: Session):
     return _connection_response(current_user)
 
 
+@observe_operation("connection_test")
 def test_llm_connection(current_user: User, db: Session):
     """Send a one-token probe to the configured provider so a wrong endpoint, key,
     or model name is reported here rather than as a mystery failure inside a
@@ -138,6 +140,10 @@ def test_llm_connection(current_user: User, db: Session):
     try:
         BudgetService.check(db, current_user.id)
     except BudgetExceededError as exc:
+        state = operation_context.get()
+        if state is not None:
+            state.outcome = "rejected"
+            state.error_type = "budget"
         return LLMConnectionTestResponse(ok=False, message=str(exc))
     try:
         connection = client_for(current_user)
@@ -147,8 +153,11 @@ def test_llm_connection(current_user: User, db: Session):
     # Every failure mode here is reportable copy, including a malformed
     # response from an endpoint that isn't actually OpenAI-compatible.
     except Exception as exc:
+        state = operation_context.get()
+        if state is not None:
+            state.outcome, state.error_type = classify_error(exc)
         _, detail = describe_llm_error(exc, connection)
-        logger.info("LLM connection test failed for user %s: %s", current_user.id, exc)
+        logger.info("llm_connection_test_failed")
         return LLMConnectionTestResponse(ok=False, message=detail)
     record_billed_call(db, current_user.id, "connection_test", usage)
     db.commit()

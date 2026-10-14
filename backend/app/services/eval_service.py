@@ -5,6 +5,7 @@ each case against a real model, then scores the output by the case's method
 """
 
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from dataclasses import dataclass
 import json
 import re
@@ -13,6 +14,7 @@ import time
 from openai import OpenAIError
 from sqlalchemy.orm import Session
 
+from app.metrics import eval_cases_total, operation_context
 from app.models.eval_case import EvalCase
 from app.models.eval_run import EvalRun
 from app.models.eval_run_result import EvalRunResult
@@ -183,6 +185,24 @@ class _CaseOutcome:
     judge_error: str | None = None
 
 
+def _record_case_metrics(cases: list[EvalCase], outcomes: list[_CaseOutcome]) -> None:
+    """Publish committed results using worker outcomes rather than display text."""
+    state = operation_context.get()
+    for case, outcome in zip(cases, outcomes, strict=True):
+        if outcome.result is None:
+            case_outcome = "execution_error"
+        elif outcome.judge_error is not None:
+            case_outcome = "judge_error"
+        elif case.method == "manual":
+            case_outcome = "pending_manual"
+        else:
+            case_outcome = "scored"
+        eval_cases_total.labels(method=case.method, outcome=case_outcome).inc()
+        if case_outcome in {"execution_error", "judge_error"} and state is not None:
+            state.outcome = "partial"
+            state.error_type = "provider"
+
+
 class EvalService:
     """Runs a prompt's eval cases and scores the results."""
 
@@ -350,7 +370,6 @@ class EvalService:
         # Resolved once and shared: the SDK client is thread-safe, and a
         # per-worker client would open a fresh connection pool per case.
         connection = client_for(user)
-        model = connection.model
         case_timeout = _case_timeout_seconds(connection)
         cases = (
             db.query(EvalCase)
@@ -362,7 +381,7 @@ class EvalService:
         run = EvalRun(
             prompt_id=prompt.id,
             prompt_version_number=PromptVersionService.live_version_number(db, prompt.id),
-            model=model,
+            model=connection.model,
         )
         db.add(run)
         db.flush()
@@ -402,7 +421,12 @@ class EvalService:
         with ThreadPoolExecutor(max_workers=min(max_workers, max(1, len(cases)))) as pool:
             futures = [
                 pool.submit(
-                    EvalService._execute_case, compiled, connection, case.method, case.criteria
+                    copy_context().run,
+                    EvalService._execute_case,
+                    compiled,
+                    connection,
+                    case.method,
+                    case.criteria,
                 )
                 for case, _, _, compiled in prepared
             ]
@@ -519,6 +543,7 @@ class EvalService:
 
         db.commit()
         db.refresh(run)
+        _record_case_metrics(cases, outcomes)
         return run
 
     @staticmethod

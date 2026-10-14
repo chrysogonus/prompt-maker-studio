@@ -17,9 +17,7 @@ from app.auth.utils import (
 )
 from app.database.connection import get_db
 from app.limiter import limiter
-from app.metrics import (
-    login_successes_total,
-)
+from app.metrics import observe_operation
 from app.models.user import User
 from app.schemas.accounts import (
     Token,
@@ -61,6 +59,7 @@ def register(request: Request, user_data: UserCreate, db: Session = Depends(get_
 
 @router.post("/login", response_model=Token)
 @limiter.limit(_LOGIN_RATE_LIMIT)
+@observe_operation("login")
 def login(
     request: Request,
     response: Response,
@@ -94,7 +93,6 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    login_successes_total.inc()
     access_token = create_access_token(
         subject=user.username,
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),

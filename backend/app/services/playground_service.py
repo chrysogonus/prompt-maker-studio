@@ -9,6 +9,7 @@ import time
 from openai import OpenAIError
 from sqlalchemy.orm import Session
 
+from app.metrics import observe_operation
 from app.services.budget_service import BudgetExceededError, BudgetService
 from app.services.errors import OperationError
 from app.services.llm_client import LLMConnection, describe_llm_error, text_completion
@@ -76,6 +77,7 @@ class PlaygroundService:
         )
 
 
+@observe_operation("try_once")
 def try_once(text: str, connection: LLMConnection, db: Session, user_id: int) -> PlaygroundResult:
     """Run a draft snapshot; only spend is persisted, never a user prompt."""
     try:

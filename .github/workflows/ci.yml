@@ -372,6 +372,9 @@ jobs:
       - name: Validate compose file combinations
         run: make compose-check
 
+      - name: Validate monitoring configuration and semantic tests
+        run: make monitoring-check
+
       - name: Verify scheduled backup worker is non-root
         run: make check-backup-worker
 
