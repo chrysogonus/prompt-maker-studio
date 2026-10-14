@@ -10,6 +10,19 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-14
+
+0.4.0: a public landing page, so search engines and new visitors see what
+Prompt Maker Studio does. Read **Upgrade notes** before deploying.
+
+### Upgrade notes
+
+- Update `docker-compose.yml` on the server along with `IMAGE_TAG`. The frontend
+  service now receives `FRONTEND_URL`; with the old Compose file, `robots.txt`,
+  the sitemap and canonical links point to `http://localhost:3000`. Check that
+  `.env` sets `FRONTEND_URL` to the public origin.
+- No database migrations.
+
 ### Added
 
 - A public landing page at `/` describing the product, with `robots.txt`,
@@ -452,7 +465,8 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.4.0
 [0.3.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.3.0
 [0.2.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.2.0
 [0.1.4]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.1.4
