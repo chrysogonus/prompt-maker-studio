@@ -22,7 +22,7 @@ const runDate = (date: string) => parseServerDate(date).toLocaleString(undefined
 export default function EvaluationPage({ promptId }: { promptId: number }) {
   const evaluation = useEvaluation(promptId);
   const {
-    prompt, currentVersion, config, cases, runs, loading, loadError, retry, error, setError, notice, busy,
+    prompt, currentVersion, config, configError, retryConfig, cases, runs, hasMoreRuns, loadOlderRuns, loading, loadError, retry, error, setError, notice, busy,
     view, setView, editing, setEditing, deleting, setDeleting, suggesting, setSuggesting,
     proposals, setProposals, selectedRunId, setSelectedRunId,
     saveCase, deleteCase, generate, run, rate, importCsv, exportCsv,
@@ -70,7 +70,9 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
         </div>
       </header>
 
-      {config?.provider_connected ? config.budget_exhausted ? (
+      {configError ? (
+        <div className={styles.banner} role="alert">{configError} <Button onClick={retryConfig}>Retry AI availability</Button></div>
+      ) : config?.provider_connected ? config.budget_exhausted ? (
         <p className={styles.banner}>The shared monthly API budget has been reached. You can still manage cases and review past results.</p>
       ) : (
         <p className={styles.connection}>Uses {config.provider_label ?? 'your AI connection'}{config.model ? ` / ${config.model}` : ''}. Runs and suggestions may incur provider charges.</p>
@@ -170,6 +172,9 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
               <span>Version {item.prompt_version_number}</span>
               <strong>{item.score === null ? 'Not scored yet' : `${Math.round(item.score)}/100`}</strong>
             </button>)}
+            {hasMoreRuns && <Button variant="secondary" disabled={!!busy} onClick={() => void loadOlderRuns()}>
+              {busy === 'history' ? 'Loading older evaluations…' : 'Load older evaluations'}
+            </Button>}
           </nav>
           <div className={styles.results}>
             <p className={styles.banner}>Tested version {selectedRun.prompt_version_number}. Current saved version {currentVersion}.</p>

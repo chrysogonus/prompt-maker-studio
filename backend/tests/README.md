@@ -10,6 +10,8 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_api.py` | Prompt generation, saved prompts (incl. folder/tag/favorite filters), history, pagination, search, updates, ownership, real per-prompt run counts, and variable_metadata |
 | `test_auth.py` | Registration, JWT lifecycle, profile, account deletion, password reset, password change, and the `SECRET_KEY` startup guard that rejects every published example key |
 | `test_auth_cookies.py` | The browser session path: httpOnly session cookie, the readable CSRF cookie, double-submit CSRF enforcement on cookie-authenticated writes (and its bearer/safe-method exemptions), logout, and the `COOKIE_DOMAIN`/`COOKIE_SECURE` deployment settings |
+| `test_auth_identity.py` | Immutable token subjects across renames, deletion and reused IDs; bcrypt byte limits, generic registration conflicts, and missing-user password verification |
+| `test_failed_llm_billing.py` | Persisted provider usage after JSON/shape failures, retries, malformed output, and failed judge grading |
 | `test_backup_restore.py` | Consistent SQLite backup and integrity-checked restore |
 | `test_budget_service.py` | BudgetService global/per-user monthly spend-ceiling parsing, enforcement, and the config endpoint's remaining-budget snapshot |
 | `test_database_connection.py` | SQLite engine PRAGMA configuration: journal_mode=WAL and busy_timeout |

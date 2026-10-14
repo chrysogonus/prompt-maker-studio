@@ -109,7 +109,7 @@ def test_register_duplicate_email(client):
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "email address already registered" in response.json()["detail"].lower()
+    assert "username or email already registered" in response.json()["detail"].lower()
 
 
 def test_register_requires_email(client):
@@ -169,9 +169,9 @@ def test_refresh_access_token_requires_valid_auth(client):
     missing_response = client.post("/api/auth/refresh")
     assert missing_response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    _register_and_login(client, username="expiredrefresh", password="testpass123")
+    valid_token = _register_and_login(client, username="expiredrefresh", password="testpass123")
     expired_token = create_access_token(
-        subject="expiredrefresh",
+        subject=decode_access_token(valid_token)["sub"],
         expires_delta=timedelta(seconds=-10),
     )
     expired_response = client.post(
@@ -316,10 +316,10 @@ def test_decode_returns_none_for_garbage_token():
 
 def test_expired_token_is_rejected(client):
     """Test that an already-expired token is rejected with 401."""
-    _register_and_login(client, username="expireduser", password="testpass123")
+    valid_token = _register_and_login(client, username="expireduser", password="testpass123")
 
     expired_token = create_access_token(
-        subject="expireduser",
+        subject=decode_access_token(valid_token)["sub"],
         expires_delta=timedelta(seconds=-10),
     )
 

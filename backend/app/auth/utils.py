@@ -37,6 +37,7 @@ _MIN_SECRET_KEY_LENGTH = 32
 
 SECRET_KEY = os.getenv("SECRET_KEY", _INSECURE_DEFAULT_KEY)
 ALGORITHM = "HS256"
+BCRYPT_MAX_PASSWORD_BYTES = 72
 # Token creation and validation can straddle a small host-clock correction.
 # A narrow tolerance prevents a freshly issued token from being rejected as
 # "not yet valid" while keeping both issue-time and expiry checks bounded.
@@ -71,7 +72,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
-    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    password_bytes = plain_password.encode("utf-8")
+    if len(password_bytes) > BCRYPT_MAX_PASSWORD_BYTES:
+        return False
+    return bcrypt.checkpw(password_bytes, hashed_password.encode("utf-8"))
 
 
 def get_password_hash(password: str) -> str:
@@ -98,7 +102,7 @@ def create_access_token(
     subject: str, expires_delta: timedelta | None = None, token_version: int = 0
 ) -> str:
     """
-    Create a JWT access token for the given subject (username).
+    Create a JWT access token for the given immutable user subject.
 
     Args:
         subject: The identity to encode as the token subject ("sub" claim)

@@ -6,9 +6,12 @@ signed with HS256 through PyJWT and expire after the configured number of minute
 
 ## User Data
 
-The `users` table stores `id`, normalized `username`, `hashed_password`,
+The `users` table stores `id`, immutable UUID `auth_subject`, normalized `username`, `hashed_password`,
 `email`, password-reset token fields, and `created_at`. Registration requires
-a unique username, password (8-72 characters), and valid email address.
+a unique username, password (at least 8 characters and at most 72 UTF-8 bytes),
+and valid email address. Registration, password changes, and resets apply the
+same byte limit; multibyte characters count toward bcrypt's 72-byte limit.
+Overlength passwords submitted for verification are rejected safely.
 
 ## Authentication Endpoints
 
@@ -39,6 +42,9 @@ Content-Type: application/json
 
 The response contains `id`, `username`, `email`, and `created_at`.
 Usernames are normalized with `.strip().lower()` during registration and login.
+Duplicate usernames and emails receive the same generic conflict response.
+Failed logins check a dummy bcrypt hash for unknown usernames to reduce timing
+differences from existing accounts.
 
 ### Sessions
 
@@ -63,6 +69,16 @@ used to need only two clicks. A wrong password returns 401 and changes nothing;
 on success the session cookies are cleared so the browser is not left holding a
 session for an account that no longer exists.
 
+### Token identity
+
+Session and MCP access tokens use `users.auth_subject` as their `sub` claim.
+The UUID stays with the account through username changes and is regenerated for
+new accounts, including when SQLite reuses a deleted user's numeric ID. A token
+cannot become another account's credential when that account claims an old name.
+Migration 026 assigns subjects to existing accounts. Previously issued tokens
+whose subject is a username are rejected, so users must sign in again and MCP
+clients must renew their access token or reconnect.
+
 ### Session revocation
 
 Every token carries a `tv` claim holding the `users.token_version` it was minted
@@ -80,7 +96,8 @@ otherwise stay valid for the rest of its lifetime.
 | `POST /api/auth/logout-all` | All sessions die, including the caller's. Surfaced in Settings as "Sign out everywhere". |
 
 Tokens minted before this claim existed carry no `tv` and are read as version 0,
-which matches the column default — so an upgrade does not sign everyone out.
+which matches the column default. This version compatibility does not accept
+legacy username subjects; migration 026 requires those sessions to authenticate again.
 
 ### CSRF
 

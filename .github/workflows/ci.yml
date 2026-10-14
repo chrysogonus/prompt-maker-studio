@@ -545,11 +545,17 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set canonical image repository
+        id: image
+        env:
+          REGISTRY_OWNER: ${{ github.repository_owner }}
+        run: echo "repository=ghcr.io/${REGISTRY_OWNER,,}/prompt-maker-studio-${{ matrix.service }}" >> "$GITHUB_OUTPUT"
+
       - name: Extract image metadata
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/prompt-maker-studio-${{ matrix.service }}
+          images: ${{ steps.image.outputs.repository }}
           # metadata-action defaults to `latest=auto`, which tags `latest` on any
           # semver build — v0.1.0 shipped one despite the policy below. Disable it
           # explicitly; the comment on this job is the intent, this is the switch.
@@ -559,14 +565,15 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=sha-,format=short
 
-      - name: Build and push ${{ matrix.service }} image
+      # The digest-only upload retains the attestation index, but creates no
+      # release tag. Promote that exact index only after scanning it below.
+      - name: Build untagged ${{ matrix.service }} candidate
         id: build
         uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
           context: .
           file: ./${{ matrix.service }}/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          outputs: type=image,name=${{ steps.image.outputs.repository }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -577,11 +584,37 @@ jobs:
           provenance: mode=max
           sbom: true
 
+      - name: Scan the immutable release candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.repository_owner }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ steps.image.outputs.repository }}@${{ steps.build.outputs.digest }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+      - name: Promote scanned digest to release tags
+        env:
+          RELEASE_TAGS: ${{ steps.meta.outputs.tags }}
+          SCANNED_IMAGE: ${{ steps.image.outputs.repository }}@${{ steps.build.outputs.digest }}
+        run: |
+          args=()
+          while IFS= read -r tag; do
+            args+=(--tag "$tag")
+          done <<< "$RELEASE_TAGS"
+          # A single index source is copied intact, including provenance and
+          # SBOM manifests. No image is rebuilt between scanning and tagging.
+          docker buildx imagetools create "${args[@]}" "$SCANNED_IMAGE"
+
       - name: Record the published digest
         # An immutable reference to deploy and to record in the release notes —
         # a tag can be moved, a digest cannot.
         run: |
           echo "### ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "ghcr.io/${{ github.repository_owner }}/prompt-maker-studio-${{ matrix.service }}@${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.image.outputs.repository }}@${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY

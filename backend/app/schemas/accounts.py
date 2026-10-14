@@ -1,9 +1,21 @@
 """Accounts request and response contracts."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import AfterValidator, BaseModel, EmailStr, Field, field_validator
+
+from app.auth.utils import BCRYPT_MAX_PASSWORD_BYTES
+
+
+def _validate_password_bytes(value: str) -> str:
+    if len(value.encode("utf-8")) > BCRYPT_MAX_PASSWORD_BYTES:
+        msg = "Password must not exceed 72 UTF-8 bytes"
+        raise ValueError(msg)
+    return value
+
+
+NewPassword = Annotated[str, AfterValidator(_validate_password_bytes)]
 
 
 class UserCreate(BaseModel):
@@ -16,8 +28,8 @@ class UserCreate(BaseModel):
         pattern=r"^[a-zA-Z0-9_-]+$",
         description="Username (3-50 chars; letters, digits, underscores, hyphens)",
     )
-    # min_length=8 for basic strength; max_length=72 matches bcrypt's effective input limit
-    password: str = Field(..., min_length=8, max_length=72, description="Password")
+    # Character limits bound validation; NewPassword also enforces bcrypt's byte limit.
+    password: NewPassword = Field(..., min_length=8, max_length=72, description="Password")
     email: EmailStr = Field(
         ..., max_length=254, description="Email address used for password reset"
     )
@@ -121,11 +133,11 @@ class ResetPasswordRequest(BaseModel):
     """Schema for completing a password reset using the emailed token."""
 
     token: str = Field(..., min_length=1, description="Reset token from the email link")
-    new_password: str = Field(
+    new_password: NewPassword = Field(
         ...,
         min_length=8,
         max_length=72,
-        description="New password (min 8 chars, max 72 to match bcrypt limit)",
+        description="New password (min 8 characters, max 72 UTF-8 bytes)",
     )
 
 
@@ -148,11 +160,11 @@ class ChangePasswordRequest(BaseModel):
     current_password: str = Field(
         ..., min_length=1, max_length=72, description="Current password, for verification"
     )
-    new_password: str = Field(
+    new_password: NewPassword = Field(
         ...,
         min_length=8,
         max_length=72,
-        description="New password (min 8 chars, max 72 to match bcrypt limit)",
+        description="New password (min 8 characters, max 72 UTF-8 bytes)",
     )
 
 

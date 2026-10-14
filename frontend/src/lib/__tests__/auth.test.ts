@@ -34,6 +34,20 @@ beforeEach(() => {
 });
 
 describe('AuthService session refresh', () => {
+  it.each(['network', 'json'])('retries the current-user request after a %s rejection while deduplicating callers', async (failure) => {
+    const user = { username: 'alex' };
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    if (failure === 'network') fetchMock.mockRejectedValueOnce(new Error('Offline'));
+    else fetchMock.mockResolvedValueOnce(new Response('Invalid JSON'));
+    fetchMock.mockResolvedValue({ ok: true, json: async () => user } as Response);
+
+    const failed = await Promise.allSettled([AuthService.getCurrentUser(), AuthService.getCurrentUser()]);
+    expect(failed.map((result) => result.status)).toEqual(['rejected', 'rejected']);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await expect(Promise.all([AuthService.getCurrentUser(), AuthService.getCurrentUser()])).resolves.toEqual([user, user]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('does not refresh a session with enough validity remaining', async () => {
     sessionExpiringIn(600);
     const fetchMock = vi.spyOn(globalThis, 'fetch');

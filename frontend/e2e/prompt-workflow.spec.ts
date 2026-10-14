@@ -21,7 +21,8 @@ function uniqueUser(prefix: string): TestUser {
 
 /** Links in the sidebar, so page content with the same name can't match. */
 function sidebarLink(page: Page, name: string | RegExp) {
-  return page.getByRole('complementary', { name: 'Sidebar' }).getByRole('link', { name });
+  return page.getByRole('complementary', { name: 'Sidebar' })
+    .or(page.getByRole('dialog', { name: 'Sidebar' })).getByRole('link', { name });
 }
 
 async function register(page: Page, user: TestUser) {
@@ -145,7 +146,7 @@ test('keeps page headings in one place across navigation and adapts the shell to
 
   // On a phone the sidebar becomes a drawer behind the menu button.
   await page.setViewportSize({ width: 390, height: 844 });
-  const sidebar = page.getByRole('complementary', { name: 'Sidebar' });
+  const sidebar = page.getByRole('dialog', { name: 'Sidebar' });
   await expect(sidebar).not.toBeInViewport();
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await expect(sidebar).toBeInViewport();

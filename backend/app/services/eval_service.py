@@ -5,12 +5,11 @@ each case against a real model, then scores the output by the case's method
 """
 
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 import re
 import time
 
-from openai import OpenAIError
 from sqlalchemy.orm import Session
 
 from app.models.eval_case import EvalCase
@@ -24,18 +23,16 @@ from app.services.llm_client import (
     LLMResponseFormatError,
     client_for,
     json_completion,
-    timeout_seconds_for,
 )
 from app.services.llm_pricing import cost_usd_for
 from app.services.playground_service import (
     PlaygroundResult,
-    PlaygroundRunError,
     PlaygroundService,
 )
 from app.services.prompt_compiler import compile_prompt
 from app.services.prompt_version_service import PromptVersionService
 from app.services.safe_regex import UnsafePatternError, safe_search
-from app.services.spend_ledger import LLMUsage, record_billed_call
+from app.services.spend_ledger import LLMUsage, capture_llm_usage, record_billed_call
 
 _JUDGE_SYSTEM_PROMPT = (
     "You are grading an AI model's output against a rubric. You are shown the "
@@ -79,19 +76,6 @@ _LABEL_MAX_LENGTH = 60
 # Cases run concurrently (each is one or two blocking provider calls); five at
 # a time keeps a 20-case run fast without hammering the user's rate limits.
 _DEFAULT_MAX_WORKERS = 5
-
-# Ceiling on waiting for one case's worker, as a multiple of the provider's own
-# per-request timeout: a case is at most two sequential calls (the run, then
-# judge grading), plus slack for scheduling. Anything past that means a hung
-# thread — record a failure row instead of hanging the whole HTTP request.
-# Deriving it matters for self-hosted providers, whose per-request ceiling is
-# far higher than a hosted API's.
-_CASE_TIMEOUT_MULTIPLIER = 3.0
-
-
-def _case_timeout_seconds(connection: LLMConnection) -> float:
-    return timeout_seconds_for(connection.provider) * _CASE_TIMEOUT_MULTIPLIER
-
 
 _BRACKET_OPENERS = "([{"
 _BRACKET_CLOSERS = ")]}"
@@ -181,6 +165,7 @@ class _CaseOutcome:
     run_error: str | None = None
     judge_result: JudgeResult | None = None
     judge_error: str | None = None
+    failed_calls: list[tuple[str, LLMUsage]] = field(default_factory=list)
 
 
 class EvalService:
@@ -285,7 +270,7 @@ class EvalService:
                     "weaknesses": raw.get("weaknesses", []),
                 }
             )
-        except (KeyError, TypeError, ValueError) as exc:
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
             msg = f"Unparseable judge response: {exc}"
             raise JudgeError(msg) from exc
 
@@ -311,20 +296,28 @@ class EvalService:
         """Run one case's provider-facing work (model run, then judge grading
         if the method needs it). Pure worker: no session, no ORM — safe to run
         on an executor thread."""
-        try:
-            result = PlaygroundService.run(compiled, connection)
-        except PlaygroundRunError as exc:
-            return _CaseOutcome(run_error=str(exc))
+        with capture_llm_usage() as run_usage:
+            try:
+                result = PlaygroundService.run(compiled, connection)
+            except Exception as exc:
+                return _CaseOutcome(
+                    run_error=str(exc), failed_calls=[("eval_case", usage) for usage in run_usage]
+                )
 
         if method != "judge":
             return _CaseOutcome(result=result)
 
-        try:
-            judge_result = EvalService._score_judge(
-                criteria, result.output_text, compiled, connection
-            )
-        except (OpenAIError, JudgeError) as exc:
-            return _CaseOutcome(result=result, judge_error=str(exc))
+        with capture_llm_usage() as judge_usage:
+            try:
+                judge_result = EvalService._score_judge(
+                    criteria, result.output_text, compiled, connection
+                )
+            except Exception as exc:
+                return _CaseOutcome(
+                    result=result,
+                    judge_error=str(exc),
+                    failed_calls=[("eval_judge", usage) for usage in judge_usage],
+                )
         return _CaseOutcome(result=result, judge_result=judge_result)
 
     @staticmethod
@@ -344,14 +337,12 @@ class EvalService:
                 also aborts before anything is committed.
 
         Case failures (model run errors, judge API errors, unparseable judge
-        responses, or a case exceeding the per-case timeout) are captured
+        responses, or a provider I/O timeout) are captured
         per-case instead of aborting the run.
         """
         # Resolved once and shared: the SDK client is thread-safe, and a
         # per-worker client would open a fresh connection pool per case.
         connection = client_for(user)
-        model = connection.model
-        case_timeout = _case_timeout_seconds(connection)
         cases = (
             db.query(EvalCase)
             .filter(EvalCase.prompt_id == prompt.id)
@@ -359,13 +350,7 @@ class EvalService:
             .all()
         )
 
-        run = EvalRun(
-            prompt_id=prompt.id,
-            prompt_version_number=PromptVersionService.live_version_number(db, prompt.id),
-            model=model,
-        )
-        db.add(run)
-        db.flush()
+        version_number = PromptVersionService.live_version_number(db, prompt.id)
 
         prepared = [
             (
@@ -398,7 +383,6 @@ class EvalService:
         # Fan the provider-facing work out across threads; everything that
         # touches the session stays below, on this thread. Futures are
         # collected in submission order so results persist in case order.
-        outcomes: list[_CaseOutcome] = []
         with ThreadPoolExecutor(max_workers=min(max_workers, max(1, len(cases)))) as pool:
             futures = [
                 pool.submit(
@@ -406,19 +390,28 @@ class EvalService:
                 )
                 for case, _, _, compiled in prepared
             ]
-            for future in futures:
-                try:
-                    outcomes.append(future.result(timeout=case_timeout))
-                except TimeoutError:
-                    outcomes.append(
-                        _CaseOutcome(run_error=f"case timed out after {int(case_timeout)}s")
-                    )
+            # The provider transport owns I/O timeouts and bounded retries.
+            # A Future timeout cannot stop a running thread; discarding its
+            # result would lose usage even though context-manager exit waits.
+            outcomes = [future.result() for future in futures]
+
+        # Begin the write transaction only after all network work has finished.
+        run = EvalRun(
+            prompt_id=prompt.id, prompt_version_number=version_number, model=connection.model
+        )
+        db.add(run)
+        db.flush()
 
         scores: list[float] = []
         any_pending = False
         totals = _UsageTotals()
 
         for (case, label, variables, _), outcome in zip(prepared, outcomes, strict=True):
+            for source, usage in outcome.failed_calls:
+                billed = record_billed_call(db, user.id, source, usage)
+                totals.prompt_tokens += usage.prompt_tokens
+                totals.completion_tokens += usage.completion_tokens
+                totals.cost_usd += billed.cost_usd
             if outcome.result is None:
                 db.add(
                     EvalRunResult(

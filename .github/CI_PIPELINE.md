@@ -34,7 +34,12 @@ job that can replace the project's public images — Dependabot's
 | `compose-validate` | `Docker Compose - Config Validation` | Base, local, E2E, and GHCR production Compose combinations plus non-root backup ownership/integrity |
 | `codeql` | `Static Analysis - CodeQL` | CodeQL `security-extended` queries over the TypeScript/React sources — the counterpart to Bandit, which covers only the backend. Runs on public repositories only (see below) |
 | `all-checks-passed` | `All Quality Gates Passed` | Stable aggregate result for all required quality jobs |
-| `publish` | `Publish - <service> → GHCR` | On a `v*` tag, publishes backend/frontend images tagged by semver and `sha-<short>`, with build provenance and an SBOM attached. No `latest` tag: it made an unready or poisoned artifact the default pull |
+| `publish` | `Publish - <service> → GHCR` | On a `v*` tag, builds an untagged registry candidate with provenance and SBOM, scans its immutable digest, then promotes that same index to semver and `sha-<short>` tags. No rebuild or `latest` tag |
+
+Release candidates are uploaded to GHCR by digest without release tags. These
+untagged artifacts are unverified until the release scan passes; a failed scan
+leaves them untagged. Promotion copies the scanned image index intact, preserving
+its provenance and SBOM attestations.
 
 The image scan gates on HIGH/CRITICAL findings that have a fix available
 (`--ignore-unfixed`), scoped to the two images this project builds; run the same
@@ -97,7 +102,7 @@ Run commands from the repository root:
 | `make docker-smoke-test` | Both image builds and backend container smoke test |
 | `make check-docker-context` | Actual Docker build-context exclusion for root and nested environment files |
 | `make compose-check` | All supported Compose combinations |
-| `make check-backup-worker` | Non-root backup execution, host ownership, and compressed SQLite integrity |
+| `make check-backup-worker` | Isolated non-root backup/restore, private archives, preserved DB ownership/mode, and writable restored SQLite data |
 | `make test-e2e` | Isolated Playwright/Compose browser suite |
 | `make ci-local` | Full local CI mirror |
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { PromptMakerTile } from '@/components/brand/PromptMakerMark';
 import {
   AllPromptsIcon,
@@ -36,7 +36,52 @@ function sortFolders(folders: string[]): string[] {
   );
 }
 
+const MOBILE_QUERY = '(max-width: 760px)';
+function subscribeMobile(onChange: () => void) {
+  const media = window.matchMedia(MOBILE_QUERY);
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
+}
+const isMobile = () => window.matchMedia(MOBILE_QUERY).matches;
+
 export default function Sidebar({ open, onNavigate }: SidebarProps) {
+  const mobile = useSyncExternalStore(subscribeMobile, isMobile, () => false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const onNavigateRef = useRef(onNavigate);
+  useLayoutEffect(() => { onNavigateRef.current = onNavigate; });
+  useLayoutEffect(() => {
+    // React 18 does not forward the native boolean `inert` attribute.
+    sidebarRef.current?.toggleAttribute('inert', mobile && !open);
+  }, [mobile, open]);
+  useEffect(() => {
+    if (!mobile || !open) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const sidebar = sidebarRef.current!;
+    const focusable = () => sidebar.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)');
+    focusable()[0]?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onNavigateRef.current();
+      }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!sidebar.contains(document.activeElement) || (event.shiftKey && document.activeElement === first)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first)?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousFocus?.focus();
+    };
+  }, [mobile, open]);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { currentUser, logout } = useAuth();
@@ -82,7 +127,15 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
   );
 
   return (
-    <aside className={styles.sidebar} data-open={open} aria-label="Sidebar">
+    <aside
+      ref={sidebarRef}
+      className={styles.sidebar}
+      data-open={open}
+      aria-label="Sidebar"
+      aria-hidden={mobile && !open ? true : undefined}
+      role={mobile && open ? 'dialog' : undefined}
+      aria-modal={mobile && open ? true : undefined}
+    >
       <Link href="/library" className={styles.brand} onClick={onNavigate}>
         <PromptMakerTile size={28} />
         <span>{APP_NAME}</span>

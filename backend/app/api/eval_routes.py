@@ -5,7 +5,7 @@ evaluation, run history, and manual star ratings.
 
 import logging
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import call_service, get_llm_connection, get_owned_prompt, llm_http_error
@@ -28,7 +28,7 @@ from app.services.budget_service import BudgetExceededError, BudgetService
 from app.services.eval_generator_service import EvalGeneratorService
 from app.services.eval_service import EvalService
 from app.services.evaluation import cases, results
-from app.services.spend_ledger import record_billed_call
+from app.services.spend_ledger import bill_failed_attempts, record_billed_call
 
 logger = logging.getLogger(__name__)
 
@@ -117,9 +117,10 @@ def generate_eval_cases(
 
     connection = get_llm_connection(current_user)
     try:
-        proposals, usage = EvalGeneratorService.generate_proposals(
-            prompt.generated_prompt, prompt.variable_metadata, body.goal, max_cases, connection
-        )
+        with bill_failed_attempts(db, current_user.id, "eval_generate"):
+            proposals, usage = EvalGeneratorService.generate_proposals(
+                prompt.generated_prompt, prompt.variable_metadata, body.goal, max_cases, connection
+            )
     except Exception as exc:
         raise llm_http_error(exc, connection, "eval/cases/generate") from exc
 
@@ -201,9 +202,11 @@ def list_eval_runs(
     prompt_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     """List an owned prompt's eval run history, newest first."""
-    return call_service(results.list_eval_runs, prompt_id, db, current_user.id)
+    return call_service(results.list_eval_runs, prompt_id, db, current_user.id, limit, offset)
 
 
 @router.post(

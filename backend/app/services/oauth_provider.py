@@ -101,7 +101,7 @@ def _same_resource(resource: str | None) -> bool:
 def create_mcp_access_token(user: User, client_id: str) -> str:
     now = _now()
     payload = {
-        "sub": user.username,
+        "sub": user.auth_subject,
         "aud": RESOURCE_URL,
         "client_id": client_id,
         "tv": user.token_version or 0,
@@ -123,7 +123,10 @@ def user_from_mcp_access_token(token: str, db: Session) -> tuple[User, dict] | N
         )
     except jwt.PyJWTError:
         return None
-    user = db.query(User).filter(User.username == payload.get("sub")).first()
+    subject = payload.get("sub")
+    if not subject:
+        return None
+    user = db.query(User).filter(User.auth_subject == subject).first()
     if user is None or payload.get("tv", 0) != (user.token_version or 0):
         return None
     return user, payload

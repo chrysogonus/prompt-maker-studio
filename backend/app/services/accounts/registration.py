@@ -45,17 +45,15 @@ def register(user_data: UserCreate, db: Session):
     _assert_registration_allowed(db)
     normalized_username = user_data.username.strip().lower()
     normalized_email = str(user_data.email).strip().lower()
-    existing_user = db.query(User).filter(User.username == normalized_username).first()
-    if existing_user:
+    conflict = (
+        db.query(User)
+        .filter((User.username == normalized_username) | (User.email == normalized_email))
+        .first()
+    )
+    if conflict:
         raise OperationError(
             status_code=HTTPStatus.BAD_REQUEST,
-            detail="Username already registered",
-        )
-    existing_email = db.query(User).filter(User.email == normalized_email).first()
-    if existing_email:
-        raise OperationError(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail="Email address already registered",
+            detail="Username or email already registered",
         )
     hashed_password = get_password_hash(user_data.password)
     new_user = User(

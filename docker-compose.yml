@@ -201,8 +201,10 @@ services:
     profiles:
       - monitoring
     volumes:
+      - ./scripts/grafana-entrypoint.sh:/grafana-entrypoint.sh:ro
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana_data:/var/lib/grafana
+    entrypoint: ["/bin/sh", "/grafana-entrypoint.sh"]
     environment:
       - "GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set. Generate with: openssl rand -hex 16}"
     ports:

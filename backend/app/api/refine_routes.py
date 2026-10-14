@@ -24,7 +24,7 @@ from app.schemas.refinement import (
 from app.services.budget_service import BudgetExceededError, BudgetService
 from app.services.prompt_refiner import PromptRefinerService
 from app.services.prompt_sections import render_sections
-from app.services.spend_ledger import record_billed_call
+from app.services.spend_ledger import bill_failed_attempts, record_billed_call
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +46,12 @@ def get_snapshot_questions(
     except BudgetExceededError as exc:
         raise HTTPException(status_code=402, detail=str(exc)) from exc
     try:
-        questions, usage = PromptRefinerService.generate_clarifying_questions(
-            render_sections(field.model_dump() for field in body.fields),
-            connection,
-            force=body.force,
-        )
+        with bill_failed_attempts(db, current_user.id, "refine_questions"):
+            questions, usage = PromptRefinerService.generate_clarifying_questions(
+                render_sections(field.model_dump() for field in body.fields),
+                connection,
+                force=body.force,
+            )
     except Exception as exc:
         raise llm_http_error(exc, connection, "refine/questions snapshot") from exc
     record_billed_call(db, current_user.id, "refine_questions", usage)
@@ -73,11 +74,12 @@ def get_snapshot_draft(
     except BudgetExceededError as exc:
         raise HTTPException(status_code=402, detail=str(exc)) from exc
     try:
-        draft, usage = PromptRefinerService.generate_section_draft(
-            body.fields,
-            [(pair.question, pair.answer) for pair in body.qa_pairs],
-            connection,
-        )
+        with bill_failed_attempts(db, current_user.id, "refine_draft"):
+            draft, usage = PromptRefinerService.generate_section_draft(
+                body.fields,
+                [(pair.question, pair.answer) for pair in body.qa_pairs],
+                connection,
+            )
     except Exception as exc:
         raise llm_http_error(exc, connection, "refine/draft snapshot") from exc
     # The completed call was billed even if the draft fails structural validation.
@@ -115,11 +117,12 @@ def get_refine_questions(
         raise HTTPException(status_code=402, detail=str(exc)) from exc
 
     try:
-        questions, usage = PromptRefinerService.generate_clarifying_questions(
-            prompt.generated_prompt,
-            connection,
-            force=force,
-        )
+        with bill_failed_attempts(db, current_user.id, "refine_questions"):
+            questions, usage = PromptRefinerService.generate_clarifying_questions(
+                prompt.generated_prompt,
+                connection,
+                force=force,
+            )
     except Exception as exc:
         raise llm_http_error(exc, connection, "refine/questions") from exc
 
@@ -156,9 +159,10 @@ def get_refine_draft(
         raise HTTPException(status_code=402, detail=str(exc)) from exc
 
     try:
-        draft, usage = PromptRefinerService.generate_draft(
-            prompt.generated_prompt, qa_pairs, connection
-        )
+        with bill_failed_attempts(db, current_user.id, "refine_draft"):
+            draft, usage = PromptRefinerService.generate_draft(
+                prompt.generated_prompt, qa_pairs, connection
+            )
     except Exception as exc:
         raise llm_http_error(exc, connection, "refine/draft") from exc
 

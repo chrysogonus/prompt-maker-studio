@@ -342,7 +342,8 @@ BACKUP_UID=$(id -u) BACKUP_GID=$(id -g) BACKUP_INTERVAL_SECONDS=86400 \
 Backups are written to `./backups/prompts-<timestamp>.sqlite3.gz` by the
 non-root UID/GID supplied above, so the host operator retains ownership. Put
 the same values in `.env` if the profile is managed without this one-shot
-command.
+command. On-demand backups also run as the host operator. Archives have mode
+`0600` and appear under their final name only after compression succeeds.
 
 After each run the worker deletes scheduled backups older than
 `BACKUP_RETENTION_DAYS` (default 14), so deleted user data does not live on
@@ -353,13 +354,28 @@ client IP addresses.
 
 ### Restore database:
 
-Stop the backend, restore a tested backup, and restart the backend:
+Restore a tested backup (the command stops the backend and scheduled backup
+worker first, then restarts them after a successful restore):
 
 ```bash
 make restore-db BACKUP=backups/prompts-YYYYmmddTHHMMSSZ.sqlite3.gz
 ```
 
-The restore script runs `PRAGMA integrity_check` before replacing the DB and keeps a `.pre-restore-<timestamp>` copy of the previous database inside the Docker volume.
+The restore script runs `PRAGMA integrity_check` before replacing the DB and
+keeps a consistent `.pre-restore-<timestamp>` SQLite snapshot of the previous
+database, including committed WAL data. It acquires exclusive SQLite access,
+checkpoints WAL, removes old sidecars, and atomically replaces the database
+while preserving its ownership and permissions. The restore container runs as
+the backend's non-root UID/GID (`1000:1000`); the selected backup must be readable
+by that account. If your host operator has a different UID, give that account
+read access to the selected backup before restoring.
+
+Stop any other process using this database before running a restore directly;
+active SQLite users cause restoration to fail. If restoration fails, the Make
+command leaves the services stopped so you can inspect the error before
+restarting them. The scheduled worker restarts only if it was running before
+the restore. Pre-restore snapshots contain user data; remove them when they
+are no longer needed under your retention policy.
 
 ### Demo data
 

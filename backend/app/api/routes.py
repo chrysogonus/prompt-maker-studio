@@ -38,7 +38,7 @@ from app.services.llm_client import (
 from app.services.playground_service import try_once
 from app.services.prompt_parser import PromptParserService as TextParserService
 from app.services.prompts import export, folders, library, versions
-from app.services.spend_ledger import record_billed_call
+from app.services.spend_ledger import bill_failed_attempts, record_billed_call
 
 logger = logging.getLogger(__name__)
 
@@ -90,10 +90,11 @@ def parse_prompt_text(
 
     ai_imports_total.inc()
     try:
-        if body.extract_variables:
-            raw, usage = TextParserService.convert(body.text, connection)
-        else:
-            fields, usage = TextParserService.parse(body.text, connection)
+        with bill_failed_attempts(db, current_user.id, "parse"):
+            if body.extract_variables:
+                raw, usage = TextParserService.convert(body.text, connection)
+            else:
+                fields, usage = TextParserService.parse(body.text, connection)
     except Exception as exc:
         ai_import_failures_total.inc()
         raise llm_http_error(exc, connection, "parse-text") from exc

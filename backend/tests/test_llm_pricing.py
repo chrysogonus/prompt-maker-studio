@@ -66,7 +66,7 @@ def test_self_hosted_pricing_is_always_free_without_fetch(mock_litellm_pricing):
     mock_litellm_pricing.assert_not_called()
 
 
-def test_failed_refresh_serves_stale_index_and_retries_next_call(mock_litellm_pricing, caplog):
+def test_failed_refresh_serves_stale_index_without_immediate_retry(mock_litellm_pricing, caplog):
     mock_litellm_pricing.return_value = {
         "gpt-stale": {
             "litellm_provider": "openai",
@@ -86,9 +86,33 @@ def test_failed_refresh_serves_stale_index_and_retries_next_call(mock_litellm_pr
         second_stale = llm_pricing.rates_for("openai", "gpt-stale")
 
     assert first_stale == second_stale == {"input": 0.3, "output": 0.9}
-    assert mock_litellm_pricing.call_count == 3
-    assert llm_pricing._pricing_cache.expires_at == 0.0
+    assert mock_litellm_pricing.call_count == 2
+    assert llm_pricing._pricing_cache.expires_at > 0.0
     assert "serving stale data" in caplog.text
+
+
+def test_concurrent_pricing_read_does_not_wait_for_refresh(mock_litellm_pricing):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    fetching = Event()
+    release = Event()
+
+    def fetch():
+        fetching.set()
+        assert release.wait(5)
+        return {}
+
+    mock_litellm_pricing.side_effect = fetch
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(llm_pricing.rates_for, "openai", "gpt-4o-mini")
+        assert fetching.wait(5)
+        second = pool.submit(llm_pricing.rates_for, "openai", "gpt-4o-mini")
+        try:
+            assert second.result(timeout=0.5) == {"input": 0.15, "output": 0.6}
+        finally:
+            release.set()
+        assert first.result(timeout=5) == {"input": 0.15, "output": 0.6}
 
 
 def test_malformed_prices_are_not_indexed():

@@ -5,11 +5,27 @@ silently reintroduce, without pulling in a YAML-parsing dependency.
 
 from pathlib import Path
 import re
+import subprocess
+
+import pytest
 
 _REPO_ROOT = Path(__file__).parent.parent.parent
 _COMPOSE_PATH = _REPO_ROOT / "docker-compose.yml"
 _LOCAL_OVERRIDE_PATH = _REPO_ROOT / "docker-compose.override.yml"
 _ENV_EXAMPLE_PATH = _REPO_ROOT / ".env.example"
+
+
+@pytest.mark.parametrize("password", ["", "change-this-to-a-secure-password"])
+def test_grafana_startup_rejects_an_unconfigured_admin_password(password):
+    result = subprocess.run(
+        ["sh", str(_REPO_ROOT / "scripts/grafana-entrypoint.sh")],
+        env={"GF_SECURITY_ADMIN_PASSWORD": password},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "Set a unique GRAFANA_ADMIN_PASSWORD" in result.stderr
 
 
 def _service_block(compose_text: str, service_name: str) -> str:
