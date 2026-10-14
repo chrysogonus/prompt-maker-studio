@@ -1,0 +1,160 @@
+/* The landing page wears the app's own surfaces, like the sign-in screen: blush
+   canvas, plum ink, coral only on what you can click. The screenshots are the
+   one large element; everything else stays plain text on one left edge. */
+
+.page {
+  min-height: 100vh;
+  background: var(--color-canvas);
+  color: var(--text-primary);
+}
+
+.header,
+.page main,
+.footer {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-6);
+}
+
+.home {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+}
+
+.signIn {
+  color: var(--accent-text);
+  font-weight: var(--weight-semibold);
+}
+
+.hero {
+  max-width: 680px;
+  padding: clamp(var(--space-8), 8vh, 88px) 0 var(--space-10);
+}
+
+.hero h1 {
+  font-size: clamp(2.25rem, 5.5vw, 3.75rem);
+  line-height: 1.05;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.lede {
+  max-width: 60ch;
+  margin-top: var(--space-6);
+  color: var(--text-secondary);
+  font-size: var(--text-lg-size);
+  line-height: 1.6;
+}
+
+/* The same chip the editor puts on a variable name. */
+.variable {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-coral-wash);
+  color: var(--color-coral-wash-text);
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+}
+
+.cta {
+  min-height: 40px;
+  padding: 0 var(--space-6);
+}
+
+.shot {
+  margin: 0;
+}
+
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+}
+
+.features,
+.openSource {
+  padding: clamp(var(--space-10), 10vh, 112px) 0 var(--space-10);
+}
+
+.features h2,
+.openSource h2 {
+  max-width: 24ch;
+  font-size: clamp(1.75rem, 3.2vw, 2.25rem);
+  line-height: 1.15;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.features dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: var(--space-8) var(--space-10);
+  margin-top: var(--space-10);
+}
+
+.features dt {
+  font-size: var(--text-lg-size);
+  font-weight: var(--weight-semibold);
+}
+
+.features dd {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-base-size);
+  line-height: var(--text-base-line);
+}
+
+.openSource p {
+  max-width: 60ch;
+  margin: var(--space-4) 0 var(--space-8);
+  color: var(--text-secondary);
+  font-size: var(--text-lg-size);
+  line-height: 1.6;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-8);
+  border-top: 1px solid var(--color-border);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm-size);
+}
+
+/* Lets the links join the footer's flex row directly. */
+.legalLinks {
+  display: contents;
+}
+
+.footer a {
+  color: var(--text-tertiary);
+}
+
+.footer a:hover {
+  color: var(--text-secondary);
+}

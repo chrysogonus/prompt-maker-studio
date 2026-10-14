@@ -1,0 +1,27 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.chrysogonus/prompt-maker-studio",
+  "title": "Prompt Maker Studio",
+  "description": "Your prompt library in any MCP client: list, fetch, save and version prompt templates.",
+  "version": "0.4.0",
+  "websiteUrl": "https://neadlab.com",
+  "icons": [
+    {
+      "src": "https://neadlab.com/icon-512.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "512x512"
+      ]
+    }
+  ],
+  "repository": {
+    "url": "https://github.com/chrysogonus/prompt-maker-studio",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://neadlab.com/api/mcp"
+    }
+  ]
+}

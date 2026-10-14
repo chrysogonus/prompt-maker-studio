@@ -25,7 +25,7 @@ function sidebarLink(page: Page, name: string | RegExp) {
 }
 
 async function register(page: Page, user: TestUser) {
-  await page.goto('/');
+  await page.goto('/library');
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Create account' }).click();
