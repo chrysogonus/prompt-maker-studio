@@ -1,4 +1,4 @@
-.PHONY: help setup install setup-venv lock check-locks check-locks-selftest check-secrets check-docker-context check-backup-worker security-images check-notices screenshots setup-e2e build up down restart sync-restart logs clean test test-cov test-file test-frontend test-e2e dev-backend dev-frontend smoke-smtp backup-db restore-db seed-demo-user ci-local lint-backend lint-frontend lint-fix build-local build-frontend build-backend security-backend security-frontend docker-smoke-test compose-check
+.PHONY: help setup install setup-venv lock check-locks check-locks-selftest check-secrets check-docker-context check-backup-worker security-images check-notices screenshots setup-e2e build up down restart sync-restart logs clean test test-cov test-file test-frontend test-e2e dev-backend dev-frontend smoke-smtp backup-db restore-db seed-demo-user ci-local lint-backend lint-frontend lint-fix build-local build-frontend build-backend security-backend security-frontend docker-smoke-test compose-check monitoring-check
 
 # Interpreter used to create .venv. The backend declares requires-python >=3.12,
 # but a distro `python3` is frequently older (e.g. 3.10 on Ubuntu 22.04), which
@@ -68,6 +68,7 @@ help:
 	@echo "CI/CD Commands"
 	@echo "=================================="
 	@echo "ci-local       - Run all CI checks locally (lint, security, build, test)"
+	@echo "monitoring-check - Validate Prometheus config, rules and dashboard query fixtures"
 	@echo "lint-backend   - Lint backend code with Ruff"
 	@echo "lint-frontend  - Lint frontend code with TypeScript and ESLint"
 	@echo "lint-fix       - Auto-fix lint errors (Ruff + ESLint)"
@@ -393,6 +394,8 @@ ci-local:
 	@echo ""
 	@$(MAKE) compose-check
 	@echo ""
+	@$(MAKE) monitoring-check
+	@echo ""
 	@$(MAKE) check-backup-worker
 	@echo ""
 	@$(MAKE) check-docker-context
@@ -587,3 +590,15 @@ compose-check:
 	@GRAFANA_ADMIN_PASSWORD=check docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.e2e.yml config --quiet
 	@GRAFANA_ADMIN_PASSWORD=check GHCR_OWNER=check IMAGE_TAG=check docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 	@echo "✅ Compose configuration valid"
+
+# Read the pin directly, without Compose interpolation opening the operator env file.
+PROMETHEUS_CHECK_IMAGE := $(shell awk '/image: prom\/prometheus:/ {print $$2}' docker-compose.yml)
+monitoring-check:
+	@echo "Validating Prometheus configuration and semantic tests..."
+	@docker run --rm --network none --entrypoint /bin/promtool \
+		-v "$(CURDIR)/monitoring/prometheus:/etc/prometheus:ro" $(PROMETHEUS_CHECK_IMAGE) \
+		check config /etc/prometheus/prometheus.yml
+	@docker run --rm --network none --entrypoint /bin/promtool \
+		-v "$(CURDIR)/monitoring/prometheus:/etc/prometheus:ro" $(PROMETHEUS_CHECK_IMAGE) \
+		test rules /etc/prometheus/rules.test.json
+	@echo "✅ Monitoring configuration and semantic tests passed"

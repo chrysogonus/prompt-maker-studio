@@ -31,7 +31,7 @@ job that can replace the project's public images — Dependabot's
 | `frontend-quality` | `Frontend - Lint, Security & Build` | TypeScript, ESLint, dependency audits, production build, and Vitest with the coverage floors in `frontend/vitest.config.ts` |
 | `docker-build` | `Docker - Build Validation` | Build-context secret exclusions, matrix builds, license-material checks, LGPL-bundle exclusion, no-baked-API-origin and no-package-manager checks, a Trivy vulnerability scan, and a live backend smoke check |
 | `browser-e2e` | `Browser - End-to-End Tests` | Playwright Chromium journeys against an isolated Compose stack |
-| `compose-validate` | `Docker Compose - Config Validation` | Base, local, E2E, and GHCR production Compose combinations plus non-root backup ownership/integrity |
+| `compose-validate` | `Docker Compose - Config Validation` | Base, local, E2E, and GHCR production Compose combinations, Prometheus syntax/semantic tests, plus non-root backup ownership/integrity |
 | `codeql` | `Static Analysis - CodeQL` | CodeQL `security-extended` queries over the TypeScript/React sources — the counterpart to Bandit, which covers only the backend. Runs on public repositories only (see below) |
 | `all-checks-passed` | `All Quality Gates Passed` | Stable aggregate result for all required quality jobs |
 | `publish` | `Publish - <service> → GHCR` | On a `v*` tag, publishes backend/frontend images tagged by semver and `sha-<short>`, with build provenance and an SBOM attached. No `latest` tag: it made an unready or poisoned artifact the default pull |
@@ -97,6 +97,7 @@ Run commands from the repository root:
 | `make docker-smoke-test` | Both image builds and backend container smoke test |
 | `make check-docker-context` | Actual Docker build-context exclusion for root and nested environment files |
 | `make compose-check` | All supported Compose combinations |
+| `make monitoring-check` | Prometheus config/rules and semantic dashboard/alert fixtures in the pinned image, with networking disabled |
 | `make check-backup-worker` | Non-root backup execution, host ownership, and compressed SQLite integrity |
 | `make test-e2e` | Isolated Playwright/Compose browser suite |
 | `make ci-local` | Full local CI mirror |

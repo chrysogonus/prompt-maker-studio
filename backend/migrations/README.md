@@ -66,7 +66,10 @@ Before deploying a build with database changes:
    ```bash
    docker compose -f docker-compose.yml up -d backend
    ```
-5. Check backend logs for `Applying database migration` / `Applied database migration` entries.
+5. Check backend JSON logs for `event="migration_applying"` followed by
+   `event="migration_applied"` with the expected `migration_version` (for example,
+   `020_delete_cascades`). Each applied event confirms the runner recorded that
+   version. Already-applied migrations emit no new progress events on restart.
 6. Verify the app health endpoint and one authenticated saved-prompt flow.
 7. If validation fails, stop the backend and restore the pre-deploy backup:
    ```bash

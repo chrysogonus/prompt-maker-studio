@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+import logging
 from unittest.mock import patch
 
 from prometheus_client import REGISTRY
@@ -18,6 +19,7 @@ from app.schemas.prompts import PromptCreateRequest
 from app.services.accounts import registration
 from app.services.budget_service import BudgetExceededError
 from app.services.eval_service import EvalService, JudgeError
+from app.services.llm_client import NoProviderConfiguredError
 from app.services.playground_service import PlaygroundResult, PlaygroundRunError
 from app.services.prompts import library
 from tests.conftest import make_chat_response, make_connection
@@ -309,6 +311,27 @@ def test_connection_false_result_records_failure(client, auth_headers, failure, 
     assert response.json()["ok"] is False
     assert _count("connection_test", outcome) == before + 1
     assert _count("connection_test") == success
+
+
+def test_connection_configuration_failure_is_rejected_not_provider_error(
+    client, auth_headers, caplog
+):
+    before_rejected = _count("connection_test", "rejected")
+    before_errors = _count("connection_test", "error")
+    with (
+        patch(
+            "app.services.accounts.connections.client_for",
+            side_effect=NoProviderConfiguredError("No provider configured"),
+        ),
+        caplog.at_level(logging.INFO, logger="app.operation"),
+    ):
+        response = client.post("/api/auth/me/llm-connection/test", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json()["ok"] is False
+    assert _count("connection_test", "rejected") == before_rejected + 1
+    assert _count("connection_test", "error") == before_errors
+    record = next(record for record in reversed(caplog.records) if record.name == "app.operation")
+    assert record.error_type == "validation"
 
 
 def _evaluation(db_session, methods):

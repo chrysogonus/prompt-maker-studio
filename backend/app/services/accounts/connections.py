@@ -4,7 +4,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.metrics import observe_operation, operation_context
+from app.metrics import classify_error, observe_operation, operation_context
 from app.models.user import User
 from app.schemas.connections import (
     LLMConnectionResponse,
@@ -155,8 +155,7 @@ def test_llm_connection(current_user: User, db: Session):
     except Exception as exc:
         state = operation_context.get()
         if state is not None:
-            state.outcome = "error"
-            state.error_type = "provider"
+            state.outcome, state.error_type = classify_error(exc)
         _, detail = describe_llm_error(exc, connection)
         logger.info("llm_connection_test_failed")
         return LLMConnectionTestResponse(ok=False, message=detail)

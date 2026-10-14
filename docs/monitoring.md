@@ -208,6 +208,15 @@ Root `/` and `/metrics` health/scrape requests are excluded from traffic metrics
 Request IDs connect related backend events without identifying a user. Retain
 operator control over Docker log access and any exported diagnostics.
 
+Migration progress uses `migration_applying` / `migration_applied` events with a
+validated `migration_version`, including numeric prefixes such as
+`020_delete_cascades`. Server lifecycle events include `server_started`,
+`startup_started`, `startup_complete`, `startup_failed` and shutdown events.
+ASGI import/factory failures emit `asgi_load_failed` / `asgi_factory_failed`
+without copying potentially sensitive error text. Exceptions retain their type
+and safe stack locations. Unconfigured connection tests are rejected validation
+events; provider failures and timeouts retain their respective classifications.
+
 Static config tests run with the normal backend suite. To check Prometheus
 syntax without starting the deployed stack:
 
@@ -228,6 +237,10 @@ docker run --rm --network none --entrypoint /bin/promtool \
   prom/prometheus:v3.9.0@sha256:27343e8f1bb6555f50b561c758b53b5973a5a110a028d0457a90d4d33804b1b4 \
   test rules /etc/prometheus/rules.test.json
 ```
+
+`make monitoring-check` runs both commands and is included in `make ci-local`
+and GitHub CI's required `compose-validate` job. The container has no network
+access and only a read-only mount of the monitoring config directory.
 
 For Compose validation, explicitly pass an empty temporary `--env-file` and
 dummy required settings, rather than loading the operator's `.env`. Isolated

@@ -16,8 +16,16 @@ from app.metrics import (
 )
 
 _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_.]{0,127}\Z")
+_MIGRATION_VERSION = re.compile(r"[0-9]{3}_[a-z0-9_]{1,124}\Z")
 _REQUEST_ID = re.compile(r"[a-f0-9]{32}\Z")
-_EVENTS = {"operation_completed", "http_request", "unhandled_exception", "request_validation"}
+_EVENTS = {
+    "operation_completed",
+    "http_request",
+    "unhandled_exception",
+    "request_validation",
+    "asgi_load_failed",
+    "asgi_factory_failed",
+}
 _DIAGNOSTIC_EVENTS = {
     ("app.metrics", "snapshot_collection_failed"): "snapshot_collection_failed",
     (
@@ -28,10 +36,6 @@ _DIAGNOSTIC_EVENTS = {
         "app.services.accounts.passwords",
         "password_reset_email_failed",
     ): "password_reset_email_failed",
-    (
-        "app.services.accounts.connections",
-        "LLM connection test failed for user %s: %s",
-    ): "llm_connection_test_failed",
     ("app.api.deps", "LLM error in %s: %s"): "llm_request_failed",
     (
         "app.services.accounts.connections",
@@ -45,6 +49,17 @@ _DIAGNOSTIC_EVENTS = {
         "app.services.llm_client",
         "Provider %s returned unparseable JSON (degraded=%s); retrying",
     ): "llm_json_retry",
+    ("app.database.migrations.runner", "Applying database migration %s"): "migration_applying",
+    ("app.database.migrations.runner", "Applied database migration %s"): "migration_applied",
+    ("uvicorn.error", "Started server process [%d]"): "server_started",
+    ("uvicorn.error", "Finished server process [%d]"): "server_stopped",
+    ("uvicorn.error", "Waiting for application startup."): "startup_started",
+    ("uvicorn.error", "Application startup complete."): "startup_complete",
+    ("uvicorn.error", "Application startup failed. Exiting."): "startup_failed",
+    ("uvicorn.error", "Shutting down"): "shutdown_started",
+    ("uvicorn.error", "Waiting for application shutdown."): "shutdown_started",
+    ("uvicorn.error", "Application shutdown complete."): "shutdown_complete",
+    ("uvicorn.error", "Application shutdown failed. Exiting."): "shutdown_failed",
 }
 _ERROR_TYPES = {
     "none",
@@ -76,6 +91,19 @@ def _safe_stack(traceback) -> list[dict]:
     return frames[-16:]
 
 
+def _diagnostic_event(record: logging.LogRecord) -> str | None:
+    if not isinstance(record.msg, str):
+        return None
+    # Uvicorn preformats import failures before logging. Preserve only
+    # the failure category, never the interpolated exception text.
+    if record.name == "uvicorn.error":
+        if record.msg.startswith("Error loading ASGI app."):
+            return "asgi_load_failed"
+        if record.msg.startswith("Error loading ASGI app factory:"):
+            return "asgi_factory_failed"
+    return _DIAGNOSTIC_EVENTS.get((record.name, record.msg))
+
+
 class JsonFormatter(logging.Formatter):
     """Never format free-text messages, arguments, arbitrary extras or tracebacks."""
 
@@ -83,8 +111,8 @@ class JsonFormatter(logging.Formatter):
         context = operation_context.get()
         structured = record.name in {"app.operation", "app.http"}
         event = getattr(record, "event", None) if structured else None
-        if not structured and isinstance(record.msg, str):
-            event = _DIAGNOSTIC_EVENTS.get((record.name, record.msg))
+        if not structured:
+            event = _diagnostic_event(record)
         request_id = request_id_context.get()
         operation = getattr(context, "operation", None)
         error_type = getattr(context, "error_type", "none")
@@ -127,6 +155,13 @@ class JsonFormatter(logging.Formatter):
             result["stack"] = _safe_stack(record.exc_info[2])
         if not structured:
             result["source"] = f"{_identifier(record.module) or 'unknown'}:{record.lineno}"
+        if event in {"migration_applying", "migration_applied"}:
+            version = getattr(record, "migration_version", None)
+            result["migration_version"] = (
+                version
+                if isinstance(version, str) and _MIGRATION_VERSION.fullmatch(version)
+                else None
+            )
         if structured and event == "http_request":
             result.update(
                 {

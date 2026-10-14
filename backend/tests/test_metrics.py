@@ -219,3 +219,24 @@ def test_provider_cause_is_error_even_when_http_status_is_422():
     error = OperationError(422, "safe public text")
     error.__cause__ = OpenAIError("sensitive")
     assert metrics.classify_error(error) == ("error", "provider")
+
+
+def test_budget_exception_subclasses_keep_budget_classification():
+    from app.services.budget_service import BudgetExceededError
+
+    class UserBudgetExceededError(BudgetExceededError):
+        pass
+
+    assert metrics.classify_error(UserBudgetExceededError("private")) == ("rejected", "budget")
+
+
+def test_format_exception_subclasses_keep_provider_classification():
+    class InvalidTemplateError(LLMResponseFormatError):
+        pass
+
+    assert metrics.classify_error(InvalidTemplateError("private")) == ("error", "provider")
+
+
+def test_unrelated_exception_with_same_name_is_not_a_budget_rejection():
+    fake_error_type = type("BudgetExceededError", (Exception,), {})
+    assert metrics.classify_error(fake_error_type("private")) == ("error", "internal")

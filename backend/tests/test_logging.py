@@ -65,7 +65,7 @@ def test_legacy_log_omits_sensitive_message_exception_and_extra_fields():
         ),
         (
             "app.services.accounts.connections",
-            "LLM connection test failed for user %s: %s",
+            "llm_connection_test_failed",
             "llm_connection_test_failed",
         ),
         ("app.api.deps", "LLM error in %s: %s", "llm_request_failed"),
@@ -93,6 +93,98 @@ def test_known_diagnostics_have_fixed_event_without_formatting_arguments(name, t
     assert json.loads(serialized)["event"] == event
     for sensitive in ("hunter2", "person@example.com", "sk-secret", "192.168.0.1", "?token"):
         assert sensitive not in serialized
+
+
+@pytest.mark.parametrize(
+    ("template", "expected"),
+    [
+        ("Applying database migration %s", "migration_applying"),
+        ("Applied database migration %s", "migration_applied"),
+    ],
+)
+def test_migration_progress_keeps_numeric_version_without_raw_arguments(template, expected):
+    record = logging.LogRecord(
+        "app.database.migrations.runner",
+        logging.INFO,
+        __file__,
+        1,
+        template,
+        ("password=hunter2",),
+        None,
+    )
+    record.migration_version = "020_delete_cascades"
+    event = json.loads(format_record(record))
+    assert event["event"] == expected
+    assert event["migration_version"] == "020_delete_cascades"
+    assert "hunter2" not in json.dumps(event)
+
+
+@pytest.mark.parametrize("version", ["020_person@example.com", "020_key=secret", None, 20])
+def test_migration_version_rejects_sensitive_or_malformed_fields(version):
+    record = logging.LogRecord(
+        "app.database.migrations.runner",
+        logging.INFO,
+        __file__,
+        1,
+        "Applied database migration %s",
+        ("private",),
+        None,
+    )
+    record.migration_version = version
+    event = json.loads(format_record(record))
+    assert event["event"] == "migration_applied"
+    assert event["migration_version"] is None
+
+
+def test_actual_runner_emits_versions_and_is_quiet_on_restart(db_session, monkeypatch, caplog):
+    from app.database.migrations import runner
+
+    monkeypatch.setattr(runner, "_MIGRATIONS", (("026_logging_probe", lambda _connection: None),))
+    with caplog.at_level(logging.INFO, logger="app.database.migrations.runner"):
+        runner.run_migrations(db_session.get_bind())
+        runner.run_migrations(db_session.get_bind())
+    events = [
+        json.loads(format_record(record))
+        for record in caplog.records
+        if record.name == "app.database.migrations.runner"
+    ]
+    assert [event["event"] for event in events] == ["migration_applying", "migration_applied"]
+    assert [event["migration_version"] for event in events] == ["026_logging_probe"] * 2
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("Started server process [%d]", "server_started"),
+        ("Finished server process [%d]", "server_stopped"),
+        ("Waiting for application startup.", "startup_started"),
+        ("Application startup complete.", "startup_complete"),
+        ("Application startup failed. Exiting.", "startup_failed"),
+        ("Application shutdown complete.", "shutdown_complete"),
+        ("Application shutdown failed. Exiting.", "shutdown_failed"),
+        ('Error loading ASGI app. Could not import module "private-module".', "asgi_load_failed"),
+        ("Error loading ASGI app factory: password=hunter2", "asgi_factory_failed"),
+    ],
+)
+def test_uvicorn_lifecycle_and_loading_failures_keep_safe_event(message, expected):
+    record = logging.LogRecord("uvicorn.error", logging.ERROR, __file__, 1, message, (), None)
+    serialized = format_record(record)
+    assert json.loads(serialized)["event"] == expected
+    assert "hunter2" not in serialized
+    assert "private-module" not in serialized
+
+
+def test_uvicorn_error_prefix_is_not_trusted_from_other_loggers():
+    record = logging.LogRecord(
+        "app.services.llm_client",
+        logging.ERROR,
+        __file__,
+        1,
+        "Error loading ASGI app. password=hunter2",
+        (),
+        None,
+    )
+    assert json.loads(format_record(record))["event"] == "log"
 
 
 def test_operation_log_has_context_and_explicit_safe_fields():

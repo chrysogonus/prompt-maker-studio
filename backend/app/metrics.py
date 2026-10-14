@@ -145,13 +145,17 @@ operation_context: ContextVar[OperationState | None] = ContextVar("operation", d
 
 def classify_error(exc: Exception) -> tuple[str, str]:
     """Classify typed failures without serializing private exception messages."""
+    # Imported at classification time: both service modules depend on metrics.
+    from app.services.budget_service import BudgetExceededError  # noqa: PLC0415
+    from app.services.llm_client import LLMConnectionError, LLMResponseFormatError  # noqa: PLC0415
+
     cause = exc
     while cause is not None:
         if isinstance(cause, APITimeoutError):
             return "error", "timeout"
-        if isinstance(cause, OpenAIError) or type(cause).__name__ == "LLMResponseFormatError":
+        if isinstance(cause, OpenAIError | LLMResponseFormatError):
             return "error", "provider"
-        if type(cause).__name__ == "BudgetExceededError":
+        if isinstance(cause, BudgetExceededError):
             return "rejected", "budget"
         cause = cause.__cause__
     status = getattr(exc, "status_code", None)
@@ -163,7 +167,7 @@ def classify_error(exc: Exception) -> tuple[str, str]:
             409: "conflict",
             402: "budget",
         }.get(status, "validation")
-    if any(cls.__name__ == "LLMConnectionError" for cls in type(exc).__mro__):
+    if isinstance(exc, LLMConnectionError):
         return "rejected", "validation"
     return "error", "internal"
 
