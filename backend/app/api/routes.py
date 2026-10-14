@@ -11,10 +11,7 @@ from app.api.deps import call_service, get_llm_connection, llm_http_error
 from app.auth.dependencies import get_current_user
 from app.database.connection import get_db
 from app.limiter import limiter
-from app.metrics import (
-    ai_import_failures_total,
-    ai_imports_total,
-)
+from app.metrics import observe_operation
 from app.models.user import User
 from app.schemas.connections import PromptsConfigResponse
 from app.schemas.import_text import ParseTextRequest, ParseTextResponse, PromptConversionResponse
@@ -59,6 +56,7 @@ def try_prompt(
 
 @router.post("/parse-text", response_model=ParseTextResponse | PromptConversionResponse)
 @limiter.limit("20/minute")
+@observe_operation("ai_import")
 def parse_prompt_text(
     request: Request,
     body: ParseTextRequest,
@@ -88,14 +86,12 @@ def parse_prompt_text(
     except BudgetExceededError as exc:
         raise HTTPException(status_code=402, detail=str(exc)) from exc
 
-    ai_imports_total.inc()
     try:
         if body.extract_variables:
             raw, usage = TextParserService.convert(body.text, connection)
         else:
             fields, usage = TextParserService.parse(body.text, connection)
     except Exception as exc:
-        ai_import_failures_total.inc()
         raise llm_http_error(exc, connection, "parse-text") from exc
 
     record_billed_call(db, current_user.id, "parse", usage)
@@ -105,7 +101,6 @@ def parse_prompt_text(
         try:
             return TextParserService.validate_conversion(body.text, raw)
         except Exception as exc:
-            ai_import_failures_total.inc()
             # Validation errors can include the user's source text; keep it out of logs.
             failure = LLMResponseFormatError(
                 f"{connection.provider_label} returned an invalid template or extracted inputs. "

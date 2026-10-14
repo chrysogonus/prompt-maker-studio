@@ -95,6 +95,8 @@ The base `docker-compose.yml` does **not** expose host ports for the backend or 
 Prometheus and Grafana bind loopback-only host ports for local operator access —
 `127.0.0.1:9090` and `127.0.0.1:3010`, respectively — but only when the opt-in
 `monitoring` profile is started; they are absent from the default stack.
+See the [monitoring guide](./monitoring.md) for provisioned dashboards, 30-day
+retention, alert ownership and safe SSH access.
 
 Caddy runs in production but is **excluded from the local stack**:
 `docker-compose.override.yml` assigns it a `caddy` profile, so a local

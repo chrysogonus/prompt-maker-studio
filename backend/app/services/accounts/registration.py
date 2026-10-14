@@ -10,9 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth.utils import (
     get_password_hash,
 )
-from app.metrics import (
-    user_registrations_total,
-)
+from app.metrics import observe_operation
 from app.models.user import User
 from app.schemas.accounts import (
     UserCreate,
@@ -40,6 +38,7 @@ def _assert_registration_allowed(db: Session) -> None:
     )
 
 
+@observe_operation("signup")
 def register(user_data: UserCreate, db: Session):
     """Register a new user."""
     _assert_registration_allowed(db)
@@ -71,5 +70,4 @@ def register(user_data: UserCreate, db: Session):
             status_code=HTTPStatus.BAD_REQUEST,
             detail="Username or email already registered",
         ) from exc
-    user_registrations_total.inc()
     return new_user

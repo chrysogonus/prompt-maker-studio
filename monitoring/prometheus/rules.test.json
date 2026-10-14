@@ -1,0 +1,586 @@
+{
+  "rule_files": [
+    "/etc/prometheus/rules.json"
+  ],
+  "evaluation_interval": "15s",
+  "tests": [
+    {
+      "name": "all dashboard queries preserve no data when source missing",
+      "interval": "1m",
+      "input_series": [],
+      "promql_expr_test": [
+        {
+          "expr": "(sum(increase(http_requests_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(http_requests_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",status=~\"5..\"}[24h])) or (0 * sum(increase(http_requests_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[24h])))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(pms_operations_in_progress{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\".*\"})) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_snapshot_collection_errors_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (status)(increase(http_requests_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (handler,method,status)(increase(http_requests_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (status)(rate(http_requests_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(histogram_quantile(0.5,sum by (le)(rate(http_request_duration_highr_seconds_bucket{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m])))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(histogram_quantile(0.95,sum by (le)(rate(http_request_duration_highr_seconds_bucket{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m])))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(histogram_quantile(0.99,sum by (le)(rate(http_request_duration_highr_seconds_bucket{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m])))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (operation)(pms_operations_in_progress{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\".*\"})) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(process_resident_memory_bytes{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(rate(process_cpu_seconds_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m])) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(time() - pms_snapshot_last_success_timestamp_seconds{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_snapshot_collection_errors_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_llm_calls_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",feature=~\".*\",provider=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_llm_tokens_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",feature=~\".*\",provider=~\".*\",direction=\"input\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_llm_tokens_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",feature=~\".*\",provider=~\".*\",direction=\"output\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_llm_estimated_cost_usd_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",feature=~\".*\",provider=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (feature,provider,outcome)(increase(pms_llm_calls_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",feature=~\".*\",provider=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (provider,outcome)(increase(pms_llm_calls_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",feature=~\".*\",provider=~\".*\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(histogram_quantile(0.5,sum by (le,provider)(rate(pms_llm_duration_seconds_bucket{job=~\"fastapi-backend\",instance=~\"backend:8000\",feature=~\".*\",provider=~\".*\"}[1m])))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(histogram_quantile(0.95,sum by (le,provider)(rate(pms_llm_duration_seconds_bucket{job=~\"fastapi-backend\",instance=~\"backend:8000\",feature=~\".*\",provider=~\".*\"}[1m])))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(histogram_quantile(0.95,sum by (le,operation)(rate(pms_operation_duration_seconds_bucket{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\".*\"}[1m])))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (provider,direction)(increase(pms_llm_tokens_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",feature=~\".*\",provider=~\".*\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (provider)(increase(pms_llm_estimated_cost_usd_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",feature=~\".*\",provider=~\".*\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (method,outcome)(increase(pms_eval_cases_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (outcome)(increase(pms_eval_cases_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(pms_eval_pending_ratings_current{job=~\"fastapi-backend\",instance=~\"backend:8000\"})) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=\"eval_run\",outcome=\"partial\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (operation,outcome)(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\"ai_import|refine_questions|refine_draft|try_once|eval_generate|eval_run|connection_test\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_llm_cost_estimation_errors_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_llm_usage_collection_errors_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(pms_accounts_current{job=~\"fastapi-backend\",instance=~\"backend:8000\"})) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(pms_prompts_current{job=~\"fastapi-backend\",instance=~\"backend:8000\"})) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(time() - min(pms_snapshot_last_success_timestamp_seconds{job=~\"fastapi-backend\",instance=~\"backend:8000\"})) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=\"signup\",outcome=\"success\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=\"login\",outcome=\"success\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=\"prompt_create\",outcome=\"success\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=\"prompt_update\",outcome=\"success\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=\"prompt_duplicate\",outcome=\"success\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=\"account_delete\",outcome=\"success\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (operation,outcome)(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\".*\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1) > 0",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (outcome)(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\".*\",channel=~\".*\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (channel)(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\".*\",channel=~\".*\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (operation,outcome)(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\".*\",channel=~\".*\",outcome=~\"error|partial\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum by (operation,channel)(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\".*\",channel=~\".*\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\"refine_questions|refine_draft\",outcome=~\".*\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=~\"eval_run\",outcome=~\"success|partial\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        }
+      ]
+    },
+    {
+      "name": "quiet initialized series are zero with healthy scrape",
+      "interval": "15s",
+      "input_series": [
+        {
+          "series": "up{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "pms_operations_total{job=\"fastapi-backend\",instance=\"backend:8000\",operation=\"signup\",outcome=\"success\",channel=\"rest\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "pms_accounts_current{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "pms_llm_cost_estimation_errors_total{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "pms_llm_usage_collection_errors_total{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+          "values": "0+0x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=\"signup\",outcome=\"success\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "(sum(pms_accounts_current{job=~\"fastapi-backend\",instance=~\"backend:8000\"})) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "(sum(increase(pms_llm_cost_estimation_errors_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "(sum(increase(pms_llm_usage_collection_errors_total{job=~\"fastapi-backend\",instance=~\"backend:8000\"}[1m]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "failed scrape does not show historical events as current period health",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+          "values": "0+0x10"
+        },
+        {
+          "series": "pms_operations_total{job=\"fastapi-backend\",instance=\"backend:8000\",operation=\"signup\",outcome=\"success\",channel=\"rest\"}",
+          "values": "0+10x10"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "(sum(increase(pms_operations_total{job=~\"fastapi-backend\",instance=~\"backend:8000\",operation=\"signup\",outcome=\"success\",channel=~\".*\"}[24h]))) and on() (min(up{job=~\"fastapi-backend\",instance=~\"backend:8000\"}) == 1)",
+          "eval_time": "5m",
+          "exp_samples": []
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "3m",
+          "alertname": "BackendUnavailable",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "critical",
+                "service": "prompt-maker-studio",
+                "job": "fastapi-backend",
+                "instance": "backend:8000"
+              },
+              "exp_annotations": {
+                "summary": "Backend metrics scrape unavailable or target missing",
+                "description": "Check backend health, Prometheus targets and Docker networking. A missing target also fires this alert."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "absent backend target fires",
+      "interval": "1m",
+      "input_series": [],
+      "alert_rule_test": [
+        {
+          "eval_time": "3m",
+          "alertname": "BackendUnavailable",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "critical",
+                "service": "prompt-maker-studio",
+                "job": "fastapi-backend"
+              },
+              "exp_annotations": {
+                "summary": "Backend metrics scrape unavailable or target missing",
+                "description": "Check backend health, Prometheus targets and Docker networking. A missing target also fires this alert."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "percentage alerts require minimum traffic",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+          "values": "1+0x20"
+        },
+        {
+          "series": "pms_llm_calls_total{job=\"fastapi-backend\",instance=\"backend:8000\",feature=\"ai_import\",provider=\"openai\",outcome=\"success\"}",
+          "values": "0+0x20"
+        },
+        {
+          "series": "pms_llm_calls_total{job=\"fastapi-backend\",instance=\"backend:8000\",feature=\"ai_import\",provider=\"openai\",outcome=\"error\"}",
+          "values": "0 1+0x19"
+        },
+        {
+          "series": "http_requests_total{job=\"fastapi-backend\",instance=\"backend:8000\",handler=\"/api/prompts\",method=\"GET\",status=\"500\"}",
+          "values": "0 1+0x19"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "7m",
+          "alertname": "ProviderFailureRate",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "7m",
+          "alertname": "SustainedServerErrors",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "name": "sustained provider and HTTP failures at real volume fire",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+          "values": "1+0x20"
+        },
+        {
+          "series": "pms_llm_calls_total{job=\"fastapi-backend\",instance=\"backend:8000\",feature=\"ai_import\",provider=\"openai\",outcome=\"success\"}",
+          "values": "0+8x20"
+        },
+        {
+          "series": "pms_llm_calls_total{job=\"fastapi-backend\",instance=\"backend:8000\",feature=\"ai_import\",provider=\"openai\",outcome=\"error\"}",
+          "values": "0+2x20"
+        },
+        {
+          "series": "http_requests_total{job=\"fastapi-backend\",instance=\"backend:8000\",handler=\"/api/prompts\",method=\"GET\",status=\"200\"}",
+          "values": "0+80x20"
+        },
+        {
+          "series": "http_requests_total{job=\"fastapi-backend\",instance=\"backend:8000\",handler=\"/api/prompts\",method=\"GET\",status=\"500\"}",
+          "values": "0+20x20"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "10m",
+          "alertname": "ProviderFailureRate",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "warning",
+                "service": "prompt-maker-studio",
+                "job": "fastapi-backend",
+                "instance": "backend:8000",
+                "provider": "openai"
+              },
+              "exp_annotations": {
+                "summary": "Provider explicit call failure rate above 10%",
+                "description": "At least 20 explicit calls in 10 minutes, above 10% errors for 5 minutes. Internal SDK retries are not separately observed."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "10m",
+          "alertname": "SustainedServerErrors",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "warning",
+                "service": "prompt-maker-studio",
+                "job": "fastapi-backend",
+                "instance": "backend:8000"
+              },
+              "exp_annotations": {
+                "summary": "Sustained HTTP 5xx rate above 5%",
+                "description": "At least 100 requests in the last 5 minutes, above 5% 5xx for 5 minutes. Inspect sanitized route/status logs."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "quiet HTTP traffic has observed zero server errors",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+          "values": "1+0x10"
+        },
+        {
+          "series": "http_requests_total{job=\"fastapi-backend\",instance=\"backend:8000\",handler=\"/api/prompts\",method=\"GET\",status=\"200\"}",
+          "values": "0+100x10"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "pms:http_server_errors:rate5m",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "pms:http_server_errors:rate5m{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "7m",
+          "alertname": "SustainedServerErrors",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "name": "delivery failure and stale snapshot fire",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+          "values": "1+0x10"
+        },
+        {
+          "series": "pms_operations_total{job=\"fastapi-backend\",instance=\"backend:8000\",operation=\"password_reset_email\",outcome=\"error\",channel=\"rest\"}",
+          "values": "0 1+0x9"
+        },
+        {
+          "series": "pms_snapshot_last_success_timestamp_seconds{job=\"fastapi-backend\",instance=\"backend:8000\"}",
+          "values": "0+0x10"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "2m",
+          "alertname": "PasswordResetDeliveryFailures",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "warning",
+                "service": "prompt-maker-studio",
+                "job": "fastapi-backend",
+                "instance": "backend:8000"
+              },
+              "exp_annotations": {
+                "summary": "Password reset email delivery failed",
+                "description": "Inspect sanitized email delivery events and SMTP configuration; do not copy raw provider errors or credentials."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "5m",
+          "alertname": "SnapshotStale",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "warning",
+                "service": "prompt-maker-studio",
+                "job": "fastapi-backend",
+                "instance": "backend:8000"
+              },
+              "exp_annotations": {
+                "summary": "Database aggregate snapshot is stale",
+                "description": "Snapshot is over 2 minutes old for 2 minutes. Cached account/prompt/pending-rating gauges may be outdated; inspect collection errors."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

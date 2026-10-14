@@ -9,6 +9,7 @@ from app.auth.utils import (
     get_password_hash,
     verify_password,
 )
+from app.metrics import observe_operation
 from app.models.user import User
 from app.schemas.accounts import (
     ChangePasswordRequest,
@@ -20,6 +21,7 @@ from app.services.errors import OperationError
 logger = logging.getLogger(__name__)
 
 
+@observe_operation("account_delete")
 def delete_account(body: DeleteAccountRequest, current_user: User, db: Session):
     """Permanently delete the authenticated user's account and all their data."""
     if not verify_password(body.current_password, current_user.hashed_password):

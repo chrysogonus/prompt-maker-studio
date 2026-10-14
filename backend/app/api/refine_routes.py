@@ -12,6 +12,7 @@ from app.api.deps import get_llm_connection, get_owned_prompt, llm_http_error
 from app.auth.dependencies import get_current_user
 from app.database.connection import get_db
 from app.limiter import limiter
+from app.metrics import observe_operation
 from app.models.user import User
 from app.schemas.refinement import (
     RefineDraftRequest,
@@ -33,6 +34,7 @@ router = APIRouter(prefix="/api/prompts", tags=["refine"])
 
 @router.post("/refine/questions", response_model=RefineQuestionsResponse)
 @limiter.limit("20/minute")
+@observe_operation("refine_questions")
 def get_snapshot_questions(
     request: Request,
     body: RefineSnapshotQuestionsRequest,
@@ -60,6 +62,7 @@ def get_snapshot_questions(
 
 @router.post("/refine/draft", response_model=RefineSnapshotDraftResponse)
 @limiter.limit("10/minute")
+@observe_operation("refine_draft")
 def get_snapshot_draft(
     request: Request,
     body: RefineSnapshotDraftRequest,
@@ -92,6 +95,7 @@ def get_snapshot_draft(
 
 @router.post("/{prompt_id}/refine/questions", response_model=RefineQuestionsResponse)
 @limiter.limit("20/minute")
+@observe_operation("refine_questions")
 def get_refine_questions(
     request: Request,
     prompt_id: int,
@@ -131,6 +135,7 @@ def get_refine_questions(
 
 @router.post("/{prompt_id}/refine/draft", response_model=RefineDraftResponse)
 @limiter.limit("10/minute")
+@observe_operation("refine_draft")
 def get_refine_draft(
     request: Request,
     prompt_id: int,

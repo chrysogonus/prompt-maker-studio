@@ -2,6 +2,7 @@
 
 from sqlalchemy.orm import Session
 
+from app.metrics import observe_operation
 from app.models.prompt_version import PromptVersion
 from app.schemas.prompts import PromptVersionResponse
 from app.services.errors import OperationError
@@ -35,6 +36,7 @@ def get_prompt_versions(prompt_id: int, db: Session, user_id: int):
     ]
 
 
+@observe_operation("prompt_restore")
 def restore_prompt_version(prompt_id: int, version_id: int, db: Session, user_id: int):
     """Restore an owned prompt to a prior version's content."""
     prompt = _get_owned_prompt(prompt_id, user_id, db)

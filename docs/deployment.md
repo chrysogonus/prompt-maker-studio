@@ -12,6 +12,7 @@ The application uses Docker Compose with the following services:
 Services communicate over the `prompt-maker-studio-network` Docker bridge network. External traffic enters through Caddy.
 - **Prometheus / Grafana**: optional, behind the `monitoring` Compose profile;
   bind loopback-only operator ports 9090 and 3010 when enabled.
+  See [monitoring](./monitoring.md) for dashboards, alert configuration and SSH tunnels.
 
 > **Scaling constraint**: Run exactly one backend replica. The backend applies
 > SQLite migrations automatically during startup; that design is not safe for
