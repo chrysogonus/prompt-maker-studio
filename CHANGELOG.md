@@ -16,6 +16,12 @@ any release. See [Project status](./README.md#project-status).
   `sitemap.xml`, a canonical link and social previews built from `FRONTEND_URL`.
   Signed-in visitors are sent straight to the library, which now lives at
   `/library` only; the frontend container now receives `FRONTEND_URL`.
+- `server.json` describing the hosted MCP endpoint for the official MCP Registry.
+
+### Fixed
+
+- The production frontend image now includes `public/`, so the PWA icons and
+  landing screenshots load instead of returning 404.
 
 ## [0.3.0] - 2026-10-13
 
