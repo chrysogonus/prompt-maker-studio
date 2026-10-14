@@ -1,6 +1,6 @@
 """Owned evaluation history and manual ratings."""
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.eval_run import EvalRun
 from app.models.eval_run_result import EvalRunResult
@@ -10,13 +10,16 @@ from app.services.eval_service import EvalService
 from app.services.prompts.ownership import get_owned_prompt
 
 
-def list_eval_runs(prompt_id: int, db: Session, user_id: int):
+def list_eval_runs(prompt_id: int, db: Session, user_id: int, limit: int = 50, offset: int = 0):
     """List an owned prompt's eval run history, newest first."""
     get_owned_prompt(prompt_id, user_id, db)
     return (
         db.query(EvalRun)
+        .options(selectinload(EvalRun.results))
         .filter(EvalRun.prompt_id == prompt_id)
-        .order_by(EvalRun.created_at.desc())
+        .order_by(EvalRun.created_at.desc(), EvalRun.id.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
 

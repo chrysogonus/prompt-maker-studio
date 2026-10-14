@@ -11,6 +11,8 @@ provider billed it: the same model name can be served by more than one
 provider, and self-hosted providers are not billed per token at all.
 """
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
@@ -31,6 +33,41 @@ class LLMUsage:
     model: str
     prompt_tokens: int
     completion_tokens: int
+
+
+_captured_usage: ContextVar[list[LLMUsage] | None] = ContextVar("llm_usage", default=None)
+
+
+def capture_response_usage(usage: LLMUsage) -> LLMUsage:
+    """Retain received usage even when subsequent parsing or validation fails."""
+    captured = _captured_usage.get()
+    if captured is not None:
+        captured.append(usage)
+    return usage
+
+
+@contextmanager
+def capture_llm_usage():
+    captured: list[LLMUsage] = []
+    token = _captured_usage.set(captured)
+    try:
+        yield captured
+    finally:
+        _captured_usage.reset(token)
+
+
+@contextmanager
+def bill_failed_attempts(db: Session, user_id: int, source: str):
+    """Successful callers record their returned totals; failures keep known spend."""
+    with capture_llm_usage() as captured:
+        try:
+            yield
+        except Exception:
+            for usage in captured:
+                record_billed_call(db, user_id, source, usage)
+            if captured:
+                db.commit()
+            raise
 
 
 def record_billed_call(db: Session, user_id: int, source: str, usage: LLMUsage) -> BilledCall:

@@ -156,7 +156,7 @@ def private_llm_urls_allowed() -> bool:
 
 def _is_blocked_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     """Addresses no user-supplied endpoint should resolve to."""
-    if address.is_private or address.is_loopback or address.is_link_local:
+    if not address.is_global:
         return True
     if address.is_multicast or address.is_reserved or address.is_unspecified:
         return True
@@ -177,6 +177,11 @@ def assert_public_host(host: str) -> None:
     """
     if private_llm_urls_allowed():
         return
+    public_host_addresses(host)
+
+
+def public_host_addresses(host: str) -> list[str]:
+    """Resolve and validate once; transports connect to these exact IPs."""
 
     try:
         resolved = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
@@ -184,6 +189,7 @@ def assert_public_host(host: str) -> None:
         msg = f"Could not resolve host '{host}'. Check the base URL."
         raise InvalidConnectionError(msg) from exc
 
+    addresses = []
     for entry in resolved:
         try:
             address = ipaddress.ip_address(entry[4][0])
@@ -196,6 +202,12 @@ def assert_public_host(host: str) -> None:
                 "Ollama or vLLM by setting ALLOW_PRIVATE_LLM_URLS=true."
             )
             raise InvalidConnectionError(msg)
+        if str(address) not in addresses:
+            addresses.append(str(address))
+    if not addresses:
+        message = f"Could not resolve host '{host}'. Check the base URL."
+        raise InvalidConnectionError(message)
+    return addresses
 
 
 def validate_base_url(raw: str) -> str:
@@ -267,10 +279,13 @@ def resolve_connection(
     """
     provider = get_provider(provider_handle)
 
-    resolved_url = validate_base_url(base_url) if base_url else provider.default_base_url
+    resolved_url = base_url or provider.default_base_url
     if not resolved_url:
         msg = f"{provider.label} requires a base URL, e.g. http://localhost:11434/v1."
         raise InvalidConnectionError(msg)
+    validated_url = validate_base_url(resolved_url)
+    if base_url:
+        resolved_url = validated_url
 
     normalized_model = model.strip()
     if not normalized_model:

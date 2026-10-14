@@ -110,8 +110,10 @@ export function useSession() {
       const user = await AuthService.getCurrentUser();
       setCurrentUser(user.username);
       setIsAuthenticated(true);
-    } catch (err) {
-      console.error('Failed to get user info:', err);
+    } catch {
+      if (AuthService.isAuthenticated()) {
+        setAuthCheckError('Your session is still saved, but it could not be verified.');
+      }
     }
   };
 

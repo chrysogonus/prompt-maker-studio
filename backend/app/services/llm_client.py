@@ -31,6 +31,7 @@ from openai import (
     APITimeoutError,
     AuthenticationError,
     BadRequestError,
+    DefaultHttpxClient,
     NotFoundError,
     OpenAI,
     OpenAIError,
@@ -46,9 +47,11 @@ from app.services.llm_providers import (
     STRUCTURED_NONE,
     Provider,
     get_provider,
+    private_llm_urls_allowed,
 )
+from app.services.llm_transport import PublicLLMTransport
 from app.services.secret_store import SecretDecryptionError, decrypt_secret
-from app.services.spend_ledger import LLMUsage
+from app.services.spend_ledger import LLMUsage, capture_response_usage
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +214,7 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
                 (model or default.model).strip(),
                 default.base_url,
                 default.api_key or _LOCAL_API_KEY_PLACEHOLDER,
+                trusted=True,
             )
 
     if not user.llm_provider:
@@ -260,7 +264,15 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
     return _build_connection(provider, resolved_model, base_url, api_key)
 
 
-def _build_connection(provider: Provider, model: str, base_url: str, api_key: str) -> LLMConnection:
+def _build_connection(
+    provider: Provider, model: str, base_url: str, api_key: str, *, trusted: bool = False
+) -> LLMConnection:
+    public_only = not trusted and not private_llm_urls_allowed()
+    http_client = DefaultHttpxClient(
+        follow_redirects=not public_only,
+        trust_env=not public_only,
+        **({"transport": PublicLLMTransport(trust_env=False)} if public_only else {}),
+    )
     return LLMConnection(
         provider=provider,
         model=model,
@@ -272,6 +284,7 @@ def _build_connection(provider: Provider, model: str, base_url: str, api_key: st
             # (or an eval worker with its own deadline), so the SDK's default
             # backoff budget would blow past the timeout the user is waiting on.
             max_retries=1,
+            http_client=http_client,
         ),
     )
 
@@ -281,11 +294,13 @@ def usage_from(response, connection: LLMConnection) -> LLMUsage:
     endpoints, so both fields are guarded — spend accounting degrades to zero
     rather than raising."""
     usage = getattr(response, "usage", None)
-    return LLMUsage(
-        provider=connection.provider_handle,
-        model=connection.model,
-        prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
-        completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+    return capture_response_usage(
+        LLMUsage(
+            provider=connection.provider_handle,
+            model=connection.model,
+            prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+            completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        )
     )
 
 

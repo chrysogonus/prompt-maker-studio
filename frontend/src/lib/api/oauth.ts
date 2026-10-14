@@ -2,7 +2,7 @@ import { OAuthConsentDetails, OAuthConsentResult } from '@/types/oauth';
 import { API_URL } from '../apiBase';
 import { AuthService } from '../auth';
 import { sessionFetch } from './transport';
-import { ApiError } from './errors';
+import { ApiError, extractErrorMessage } from './errors';
 
 export async function getOAuthConsent(request: string): Promise<OAuthConsentDetails> {
   const response = await sessionFetch(
@@ -27,9 +27,7 @@ async function readOAuthConsentResponse<T>(response: Response): Promise<T> {
     }
     const errorData = await response.json().catch(() => ({ detail: '' }));
     throw new ApiError(
-      typeof errorData.detail === 'string' && errorData.detail
-        ? errorData.detail
-        : 'Could not complete the connection request.',
+      extractErrorMessage(errorData.detail) || 'Could not complete the connection request.',
       response.status,
     );
   }

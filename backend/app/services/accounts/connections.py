@@ -30,7 +30,7 @@ from app.services.secret_store import (
     encrypt_secret,
     mask_secret,
 )
-from app.services.spend_ledger import record_billed_call
+from app.services.spend_ledger import bill_failed_attempts, record_billed_call
 
 logger = logging.getLogger(__name__)
 
@@ -146,10 +146,11 @@ def test_llm_connection(current_user: User, db: Session):
             state.error_type = "budget"
         return LLMConnectionTestResponse(ok=False, message=str(exc))
     try:
-        connection = client_for(current_user)
-        _, usage = text_completion(
-            connection, [{"role": "user", "content": "Reply with the word: ok"}]
-        )
+        with bill_failed_attempts(db, current_user.id, "connection_test"):
+            connection = client_for(current_user)
+            _, usage = text_completion(
+                connection, [{"role": "user", "content": "Reply with the word: ok"}]
+            )
     # Every failure mode here is reportable copy, including a malformed
     # response from an endpoint that isn't actually OpenAI-compatible.
     except Exception as exc:

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render as rtlRender, screen, within } from '@testing-library/react';
+import { act, fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Sidebar from '../Sidebar';
 import { ApiClient } from '@/lib/api';
@@ -43,6 +43,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   pathname = '/library';
   params = new URLSearchParams();
+  vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([
     prompt(1, 'Work', true),
     prompt(2, 'Work'),
@@ -59,6 +60,37 @@ function navLabels() {
 }
 
 describe('Sidebar', () => {
+  it('hides the closed mobile drawer, traps open focus, closes on Escape and restores the trigger', async () => {
+    const user = userEvent.setup();
+    let resize: () => void = () => {};
+    const media = { matches: true, addEventListener: vi.fn((_event, listener) => { resize = listener; }), removeEventListener: vi.fn() };
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue(media));
+    const onNavigate = vi.fn();
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    trigger.focus();
+    const view = render(<Sidebar open={false} onNavigate={onNavigate} />);
+    expect(screen.queryByRole('navigation', { name: 'Library' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Sidebar')).toHaveAttribute('inert');
+    view.rerender(<Sidebar open onNavigate={onNavigate} />);
+    const drawer = screen.getByRole('dialog', { name: 'Sidebar' });
+    expect(drawer).toHaveAttribute('aria-modal', 'true');
+    const first = within(drawer).getAllByRole('link')[0];
+    expect(first).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'Sign out' })).toHaveFocus();
+    await user.tab();
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    view.rerender(<Sidebar open={false} onNavigate={onNavigate} />);
+    expect(trigger).toHaveFocus();
+    act(() => { media.matches = false; resize(); });
+    expect(screen.getByRole('navigation', { name: 'Library' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Sidebar')).not.toHaveAttribute('inert');
+    trigger.remove();
+  });
+
   it('lists the library views and folders with counts, Recovered history last', async () => {
     render(<Sidebar open={false} onNavigate={vi.fn()} />);
 

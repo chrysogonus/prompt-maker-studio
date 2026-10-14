@@ -12,7 +12,7 @@ import {
 import { API_URL } from '../apiBase';
 import { AuthService } from '../auth';
 import { authenticatedFetch, sessionFetch } from './transport';
-import { ApiError, PROMPT_NOT_FOUND_MESSAGE } from './errors';
+import { ApiError, extractErrorMessage, PROMPT_NOT_FOUND_MESSAGE } from './errors';
 
 const LONG_OPERATION_SESSION_VALIDITY_MS = 2 * 60 * 1000;
 
@@ -24,7 +24,7 @@ export async function createPrompt(data: PromptCreateRequest): Promise<PromptHis
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    const detail = Array.isArray(errorData.detail) ? null : errorData.detail;
+    const detail = extractErrorMessage(errorData.detail);
     throw new ApiError(detail || `Failed to save prompt: ${response.status}`, response.status);
   }
 
@@ -100,7 +100,7 @@ export async function updatePrompt(id: number, patch: PromptUpdateRequest): Prom
     // ApiError (not a bare Error) so callers can distinguish a 409 edit
     // conflict from any other failure without matching on the message text.
     throw new ApiError(
-      errorData.detail || `Failed to update prompt: ${response.status}`,
+      extractErrorMessage(errorData.detail) || `Failed to update prompt: ${response.status}`,
       response.status,
     );
   }
@@ -171,7 +171,7 @@ export async function parsePromptText(data: ParseTextRequest): Promise<ParseText
       throw new Error('Session expired. Please login again.');
     }
     const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(errorData.detail || `Failed to parse text: ${response.status}`);
+    throw new ApiError(extractErrorMessage(errorData.detail) || `Failed to parse text: ${response.status}`, response.status);
   }
 
   return response.json();
@@ -263,7 +263,7 @@ export async function tryPrompt(text: string): Promise<TryPromptResponse> {
   }, LONG_OPERATION_SESSION_VALIDITY_MS);
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new ApiError(typeof error.detail === 'string' ? error.detail : 'Could not run the prompt. Try once accepts up to 100,000 characters.', response.status);
+    throw new ApiError(extractErrorMessage(error.detail) || 'Could not run the prompt. Try once accepts up to 100,000 characters.', response.status);
   }
   return response.json();
 }

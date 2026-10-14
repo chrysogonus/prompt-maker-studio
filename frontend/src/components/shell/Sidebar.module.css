@@ -149,11 +149,13 @@
     z-index: 70;
     width: 280px;
     transform: translateX(-100%);
+    visibility: hidden;
     transition: transform 0.18s ease;
     box-shadow: var(--shadow-float);
   }
 
   .sidebar[data-open='true'] {
     transform: none;
+    visibility: visible;
   }
 }

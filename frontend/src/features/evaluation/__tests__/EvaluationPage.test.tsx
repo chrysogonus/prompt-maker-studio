@@ -55,6 +55,38 @@ async function open(cases: EvalCase[] = []) {
   await screen.findByRole('heading', { name: 'Evaluate' });
 }
 
+it('loads older evaluation pages without replacing current history', async () => {
+  const user = userEvent.setup();
+  const recent = Array.from({ length: 50 }, (_, index) => ({ ...run, id: 100 - index }));
+  vi.mocked(ApiClient.getEvalRuns).mockResolvedValueOnce(recent).mockResolvedValueOnce([run]);
+  await open();
+  await user.click(screen.getByRole('radio', { name: 'Run history' }));
+  const history = screen.getByRole('navigation', { name: 'Past evaluations' });
+  expect(within(history).getAllByRole('button')).toHaveLength(51);
+  await user.click(screen.getByRole('button', { name: 'Load older evaluations' }));
+  await waitFor(() => expect(within(history).getAllByRole('button')).toHaveLength(51));
+  expect(ApiClient.getEvalRuns).toHaveBeenLastCalledWith(1, 50, 50);
+  expect(screen.queryByRole('button', { name: 'Load older evaluations' })).not.toBeInTheDocument();
+});
+
+it('keeps cases and history usable after a config failure and retries capability independently', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.getPromptsConfig).mockRejectedValueOnce(new Error('Config unavailable'));
+  vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([run]);
+  await open([example]);
+  expect(screen.getByRole('alert')).toHaveTextContent('AI availability could not be checked. You can still manage cases and read past results.');
+  expect(screen.getByRole('button', { name: 'Run evaluation' })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: 'Edit Returns JSON' }));
+  expect(screen.getByLabelText('Checks')).toHaveValue('{json}');
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  await user.click(screen.getByRole('radio', { name: 'Run history' }));
+  expect(screen.getByText('Clear release notes.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Retry AI availability' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Run evaluation' })).toBeEnabled());
+  expect(ApiClient.getPromptById).toHaveBeenCalledTimes(1);
+  expect(ApiClient.runEvaluation).not.toHaveBeenCalled();
+});
+
 it('labels historical results with tested and current versions and runs current without discarding history', async () => {
   const user = userEvent.setup();
   vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([run]);

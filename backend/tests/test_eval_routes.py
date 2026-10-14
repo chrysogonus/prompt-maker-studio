@@ -6,11 +6,80 @@ run history, and manual star ratings.
 from unittest.mock import patch
 
 from openai import OpenAIError
+import pytest
 
 from app.services.eval_generator_service import EvalCaseProposal
 from app.services.playground_service import PlaygroundResult
 from app.services.spend_ledger import LLMUsage
 from tests.conftest import TEST_LLM_MODEL, TEST_LLM_PROVIDER
+
+
+def test_eval_history_paginates_with_stable_newest_first_order(client, auth_headers, db_session):
+    from datetime import UTC, datetime
+
+    from app.models.eval_run import EvalRun
+
+    prompt_id = _create_saved_prompt(client, auth_headers)
+    runs = [
+        EvalRun(prompt_id=prompt_id, created_at=datetime(2026, 1, 1, tzinfo=UTC)) for _ in range(5)
+    ]
+    db_session.add_all(runs)
+    db_session.commit()
+    ids = [run.id for run in runs]
+    response = client.get(
+        f"/api/prompts/{prompt_id}/eval/runs?limit=2&offset=1", headers=auth_headers
+    )
+    assert response.status_code == 200
+    assert [run["id"] for run in response.json()] == [ids[3], ids[2]]
+
+
+@pytest.mark.parametrize("query", ["limit=0", "limit=101", "offset=-1"])
+def test_eval_history_rejects_invalid_page_bounds(client, auth_headers, query):
+    prompt_id = _create_saved_prompt(client, auth_headers)
+    assert (
+        client.get(f"/api/prompts/{prompt_id}/eval/runs?{query}", headers=auth_headers).status_code
+        == 422
+    )
+
+
+def test_eval_history_loads_child_results_without_n_plus_one(db_session):
+    from sqlalchemy import event
+
+    from app.models.eval_run import EvalRun
+    from app.models.eval_run_result import EvalRunResult
+    from app.models.prompt import Prompt
+    from app.models.user import User
+    from app.schemas.evaluation import EvalRunResponse
+    from app.services.evaluation.results import list_eval_runs
+
+    user = User(username="history", hashed_password="unused")
+    db_session.add(user)
+    db_session.flush()
+    prompt = Prompt(user_id=user.id, fields=[], generated_prompt="test")
+    db_session.add(prompt)
+    db_session.flush()
+    for _ in range(5):
+        run = EvalRun(prompt_id=prompt.id)
+        db_session.add(run)
+        db_session.flush()
+        db_session.add(EvalRunResult(eval_run_id=run.id, method="rule", label="case"))
+    db_session.commit()
+    prompt_id, user_id = prompt.id, user.id
+    db_session.expunge_all()
+    statements = []
+
+    def capture(conn, cursor, statement, params, context, many):
+        if statement.startswith("SELECT"):
+            statements.append(statement)
+
+    engine = db_session.get_bind()
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        rows = list_eval_runs(prompt_id, db_session, user_id)
+        assert len([EvalRunResponse.model_validate(row) for row in rows]) == 5
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+    assert len(statements) == 3
 
 
 def _generator_usage() -> LLMUsage:

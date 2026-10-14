@@ -472,16 +472,18 @@ class TestRunEvaluation:
         assert run.score == 100.0
         assert len(run.results) == 2
 
-    def test_case_exceeding_timeout_records_failure_row(self, db_session, monkeypatch):
+    def test_completed_case_is_not_discarded_by_an_outer_thread_timeout(
+        self, db_session, monkeypatch
+    ):
         prompt, user = self._make_prompt_with_cases(
             db_session, [{"method": "rule", "criteria": "x", "variables": {}}]
         )
-        # The per-case ceiling derives from the provider timeout; shrink the
-        # provider timeout so the derived ceiling is sub-second.
+        # SDK retries may legitimately outlast one I/O timeout. A Future timeout
+        # cannot stop its thread and must not discard the completed usage.
         monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "0.07")
 
         def slow_run(compiled, connection):
-            time.sleep(1)
+            time.sleep(0.3)
             return PlaygroundResult(
                 output_text="x",
                 latency_ms=1,
@@ -495,9 +497,68 @@ class TestRunEvaluation:
         with patch("app.services.eval_service.PlaygroundService.run", side_effect=slow_run):
             run = EvalService.run_evaluation(db_session, prompt, user)
 
-        assert run.results[0].score is None
-        assert "timed out" in run.results[0].rationale
-        assert run.score is None
+        assert run.results[0].score == 100.0
+        assert run.score == 100.0
+        assert db_session.query(BilledCall).count() == 1
+
+    def test_provider_work_does_not_hold_the_sqlite_write_lock(self, db_session):
+        import sqlite3
+
+        prompt, user = self._make_prompt_with_cases(
+            db_session, [{"method": "rule", "criteria": "x", "variables": {}}]
+        )
+        path = db_session.get_bind().url.database
+        user_id = user.id
+        wrote = []
+
+        def provider(compiled, connection):
+            writer = sqlite3.connect(path, timeout=0.05)
+            try:
+                writer.execute("UPDATE users SET email=email WHERE id=?", (user_id,))
+                writer.commit()
+                wrote.append(True)
+            except sqlite3.OperationalError:
+                wrote.append(False)
+            finally:
+                writer.close()
+            return PlaygroundResult(
+                output_text="x",
+                latency_ms=1,
+                prompt_tokens=1,
+                completion_tokens=1,
+                cost_usd=0.0,
+                provider=TEST_LLM_PROVIDER,
+                model=TEST_LLM_MODEL,
+            )
+
+        with patch("app.services.eval_service.PlaygroundService.run", side_effect=provider):
+            EvalService.run_evaluation(db_session, prompt, user)
+        assert wrote == [True]
+
+    def test_unexpected_provider_error_is_isolated_to_its_case(self, db_session):
+        prompt, user = self._make_prompt_with_cases(
+            db_session,
+            [
+                {"method": "rule", "criteria": "x", "variables": {}},
+                {"method": "rule", "criteria": "x", "variables": {}},
+            ],
+        )
+        result = PlaygroundResult(
+            output_text="x",
+            latency_ms=1,
+            prompt_tokens=1,
+            completion_tokens=1,
+            cost_usd=0.0,
+            provider=TEST_LLM_PROVIDER,
+            model=TEST_LLM_MODEL,
+        )
+        with patch(
+            "app.services.eval_service.PlaygroundService.run",
+            side_effect=[ValueError("malformed response"), result],
+        ):
+            run = EvalService.run_evaluation(db_session, prompt, user, max_workers=1)
+        assert [row.score for row in run.results] == [None, 100.0]
+        assert db_session.query(BilledCall).count() == 1
 
     def test_budget_checked_once_per_run_before_dispatch(self, db_session):
         prompt, user = self._make_prompt_with_cases(

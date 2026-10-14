@@ -13,6 +13,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.utils import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
+    get_password_hash,
     verify_password,
 )
 from app.database.connection import get_db
@@ -35,6 +36,9 @@ _REGISTER_RATE_LIMIT = os.getenv("REGISTER_RATE_LIMIT", "5/minute")
 
 
 _LOGIN_RATE_LIMIT = os.getenv("LOGIN_RATE_LIMIT", "10/minute")
+
+# Match the cost of a failed password check even when the username is unknown.
+_DUMMY_PASSWORD_HASH = get_password_hash("unused-login-password")
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -86,7 +90,10 @@ def login(
     normalized_username = user_credentials.username.strip().lower()
     user = db.query(User).filter(User.username == normalized_username).first()
 
-    if not user or not verify_password(user_credentials.password, user.hashed_password):
+    password_matches = verify_password(
+        user_credentials.password, user.hashed_password if user else _DUMMY_PASSWORD_HASH
+    )
+    if user is None or not password_matches:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -94,7 +101,7 @@ def login(
         )
 
     access_token = create_access_token(
-        subject=user.username,
+        subject=user.auth_subject,
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         token_version=user.token_version or 0,
     )
@@ -112,7 +119,7 @@ def refresh_access_token(
 ):
     """Renew a still-valid session before a long-running operation."""
     access_token = create_access_token(
-        subject=current_user.username,
+        subject=current_user.auth_subject,
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         token_version=current_user.token_version or 0,
     )

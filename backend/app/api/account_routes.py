@@ -136,7 +136,7 @@ def change_password(
     issue_session(
         response,
         create_access_token(
-            subject=current_user.username,
+            subject=current_user.auth_subject,
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
             token_version=current_user.token_version,
         ),

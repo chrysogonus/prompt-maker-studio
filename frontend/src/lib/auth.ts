@@ -5,6 +5,7 @@
 import { ChangePasswordRequest, ForgotPasswordRequest, LLMConnection, LLMConnectionTestResult, LLMConnectionUpdate, LLMModelPriceInfo, LoginRequest, RegisterRequest, ResetPasswordRequest, TokenResponse, User, UserUpdate } from '@/types/auth';
 import { clearUserContentKeys, migrateLegacyStorageKeys, storageKey } from '@/lib/branding';
 import { API_URL } from './apiBase';
+import { extractErrorMessage } from './api/errors';
 
 // Runs at import time, not in an effect: the app layout reads the stored
 // session expiry during render, which is already too late to rescue a
@@ -17,22 +18,6 @@ export const SESSION_EXPIRED_EVENT = storageKey('session-expired');
 
 import { CREDENTIALS, csrfHeaders } from './authCookies';
 export { CREDENTIALS, CSRF_HEADER_NAME, csrfHeaders, getCsrfToken } from './authCookies';
-
-/**
- * Normalize a FastAPI error detail into a user-readable string.
- * FastAPI returns `detail` as a plain string for HTTP errors but as an array
- * of Pydantic validation objects for 422 Unprocessable Entity responses.
- */
-function extractErrorMessage(detail: unknown): string {
-  if (typeof detail === 'string') {
-    return detail;
-  }
-  if (Array.isArray(detail) && detail.length > 0) {
-    // Pydantic v2 format: [{ loc: [...], msg: '...', type: '...' }]
-    return detail.map((e) => (typeof e?.msg === 'string' ? e.msg : String(e))).join('; ');
-  }
-  return '';
-}
 
 export class AuthService {
   private static cachedUserPromise: Promise<User> | null = null;
@@ -87,7 +72,7 @@ export class AuthService {
    */
   static async getCurrentUser(): Promise<User> {
     if (!this.cachedUserPromise) {
-      this.cachedUserPromise = (async () => {
+      const request = (async () => {
         const response = await fetch(`${API_URL}/api/auth/me`, {
           credentials: CREDENTIALS,
         });
@@ -97,12 +82,16 @@ export class AuthService {
             this.removeToken();
             throw new Error('Session expired. Please login again.');
           }
-          this.cachedUserPromise = null; // Clear on error so next call retries
           throw new Error('Failed to get user info');
         }
 
         return response.json();
-      })();
+      })().catch((error) => {
+        // A failed fetch or JSON read must not poison subsequent session checks.
+        if (this.cachedUserPromise === request) this.cachedUserPromise = null;
+        throw error;
+      });
+      this.cachedUserPromise = request;
     }
 
     return this.cachedUserPromise;

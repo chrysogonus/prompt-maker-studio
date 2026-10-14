@@ -326,13 +326,15 @@ dev-frontend:
 
 
 # Create a one-off backup from the backend-data volume
+SQLITE_IMAGE := python:3.12-slim@sha256:d657ab0ade19f404a6ccc883ab399540de667aff751748ce23c07330c5a89e64
 backup-db:
 	@mkdir -p backups
 	@docker run --rm \
+		--user "$$(id -u):$$(id -g)" \
 		-v prompt-maker_backend-data:/app/data:ro \
-		-v $(CURDIR)/backups:/backups \
-		-v $(CURDIR)/scripts:/scripts:ro \
-		python:3.12-slim \
+		-v "$(CURDIR)/backups:/backups" \
+		-v "$(CURDIR)/scripts:/scripts:ro" \
+		$(SQLITE_IMAGE) \
 		python /scripts/backup_sqlite.py --db /app/data/prompts.db --out /backups --label prompts
 
 # Restore a backup into the backend-data volume. Stop backend first.
@@ -341,14 +343,19 @@ restore-db:
 		echo "Usage: make restore-db BACKUP=backups/prompts-YYYYmmddTHHMMSSZ.sqlite3.gz"; \
 		exit 1; \
 	fi
-	@docker compose stop backend
-	@docker run --rm \
+	@test -f "$(BACKUP)" || { echo "Backup file does not exist: $(BACKUP)"; exit 1; }
+	@set -eu; \
+		backup_running=$$(docker compose --profile backup ps --status running -q db-backup); \
+		docker compose --profile backup stop db-backup backend; \
+		docker run --rm \
+		--user 1000:1000 \
 		-v prompt-maker_backend-data:/app/data \
-		-v $(CURDIR):/workspace \
-		-v $(CURDIR)/scripts:/scripts:ro \
-		python:3.12-slim \
-		python /scripts/restore_sqlite.py --backup /workspace/$(BACKUP) --db /app/data/prompts.db
-	@docker compose start backend
+		-v "$(abspath $(BACKUP)):/restore/$(notdir $(BACKUP)):ro" \
+		-v "$(CURDIR)/scripts:/scripts:ro" \
+		$(SQLITE_IMAGE) \
+		python /scripts/restore_sqlite.py --backup "/restore/$(notdir $(BACKUP))" --db /app/data/prompts.db; \
+		docker compose start backend; \
+		if [ -n "$$backup_running" ]; then docker compose --profile backup start db-backup; fi
 
 # Seed (or re-seed) the "alex" demo account with realistic sample data
 seed-demo-user:
@@ -420,7 +427,8 @@ check-secrets:
 		git ls-files -z --cached --others --exclude-standard \
 			| tar --null -T - -cf - \
 			| tar -xf - -C "$$tmp_dir"; \
-		docker run --rm -v "$(CURDIR):/repo:ro" $(GITLEAKS_IMAGE) \
+		git_common=$$(git rev-parse --path-format=absolute --git-common-dir); \
+		docker run --rm -v "$(CURDIR):/repo:ro" -v "$$git_common:$$git_common:ro" $(GITLEAKS_IMAGE) \
 			git --no-banner --redact --verbose --log-opts="--all" /repo; \
 		docker run --rm -v "$$tmp_dir:/scan:ro" $(GITLEAKS_IMAGE) \
 			dir --no-banner --redact --verbose /scan
@@ -534,7 +542,7 @@ check-notices:
 # Deliberately scoped to the two images this project builds. The optional
 # monitoring images are third-party and carry upstream advisories nothing here
 # can fix — they are behind the `monitoring` Compose profile for that reason.
-TRIVY_VERSION := 0.65.0
+TRIVY_IMAGE := aquasec/trivy:0.65.0@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436
 security-images:
 	@echo "Scanning application images for known vulnerabilities..."
 	@for service in backend frontend; do \
@@ -542,7 +550,7 @@ security-images:
 		docker run --rm \
 			-v /var/run/docker.sock:/var/run/docker.sock \
 			-v trivy-cache:/root/.cache/trivy \
-			aquasec/trivy:$(TRIVY_VERSION) image \
+			$(TRIVY_IMAGE) image \
 			--scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
 			--exit-code 1 --quiet "prompt-maker-studio-$$service:test" || exit 1; \
 	done
@@ -585,10 +593,10 @@ docker-smoke-test:
 # Validate all docker-compose file combinations parse correctly
 compose-check:
 	@echo "Validating Docker Compose configurations..."
-	@GRAFANA_ADMIN_PASSWORD=check docker compose -f docker-compose.yml config --quiet
-	@GRAFANA_ADMIN_PASSWORD=check docker compose -f docker-compose.yml -f docker-compose.override.yml config --quiet
-	@GRAFANA_ADMIN_PASSWORD=check docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.e2e.yml config --quiet
-	@GRAFANA_ADMIN_PASSWORD=check GHCR_OWNER=check IMAGE_TAG=check docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+	@GRAFANA_ADMIN_PASSWORD=check SECRET_KEY=compose-check DOMAIN=localhost docker compose --env-file /dev/null -f docker-compose.yml config --quiet
+	@GRAFANA_ADMIN_PASSWORD=check SECRET_KEY=compose-check DOMAIN=localhost docker compose --env-file /dev/null -f docker-compose.yml -f docker-compose.override.yml config --quiet
+	@GRAFANA_ADMIN_PASSWORD=check SECRET_KEY=compose-check DOMAIN=localhost docker compose --env-file /dev/null -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.e2e.yml config --quiet
+	@GRAFANA_ADMIN_PASSWORD=check SECRET_KEY=compose-check DOMAIN=localhost GHCR_OWNER=check IMAGE_TAG=check docker compose --env-file /dev/null -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 	@echo "✅ Compose configuration valid"
 
 # Read the pin directly, without Compose interpolation opening the operator env file.

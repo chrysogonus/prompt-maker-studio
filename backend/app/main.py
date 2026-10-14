@@ -53,8 +53,8 @@ def root():
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     if os.getenv("TESTING") != "true":
-        init_db()
         enforce_secret_key_policy()
+        init_db()
     async with mcp_endpoint.lifespan():
         yield
 

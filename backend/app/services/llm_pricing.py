@@ -40,6 +40,7 @@ _LITELLM_PRICING_URL = (
 )
 _PRICING_CACHE_TTL_SECONDS = 24 * 60 * 60
 _PRICING_FETCH_TIMEOUT_SECONDS = 10.0
+_PRICING_FAILURE_RETRY_SECONDS = 60.0
 _PER_TOKEN_TO_PER_MILLION = 1_000_000
 
 # Verified against LiteLLM's live index: the public Gemini Developer API uses
@@ -151,22 +152,27 @@ def _live_pricing_index() -> dict[tuple[str, str], Rates]:
     if not pricing_refresh_enabled():
         return {}
 
-    now = time.monotonic()
-    with _pricing_cache_lock:
-        if _pricing_cache.index is not None and _pricing_cache.expires_at > now:
-            return _pricing_cache.index
-
+    if _pricing_cache.expires_at > time.monotonic():
+        return _pricing_cache.index or {}
+    # Only the refresher waits for the network; concurrent callers use the last
+    # good snapshot (or static fallback on a cold start).
+    if not _pricing_cache_lock.acquire(blocking=False):
+        return _pricing_cache.index or {}
+    try:
+        if _pricing_cache.expires_at > time.monotonic():
+            return _pricing_cache.index or {}
         try:
             refreshed = _build_index(_fetch_pricing_json())
         except Exception as exc:
-            # Keep an expired last-good value and its original expiry. The next
-            # call retries immediately instead of treating failure as a refresh.
+            _pricing_cache.expires_at = time.monotonic() + _PRICING_FAILURE_RETRY_SECONDS
             logger.warning("Could not refresh LiteLLM pricing; serving stale data: %s", exc)
             return _pricing_cache.index or {}
 
         _pricing_cache.index = refreshed
         _pricing_cache.expires_at = time.monotonic() + _PRICING_CACHE_TTL_SECONDS
         return _pricing_cache.index
+    finally:
+        _pricing_cache_lock.release()
 
 
 def rates_for(provider: str, model: str, *, refresh: bool = True) -> Rates | None:

@@ -1,6 +1,6 @@
 import type { EvalCase, EvalCaseInput, EvalProposal, EvalRun } from '@/types/evaluation';
 import { API_URL } from '../apiBase';
-import { ApiError } from './errors';
+import { ApiError, extractErrorMessage } from './errors';
 import { authenticatedFetch } from './transport';
 
 async function request(promptId: number, path: string, init: RequestInit = {}, billed = false) {
@@ -9,10 +9,7 @@ async function request(promptId: number, path: string, init: RequestInit = {}, b
   );
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    const detail = error?.detail;
-    const message = typeof detail === 'string' ? detail : Array.isArray(detail)
-      ? detail.map((item: { msg: string }) => item.msg).join('. ')
-      : 'Evaluation request failed. Please try again.';
+    const message = extractErrorMessage(error?.detail) || 'Evaluation request failed. Please try again.';
     throw new ApiError(message, response.status);
   }
   return response;
@@ -54,8 +51,9 @@ export async function runEvaluation(promptId: number): Promise<EvalRun> {
   return (await request(promptId, 'runs', { method: 'POST' }, true)).json();
 }
 
-export async function getEvalRuns(promptId: number): Promise<EvalRun[]> {
-  return (await request(promptId, 'runs')).json();
+export async function getEvalRuns(promptId: number, limit = 50, offset = 0): Promise<EvalRun[]> {
+  const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  return (await request(promptId, `runs?${query}`)).json();
 }
 
 export async function rateEvalResult(promptId: number, runId: number, resultId: number, stars: number): Promise<EvalRun> {

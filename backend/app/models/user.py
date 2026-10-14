@@ -3,6 +3,7 @@ User model for authentication.
 """
 
 from datetime import UTC, datetime
+from uuid import uuid4
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -16,6 +17,10 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+    # Token identity survives renames and cannot be reassigned with a username or row ID.
+    auth_subject = Column(
+        String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid4())
+    )
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)

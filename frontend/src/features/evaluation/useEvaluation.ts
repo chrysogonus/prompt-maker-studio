@@ -9,6 +9,7 @@ import type { EvalCase, EvalCaseInput, EvalProposal, EvalRun } from '@/types/eva
 
 export const METHOD_LABELS = { rule: 'Automatic checks', judge: 'AI review', manual: 'Manual review' };
 export const CASE_LIMIT = 20;
+const HISTORY_PAGE_SIZE = 50;
 
 type Editing = { caseId?: number; initial?: EvalCaseInput; proposalIndex?: number };
 
@@ -16,8 +17,12 @@ export function useEvaluation(promptId: number) {
   const [prompt, setPrompt] = useState<PromptHistoryResponse | null>(null);
   const [currentVersion, setCurrentVersion] = useState(1);
   const [config, setConfig] = useState<PromptsConfigResponse | null>(null);
+  const [configError, setConfigError] = useState('');
+  const [configAttempt, setConfigAttempt] = useState(0);
   const [cases, setCases] = useState<EvalCase[]>([]);
   const [runs, setRuns] = useState<EvalRun[]>([]);
+  const [hasMoreRuns, setHasMoreRuns] = useState(false);
+  const historyGeneration = useRef(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -34,6 +39,7 @@ export function useEvaluation(promptId: number) {
 
   useEffect(() => {
     let active = true;
+    historyGeneration.current += 1;
     setLoading(true);
     setLoadError('');
     if (!isValidPromptId(promptId)) {
@@ -43,20 +49,35 @@ export function useEvaluation(promptId: number) {
     }
     Promise.all([
       ApiClient.getPromptById(promptId), ApiClient.getEvalCases(promptId),
-      ApiClient.getEvalRuns(promptId), ApiClient.getPromptsConfig(), ApiClient.getPromptVersions(promptId),
-    ]).then(([loaded, testCases, history, capability, versions]) => {
+      ApiClient.getEvalRuns(promptId, HISTORY_PAGE_SIZE, 0), ApiClient.getPromptVersions(promptId),
+    ]).then(([loaded, testCases, history, versions]) => {
       if (!active) return;
       setPrompt(loaded);
       setCurrentVersion(Math.max(0, ...versions.map((version) => version.version_number)) + 1);
       setCases(testCases);
       setRuns(history);
-      setConfig(capability);
+      setHasMoreRuns(history.length === HISTORY_PAGE_SIZE);
     }).catch((failure) => {
       if (active) setLoadError(failure instanceof ApiError && failure.status === 404
         ? PROMPT_NOT_FOUND_MESSAGE : failure instanceof Error ? failure.message : 'Could not load evaluation.');
     }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    return () => { active = false; historyGeneration.current += 1; };
   }, [promptId, loadAttempt]);
+
+  useEffect(() => {
+    if (!isValidPromptId(promptId)) return;
+    let active = true;
+    ApiClient.getPromptsConfig().then((capability) => {
+      if (!active) return;
+      setConfig(capability);
+      setConfigError('');
+    }).catch(() => {
+      if (!active) return;
+      setConfig(null);
+      setConfigError('AI availability could not be checked. You can still manage cases and read past results.');
+    });
+    return () => { active = false; };
+  }, [promptId, configAttempt]);
 
   useEffect(() => {
     document.title = pageTitle(prompt ? `Evaluate ${prompt.name ?? 'prompt'}` : 'Evaluate');
@@ -94,6 +115,23 @@ export function useEvaluation(promptId: number) {
     });
   }
 
+  async function loadOlderRuns() {
+    const generation = historyGeneration.current;
+    await perform('history', async () => {
+      try {
+        const older = await ApiClient.getEvalRuns(promptId, HISTORY_PAGE_SIZE, runs.length);
+        if (generation !== historyGeneration.current) return;
+        setRuns((current) => {
+          const ids = new Set(current.map((item) => item.id));
+          return [...current, ...older.filter((item) => !ids.has(item.id))];
+        });
+        setHasMoreRuns(older.length === HISTORY_PAGE_SIZE);
+      } catch (failure) {
+        if (generation === historyGeneration.current) throw failure;
+      }
+    });
+  }
+
   async function deleteCase() {
     if (!deleting) return;
     await perform('delete', async () => {
@@ -105,6 +143,7 @@ export function useEvaluation(promptId: number) {
   }
 
   async function generate(goal: string) {
+    if (!config?.provider_connected || config.budget_exhausted) return;
     await perform('generate', async () => {
       const { proposals: suggestions } = await ApiClient.generateEvalCases(promptId, goal);
       setProposals(suggestions);
@@ -114,6 +153,7 @@ export function useEvaluation(promptId: number) {
   }
 
   async function run() {
+    if (!config?.provider_connected || config.budget_exhausted) return;
     await perform('run', async () => {
       const result = await ApiClient.runEvaluation(promptId);
       setRuns((current) => [result, ...current]);
@@ -156,7 +196,8 @@ export function useEvaluation(promptId: number) {
   }
 
   return {
-    prompt, currentVersion, config, cases, runs, loading, loadError, retry: () => setLoadAttempt((n) => n + 1),
+    prompt, currentVersion, config, configError, retryConfig: () => setConfigAttempt((n) => n + 1),
+    cases, runs, hasMoreRuns, loadOlderRuns, loading, loadError, retry: () => setLoadAttempt((n) => n + 1),
     error, setError, notice, busy, view, setView, editing, setEditing, deleting, setDeleting,
     suggesting, setSuggesting, proposals, setProposals, selectedRunId, setSelectedRunId,
     saveCase, deleteCase, generate, run, rate, importCsv, exportCsv,

@@ -28,3 +28,15 @@ def test_testing_lifespan_skips_production_initialization(monkeypatch):
     with TestClient(main.create_app()) as client:
         assert client.get("/").json()["status"] == "healthy"
     initialize.assert_not_called()
+
+
+def test_insecure_signing_key_prevents_database_initialization(monkeypatch):
+    import pytest
+
+    initialize = Mock()
+    monkeypatch.setattr(main, "init_db", initialize)
+    monkeypatch.setattr(main, "SECRET_KEY", "secret")
+    monkeypatch.setenv("TESTING", "false")
+    with pytest.raises(RuntimeError, match="SECRET_KEY"), TestClient(main.create_app()):
+        pass
+    initialize.assert_not_called()
