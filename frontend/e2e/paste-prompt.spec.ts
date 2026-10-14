@@ -16,13 +16,13 @@ const filled = '<TASK>\nPlan a 3-day trip to Lisbon.\n</TASK>\n\n<FORMAT>\nGive 
 
 async function register(page: Page) {
   const suffix = `${Date.now()}${Math.floor(Math.random() * 10000)}`;
-  await page.goto('/');
+  await page.goto('/library');
   await page.getByRole('button', { name: 'Create account' }).click();
   await page.locator('#username').fill(`paste${suffix}`);
   await page.locator('#password').fill('E2ePass123!');
   await page.locator('#reg-email').fill(`paste${suffix}@example.com`);
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page).toHaveURL(/\/library$/);
+  await expect(page.getByRole('heading', { name: 'Your prompt library is empty' })).toBeVisible();
   await page.route('**/api/prompts/config', (route) => route.fulfill({ json: {
     provider_connected: true, provider: 'ollama', provider_label: 'Ollama', model: 'local',
     available_models: [], budget_exhausted: false, global_budget_remaining_usd: null,

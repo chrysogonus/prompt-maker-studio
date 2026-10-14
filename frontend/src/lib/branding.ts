@@ -20,6 +20,15 @@ export function pageTitle(section?: string | null): string {
   return section ? `${section} · ${APP_NAME}` : APP_NAME;
 }
 
+/**
+ * Public origin for canonical links, the sitemap and social previews. The
+ * published image is domain-agnostic, so this is read at request time from the
+ * same `FRONTEND_URL` the backend uses — callers must not be prerendered.
+ */
+export function siteUrl(): string {
+  return (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+}
+
 /** Namespace a localStorage/sessionStorage key under the current app slug. */
 export const storageKey = (suffix: string) => `${APP_SLUG}:${suffix}`;
 

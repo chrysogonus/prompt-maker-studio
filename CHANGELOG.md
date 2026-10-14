@@ -10,6 +10,13 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- A public landing page at `/` describing the product, with `robots.txt`,
+  `sitemap.xml`, a canonical link and social previews built from `FRONTEND_URL`.
+  Signed-in visitors are sent straight to the library, which now lives at
+  `/library` only; the frontend container now receives `FRONTEND_URL`.
+
 ## [0.3.0] - 2026-10-13
 
 0.3.0: a library-first sections editor with prompt conversion,

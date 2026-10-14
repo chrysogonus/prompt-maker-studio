@@ -81,7 +81,7 @@ test('sign-in keeps the highlighted repository link clear of the form', async ({
   await page.addInitScript(() => localStorage.removeItem('prompt-maker-studio:client-session-expiry'));
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/');
+    await page.goto('/library');
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
     const link = (await page.getByRole('link', { name: 'Open source on GitHub' }).boundingBox())!;
     const content = (await page.getByRole('main').boundingBox())!;

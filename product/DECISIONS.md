@@ -876,3 +876,19 @@ quietly outliving its reason.
 **Consequences**: Evaluation is available again, but saving never runs it automatically. The stored evaluation preferences remain inactive. Suggestions are edited and saved individually; scores are shown without invented pass thresholds. Blank inputs retain placeholders, and require acknowledgement before a run. Aggregate scores wait for every pending manual rating; accumulated model time is labelled separately from elapsed duration. Calibration of automated scores remains backlog work.
 
 **Source**: `frontend/src/features/evaluation/`, `frontend/src/lib/api/evaluation.ts`, `backend/app/api/eval_routes.py`
+
+---
+
+## A Public Landing Page at the Root
+
+**Status**: Accepted
+
+**Context**: `/` redirected to the library, whose auth check runs in the browser. Crawlers saw only "Loading...", there was no `robots.txt` or sitemap, and the hosted instance did not appear in search results.
+
+**Decision**: Serve a server-rendered landing page at `/` for visitors without a session cookie, and redirect those with one to `/library`. Add `robots.txt` and `sitemap.xml`, and build the canonical link and social previews from `FRONTEND_URL` at request time. Screenshots are plain `<img>` copies under `frontend/public/landing/`.
+
+**Rationale**: Checking the httpOnly session cookie on the server keeps returning users one hop from their library without client code on the landing page. The published image is domain-agnostic, so anything naming the public origin must be rendered per request. The image ships without sharp, so `next/image` would add nothing. The call to action says "Open the app", not "Create account", because `REGISTRATION_MODE` defaults to `closed`.
+
+**Consequences**: Every deployment, self-hosted ones included, shows the landing page to signed-out visitors. The screenshots are copies of `docs/assets/` and must be refreshed by hand when those are regenerated. A stale cookie costs one extra redirect to the sign-in form.
+
+**Source**: `frontend/src/app/page.tsx`, `frontend/src/app/robots.ts`, `frontend/src/app/sitemap.ts`

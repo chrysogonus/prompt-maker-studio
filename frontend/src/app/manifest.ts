@@ -4,8 +4,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Prompt Maker Studio',
     short_name: 'Prompt Maker',
-    description: 'Generate structured prompts with ease',
-    start_url: '/',
+    description: 'A prompt library and template editor for reusable AI prompts.',
+    start_url: '/library',
     display: 'standalone',
     icons: [
       {

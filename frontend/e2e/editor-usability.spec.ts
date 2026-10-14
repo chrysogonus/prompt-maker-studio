@@ -6,13 +6,13 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     const suffix = `${Date.now()}${Math.floor(Math.random() * 10000)}`;
-    await page.goto('/');
+    await page.goto('/library');
     await page.getByRole('button', { name: 'Create account' }).click();
     await page.locator('#username').fill(`ux${suffix}`);
     await page.locator('#password').fill('E2ePass123!');
     await page.locator('#reg-email').fill(`ux${suffix}@example.com`);
     await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page).toHaveURL(/\/library$/);
+    await expect(page.getByRole('heading', { name: 'Your prompt library is empty' })).toBeVisible();
     await page.route('**/api/prompts/config', (route) => route.fulfill({ json: {
       provider_connected: true, provider: 'ollama', provider_label: 'Ollama', model: 'test-model',
       available_models: [], budget_exhausted: false, global_budget_remaining_usd: null,
