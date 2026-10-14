@@ -22,7 +22,7 @@ function sidebarLink(page: Page, name: string | RegExp) {
 }
 
 async function register(page: Page, user: TestUser) {
-  await page.goto('/');
+  await page.goto('/library');
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -98,8 +98,14 @@ async function auditPage(page: Page, label: string) {
 }
 
 test.describe('accessibility audit', () => {
-  test('login page has no serious a11y violations, in dark and light theme', async ({ page }) => {
+  test('landing page has no serious a11y violations', async ({ page }) => {
     await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await auditPage(page, 'landing');
+  });
+
+  test('login page has no serious a11y violations, in dark and light theme', async ({ page }) => {
+    await page.goto('/library');
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
     await setTheme(page, 'dark');
     await auditPage(page, 'login (dark)');

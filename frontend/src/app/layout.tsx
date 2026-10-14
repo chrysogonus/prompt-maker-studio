@@ -13,7 +13,7 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: pageTitle(),
-  description: 'Generate structured prompts with ease',
+  description: 'A prompt library and template editor for reusable AI prompts.',
 };
 
 export default function RootLayout({
