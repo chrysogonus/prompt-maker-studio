@@ -33,6 +33,10 @@ and read **Upgrade notes** before deploying. Publication is pending.
   queries using the old application counters need updating.
 - Evaluation history now defaults to 50 runs. API clients needing older runs
   must page with `limit` (maximum 100) and `offset`.
+- New, reset and changed passwords need at least 10 characters, a number and a
+  special character. Existing passwords keep working until changed.
+- `PATCH /api/auth/me` requires `current_password` when it changes the email
+  address. Active browser sessions now end at most 12 hours after sign-in.
 - The provider SDK now uses HTTPX2 and the operating-system CA trust store.
   Deployments with custom provider CAs should install them in that trust store;
   TLS hostname verification and the public-IP transport protections remain enabled.
@@ -48,9 +52,14 @@ and read **Upgrade notes** before deploying. Publication is pending.
   content, IP addresses and provider error text.
 - `make monitoring-check` validates Prometheus syntax and semantic fixtures in
   local CI and the required GitHub Compose validation job.
+- Sign in with either the username or the account email.
+- Changing the recovery email notifies the previous address.
 
 ### Changed
 
+- Keyboard and pointer activity renews the browser session, so working users
+  are no longer signed out after a fixed 30 minutes; idle tabs still expire.
+  Renaming the username keeps the session instead of signing out.
 - Application telemetry uses `pms_*` metrics in place of the previous signup,
   login, prompt-save, AI-import and password-reset-email counters. REST and MCP
   mutations share an operation boundary; provider attempts remain separate.
@@ -87,6 +96,8 @@ and read **Upgrade notes** before deploying. Publication is pending.
 - Migration 020 preserves the legacy note schema so migration 025 backfills it
   on upgrades crossing both steps. Previously damaged note history still needs
   review against a verified backup.
+- The session countdown follows the renewed session after a password change
+  instead of signing out at the old expiry.
 - Transient session-check failures can be retried. API validation errors display
   readable messages; saving remains successful when a later history refresh
   fails; evaluation history stays usable when AI configuration loading fails.

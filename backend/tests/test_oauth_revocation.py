@@ -104,7 +104,7 @@ def test_pending_codes_cannot_restore_access_after_account_revocation(
             client.post(
                 "/api/auth/change-password",
                 headers=auth_headers,
-                json={"current_password": "testpass123", "new_password": "newpass456"},
+                json={"current_password": "testpass123!", "new_password": "newpass456!"},
             ).status_code
             == 200
         )
@@ -116,7 +116,7 @@ def test_pending_codes_cannot_restore_access_after_account_revocation(
         db_session.commit()
         assert (
             client.post(
-                "/api/auth/reset-password", json={"token": raw, "new_password": "newpass456"}
+                "/api/auth/reset-password", json={"token": raw, "new_password": "newpass456!"}
             ).status_code
             == 200
         )
@@ -252,12 +252,12 @@ def test_overlapping_account_revocations_cannot_reuse_a_version(
             response = client.post(
                 "/api/auth/change-password",
                 headers=auth_headers,
-                json={"current_password": "testpass123", "new_password": "newpass456"},
+                json={"current_password": "testpass123!", "new_password": "newpass456!"},
             )
             assert response.status_code == 200
         else:
             response = client.post(
-                "/api/auth/reset-password", json={"token": raw, "new_password": "newpass456"}
+                "/api/auth/reset-password", json={"token": raw, "new_password": "newpass456!"}
             )
             assert response.status_code == 200
         assert _mcp(client, tokens["access_token"]).status_code == 401
@@ -322,12 +322,12 @@ def test_delayed_revocation_cannot_disconnect_a_replacement_grant(
                 "DELETE",
                 "/api/auth/me",
                 headers=auth_headers,
-                json={"current_password": "testpass123"},
+                json={"current_password": "testpass123!"},
             ).status_code
             == 204
         )
         auth_headers = _register_and_connect(
-            client, "replacement", "testpass123", "replacement@example.com"
+            client, "replacement", "testpass123!", "replacement@example.com"
         )
         assert db_session.query(User.id).filter(User.username == "replacement").scalar() == old_id
     else:
@@ -369,11 +369,11 @@ def test_access_revocation_rechecks_identity_and_generation_atomically(
                     "DELETE",
                     "/api/auth/me",
                     headers=headers,
-                    json={"current_password": "testpass123"},
+                    json={"current_password": "testpass123!"},
                 )
                 assert response.status_code == 204
                 headers = _register_and_connect(
-                    client, "replacement", "testpass123", "replacement@example.com"
+                    client, "replacement", "testpass123!", "replacement@example.com"
                 )
                 assert (
                     db_session.query(User.id).filter(User.username == "replacement").scalar()
