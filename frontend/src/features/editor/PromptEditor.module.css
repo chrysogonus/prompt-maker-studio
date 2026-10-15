@@ -349,8 +349,6 @@ button.title:hover {
   gap: var(--space-2);
 }
 
-.sectionIcon { display: none; }
-
 .sectionName {
   flex: 1;
   min-width: 0;
@@ -1123,41 +1121,17 @@ button.version:hover {
 .copyButton[data-secondary='true'] { background: transparent; color: var(--pv-text); border: 1px solid var(--pv-muted); }
 .previewFoot > p { font-size: var(--text-sm-size); }
 
-:global([data-theme='dark']) .section {
-  border-left-width: 1px;
-  padding: 10px 16px 16px;
-}
-
-:global([data-theme='dark']) .sectionIcon { display: block; flex: none; color: var(--color-plum); margin-right: 4px; }
-:global([data-theme='dark']) .sectionName { font-size: 15px; }
-/* 30px = icon (18px) + its margin (4px) + head gap (8px), lining text up with the name. */
-:global([data-theme='dark']) .sectionText { margin-left: 30px; width: calc(100% - 30px); }
-:global([data-theme='dark']) .sectionTag { font-size: 11px; opacity: 0; }
-:global([data-theme='dark']) .section:hover .sectionTag,
-:global([data-theme='dark']) .section:focus-within .sectionTag { opacity: 1; }
 :global([data-theme='dark']) .section:focus-within { border-color: var(--color-accent-tag); }
 :global([data-theme='dark']) .section[data-invalid='true'] { border-color: var(--color-danger); }
 
+/* An outline, not a border, so the preview keeps light's size. */
 :global([data-theme='dark']) .preview {
-  border: 1px solid var(--pv-border);
+  outline: 1px solid var(--pv-border);
+  outline-offset: -1px;
   box-shadow: inset 0 1px 0 rgba(224,183,219,0.04), 0 12px 32px rgba(0,0,0,0.24);
 }
 
-:global([data-theme='dark']) .previewHead { padding-block: 0; min-height: 56px; }
-:global([data-theme='dark']) .modeSwitch { background: none; padding: 0; gap: var(--space-2); }
-:global([data-theme='dark']) .modeSwitch button { height: 56px; padding-inline: 8px; border-radius: 0; }
-:global([data-theme='dark']) .modeSwitch button[aria-checked='true'] {
-  background: transparent;
-  box-shadow: inset 0 -2px 0 var(--color-accent-tag);
-}
-:global([data-theme='dark']) .previewText { font-size: 13px; line-height: 1.7; }
 :global([data-theme='dark']) .previewTag { color: var(--pv-var); }
 :global([data-theme='dark']) .previewFilled { background: color-mix(in srgb, var(--pv-var) 8%, transparent); }
 :global([data-theme='dark']) .copyButton[data-secondary='true'] { border-color: var(--color-border-strong); box-shadow: none; }
 :global([data-theme='dark']) .toolsMenu { background: var(--surface-panel); }
-
-@media (max-width: 760px) {
-  :global([data-theme='dark']) .previewHead { min-height: 48px; }
-  :global([data-theme='dark']) .modeSwitch button { height: 48px; }
-  :global([data-theme='dark']) .sectionText { margin-left: 0; width: 100%; }
-}

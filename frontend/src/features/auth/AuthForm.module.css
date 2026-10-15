@@ -100,11 +100,9 @@
   background-size: auto;
 }
 
-:global([data-theme='dark']) .heroTitle { max-width: 100%; font-size: clamp(1.875rem, 3vw, 2.25rem); line-height: 1.22; }
 :global([data-theme='dark']) .promptSample {
   background: var(--surface-preview);
-  border: 1px solid var(--pv-border);
-  box-shadow: var(--shadow-surface);
+  box-shadow: inset 0 0 0 1px var(--pv-border), var(--shadow-surface);
 }
 :global([data-theme='dark']) .sampleTag { color: var(--pv-var); }
 

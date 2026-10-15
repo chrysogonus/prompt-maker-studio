@@ -1,22 +1,9 @@
 'use client';
 
 import { useLayoutEffect, useRef } from 'react';
-import { ClipboardList, ImageIcon, Layers3, ScanLine, ShieldCheck, Target, TextQuote, UserRound, type LucideIcon } from 'lucide-react';
 import { sectionTag, unbalancedTags } from '@/lib/sections';
 import type { EditorSection } from './PromptEditor';
 import styles from './PromptEditor.module.css';
-
-const SECTION_ICONS: Record<string, LucideIcon> = {
-  ROLE: UserRound,
-  SUBJECT: UserRound,
-  CONTEXT: Layers3,
-  TASK: ClipboardList,
-  GOAL: Target,
-  FORMAT: TextQuote,
-  CONSTRAINTS: ShieldCheck,
-  SETTING: ImageIcon,
-  RESOLUTION: ScanLine,
-};
 
 interface SectionCardProps {
   section: EditorSection;
@@ -40,7 +27,6 @@ export default function SectionCard({
   const textRef = useRef<HTMLTextAreaElement>(null);
   const label = section.name.trim() || 'Untitled section';
   const tag = sectionTag(section.name) || 'SECTION';
-  const SectionIcon = SECTION_ICONS[tag] ?? TextQuote;
   const unclosed = unbalancedTags(section.content);
   // A blank name only matters once the section has been left or saved; a
   // name typed wrong is worth flagging straight away.
@@ -65,7 +51,6 @@ export default function SectionCard({
       data-invalid={showNameError || contentError}
     >
       <div className={styles.sectionHead}>
-        <SectionIcon className={styles.sectionIcon} size={18} strokeWidth={1.5} aria-hidden="true" />
         <input
           id={nameId}
           className={styles.sectionName}

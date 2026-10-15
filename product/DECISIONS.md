@@ -947,12 +947,12 @@ quietly outliving its reason.
 
 ## Dark Mode Shares Light's Layout
 
-**Status**: Accepted (2026-10-15). Supersedes the floating sidebar, Inter and radius parts of "Moodboard Direction for Dark Mode".
+**Status**: Accepted (2026-10-15). Supersedes the floating sidebar, section icons, Inter and radius parts of "Moodboard Direction for Dark Mode".
 
-**Context**: The floating sidebar card, tighter spacing, Inter and smaller radii made dark mode lay out differently from light. The same folders fitted in one theme and scrolled in the other, and pages shifted when the theme changed.
+**Context**: The floating sidebar card, tighter spacing, section icons, a restyled preview header, Inter and smaller radii made dark mode lay out differently from light. The same folders fitted in one theme and scrolled in the other, and pages shifted when the theme changed.
 
-**Decision**: Dark mode changes colour, surfaces and shadows only. The shell, sidebar, spacing, radii and UI font are the same in both themes. Dark-only outlines are drawn with `box-shadow` so they take no space.
+**Decision**: Dark mode changes colour, surfaces and shadows only. The shell, sidebar, editor, preview, sign-in screen, spacing, radii and UI font are the same in both themes, and section icons are dropped. Dark-only outlines are drawn with `box-shadow` or `outline` so they take no space.
 
 **Rationale**: Switching theme should never move content or change what fits on screen.
 
-**Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/shell/Sidebar.module.css`, `frontend/src/components/shell/AppShell.module.css`, `frontend/src/components/ui/SegmentedControl.module.css`
+**Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/shell/Sidebar.module.css`, `frontend/src/components/shell/AppShell.module.css`, `frontend/src/components/ui/SegmentedControl.module.css`, `frontend/src/features/editor/PromptEditor.module.css`, `frontend/src/features/auth/AuthForm.module.css`
