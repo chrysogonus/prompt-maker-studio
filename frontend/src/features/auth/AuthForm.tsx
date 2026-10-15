@@ -11,6 +11,7 @@ import Wordmark from '@/components/ui/Wordmark';
 import LegalLinks from '@/components/LegalLinks';
 import RepositoryLink from '@/components/RepositoryLink';
 import styles from './AuthForm.module.css';
+import { PASSWORD_HINT, passwordPolicyError } from './passwordPolicy';
 
 interface AuthFormProps {
   onSuccess: () => void;
@@ -39,11 +40,10 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [sessionNotice] = useState(() => AuthService.getSessionExpiry?.()?.reason ?? '');
 
-  const inputRefs = {
-    username: useRef<HTMLInputElement>(null),
-    password: useRef<HTMLInputElement>(null),
-    email: useRef<HTMLInputElement>(null),
-  };
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const inputRefs = { username: usernameRef, password: passwordRef, email: emailRef };
 
   const switchView = (next: View) => {
     setView(next);
@@ -79,15 +79,16 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
 
     const errors: FieldErrors = {};
     if (!username.trim()) {
-      errors.username = 'Enter your username.';
+      errors.username = view === 'login' ? 'Enter your username or email.' : 'Enter your username.';
     } else if (view === 'register' && username.trim().length < 3) {
       errors.username = 'Username must be at least 3 characters.';
     }
 
+    const policyError = view === 'register' ? passwordPolicyError(password) : null;
     if (!password.trim()) {
       errors.password = 'Enter your password.';
-    } else if (view === 'register' && password.length < 8) {
-      errors.password = 'Password must be at least 8 characters.';
+    } else if (policyError) {
+      errors.password = policyError;
     }
 
     if (view === 'register' && !EMAIL_PATTERN.test(email.trim())) {
@@ -171,7 +172,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
             </label>
             <input
               id="email"
-              ref={inputRefs.email}
+              ref={emailRef}
               type="email"
               value={email}
               onChange={(e) => {
@@ -226,11 +227,11 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
         )}
         <div className={styles.field}>
           <label htmlFor="username" className={styles.label}>
-            Username
+            {view === 'login' ? 'Username or email' : 'Username'}
           </label>
           <input
             id="username"
-            ref={inputRefs.username}
+            ref={usernameRef}
             type="text"
             value={username}
             onChange={(e) => {
@@ -238,9 +239,9 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
               clearFieldError('username');
             }}
             className={styles.input}
-            placeholder="Enter your username"
+            placeholder={view === 'login' ? 'Enter your username or email' : 'Enter your username'}
             required
-            minLength={3}
+            minLength={view === 'login' ? 1 : 3}
             autoComplete="username"
             aria-invalid={!!fieldErrors.username}
             aria-describedby={fieldErrors.username ? 'username-error' : undefined}
@@ -259,7 +260,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           <div className={styles.passwordWrap}>
             <input
               id="password"
-              ref={inputRefs.password}
+              ref={passwordRef}
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => {
@@ -267,9 +268,9 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
                 clearFieldError('password');
               }}
               className={styles.input}
-              placeholder="Enter your password"
+              placeholder={view === 'login' ? 'Enter your password' : PASSWORD_HINT}
               required
-              minLength={view === 'login' ? 1 : 8}
+              minLength={view === 'login' ? 1 : 10}
               autoComplete={view === 'login' ? 'current-password' : 'new-password'}
               aria-invalid={!!fieldErrors.password}
               aria-describedby={fieldErrors.password ? 'password-error' : undefined}
@@ -298,7 +299,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
             </label>
             <input
               id="reg-email"
-              ref={inputRefs.email}
+              ref={emailRef}
               type="email"
               value={email}
               onChange={(e) => {

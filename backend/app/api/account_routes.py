@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.api import deps
-from app.auth.cookies import clear_session, issue_session
+from app.auth.cookies import clear_session, issue_session, session_expires_at
 from app.auth.dependencies import get_current_user
 from app.auth.utils import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -127,7 +127,7 @@ def change_password(
     out of the tab they are using to do it would be gratuitous.
 
     Returns:
-        {"message": "Password updated successfully."}
+        {"message": ..., "expires_at": ...} — the renewed session's expiry
 
     Raises:
         HTTPException 401: If current_password does not match the stored hash
@@ -141,4 +141,4 @@ def change_password(
             token_version=current_user.token_version,
         ),
     )
-    return {"message": "Password updated successfully."}
+    return {"message": "Password updated successfully.", "expires_at": session_expires_at()}

@@ -195,7 +195,27 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   await expect(page).toHaveURL(/\/library$/);
   await expect(page.getByText(promptName)).toBeVisible();
 
+  // First input after reload starts renewal. Hold its cookie-setting response
+  // until sign-out, reproducing a slow refresh that used to restore the session.
+  let releaseRefresh!: () => void;
+  const refreshGate = new Promise<void>((resolve) => { releaseRefresh = resolve; });
+  await page.route('**/api/auth/refresh', async (route) => {
+    const response = await route.fetch();
+    await refreshGate;
+    await route.fulfill({ response });
+  });
+  await page.reload();
+  const refreshed = page.waitForResponse((response) => response.url().endsWith('/api/auth/refresh'));
+  const signedOut = page.waitForResponse((response) => response.url().endsWith('/api/auth/logout'));
   await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  releaseRefresh();
+  await (await refreshed).finished();
+  expect((await signedOut).status()).toBe(204);
+  expect((await page.context().cookies()).some((cookie) => cookie.name === 'access_token')).toBe(false);
+  expect(await page.evaluate(() => localStorage.getItem('prompt-maker-studio:client-session-expiry'))).toBeNull();
+  await page.unroute('**/api/auth/refresh');
+  await page.reload();
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
 
   await page.locator('#username').fill(user.username);

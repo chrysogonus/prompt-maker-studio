@@ -94,10 +94,6 @@
   min-width: 140px;
 }
 
-.inlineForm .hint {
-  flex-basis: 100%;
-}
-
 .withFeedback {
   display: flex;
   align-items: center;

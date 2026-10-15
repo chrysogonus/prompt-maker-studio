@@ -8,14 +8,21 @@ from pydantic import AfterValidator, BaseModel, EmailStr, Field, field_validator
 from app.auth.utils import BCRYPT_MAX_PASSWORD_BYTES
 
 
-def _validate_password_bytes(value: str) -> str:
+def _validate_new_password(value: str) -> str:
+    """Enforce the policy for newly chosen passwords; login never applies it."""
     if len(value.encode("utf-8")) > BCRYPT_MAX_PASSWORD_BYTES:
         msg = "Password must not exceed 72 UTF-8 bytes"
+        raise ValueError(msg)
+    if not any(c.isdigit() for c in value):
+        msg = "Password must contain at least one number"
+        raise ValueError(msg)
+    if not any(not c.isalnum() and not c.isspace() for c in value):
+        msg = "Password must contain at least one special character, such as $ or #"
         raise ValueError(msg)
     return value
 
 
-NewPassword = Annotated[str, AfterValidator(_validate_password_bytes)]
+NewPassword = Annotated[str, AfterValidator(_validate_new_password)]
 
 
 class UserCreate(BaseModel):
@@ -29,7 +36,7 @@ class UserCreate(BaseModel):
         description="Username (3-50 chars; letters, digits, underscores, hyphens)",
     )
     # Character limits bound validation; NewPassword also enforces bcrypt's byte limit.
-    password: NewPassword = Field(..., min_length=8, max_length=72, description="Password")
+    password: NewPassword = Field(..., min_length=10, max_length=72, description="Password")
     email: EmailStr = Field(
         ..., max_length=254, description="Email address used for password reset"
     )
@@ -45,7 +52,7 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     """Schema for user login."""
 
-    username: str = Field(..., description="Username")
+    username: str = Field(..., description="Username or email")
     password: str = Field(..., description="Password")
 
 
@@ -91,6 +98,11 @@ class UserUpdate(BaseModel):
         max_length=254,  # RFC 5321 maximum
         description="Email address used for password reset",
     )
+    current_password: str | None = Field(
+        None,
+        max_length=72,
+        description="Current password; required when changing the email address",
+    )
     new_username: str | None = Field(
         None,
         min_length=3,
@@ -135,9 +147,9 @@ class ResetPasswordRequest(BaseModel):
     token: str = Field(..., min_length=1, description="Reset token from the email link")
     new_password: NewPassword = Field(
         ...,
-        min_length=8,
+        min_length=10,
         max_length=72,
-        description="New password (min 8 characters, max 72 UTF-8 bytes)",
+        description="New password (min 10 characters with a number and a special character)",
     )
 
 
@@ -162,9 +174,9 @@ class ChangePasswordRequest(BaseModel):
     )
     new_password: NewPassword = Field(
         ...,
-        min_length=8,
+        min_length=10,
         max_length=72,
-        description="New password (min 8 characters, max 72 UTF-8 bytes)",
+        description="New password (min 10 characters with a number and a special character)",
     )
 
 

@@ -170,3 +170,32 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
     _send_message(msg, to_email)
 
     logger.info("Password reset email delivered to %s", redact_email(to_email))
+
+
+def send_email_changed_notification(to_email: str, new_email: str) -> None:
+    """
+    Tell the previous address that the account's email was changed.
+
+    The new address is redacted: the old mailbox may no longer belong to the
+    account holder, and it only needs to know a change happened.
+
+    Raises:
+        RuntimeError: If required SMTP env vars are missing.
+        smtplib.SMTPException: If the SMTP server rejects the message.
+    """
+    msg = MIMEMultipart()
+    msg["Subject"] = f"Your {APP_NAME} email address was changed"
+    msg["From"] = _get_required_env("SMTP_FROM")
+    msg["To"] = to_email
+    msg.attach(
+        MIMEText(
+            f"The email address on your {APP_NAME} account was changed to "
+            f"{redact_email(new_email)}.\n\n"
+            # Not "reset your password": the reset link would now go to the new address.
+            "If you did not make this change, sign in and change your password "
+            "immediately, then contact the site operator.\n",
+            "plain",
+        )
+    )
+    _send_message(msg, to_email)
+    logger.info("Email-change notice delivered to %s", redact_email(to_email))

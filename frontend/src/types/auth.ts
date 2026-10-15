@@ -35,6 +35,8 @@ export interface User {
 
 export interface UserUpdate {
   email?: string | null;
+  /** Required by the server whenever `email` changes. */
+  current_password?: string;
   new_username?: string | null;
   default_library_view?: 'grid' | 'list' | null;
   default_eval_method?: 'rule' | 'judge' | 'manual' | null;

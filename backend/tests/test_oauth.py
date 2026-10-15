@@ -346,7 +346,7 @@ class TestTokens:
             "DELETE",
             "/api/auth/me",
             headers=auth_headers,
-            json={"current_password": "testpass123"},
+            json={"current_password": "testpass123!"},
         )
 
         assert db_session.query(OAuthRefreshToken).count() == 0

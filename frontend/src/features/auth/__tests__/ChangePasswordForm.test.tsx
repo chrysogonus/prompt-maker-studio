@@ -44,13 +44,13 @@ describe('ChangePasswordForm component', () => {
     await userEvent.click(screen.getByRole('button', { name: /change password/i }));
 
     await userEvent.type(screen.getByLabelText(/current password/i), 'oldpass123');
-    await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass456');
+    await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass456!');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(AuthService.changePassword).toHaveBeenCalledWith({
         current_password: 'oldpass123',
-        new_password: 'newpass456',
+        new_password: 'newpass456!',
       });
     });
   });
@@ -61,7 +61,7 @@ describe('ChangePasswordForm component', () => {
     render(<ChangePasswordForm />);
     await userEvent.click(screen.getByRole('button', { name: /change password/i }));
     await userEvent.type(screen.getByLabelText(/current password/i), 'oldpass123');
-    await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass456');
+    await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass456!');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
@@ -77,7 +77,7 @@ describe('ChangePasswordForm component', () => {
     render(<ChangePasswordForm />);
     await userEvent.click(screen.getByRole('button', { name: /change password/i }));
     await userEvent.type(screen.getByLabelText(/current password/i), 'wrongpass');
-    await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass456');
+    await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass456!');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(await screen.findByText(/current password is incorrect/i)).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('ChangePasswordForm component', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(
-      await screen.findByText('Your new password must be at least 8 characters.')
+      await screen.findByText('Password must be at least 10 characters.')
     ).toBeInTheDocument();
     expect(AuthService.changePassword).not.toHaveBeenCalled();
   });
@@ -101,7 +101,7 @@ describe('ChangePasswordForm component', () => {
   it('shows an inline error when the current password is missing', async () => {
     render(<ChangePasswordForm />);
     await userEvent.click(screen.getByRole('button', { name: /change password/i }));
-    await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass456');
+    await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass456!');
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 

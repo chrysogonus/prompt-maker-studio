@@ -4,7 +4,7 @@ import { siteUrl } from '@/lib/branding';
 // Read on each request: FRONTEND_URL is runtime config, not built in.
 export const dynamic = 'force-dynamic';
 
-// Only the landing and legal pages are public; everything else sits behind
+// Only the landing page, guides and legal pages are public; everything else sits behind
 // sign-in and would be indexed as an empty sign-in form.
 export default function robots(): MetadataRoute.Robots {
   return {

@@ -1,6 +1,6 @@
 """HTTP transport that pins user-provided endpoints to validated public IPs."""
 
-import httpx
+import httpx2 as httpx
 
 from app.services.llm_providers import InvalidConnectionError, public_host_addresses
 

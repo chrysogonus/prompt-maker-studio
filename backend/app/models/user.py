@@ -88,6 +88,7 @@ class User(Base):
     oauth_refresh_tokens = relationship(
         "OAuthRefreshToken", back_populates="user", cascade="all, delete-orphan"
     )
+    oauth_grants = relationship("OAuthGrant", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} username={self.username!r}>"

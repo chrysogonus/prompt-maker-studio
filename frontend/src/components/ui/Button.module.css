@@ -12,7 +12,7 @@
   font-weight: var(--weight-semibold);
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background var(--motion-fast), border-color var(--motion-fast), transform var(--motion-fast);
+  transition: border-color var(--motion-fast), transform var(--motion-fast);
   white-space: nowrap;
 }
 
