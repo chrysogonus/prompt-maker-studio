@@ -174,7 +174,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 ## Force Re-login After Username Change
 
-**Status**: Accepted
+**Status**: Superseded (2026-10-15) — a rename now keeps the session; see the amendment below
 
 **Context**: Users can change their username via `PATCH /api/auth/me`. The JWT token encodes `username` as the `sub` claim. After a username change, the existing token still references the old username, which no longer matches the stored user record — causing all subsequent authenticated requests to fail silently or with confusing 401 errors.
 
@@ -185,6 +185,8 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 **Consequences**: Every username change requires the user to log back in with their new username. This is a known friction point — users should be warned in the UI before confirming the change. The sliding-renewal endpoint added 2026-07-19 (`POST /api/auth/refresh`) does not change this: it re-issues a token for the *same* subject, and after a username change the old subject no longer matches the user record, so forced re-login remains the correct behavior. This decision would only need revisiting if tokens moved to a stable subject (e.g. user ID).
 
 **Amendment — immutable token subjects**: Migration 026 replaces username subjects with unique account UUIDs. A renamed account keeps its identity, and a token cannot follow a username or numeric ID into another account. The frontend still signs out after a rename, but username mismatch is no longer a server-side revocation mechanism. Existing username-subject tokens must authenticate again.
+
+**Amendment — rename keeps the session (2026-10-15)**: With stable subjects the forced sign-out protected nothing, so Settings now updates the displayed username from the `PATCH` response and the session continues. Editor drafts are stored under username-keyed browser keys; drafts saved under the old name are no longer offered after a rename and are purged on the next explicit sign-out — previously the forced sign-out deleted them outright.
 
 **Source**: `backend/app/api/auth_routes.py`, `backend/app/models/schemas.py`, `frontend/src/app/(app)/settings/page.tsx`
 
@@ -894,3 +896,19 @@ quietly outliving its reason.
 **Consequences**: Every deployment, self-hosted ones included, shows the landing page to signed-out visitors. The screenshots are copies of `docs/assets/` and must be refreshed by hand when those are regenerated. A stale cookie costs one extra redirect to the sign-in form.
 
 **Source**: `frontend/src/app/page.tsx`, `frontend/src/app/robots.ts`, `frontend/src/app/sitemap.ts`
+
+---
+
+## Activity-Based Session Renewal Inside the Stateless JWT
+
+**Status**: Accepted
+
+**Context**: Sessions lasted a fixed 30 minutes from sign-in. `/api/auth/refresh` existed, but only a delayed prompt deletion opted into it, so users editing continuously were signed out mid-work, under a message that blamed inactivity. Separately, the recovery email could be changed with the session alone, and the password rule was 8 characters with no other requirement.
+
+**Decision**: Keyboard and pointer input renew the session at most every 5 minutes. Tokens carry an `auth_time` claim set at login and password change; refreshes carry it forward and never extend a session past `MAX_SESSION_AGE` (12 hours) after it. Changing the email requires the current password and notifies the previous address. Sign-in accepts the username or the account email. New passwords need 10+ characters, a number and a special character.
+
+**Rationale**: A server-side session table would add per-device sign-out and an active-sessions list, neither of which this product needs; the claim gives idle and absolute timeouts without reversing the stateless-JWT decision. Only deliberate input counts, so an open idle tab still expires. The email is what password recovery trusts, so a stolen session must not be able to redirect it. Usernames cannot contain `@`, so one login field resolves unambiguously. The composition rule was an explicit product choice; NIST SP 800-63B advises against composition rules, and the policy applies only when a password is set, never at login.
+
+**Consequences**: An active user signs in at most every 12 hours. Existing passwords keep working until changed. Email changes are not verified by a link to the new address — a mistyped address breaks recovery until corrected. `MAX_SESSION_AGE` is a constant, not configuration.
+
+**Source**: `backend/app/auth/utils.py`, `backend/app/api/session_routes.py`, `backend/app/services/accounts/profile.py`, `backend/app/schemas/accounts.py`, `frontend/src/features/auth/useSession.ts`, `frontend/src/features/auth/passwordPolicy.ts`

@@ -60,6 +60,10 @@ except ValueError as exc:
     msg = f"ACCESS_TOKEN_EXPIRE_MINUTES must be an integer, got: {_raw_expire!r}"
     raise ValueError(msg) from exc
 
+# Activity keeps renewing a session, but never past this long after the user
+# last proved who they are (login or password change).
+MAX_SESSION_AGE = timedelta(hours=12)
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
@@ -99,7 +103,10 @@ def hash_password_reset_token(token: str) -> str:
 
 
 def create_access_token(
-    subject: str, expires_delta: timedelta | None = None, token_version: int = 0
+    subject: str,
+    expires_delta: timedelta | None = None,
+    token_version: int = 0,
+    auth_time: int | None = None,
 ) -> str:
     """
     Create a JWT access token for the given immutable user subject.
@@ -111,6 +118,9 @@ def create_access_token(
             claim. Authentication compares it against the stored value and
             rejects the token when they differ, which is how a password change
             or reset evicts sessions that were minted before it.
+        auth_time: Unix time the user last authenticated, carried forward by
+            refreshes so `MAX_SESSION_AGE` can cap a renewed session. Defaults
+            to now, i.e. a fresh sign-in.
 
     Returns:
         Encoded JWT token
@@ -121,7 +131,13 @@ def create_access_token(
         if expires_delta is not None
         else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    payload = {"sub": subject, "exp": expire, "iat": now, "tv": token_version}
+    payload = {
+        "sub": subject,
+        "exp": expire,
+        "iat": now,
+        "tv": token_version,
+        "auth_time": auth_time if auth_time is not None else int(now.timestamp()),
+    }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 

@@ -36,6 +36,8 @@ export default function SettingsPage() {
         setShowEmailEdit={settings.setShowEmailEdit}
         newEmailValue={settings.newEmailValue}
         setNewEmailValue={settings.setNewEmailValue}
+        emailPassword={settings.emailPassword}
+        setEmailPassword={settings.setEmailPassword}
         emailError={settings.emailError}
         setEmailError={settings.setEmailError}
         handleUsernameChange={settings.handleUsernameChange}

@@ -45,7 +45,7 @@ def _case_count(method: str, outcome: str) -> float:
 def test_signup_and_login_record_success_and_rejection(client):
     signup_success = _count("signup")
     signup_rejected = _count("signup", "rejected")
-    credentials = {"username": "metricuser", "password": "testpass123"}
+    credentials = {"username": "metricuser", "password": "testpass123!"}
     body = {**credentials, "email": "metric@example.com"}
     assert client.post("/api/auth/register", json=body).status_code == 201
     assert client.post("/api/auth/register", json=body).status_code == 400
@@ -66,7 +66,7 @@ def test_signup_and_login_record_success_and_rejection(client):
 def test_signup_commit_failure_does_not_record_success(db_session):
     success = _count("signup")
     errors = _count("signup", "error")
-    body = UserCreate(username="metricuser", password="testpass123", email="m@example.com")
+    body = UserCreate(username="metricuser", password="testpass123!", email="m@example.com")
     with (
         patch.object(db_session, "commit", side_effect=RuntimeError("commit failed")),
         pytest.raises(RuntimeError, match="commit failed"),
@@ -284,7 +284,7 @@ def test_password_reset_records_success_and_rejection(client, auth_headers, db_s
     db_session.commit()
     success = _count("password_reset")
     rejected = _count("password_reset", "rejected")
-    body = {"token": "valid-token", "new_password": "replacement123"}
+    body = {"token": "valid-token", "new_password": "replacement123!"}
     assert client.post("/api/auth/reset-password", json=body).status_code == 200
     assert client.post("/api/auth/reset-password", json=body).status_code == 400
     assert _count("password_reset") == success + 1

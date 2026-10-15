@@ -85,6 +85,16 @@ describe('AuthService session refresh', () => {
 
     expect(AuthService.isAuthenticated()).toBe(false);
   });
+
+  it('records the re-issued session expiry after a password change', async () => {
+    sessionExpiringIn(60);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(refreshResponse(1_800));
+
+    await AuthService.changePassword({ current_password: 'old', new_password: 'newpass456!' });
+
+    // Otherwise the UI would sign the user out at the old deadline.
+    expect(AuthService.getTokenExpiryMs()).toBeGreaterThan(Date.now() + 1_700_000);
+  });
 });
 
 describe('AuthService sign-out', () => {

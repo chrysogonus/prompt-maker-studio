@@ -223,7 +223,7 @@ export class AuthService {
     sessionStorage.setItem(
       SESSION_EXPIRY_KEY,
       JSON.stringify({
-        reason: 'You were signed out due to inactivity. Your unsaved work is still available.',
+        reason: 'Your session expired. Your unsaved work is still available.',
         returnTo: `${window.location.pathname}${window.location.search}`,
       }),
     );
@@ -359,7 +359,7 @@ export class AuthService {
 
   /**
    * Change the authenticated user's password (verifies current_password server-side).
-   * Does not invalidate the current token — no re-login needed afterward.
+   * The server revokes other sessions and re-issues this one, so record its new expiry.
    */
   static async changePassword(data: ChangePasswordRequest): Promise<void> {
     const response = await fetch(`${API_URL}/api/auth/change-password`, {
@@ -375,5 +375,8 @@ export class AuthService {
         extractErrorMessage(errorData.detail) || `Password change failed: ${response.status}`,
       );
     }
+
+    const { expires_at } = (await response.json()) as { expires_at: string };
+    this.recordSessionExpiry(expires_at);
   }
 }

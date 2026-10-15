@@ -21,6 +21,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     isAuthenticated,
     isCheckingAuth,
     currentUser,
+    setCurrentUser,
     authCheckError,
     sessionWarning,
     isSessionUrgent,
@@ -55,7 +56,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ currentUser, logout }}>
+    <AuthContext.Provider value={{ currentUser, logout, setCurrentUser }}>
       <LibraryDataProvider key={currentUser}>
         <div id="app-shell" className={styles.shell}>
           <a className={styles.skipLink} href="#main-content">

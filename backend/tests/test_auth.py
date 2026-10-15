@@ -4,6 +4,7 @@ Tests for authentication functionality.
 
 from datetime import UTC, datetime, timedelta
 import secrets
+from unittest.mock import patch
 
 from fastapi import status
 import jwt
@@ -13,6 +14,7 @@ from app import main
 from app.auth.cookies import CSRF_COOKIE_NAME, CSRF_HEADER_NAME
 from app.auth.utils import (
     ALGORITHM,
+    MAX_SESSION_AGE,
     SECRET_KEY,
     create_access_token,
     decode_access_token,
@@ -27,7 +29,7 @@ from app.auth.utils import (
 
 
 def _register_and_login(
-    client, *, username: str = "testuser", password: str = "testpass123", email: str | None = None
+    client, *, username: str = "testuser", password: str = "testpass123!", email: str | None = None
 ) -> str:
     """Register a user and return a valid JWT access token."""
     if email is None:
@@ -65,7 +67,7 @@ def test_register_user(client):
     """Test user registration endpoint."""
     response = client.post(
         "/api/auth/register",
-        json={"username": "testuser", "password": "testpass123", "email": "testuser@example.com"},
+        json={"username": "testuser", "password": "testpass123!", "email": "testuser@example.com"},
     )
 
     assert response.status_code == status.HTTP_201_CREATED
@@ -81,13 +83,13 @@ def test_register_duplicate_user(client):
     # Register first user
     client.post(
         "/api/auth/register",
-        json={"username": "duplicate", "password": "testpass123", "email": "dup@example.com"},
+        json={"username": "duplicate", "password": "testpass123!", "email": "dup@example.com"},
     )
 
     # Try to register again with same username
     response = client.post(
         "/api/auth/register",
-        json={"username": "duplicate", "password": "differentpass", "email": "dup2@example.com"},
+        json={"username": "duplicate", "password": "differentpass1!", "email": "dup2@example.com"},
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -99,13 +101,13 @@ def test_register_duplicate_email(client):
     # Register first user
     client.post(
         "/api/auth/register",
-        json={"username": "user1", "password": "testpass123", "email": "same@example.com"},
+        json={"username": "user1", "password": "testpass123!", "email": "same@example.com"},
     )
 
     # Try to register again with same email but different username
     response = client.post(
         "/api/auth/register",
-        json={"username": "user2", "password": "differentpass", "email": "same@example.com"},
+        json={"username": "user2", "password": "differentpass1!", "email": "same@example.com"},
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -116,7 +118,7 @@ def test_register_requires_email(client):
     """Registration without an email address is rejected with 422."""
     response = client.post(
         "/api/auth/register",
-        json={"username": "noemail", "password": "testpass123"},
+        json={"username": "noemail", "password": "testpass123!"},
     )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -126,13 +128,17 @@ def test_login_success(client):
     # Register user first
     client.post(
         "/api/auth/register",
-        json={"username": "loginuser", "password": "testpass123", "email": "loginuser@example.com"},
+        json={
+            "username": "loginuser",
+            "password": "testpass123!",
+            "email": "loginuser@example.com",
+        },
     )
 
     # Login
     response = client.post(
         "/api/auth/login",
-        json={"username": "loginuser", "password": "testpass123"},
+        json={"username": "loginuser", "password": "testpass123!"},
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -146,7 +152,7 @@ def test_login_success(client):
 
 def test_refresh_access_token_keeps_authenticated_session(client):
     """A valid bearer token can be renewed without resubmitting credentials."""
-    token = _register_and_login(client, username="refreshuser", password="testpass123")
+    token = _register_and_login(client, username="refreshuser", password="testpass123!")
 
     response = client.post(
         "/api/auth/refresh",
@@ -169,7 +175,7 @@ def test_refresh_access_token_requires_valid_auth(client):
     missing_response = client.post("/api/auth/refresh")
     assert missing_response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    valid_token = _register_and_login(client, username="expiredrefresh", password="testpass123")
+    valid_token = _register_and_login(client, username="expiredrefresh", password="testpass123!")
     expired_token = create_access_token(
         subject=decode_access_token(valid_token)["sub"],
         expires_delta=timedelta(seconds=-10),
@@ -186,7 +192,11 @@ def test_login_wrong_password(client):
     # Register user
     client.post(
         "/api/auth/register",
-        json={"username": "wrongpass", "password": "correctpass", "email": "wrongpass@example.com"},
+        json={
+            "username": "wrongpass",
+            "password": "correctpass1!",
+            "email": "wrongpass@example.com",
+        },
     )
 
     # Try login with wrong password
@@ -215,14 +225,14 @@ def test_get_current_user(client):
         "/api/auth/register",
         json={
             "username": "currentuser",
-            "password": "testpass123",
+            "password": "testpass123!",
             "email": "currentuser@example.com",
         },
     )
 
     client.post(
         "/api/auth/login",
-        json={"username": "currentuser", "password": "testpass123"},
+        json={"username": "currentuser", "password": "testpass123!"},
     )
     token = client.cookies["access_token"]
     client.cookies.clear()
@@ -255,14 +265,14 @@ def test_protected_endpoint_with_auth(client):
         "/api/auth/register",
         json={
             "username": "promptuser",
-            "password": "testpass123",
+            "password": "testpass123!",
             "email": "promptuser@example.com",
         },
     )
 
     client.post(
         "/api/auth/login",
-        json={"username": "promptuser", "password": "testpass123"},
+        json={"username": "promptuser", "password": "testpass123!"},
     )
     token = client.cookies["access_token"]
     client.cookies.clear()
@@ -316,7 +326,7 @@ def test_decode_returns_none_for_garbage_token():
 
 def test_expired_token_is_rejected(client):
     """Test that an already-expired token is rejected with 401."""
-    valid_token = _register_and_login(client, username="expireduser", password="testpass123")
+    valid_token = _register_and_login(client, username="expireduser", password="testpass123!")
 
     expired_token = create_access_token(
         subject=decode_access_token(valid_token)["sub"],
@@ -392,14 +402,14 @@ def test_register_password_too_short_is_rejected(client):
 
 
 def test_register_password_at_min_length_is_accepted(client):
-    """Test that a password of exactly 8 characters is accepted."""
+    """Test that a policy-compliant password of exactly 10 characters is accepted."""
     response = client.post(
         "/api/auth/register",
         json={
             "username": "minpassuser",
-            "password": "abcd1234",
+            "password": "abcdef12#$",
             "email": "minpass@example.com",
-        },  # 8 chars
+        },  # 10 chars
     )
     assert response.status_code == status.HTTP_201_CREATED
 
@@ -408,7 +418,11 @@ def test_register_password_at_max_length_is_accepted(client):
     """Test that a password of exactly 72 characters (bcrypt limit) is accepted."""
     response = client.post(
         "/api/auth/register",
-        json={"username": "maxpassuser", "password": "a" * 72, "email": "maxpass@example.com"},
+        json={
+            "username": "maxpassuser",
+            "password": "a" * 70 + "1!",
+            "email": "maxpass@example.com",
+        },
     )
     assert response.status_code == status.HTTP_201_CREATED
 
@@ -433,7 +447,7 @@ def test_username_is_normalized_on_register(client):
         "/api/auth/register",
         json={
             "username": "  MixedCase  ",
-            "password": "testpass123",
+            "password": "testpass123!",
             "email": "mixedcase@example.com",
         },
     )
@@ -445,12 +459,12 @@ def test_login_succeeds_with_normalized_username(client):
     """Test that login works when the username was registered with different casing."""
     client.post(
         "/api/auth/register",
-        json={"username": "NormUser", "password": "testpass123", "email": "normuser@example.com"},
+        json={"username": "NormUser", "password": "testpass123!", "email": "normuser@example.com"},
     )
 
     response = client.post(
         "/api/auth/login",
-        json={"username": "normuser", "password": "testpass123"},
+        json={"username": "normuser", "password": "testpass123!"},
     )
     assert response.status_code == status.HTTP_200_OK
     assert client.cookies["access_token"]
@@ -460,12 +474,12 @@ def test_register_duplicate_username_after_normalization_is_rejected(client):
     """Test that registering the same username with different casing is rejected."""
     client.post(
         "/api/auth/register",
-        json={"username": "dupuser", "password": "testpass123", "email": "dupuser@example.com"},
+        json={"username": "dupuser", "password": "testpass123!", "email": "dupuser@example.com"},
     )
 
     response = client.post(
         "/api/auth/register",
-        json={"username": "DUPUSER", "password": "anotherpass", "email": "dupuser2@example.com"},
+        json={"username": "DUPUSER", "password": "anotherpass1!", "email": "dupuser2@example.com"},
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -477,12 +491,12 @@ def test_register_duplicate_username_after_normalization_is_rejected(client):
 
 def test_delete_account_returns_204(client):
     """Authenticated DELETE /api/auth/me removes the account and returns 204."""
-    token = _register_and_login(client, username="deleteuser", password="testpass123")
+    token = _register_and_login(client, username="deleteuser", password="testpass123!")
 
     response = client.request(
         "DELETE",
         "/api/auth/me",
-        json={"current_password": "testpass123"},
+        json={"current_password": "testpass123!"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -490,12 +504,12 @@ def test_delete_account_returns_204(client):
 
 def test_delete_account_removes_user_from_db(client):
     """After DELETE /api/auth/me the account is gone — login must return 401."""
-    token = _register_and_login(client, username="goneplease", password="testpass123")
+    token = _register_and_login(client, username="goneplease", password="testpass123!")
 
     client.request(
         "DELETE",
         "/api/auth/me",
-        json={"current_password": "testpass123"},
+        json={"current_password": "testpass123!"},
         headers={"Authorization": f"Bearer {token}"},
     )
     client.cookies.clear()
@@ -507,7 +521,7 @@ def test_delete_account_removes_user_from_db(client):
 
 def test_delete_account_cascades_prompts(client):
     """Deleting an account also removes all prompts owned by that user."""
-    token = _register_and_login(client, username="promptowner", password="testpass123")
+    token = _register_and_login(client, username="promptowner", password="testpass123!")
 
     headers = {"Authorization": f"Bearer {token}"}
     client.post(
@@ -517,12 +531,12 @@ def test_delete_account_cascades_prompts(client):
     )
 
     client.request(
-        "DELETE", "/api/auth/me", json={"current_password": "testpass123"}, headers=headers
+        "DELETE", "/api/auth/me", json={"current_password": "testpass123!"}, headers=headers
     )
     client.cookies.clear()
 
     # A new registration should not inherit any prompts
-    new_token = _register_and_login(client, username="promptowner", password="newpass99")
+    new_token = _register_and_login(client, username="promptowner", password="newpass99!")
     library = client.get(
         "/api/prompts/saved",
         headers={"Authorization": f"Bearer {new_token}"},
@@ -619,7 +633,7 @@ def test_delete_account_removes_every_user_owned_row(client, test_db):
     ledger behind as orphans."""
     from app.models.user import User
 
-    token = _register_and_login(client, username="fullwipe", password="testpass123")
+    token = _register_and_login(client, username="fullwipe", password="testpass123!")
 
     db = test_db()
     try:
@@ -634,7 +648,7 @@ def test_delete_account_removes_every_user_owned_row(client, test_db):
     response = client.request(
         "DELETE",
         "/api/auth/me",
-        json={"current_password": "testpass123"},
+        json={"current_password": "testpass123!"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -657,7 +671,7 @@ def test_delete_prompt_removes_its_dependent_rows_but_keeps_billing(client, test
     from app.models.prompt import Prompt
     from app.models.user import User
 
-    token = _register_and_login(client, username="promptwipe", password="testpass123")
+    token = _register_and_login(client, username="promptwipe", password="testpass123!")
 
     db = test_db()
     try:
@@ -704,7 +718,7 @@ def test_delete_account_rejects_a_wrong_password(client):
     """Regression test for "account deletion requires no recent authentication or
     password confirmation". A briefly unattended or stolen authenticated session
     was enough to irreversibly destroy the account and all its data."""
-    token = _register_and_login(client, username="needspw", password="testpass123")
+    token = _register_and_login(client, username="needspw", password="testpass123!")
 
     response = client.request(
         "DELETE",
@@ -725,7 +739,7 @@ def test_delete_account_rejects_a_wrong_password(client):
 def test_delete_account_requires_a_password_at_all(client):
     """A session alone must not be accepted — an omitted field is a 422, not a
     silent deletion."""
-    token = _register_and_login(client, username="nopwfield", password="testpass123")
+    token = _register_and_login(client, username="nopwfield", password="testpass123!")
 
     response = client.request(
         "DELETE", "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
@@ -737,13 +751,13 @@ def test_delete_account_requires_a_password_at_all(client):
 def test_delete_account_clears_the_session_cookie(client):
     """The browser should not be left holding a cookie for an account that no
     longer exists."""
-    _register_and_login(client, username="cookiewipe", password="testpass123")
-    client.post("/api/auth/login", json={"username": "cookiewipe", "password": "testpass123"})
+    _register_and_login(client, username="cookiewipe", password="testpass123!")
+    client.post("/api/auth/login", json={"username": "cookiewipe", "password": "testpass123!"})
 
     response = client.request(
         "DELETE",
         "/api/auth/me",
-        json={"current_password": "testpass123"},
+        json={"current_password": "testpass123!"},
         headers={CSRF_HEADER_NAME: client.cookies[CSRF_COOKIE_NAME]},
     )
 
@@ -766,7 +780,7 @@ def test_delete_account_is_rate_limited(client, monkeypatch):
     calling it as six distinct freshly-registered users from the same test
     client still shares one bucket and must trip the limit on the sixth call."""
     tokens = [
-        _register_and_login(client, username=f"rldelete{i}", password="testpass123")
+        _register_and_login(client, username=f"rldelete{i}", password="testpass123!")
         for i in range(6)
     ]
 
@@ -776,7 +790,7 @@ def test_delete_account_is_rate_limited(client, monkeypatch):
         response = client.request(
             "DELETE",
             "/api/auth/me",
-            json={"current_password": "testpass123"},
+            json={"current_password": "testpass123!"},
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -784,7 +798,7 @@ def test_delete_account_is_rate_limited(client, monkeypatch):
     response = client.request(
         "DELETE",
         "/api/auth/me",
-        json={"current_password": "testpass123"},
+        json={"current_password": "testpass123!"},
         headers={"Authorization": f"Bearer {tokens[5]}"},
     )
     assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
@@ -797,27 +811,35 @@ def test_delete_account_is_rate_limited(client, monkeypatch):
 
 def test_update_email_sets_email_on_profile(client):
     """PATCH /api/auth/me with a valid email persists the email."""
-    token = _register_and_login(client, username="emailuser", password="testpass123")
+    token = _register_and_login(client, username="emailuser", password="testpass123!")
     headers = {"Authorization": f"Bearer {token}"}
 
-    resp = client.patch("/api/auth/me", json={"email": "user@example.com"}, headers=headers)
+    resp = client.patch(
+        "/api/auth/me",
+        json={"email": "user@example.com", "current_password": "testpass123!"},
+        headers=headers,
+    )
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json()["email"] == "user@example.com"
 
 
 def test_update_email_is_lowercased(client):
     """Emails provided in mixed case are stored in lower case."""
-    token = _register_and_login(client, username="caseuser", password="testpass123")
+    token = _register_and_login(client, username="caseuser", password="testpass123!")
     headers = {"Authorization": f"Bearer {token}"}
 
-    resp = client.patch("/api/auth/me", json={"email": "User@EXAMPLE.COM"}, headers=headers)
+    resp = client.patch(
+        "/api/auth/me",
+        json={"email": "User@EXAMPLE.COM", "current_password": "testpass123!"},
+        headers=headers,
+    )
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json()["email"] == "user@example.com"
 
 
 def test_update_email_rejects_invalid_address(client):
     """Profile email must be syntactically valid."""
-    token = _register_and_login(client, username="invalidemail", password="testpass123")
+    token = _register_and_login(client, username="invalidemail", password="testpass123!")
 
     resp = client.patch(
         "/api/auth/me",
@@ -830,17 +852,17 @@ def test_update_email_rejects_invalid_address(client):
 
 def test_update_email_conflict_returns_409(client):
     """Setting an email already used by another account returns 409."""
-    t1 = _register_and_login(client, username="user_a", password="testpass123")
-    t2 = _register_and_login(client, username="user_b", password="testpass123")
+    t1 = _register_and_login(client, username="user_a", password="testpass123!")
+    t2 = _register_and_login(client, username="user_b", password="testpass123!")
 
     client.patch(
         "/api/auth/me",
-        json={"email": "shared@example.com"},
+        json={"email": "shared@example.com", "current_password": "testpass123!"},
         headers={"Authorization": f"Bearer {t1}"},
     )
     resp = client.patch(
         "/api/auth/me",
-        json={"email": "shared@example.com"},
+        json={"email": "shared@example.com", "current_password": "testpass123!"},
         headers={"Authorization": f"Bearer {t2}"},
     )
     assert resp.status_code == status.HTTP_409_CONFLICT
@@ -850,7 +872,7 @@ def test_update_profile_is_rate_limited(client, monkeypatch):
     """Regression test for Medium (Security): PATCH /api/auth/me had no rate
     limit, and its 409-on-conflict response otherwise lets an unthrottled
     caller enumerate registered emails/usernames."""
-    token = _register_and_login(client, username="rlpatch", password="testpass123")
+    token = _register_and_login(client, username="rlpatch", password="testpass123!")
     headers = {"Authorization": f"Bearer {token}"}
     monkeypatch.setenv("TESTING", "false")
 
@@ -881,7 +903,7 @@ def test_reset_password_with_valid_token_succeeds(client, db_session):
     from datetime import timedelta
     import secrets
 
-    token = _register_and_login(client, username="resetme", password="oldpass99")
+    token = _register_and_login(client, username="resetme", password="oldpass99!")
     headers = {"Authorization": f"Bearer {token}"}
     client.patch("/api/auth/me", json={"email": "resetme@example.com"}, headers=headers)
 
@@ -907,7 +929,7 @@ def test_reset_password_with_valid_token_succeeds(client, db_session):
     # Old password should no longer work
     assert (
         client.post(
-            "/api/auth/login", json={"username": "resetme", "password": "oldpass99"}
+            "/api/auth/login", json={"username": "resetme", "password": "oldpass99!"}
         ).status_code
         == status.HTTP_401_UNAUTHORIZED
     )
@@ -935,7 +957,7 @@ def test_reset_password_with_expired_token_returns_400(client, db_session):
     from datetime import UTC, datetime, timedelta
     import secrets
 
-    _register_and_login(client, username="expireset", password="testpass123")
+    _register_and_login(client, username="expireset", password="testpass123!")
 
     from app.models.user import User as UserModel
 
@@ -963,7 +985,7 @@ def test_reset_token_is_single_use(client, db_session):
     from datetime import UTC, datetime, timedelta
     import secrets
 
-    _register_and_login(client, username="singleuse", password="testpass123")
+    _register_and_login(client, username="singleuse", password="testpass123!")
 
     from app.models.user import User as UserModel
 
@@ -995,7 +1017,7 @@ def test_reset_token_is_single_use(client, db_session):
 
 def test_change_username_returns_updated_profile(client):
     """PATCH /api/auth/me with new_username updates the stored username."""
-    token = _register_and_login(client, username="origname", password="testpass123")
+    token = _register_and_login(client, username="origname", password="testpass123!")
     headers = {"Authorization": f"Bearer {token}"}
 
     resp = client.patch("/api/auth/me", json={"new_username": "newname"}, headers=headers)
@@ -1005,7 +1027,7 @@ def test_change_username_returns_updated_profile(client):
 
 def test_change_username_is_lowercased(client):
     """New usernames are normalized to lowercase."""
-    token = _register_and_login(client, username="casechange", password="testpass123")
+    token = _register_and_login(client, username="casechange", password="testpass123!")
     headers = {"Authorization": f"Bearer {token}"}
 
     resp = client.patch("/api/auth/me", json={"new_username": "CaseChange2"}, headers=headers)
@@ -1015,8 +1037,8 @@ def test_change_username_is_lowercased(client):
 
 def test_change_username_conflict_returns_409(client):
     """Changing to a username already taken by another account returns 409."""
-    token_a = _register_and_login(client, username="user_alpha", password="testpass123")
-    _register_and_login(client, username="user_beta", password="testpass123")
+    token_a = _register_and_login(client, username="user_alpha", password="testpass123!")
+    _register_and_login(client, username="user_beta", password="testpass123!")
 
     resp = client.patch(
         "/api/auth/me",
@@ -1028,7 +1050,7 @@ def test_change_username_conflict_returns_409(client):
 
 def test_change_username_invalid_pattern_returns_422(client):
     """Usernames with spaces or special characters are rejected with 422."""
-    token = _register_and_login(client, username="patternuser", password="testpass123")
+    token = _register_and_login(client, username="patternuser", password="testpass123!")
 
     resp = client.patch(
         "/api/auth/me",
@@ -1040,7 +1062,7 @@ def test_change_username_invalid_pattern_returns_422(client):
 
 def test_change_username_too_short_returns_422(client):
     """Usernames shorter than 3 characters are rejected with 422."""
-    token = _register_and_login(client, username="shortcheck", password="testpass123")
+    token = _register_and_login(client, username="shortcheck", password="testpass123!")
 
     resp = client.patch(
         "/api/auth/me",
@@ -1057,38 +1079,40 @@ def test_change_username_too_short_returns_422(client):
 
 def test_change_password_success(client):
     """A correct current_password lets the user set a new password."""
-    token = _register_and_login(client, username="pwchange", password="oldpass123")
+    token = _register_and_login(client, username="pwchange", password="oldpass123!")
 
     resp = client.post(
         "/api/auth/change-password",
-        json={"current_password": "oldpass123", "new_password": "newpass456"},
+        json={"current_password": "oldpass123!", "new_password": "newpass456!"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == status.HTTP_200_OK
 
     old_login = client.post(
-        "/api/auth/login", json={"username": "pwchange", "password": "oldpass123"}
+        "/api/auth/login", json={"username": "pwchange", "password": "oldpass123!"}
     )
     assert old_login.status_code == status.HTTP_401_UNAUTHORIZED
 
     new_login = client.post(
-        "/api/auth/login", json={"username": "pwchange", "password": "newpass456"}
+        "/api/auth/login", json={"username": "pwchange", "password": "newpass456!"}
     )
     assert new_login.status_code == status.HTTP_200_OK
 
 
 def test_change_password_wrong_current_password(client):
     """An incorrect current_password is rejected with 401 and the password is unchanged."""
-    token = _register_and_login(client, username="pwwrong", password="correctpass")
+    token = _register_and_login(client, username="pwwrong", password="correctpass1!")
 
     resp = client.post(
         "/api/auth/change-password",
-        json={"current_password": "wrongpass", "new_password": "newpass456"},
+        json={"current_password": "wrongpass", "new_password": "newpass456!"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == status.HTTP_401_UNAUTHORIZED
 
-    login = client.post("/api/auth/login", json={"username": "pwwrong", "password": "correctpass"})
+    login = client.post(
+        "/api/auth/login", json={"username": "pwwrong", "password": "correctpass1!"}
+    )
     assert login.status_code == status.HTTP_200_OK
 
 
@@ -1096,18 +1120,18 @@ def test_change_password_requires_authentication(client):
     """The endpoint rejects requests without a bearer token."""
     resp = client.post(
         "/api/auth/change-password",
-        json={"current_password": "a", "new_password": "newpass456"},
+        json={"current_password": "a", "new_password": "newpass456!"},
     )
     assert resp.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 def test_change_password_rejects_short_new_password(client):
     """new_password shorter than 8 characters is rejected with 422."""
-    token = _register_and_login(client, username="pwshort", password="oldpass123")
+    token = _register_and_login(client, username="pwshort", password="oldpass123!")
 
     resp = client.post(
         "/api/auth/change-password",
-        json={"current_password": "oldpass123", "new_password": "abc123"},
+        json={"current_password": "oldpass123!", "new_password": "abc123"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -1119,11 +1143,11 @@ def test_change_password_revokes_tokens_issued_before_it(client):
     kept working — which codified the exposure: changing a password is how a user
     evicts an attacker holding a stolen session, and a copied JWT stayed usable
     until it expired on its own."""
-    token = _register_and_login(client, username="pwtoken", password="oldpass123")
+    token = _register_and_login(client, username="pwtoken", password="oldpass123!")
 
     changed = client.post(
         "/api/auth/change-password",
-        json={"current_password": "oldpass123", "new_password": "newpass456"},
+        json={"current_password": "oldpass123!", "new_password": "newpass456!"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert changed.status_code == status.HTTP_200_OK
@@ -1140,12 +1164,12 @@ def test_change_password_revokes_tokens_issued_before_it(client):
 def test_change_password_keeps_the_calling_session_signed_in(client):
     """The tab doing the change gets a token on the new version, so revoking
     every other session does not sign the user out of the one they are using."""
-    _register_and_login(client, username="pwkeep", password="oldpass123")
-    client.post("/api/auth/login", json={"username": "pwkeep", "password": "oldpass123"})
+    _register_and_login(client, username="pwkeep", password="oldpass123!")
+    client.post("/api/auth/login", json={"username": "pwkeep", "password": "oldpass123!"})
 
     changed = client.post(
         "/api/auth/change-password",
-        json={"current_password": "oldpass123", "new_password": "newpass456"},
+        json={"current_password": "oldpass123!", "new_password": "newpass456!"},
         headers={CSRF_HEADER_NAME: client.cookies[CSRF_COOKIE_NAME]},
     )
     assert changed.status_code == status.HTTP_200_OK
@@ -1158,7 +1182,7 @@ def test_password_reset_revokes_tokens_issued_before_it(client, monkeypatch):
     reset must stop working, not survive until its own expiry."""
     from app.services.accounts import passwords as auth_routes
 
-    token = _register_and_login(client, username="resetrevoke", password="oldpass123")
+    token = _register_and_login(client, username="resetrevoke", password="oldpass123!")
     captured: dict[str, str] = {}
 
     def fake_send(*, to_email, reset_link):
@@ -1170,7 +1194,7 @@ def test_password_reset_revokes_tokens_issued_before_it(client, monkeypatch):
     raw_token = captured["url"].rsplit("=", 1)[-1]
     reset = client.post(
         "/api/auth/reset-password",
-        json={"token": raw_token, "new_password": "brandnewpass789"},
+        json={"token": raw_token, "new_password": "brandnewpass789!"},
     )
     assert reset.status_code == status.HTTP_200_OK
 
@@ -1181,8 +1205,8 @@ def test_password_reset_revokes_tokens_issued_before_it(client, monkeypatch):
 def test_logout_all_invalidates_every_session(client):
     """ "Sign out everywhere" must reach sessions this request knows nothing
     about, which a cookie-clearing logout cannot do."""
-    first = _register_and_login(client, username="logoutall", password="testpass123")
-    client.post("/api/auth/login", json={"username": "logoutall", "password": "testpass123"})
+    first = _register_and_login(client, username="logoutall", password="testpass123!")
+    client.post("/api/auth/login", json={"username": "logoutall", "password": "testpass123!"})
     second = client.cookies["access_token"]
     client.cookies.clear()
 
@@ -1271,13 +1295,13 @@ def test_registration_closed_allows_only_the_first_account(client, monkeypatch):
 
     first = client.post(
         "/api/auth/register",
-        json={"username": "operator", "password": "testpass123", "email": "op@example.com"},
+        json={"username": "operator", "password": "testpass123!", "email": "op@example.com"},
     )
     assert first.status_code == status.HTTP_201_CREATED
 
     second = client.post(
         "/api/auth/register",
-        json={"username": "stranger", "password": "testpass123", "email": "x@example.com"},
+        json={"username": "stranger", "password": "testpass123!", "email": "x@example.com"},
     )
     assert second.status_code == status.HTTP_403_FORBIDDEN
     assert "closed" in second.json()["detail"].lower()
@@ -1289,11 +1313,11 @@ def test_registration_defaults_to_closed(client, monkeypatch):
     monkeypatch.delenv("REGISTRATION_MODE", raising=False)
     client.post(
         "/api/auth/register",
-        json={"username": "operator", "password": "testpass123", "email": "op@example.com"},
+        json={"username": "operator", "password": "testpass123!", "email": "op@example.com"},
     )
     blocked = client.post(
         "/api/auth/register",
-        json={"username": "stranger", "password": "testpass123", "email": "x@example.com"},
+        json={"username": "stranger", "password": "testpass123!", "email": "x@example.com"},
     )
     assert blocked.status_code == status.HTTP_403_FORBIDDEN
 
@@ -1301,7 +1325,7 @@ def test_registration_defaults_to_closed(client, monkeypatch):
     assert (
         client.post(
             "/api/auth/register",
-            json={"username": "invited", "password": "testpass123", "email": "i@example.com"},
+            json={"username": "invited", "password": "testpass123!", "email": "i@example.com"},
         ).status_code
         == status.HTTP_201_CREATED
     )
@@ -1314,8 +1338,195 @@ def test_registration_open_allows_many_accounts(client, monkeypatch):
             "/api/auth/register",
             json={
                 "username": name,
-                "password": "testpass123",
+                "password": "testpass123!",
                 "email": f"{name}@example.com",
             },
         )
         assert response.status_code == status.HTTP_201_CREATED
+
+
+# ---------------------------------------------------------------------------
+# Sign-in by email, capped session renewal, email-change protection, password policy
+# ---------------------------------------------------------------------------
+
+
+def test_login_accepts_email_instead_of_username(client):
+    """The login identifier may be the account's email, matched case-insensitively."""
+    _register_and_login(client, username="emaillogin", password="testpass123!")
+
+    response = client.post(
+        "/api/auth/login",
+        json={"username": "  EmailLogin@Example.com ", "password": "testpass123!"},
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    wrong = client.post(
+        "/api/auth/login",
+        json={"username": "emaillogin@example.com", "password": "wrongpass1!"},
+    )
+    assert wrong.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_refresh_carries_auth_time_forward(client):
+    """Renewal keeps the original sign-in time so the session cap still applies."""
+    token = _register_and_login(client, username="authtime", password="testpass123!")
+    auth_time = decode_access_token(token)["auth_time"]
+
+    client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {token}"})
+
+    assert decode_access_token(client.cookies["access_token"])["auth_time"] == auth_time
+
+
+def test_refresh_is_refused_after_max_session_age(client):
+    """Activity cannot keep a session alive past MAX_SESSION_AGE after sign-in."""
+    token = _register_and_login(client, username="capped", password="testpass123!")
+    signed_in = datetime.now(UTC) - MAX_SESSION_AGE - timedelta(seconds=1)
+    stale = create_access_token(
+        subject=decode_access_token(token)["sub"], auth_time=int(signed_in.timestamp())
+    )
+
+    response = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {stale}"})
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_refresh_expiry_never_exceeds_max_session_age(client):
+    """Near the cap, a renewed session ends at the cap rather than a full lifetime later."""
+    token = _register_and_login(client, username="nearcap", password="testpass123!")
+    auth_time = int((datetime.now(UTC) - MAX_SESSION_AGE + timedelta(minutes=2)).timestamp())
+    near_cap = create_access_token(subject=decode_access_token(token)["sub"], auth_time=auth_time)
+
+    response = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {near_cap}"})
+
+    assert response.status_code == status.HTTP_200_OK
+    session_end = datetime.fromtimestamp(auth_time, UTC) + MAX_SESSION_AGE
+    expires_at = datetime.fromisoformat(response.json()["expires_at"])
+    assert expires_at <= session_end
+    assert decode_access_token(client.cookies["access_token"])["exp"] <= session_end.timestamp()
+
+
+def test_refresh_of_token_without_auth_time_uses_issue_time(client):
+    """Tokens minted before auth_time existed are capped from their own issue time."""
+    token = _register_and_login(client, username="legacycap", password="testpass123!")
+    issued = datetime.now(UTC) - MAX_SESSION_AGE - timedelta(minutes=1)
+    legacy = jwt.encode(
+        {
+            "sub": decode_access_token(token)["sub"],
+            "iat": issued,
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
+            "tv": 0,
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    response = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {legacy}"})
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_change_password_returns_renewed_session_expiry(client):
+    """The UI needs the re-issued session's expiry to keep its countdown accurate."""
+    token = _register_and_login(client, username="pwexpiry", password="oldpass123!")
+
+    resp = client.post(
+        "/api/auth/change-password",
+        json={"current_password": "oldpass123!", "new_password": "newpass456!"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == status.HTTP_200_OK
+    assert datetime.fromisoformat(resp.json()["expires_at"]) > datetime.now(UTC)
+
+
+@pytest.mark.parametrize("current_password", [None, "wrongpass1!"])
+def test_email_change_requires_current_password(client, current_password):
+    """A session alone cannot redirect the address password recovery trusts."""
+    token = _register_and_login(client, username="emailguard", password="testpass123!")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch("app.services.accounts.profile.send_email_changed_notification") as notify:
+        resp = client.patch(
+            "/api/auth/me",
+            json={"email": "attacker@example.com", "current_password": current_password},
+            headers=headers,
+        )
+
+    assert resp.status_code == status.HTTP_401_UNAUTHORIZED
+    assert client.get("/api/auth/me", headers=headers).json()["email"] == "emailguard@example.com"
+    notify.assert_not_called()
+
+
+def test_email_change_notifies_previous_address(client):
+    """A confirmed change tells the old mailbox, so a hijack does not go unnoticed."""
+    token = _register_and_login(client, username="emailnotice", password="testpass123!")
+
+    with patch("app.services.accounts.profile.send_email_changed_notification") as notify:
+        resp = client.patch(
+            "/api/auth/me",
+            json={"email": "new@example.com", "current_password": "testpass123!"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert resp.status_code == status.HTTP_200_OK
+    notify.assert_called_once_with("emailnotice@example.com", "new@example.com")
+
+
+def test_email_change_survives_notification_failure(client):
+    """The change is committed before mailing; an SMTP outage must not fail it."""
+    token = _register_and_login(client, username="emailsmtp", password="testpass123!")
+
+    with patch(
+        "app.services.accounts.profile.send_email_changed_notification",
+        side_effect=RuntimeError("SMTP down"),
+    ):
+        resp = client.patch(
+            "/api/auth/me",
+            json={"email": "moved@example.com", "current_password": "testpass123!"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert resp.status_code == status.HTTP_200_OK
+    assert resp.json()["email"] == "moved@example.com"
+
+
+def test_resubmitting_the_same_email_needs_no_password(client):
+    """Only an actual change is gated; saving the unchanged address is a no-op."""
+    token = _register_and_login(client, username="sameemail", password="testpass123!")
+
+    resp = client.patch(
+        "/api/auth/me",
+        json={"email": "SameEmail@example.com"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.parametrize(
+    ("password", "message"),
+    [
+        ("abcdef12#", "at least 10 characters"),
+        ("abcdefghij#", "at least one number"),
+        ("abcdefghij1", "at least one special character"),
+        ("abcdefghi1 ", "at least one special character"),
+    ],
+)
+def test_new_passwords_must_meet_policy(client, password, message):
+    """Registration enforces length, a number, and a non-space special character."""
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "policyuser", "password": password, "email": "policy@example.com"},
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert message in str(response.json()["detail"])
+
+
+def test_change_password_enforces_policy(client):
+    """The same rules apply when changing a password in Settings."""
+    token = _register_and_login(client, username="policychange", password="testpass123!")
+
+    resp = client.post(
+        "/api/auth/change-password",
+        json={"current_password": "testpass123!", "new_password": "nospecial123"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

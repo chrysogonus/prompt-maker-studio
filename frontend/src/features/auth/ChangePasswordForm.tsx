@@ -8,6 +8,7 @@
 
 import { useState, FormEvent } from 'react';
 import { AuthService } from '@/lib/auth';
+import { PASSWORD_HINT, passwordPolicyError } from './passwordPolicy';
 import styles from './ChangePasswordForm.module.css';
 
 export default function ChangePasswordForm() {
@@ -38,10 +39,10 @@ export default function ChangePasswordForm() {
       return;
     }
     // Pre-check with a friendly message rather than relying solely on the native
-    // minLength bubble or letting the raw backend validation string ("String
-    // should have at least 8 characters") reach the user.
-    if (newPassword.length < 8) {
-      setError('Your new password must be at least 8 characters.');
+    // minLength bubble or letting the raw backend validation string reach the user.
+    const policyError = passwordPolicyError(newPassword);
+    if (policyError) {
+      setError(policyError);
       return;
     }
     try {
@@ -49,7 +50,7 @@ export default function ChangePasswordForm() {
         current_password: currentPassword,
         new_password: newPassword,
       });
-      // No logout needed — the JWT subject (username) is unaffected by a password change.
+      // No logout needed — the server re-issues this browser's session.
       setCurrentPassword('');
       setNewPassword('');
       setIsOpen(false);
@@ -86,10 +87,10 @@ export default function ChangePasswordForm() {
         className={styles.input}
         value={newPassword}
         onChange={e => setNewPassword(e.target.value)}
-        placeholder="New password"
+        placeholder={`New password (${PASSWORD_HINT})`}
         aria-label="New password"
         aria-invalid={!!error}
-        minLength={8}
+        minLength={10}
         maxLength={72}
         required
       />
