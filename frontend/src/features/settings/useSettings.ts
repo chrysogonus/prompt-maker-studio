@@ -11,7 +11,7 @@ import { APP_SLUG, pageTitle } from '@/lib/branding';
 import { Theme, PreferenceSaveStatus, readStoredTheme } from './settingsState';
 
 export function useSettings() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, setCurrentUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [theme, setTheme] = useState<Theme>(readStoredTheme);
   const [viewSave, setViewSave] = useState<PreferenceSaveStatus | null>(null);
@@ -20,6 +20,7 @@ export function useSettings() {
   const [usernameError, setUsernameError] = useState('');
   const [showEmailEdit, setShowEmailEdit] = useState(false);
   const [newEmailValue, setNewEmailValue] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [prefsError, setPrefsError] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -78,9 +79,10 @@ export function useSettings() {
     }
     setUsernameError('');
     try {
-      await AuthService.updateProfile({ new_username: trimmed });
-      // Token subject was the old username — force re-login, same as before.
-      logout();
+      const updated = await AuthService.updateProfile({ new_username: trimmed });
+      setUser(updated);
+      setCurrentUser(updated.username);
+      setShowUsernameEdit(false);
     } catch (err) {
       setUsernameError(err instanceof Error ? err.message : 'Failed to update username.');
     }
@@ -93,10 +95,18 @@ export function useSettings() {
       setEmailError('Enter a valid email address.');
       return;
     }
+    if (!emailPassword) {
+      setEmailError('Enter your current password to change your email.');
+      return;
+    }
     setEmailError('');
     try {
-      const updated = await AuthService.updateProfile({ email: trimmed });
+      const updated = await AuthService.updateProfile({
+        email: trimmed,
+        current_password: emailPassword,
+      });
       setUser(updated);
+      setEmailPassword('');
       setShowEmailEdit(false);
     } catch (err) {
       setEmailError(err instanceof Error ? err.message : 'Failed to update email.');
@@ -191,6 +201,8 @@ export function useSettings() {
     setShowEmailEdit,
     newEmailValue,
     setNewEmailValue,
+    emailPassword,
+    setEmailPassword,
     emailError,
     setEmailError,
     prefsError,

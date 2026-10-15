@@ -16,6 +16,7 @@ from app.schemas.accounts import (
     DeleteAccountRequest,
     UserUpdate,
 )
+from app.services.email_service import send_email_changed_notification
 from app.services.errors import OperationError
 
 logger = logging.getLogger(__name__)
@@ -45,8 +46,19 @@ def _apply_preference_updates(body: UserUpdate, current_user: User) -> None:
 
 def update_profile(body: UserUpdate, current_user: User, db: Session):
     """Update the authenticated user's profile and Settings preferences."""
+    previous_email = current_user.email
     if body.email is not None:
         normalized = str(body.email).strip().lower()
+        # The email is what password recovery trusts, so a session alone must
+        # not be enough to redirect it.
+        if normalized != previous_email and not (
+            body.current_password
+            and verify_password(body.current_password, current_user.hashed_password)
+        ):
+            raise OperationError(
+                status_code=HTTPStatus.UNAUTHORIZED,
+                detail="Current password is incorrect",
+            )
         conflict = (
             db.query(User).filter(User.email == normalized, User.id != current_user.id).first()
         )
@@ -72,6 +84,12 @@ def update_profile(body: UserUpdate, current_user: User, db: Session):
     _apply_preference_updates(body, current_user)
     db.commit()
     db.refresh(current_user)
+    if previous_email and current_user.email != previous_email:
+        try:
+            send_email_changed_notification(previous_email, current_user.email)
+        except Exception:
+            # The change is already committed; a mail outage must not undo it.
+            logger.error("email_change_notice_failed")
     return current_user
 
 

@@ -121,7 +121,7 @@ describe('AuthForm — login view', () => {
     await userEvent.type(screen.getByLabelText(/^password$/i), '   ');
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Enter your username.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Enter your username or email.');
     expect(AuthService.login).not.toHaveBeenCalled();
   });
 
@@ -130,7 +130,7 @@ describe('AuthForm — login view', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Enter your username.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Enter your username or email.');
     expect(AuthService.login).not.toHaveBeenCalled();
   });
 
@@ -206,12 +206,12 @@ describe('AuthForm — register view', () => {
     await userEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     await userEvent.type(screen.getByLabelText(/username/i), 'bob');
-    await userEvent.type(screen.getByLabelText(/^password$/i), 'password99');
+    await userEvent.type(screen.getByLabelText(/^password$/i), 'password99!');
     await userEvent.type(screen.getByLabelText(/email address/i), 'bob@example.com');
     await userEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
-      expect(AuthService.register).toHaveBeenCalledWith({ username: 'bob', password: 'password99', email: 'bob@example.com' });
+      expect(AuthService.register).toHaveBeenCalledWith({ username: 'bob', password: 'password99!', email: 'bob@example.com' });
       expect(AuthService.login).toHaveBeenCalled();
       expect(mockOnSuccess).toHaveBeenCalledOnce();
     });
@@ -268,8 +268,24 @@ describe('AuthForm — validation reporting', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Username must be at least 3 characters.');
-    expect(alert).toHaveTextContent('Password must be at least 8 characters.');
+    expect(alert).toHaveTextContent('Password must be at least 10 characters.');
     expect(alert).toHaveTextContent('Enter a valid email address.');
+    expect(AuthService.register).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['password!!!', 'Password must contain at least one number.'],
+    ['password999', 'Password must contain at least one special character, such as $ or #.'],
+  ])('rejects the register password %s before calling the API', async (password, message) => {
+    render(<AuthForm onSuccess={mockOnSuccess} />);
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await userEvent.type(screen.getByLabelText(/username/i), 'bob');
+    await userEvent.type(screen.getByLabelText(/^password$/i), password);
+    await userEvent.type(screen.getByLabelText(/email/i), 'bob@example.com');
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
     expect(AuthService.register).not.toHaveBeenCalled();
   });
 
@@ -279,7 +295,7 @@ describe('AuthForm — validation reporting', () => {
 
     const username = await screen.findByLabelText(/username/i);
     expect(username).toHaveAttribute('aria-invalid', 'true');
-    expect(username).toHaveAccessibleDescription('Enter your username.');
+    expect(username).toHaveAccessibleDescription('Enter your username or email.');
     // Focus lands on the first offending field so a keyboard user is taken there.
     expect(username).toHaveFocus();
   });

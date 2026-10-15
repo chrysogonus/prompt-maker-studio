@@ -87,7 +87,7 @@ def test_current_snapshots_follow_account_deletion(client, auth_headers, monkeyp
     assert sample(metrics.accounts_current, "current") == 1
     assert sample(metrics.prompts_current, "current") == 1
     response = client.request(
-        "DELETE", "/api/auth/me", headers=auth_headers, json={"current_password": "testpass123"}
+        "DELETE", "/api/auth/me", headers=auth_headers, json={"current_password": "testpass123!"}
     )
     assert response.status_code == 204
     monkeypatch.setattr(metrics, "_snapshot_last_attempt", 0)

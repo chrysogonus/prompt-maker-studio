@@ -18,6 +18,8 @@ type Props = Pick<
   | 'setShowEmailEdit'
   | 'newEmailValue'
   | 'setNewEmailValue'
+  | 'emailPassword'
+  | 'setEmailPassword'
   | 'emailError'
   | 'setEmailError'
   | 'handleUsernameChange'
@@ -37,6 +39,8 @@ export function ProfileSettings({
   setShowEmailEdit,
   newEmailValue,
   setNewEmailValue,
+  emailPassword,
+  setEmailPassword,
   emailError,
   setEmailError,
   handleUsernameChange,
@@ -84,7 +88,6 @@ export function ProfileSettings({
             <Button type="button" variant="ghost" onClick={() => setShowUsernameEdit(false)}>
               Cancel
             </Button>
-            <p className={styles.hint}>Changing your username signs you out.</p>
           </form>
         )}
         {usernameError && <div className={styles.error} role="alert">{usernameError}</div>}
@@ -99,6 +102,7 @@ export function ProfileSettings({
               variant="secondary"
               onClick={() => {
                 setNewEmailValue(user?.email ?? '');
+                setEmailPassword('');
                 setShowEmailEdit(true);
                 setEmailError('');
               }}
@@ -117,6 +121,15 @@ export function ProfileSettings({
               placeholder="you@example.com"
               required
               autoFocus
+            />
+            <Input
+              type="password"
+              value={emailPassword}
+              onChange={(e) => setEmailPassword(e.target.value)}
+              aria-label="Current password"
+              placeholder="Current password"
+              autoComplete="current-password"
+              required
             />
             <Button type="submit" variant="primary">
               Save

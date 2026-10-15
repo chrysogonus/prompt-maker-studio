@@ -12,6 +12,7 @@ import pytest
 from app.services.email_service import (
     check_smtp_connection,
     redact_email,
+    send_email_changed_notification,
     send_password_reset_email,
 )
 
@@ -247,3 +248,23 @@ class TestSmtpTlsVerification:
             send_password_reset_email(to_email="user@example.com", reset_link="https://x/y")
 
         server.sendmail.assert_not_called()
+
+
+class TestSendEmailChangedNotification:
+    """Tests for send_email_changed_notification."""
+
+    def test_notifies_old_address_with_new_address_redacted(self):
+        mock_server = MagicMock()
+        with (
+            patch.dict(os.environ, TestSendPasswordResetEmail._SMTP_ENV, clear=False),
+            patch("smtplib.SMTP") as mock_smtp_cls,
+        ):
+            mock_smtp_cls.return_value.__enter__ = lambda _: mock_server
+            mock_smtp_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+            send_email_changed_notification("old@example.com", "newaddress@example.org")
+
+        _from, to, message = mock_server.sendmail.call_args[0]
+        assert to == "old@example.com"
+        assert "n***@example.org" in message
+        assert "newaddress@example.org" not in message

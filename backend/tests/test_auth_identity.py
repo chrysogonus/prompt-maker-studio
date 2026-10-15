@@ -26,12 +26,12 @@ from app.services.oauth_provider import (
 def _account(client, username="original", email="original@example.com"):
     response = client.post(
         "/api/auth/register",
-        json={"username": username, "email": email, "password": "password123"},
+        json={"username": username, "email": email, "password": "password123!"},
     )
     assert response.status_code == 201
     assert (
         client.post(
-            "/api/auth/login", json={"username": username, "password": "password123"}
+            "/api/auth/login", json={"username": username, "password": "password123!"}
         ).status_code
         == 200
     )
@@ -59,7 +59,7 @@ def test_tokens_never_authenticate_a_replacement_account(
     else:
         assert (
             client.request(
-                "DELETE", "/api/auth/me", json={"current_password": "password123"}, headers=headers
+                "DELETE", "/api/auth/me", json={"current_password": "password123!"}, headers=headers
             ).status_code
             == 204
         )
@@ -112,7 +112,7 @@ def test_password_verification_rejects_inputs_over_72_bytes(password, prefix):
     [
         (UserCreate, {"username": "user", "email": "user@example.com", "password": "é" * 37}),
         (ResetPasswordRequest, {"token": "token", "new_password": "é" * 37}),
-        (ChangePasswordRequest, {"current_password": "password123", "new_password": "é" * 37}),
+        (ChangePasswordRequest, {"current_password": "password123!", "new_password": "é" * 37}),
     ],
 )
 def test_new_password_schemas_enforce_bcrypt_byte_limit(schema, values):
@@ -139,7 +139,7 @@ def test_overlength_existing_passwords_are_rejected_without_server_errors(client
         response = client.post(
             "/api/auth/change-password",
             headers=headers,
-            json={"current_password": password, "new_password": "password456"},
+            json={"current_password": password, "new_password": "password456!"},
         )
     assert response.status_code == 401
 
@@ -147,12 +147,12 @@ def test_overlength_existing_passwords_are_rejected_without_server_errors(client
 def test_unicode_password_at_72_bytes_can_register_and_login(client):
     response = client.post(
         "/api/auth/register",
-        json={"username": "unicode", "email": "unicode@example.com", "password": "é" * 36},
+        json={"username": "unicode", "email": "unicode@example.com", "password": "é" * 35 + "1!"},
     )
     assert response.status_code == 201
     assert (
         client.post(
-            "/api/auth/login", json={"username": "unicode", "password": "é" * 36}
+            "/api/auth/login", json={"username": "unicode", "password": "é" * 35 + "1!"}
         ).status_code
         == 200
     )
@@ -162,11 +162,11 @@ def test_duplicate_registration_does_not_disclose_the_conflicting_field(client):
     _account(client)
     username_conflict = client.post(
         "/api/auth/register",
-        json={"username": "original", "email": "new@example.com", "password": "password123"},
+        json={"username": "original", "email": "new@example.com", "password": "password123!"},
     )
     email_conflict = client.post(
         "/api/auth/register",
-        json={"username": "different", "email": "original@example.com", "password": "password123"},
+        json={"username": "different", "email": "original@example.com", "password": "password123!"},
     )
     assert username_conflict.status_code == email_conflict.status_code == 400
     assert username_conflict.json() == email_conflict.json()
@@ -182,7 +182,7 @@ def test_unknown_username_performs_bcrypt_verification(client, monkeypatch):
 
     monkeypatch.setattr(bcrypt, "checkpw", record_check)
     response = client.post(
-        "/api/auth/login", json={"username": "unknown", "password": "password123"}
+        "/api/auth/login", json={"username": "unknown", "password": "password123!"}
     )
     assert response.status_code == 401
-    assert checked == [b"password123"]
+    assert checked == [b"password123!"]

@@ -183,13 +183,13 @@ def _register_and_connect(client, username: str, password: str, email: str) -> d
 @pytest.fixture
 def auth_headers(client):
     """Get authentication headers for the primary test user."""
-    return _register_and_connect(client, "testuser", "testpass123", "testuser@example.com")
+    return _register_and_connect(client, "testuser", "testpass123!", "testuser@example.com")
 
 
 @pytest.fixture
 def second_auth_headers(client):
     """Get authentication headers for a second, distinct test user."""
-    return _register_and_connect(client, "otheruser", "otherpass123", "otheruser@example.com")
+    return _register_and_connect(client, "otheruser", "otherpass123!", "otheruser@example.com")
 
 
 def make_connection(create, provider_handle: str = TEST_LLM_PROVIDER, model: str = TEST_LLM_MODEL):

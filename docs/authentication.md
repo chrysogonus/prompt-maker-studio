@@ -8,9 +8,12 @@ signed with HS256 through PyJWT and expire after the configured number of minute
 
 The `users` table stores `id`, immutable UUID `auth_subject`, normalized `username`, `hashed_password`,
 `email`, password-reset token fields, and `created_at`. Registration requires
-a unique username, password (at least 8 characters and at most 72 UTF-8 bytes),
-and valid email address. Registration, password changes, and resets apply the
-same byte limit; multibyte characters count toward bcrypt's 72-byte limit.
+a unique username, password, and valid email address. Registration, password
+changes, and resets apply the same policy: at least 10 characters, at least one
+number, at least one special character (anything other than a letter, digit, or
+whitespace), and at most 72 UTF-8 bytes; multibyte characters count toward
+bcrypt's 72-byte limit. Login does not apply the policy, so older passwords keep
+working until they are changed.
 Overlength passwords submitted for verification are rejected safely.
 
 ## Authentication Endpoints
@@ -19,9 +22,9 @@ Overlength passwords submitted for verification are rejected safely.
 |---|---|---|---|
 | POST | `/api/auth/register` | No | Create an account (201) |
 | POST | `/api/auth/login` | No | Return a JWT access token |
-| POST | `/api/auth/refresh` | Yes | Renew a still-valid JWT before a long operation |
+| POST | `/api/auth/refresh` | Yes | Renew a still-valid JWT while the user is active |
 | GET | `/api/auth/me` | Yes | Return the current profile |
-| PATCH | `/api/auth/me` | Yes | Update email and/or username |
+| PATCH | `/api/auth/me` | Yes | Update username, or email (requires `current_password`) |
 | DELETE | `/api/auth/me` | Yes | Delete account and owned prompts |
 | POST | `/api/auth/change-password` | Yes | Verify current password and set a new one |
 | POST | `/api/auth/forgot-password` | No | Request a password-reset email |
@@ -35,7 +38,7 @@ Content-Type: application/json
 
 {
   "username": "johndoe",
-  "password": "securepassword123",
+  "password": "secure-password123",
   "email": "john@example.com"
 }
 ```
@@ -43,8 +46,10 @@ Content-Type: application/json
 The response contains `id`, `username`, `email`, and `created_at`.
 Usernames are normalized with `.strip().lower()` during registration and login.
 Duplicate usernames and emails receive the same generic conflict response.
-Failed logins check a dummy bcrypt hash for unknown usernames to reduce timing
-differences from existing accounts.
+The login `username` field accepts either the username or the account email:
+an identifier containing `@` is matched against the email, since usernames
+cannot contain one. Failed logins check a dummy bcrypt hash for unknown
+accounts to reduce timing differences from existing accounts.
 
 ### Sessions
 
@@ -68,6 +73,13 @@ stolen browser session must not be sufficient on its own — the Settings flow
 used to need only two clicks. A wrong password returns 401 and changes nothing;
 on success the session cookies are cleared so the browser is not left holding a
 session for an account that no longer exists.
+
+Changing the email through `PATCH /api/auth/me` also requires `current_password`,
+because the email is what password recovery trusts: a stolen session must not be
+able to redirect it. Resubmitting the unchanged address needs no password. After
+a change, the previous address receives a notice naming the new one in redacted
+form; a delivery failure is logged and does not undo the change. Renaming does
+not end the session, because tokens identify the account by `auth_subject`.
 
 ### Token identity
 
@@ -116,10 +128,19 @@ the header.
 Invalid, expired, or userless tokens return 401. Requests with neither a
 session cookie nor a bearer credential are rejected the same way.
 
-The frontend renews a still-valid session before a delayed prompt deletion, and
-retries an authenticated request once after a 401 — rebuilding headers per
-attempt, because a refresh rotates the CSRF token. An
-expired session cannot be refreshed and still requires login.
+While the user is active (keyboard or pointer input), the frontend renews the
+session at most once every five minutes, so working users stay signed in and an
+idle tab still expires after `ACCESS_TOKEN_EXPIRE_MINUTES`. It also renews a
+still-valid session before a delayed prompt deletion, and retries an
+authenticated request once after a 401 — rebuilding headers per attempt,
+because a refresh rotates the CSRF token. An expired session cannot be
+refreshed and still requires login.
+
+Each token carries an `auth_time` claim: when the user last entered their
+password (login or password change). Refreshes carry it forward and never
+extend a session more than 12 hours (`MAX_SESSION_AGE`) past it; after that
+`/api/auth/refresh` returns 401 and the user signs in again. Tokens issued before
+the claim existed fall back to their `iat`.
 
 ## Prompt Access
 

@@ -11,7 +11,7 @@ from fastapi import status
 from app.auth.cookies import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 
 
-def _register_and_login(client, username="cookieuser", password="testpass123"):
+def _register_and_login(client, username="cookieuser", password="testpass123!"):
     """Log in and leave the resulting cookies in the client's jar."""
     client.post(
         "/api/auth/register",
