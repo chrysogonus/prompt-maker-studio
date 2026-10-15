@@ -289,9 +289,10 @@ release also removes endpoints and the weekly-summary job.
 
 1. Back up first (`make backup-db`) and copy the backup off the host.
 2. Rehearse on a copy: restore that backup into a throwaway stack, start the new
-   release against it, and check the backend log for `Applied database
-   migration 023_…`, `024_…` and `025_…`, then spot-check a few hand-edited
-   prompts, the Recovered history folder, current/historical notes and exports.
+   release against it, and check backend JSON logs for `migration_applied`
+   events with versions `023_…`, `024_…` and `025_…`, then spot-check a few
+   hand-edited prompts, the Recovered history folder, current/historical notes
+   and exports.
    Restart the throwaway backend and confirm the migrations do not run again.
    Use an isolated stack and copied volume; never point a rehearsal at the live
    database. Do not copy credentials into release notes or logs.
@@ -308,6 +309,42 @@ API clients of the removed endpoints (`/api/prompts/generate`,
 `/api/prompts/history`, `/api/prompts/tags`, the Playground endpoints, and
 `/api/analytics/dashboard`) stop working; MCP clients should refresh their tool
 schemas (see [mcp.md](./mcp.md#contract-changes-in-030)).
+
+### Upgrading to 0.5.0
+
+0.5.0 is in preparation; publish and approve deployment before using its image
+tag. See the [release preparation](releases/0.5.0.md) for validation and remaining
+gates. Upgrades from before 0.3.0 must also follow the earlier recovery checklist.
+
+1. Back up with the updated scripts, verify the archive and copy it off-host.
+   Rehearse on an isolated backup copy before touching the live database.
+2. Update Compose, `scripts/` and `monitoring/` with the release. Grafana mounts
+   `scripts/grafana-entrypoint.sh` and refuses an empty or published placeholder
+   `GRAFANA_ADMIN_PASSWORD`. Review private provider access: user-supplied local
+   Ollama/vLLM URLs require deliberate `ALLOW_PRIVATE_LLM_URLS=true`; trusted
+   operator server defaults remain supported without that opt-in.
+3. Start the rehearsal backend and confirm a `migration_applied` JSON event for
+   `026_user_auth_subject` and `027_oauth_grants`. Restart it and confirm neither
+   version is applied again. Check existing accounts, saved prompts, version
+   notes and evaluations.
+   The migration runs through backend startup; do not execute reference SQL.
+4. Sign in again and reauthorize MCP OAuth clients using their existing
+   registrations. Old username-subject sessions and OAuth credentials without
+   grant versions are rejected; pending OAuth codes and refresh tokens are
+   cleared. Legacy passwords over 72 UTF-8 bytes need a password reset; verify
+   the reset-email flow if any account is affected.
+5. Verify provider connection tests, Try once and evaluation results using an
+   approved provider/model. Local CI mocks AI calls; live calls may incur charges.
+   Update API clients to page evaluation history beyond the default 50 runs.
+6. Update custom metric queries and log parsers for the `pms_*` metrics and JSON
+   events. If monitoring is enabled, verify its three provisioned dashboards and
+   snapshot freshness as described in [monitoring](monitoring.md).
+
+Migration 020's note-schema fix applies to upgrades crossing both 020 and 025.
+It does not reconstruct already damaged note history; review
+that against a verified backup before changing those records. Migrations remain
+forward-only; rehearse the restore procedure below and agree the data-loss window
+before deployment approval.
 
 ### Roll back a deployment:
 
@@ -350,8 +387,8 @@ After each run the worker deletes scheduled backups older than
 `BACKUP_RETENTION_DAYS` (default 14), so deleted user data does not live on
 indefinitely in old backups. If your privacy policy states a retention period,
 keep the two in sync. Container logs are capped at 3 × 10 MB per service in
-`docker-compose.yml` for the same reason: the backend's access log contains
-client IP addresses.
+`docker-compose.yml`; backend JSON logs exclude client IP addresses and request
+content. See [monitoring](monitoring.md#logs-and-validation) for retained fields.
 
 ### Restore database:
 

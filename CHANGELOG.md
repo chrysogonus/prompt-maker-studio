@@ -10,6 +10,95 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Planned for **0.5.0**: application observability and security, reliability and
+accessibility fixes. See the [release preparation](./docs/releases/0.5.0.md)
+and read **Upgrade notes** before deploying. Publication is pending.
+
+### Upgrade notes
+
+- Back up and rehearse the upgrade on an isolated copy. Startup migration
+  `026_user_auth_subject` assigns immutable UUID identities to existing accounts.
+  Users must sign in again. Migration `027_oauth_grants` invalidates legacy OAuth
+  codes and tokens; MCP OAuth clients must reauthorize using their existing
+  registrations.
+- New passwords are limited to 72 UTF-8 bytes. Legacy passwords over that limit
+  are rejected safely during verification and need a password reset.
+- Private URLs for user-configured Ollama/vLLM connections now follow the same
+  policy as custom URLs. Use an operator-managed server default for a trusted
+  local provider, or deliberately enable `ALLOW_PRIVATE_LLM_URLS=true`.
+  Public-only connections disable redirects and environment proxies.
+- Update Compose, scripts and monitoring provisioning files together. Grafana
+  now needs `scripts/grafana-entrypoint.sh` and refuses an empty or published
+  placeholder admin password. Backend logs are JSON; custom log parsers and
+  queries using the old application counters need updating.
+- Evaluation history now defaults to 50 runs. API clients needing older runs
+  must page with `limit` (maximum 100) and `offset`.
+- The provider SDK now uses HTTPX2 and the operating-system CA trust store.
+  Deployments with custom provider CAs should install them in that trust store;
+  TLS hostname verification and the public-IP transport protections remain enabled.
+
+### Added
+
+- Optional App Overview, AI & Evaluation and API Health Grafana dashboards,
+  provisioned alerts and Prometheus rules for application operations, provider
+  attempts, evaluation outcomes and current database totals. See
+  [monitoring](./docs/monitoring.md) for event meanings and retention limits.
+- Structured backend logs with request IDs, bounded operation/error fields,
+  migration progress and server lifecycle events, excluding sensitive request
+  content, IP addresses and provider error text.
+- `make monitoring-check` validates Prometheus syntax and semantic fixtures in
+  local CI and the required GitHub Compose validation job.
+
+### Changed
+
+- Application telemetry uses `pms_*` metrics in place of the previous signup,
+  login, prompt-save, AI-import and password-reset-email counters. REST and MCP
+  mutations share an operation boundary; provider attempts remain separate.
+- Release images are uploaded without release tags, scanned by immutable digest,
+  then promoted to release tags with their provenance and SBOM intact.
+- Include the frontend, backend and backend-major Dependabot update groups:
+  Next.js/ESLint 16.4.1, OpenAI SDK 3.13.0, SQLAlchemy 2.1.3 and updated test,
+  audit and dependency tooling. The custom provider transport moves to HTTPX2,
+  retaining DNS/IP pinning, redirect restrictions and TLS identity checks.
+
+### Fixed
+
+- OAuth client revocation immediately blocks existing MCP access tokens and
+  invalidates pending codes and refresh tokens for that account/client pair.
+  Global sign-out, password changes and resets reject earlier pending approvals
+  and in-flight refresh exchanges. Token issuance preserves the validated
+  account version, and overlapping revocations advance it atomically. Delayed
+  client revocation cannot disconnect reauthorized clients or replacement accounts.
+- Session and MCP tokens cannot follow reused usernames or numeric account IDs.
+  Registration uses a generic duplicate-account response, unknown-user login
+  checks a dummy bcrypt hash, and insecure signing keys are rejected before
+  database initialization.
+- Public provider connections validate DNS answers for each request and connect
+  to those exact public IPs while preserving TLS hostname verification.
+- Failed AI parsing, validation and retry attempts retain reported spend;
+  successful retries are billed once. Evaluation workers retain completed usage
+  and defer database writes until provider work finishes. Non-finite judge
+  scores are handled as failed judgments.
+- Pricing refreshes no longer block concurrent callers behind the network lock;
+  failed refreshes back off while stale/fallback pricing remains available.
+- Backups publish private archives atomically. Restores preserve ownership and
+  permissions, retain committed WAL data in the pre-restore snapshot, reject
+  active database users and prevent stale WAL replay.
+- Migration 020 preserves the legacy note schema so migration 025 backfills it
+  on upgrades crossing both steps. Previously damaged note history still needs
+  review against a verified backup.
+- Transient session-check failures can be retried. API validation errors display
+  readable messages; saving remains successful when a later history refresh
+  fails; evaluation history stays usable when AI configuration loading fails.
+- Evaluation history loads in pages, the mobile sidebar traps/restores focus
+  and excludes closed content from navigation, success feedback is announced,
+  and oversized section content is rejected inline before saving.
+- Buttons changing variants no longer briefly pair the previous background
+  with the new text color, fixing a contrast failure caught by the updated
+  accessibility checker.
+- Local scans and Compose validation work in linked worktrees without opening
+  the operator environment file; one-off SQLite and Trivy images are pinned.
+
 ## [0.4.0] - 2026-10-14
 
 0.4.0: a public landing page, so search engines and new visitors see what

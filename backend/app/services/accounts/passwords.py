@@ -89,7 +89,7 @@ def reset_password(body: ResetPasswordRequest, db: Session):
     # Recovering an account has to evict whoever prompted the recovery. Without
     # this, a stolen session stays usable for the rest of its lifetime and the
     # reset accomplishes nothing against an attacker who already has one.
-    user.token_version = (user.token_version or 0) + 1
+    user.token_version = User.token_version + 1
     db.commit()
 
     return {"message": "Password updated successfully."}

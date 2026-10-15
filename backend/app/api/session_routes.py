@@ -155,6 +155,6 @@ def logout_everywhere(
     authentication, so a session copied to another machine stops working
     immediately rather than at its own expiry.
     """
-    current_user.token_version = (current_user.token_version or 0) + 1
+    current_user.token_version = User.token_version + 1
     db.commit()
     clear_session(response)

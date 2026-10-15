@@ -14,6 +14,7 @@ from app.auth.utils import (
     get_password_hash,
     verify_password,
 )
+from app.models.oauth import OAuthClient, OAuthGrant
 from app.models.user import User
 from app.schemas.accounts import ChangePasswordRequest, ResetPasswordRequest, UserCreate
 from app.services.oauth_provider import (
@@ -40,6 +41,13 @@ def _account(client, username="original", email="original@example.com"):
     return response.json()["id"], token
 
 
+def _mcp_token(db, user):
+    db.add(OAuthClient(client_id="client", client_info="{}"))
+    db.add(OAuthGrant(user_id=user.id, client_id="client", version=0))
+    db.commit()
+    return create_mcp_access_token(user, "client", 0)
+
+
 @pytest.mark.parametrize("transport", ["session", "mcp"])
 @pytest.mark.parametrize("replacement", ["rename", "delete"])
 def test_tokens_never_authenticate_a_replacement_account(
@@ -47,7 +55,7 @@ def test_tokens_never_authenticate_a_replacement_account(
 ):
     user_id, session = _account(client)
     user = db_session.get(User, user_id)
-    token = session if transport == "session" else create_mcp_access_token(user, "client")
+    token = session if transport == "session" else _mcp_token(db_session, user)
     headers = {"Authorization": f"Bearer {session}"}
     if replacement == "rename":
         assert (
@@ -89,7 +97,7 @@ def test_legacy_username_subjects_require_reauthentication(client, db_session, t
         token = create_access_token(user.username)
         assert user_from_token(token, db_session) is None
     else:
-        token = create_mcp_access_token(user, "client")
+        token = _mcp_token(db_session, user)
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], audience=RESOURCE_URL)
         payload["sub"] = user.username
         legacy = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)

@@ -40,6 +40,7 @@ export function useEvaluation(promptId: number) {
   useEffect(() => {
     let active = true;
     historyGeneration.current += 1;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset history loading when the active prompt changes.
     setLoading(true);
     setLoadError('');
     if (!isValidPromptId(promptId)) {

@@ -50,6 +50,7 @@ export function useLibrary() {
   }, [loadLibrary, refreshLibrary]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load updates state after awaiting the library request.
     void load();
     AuthService.getCurrentUser()
       .then((user) => user.default_library_view && setLayout(user.default_library_view))

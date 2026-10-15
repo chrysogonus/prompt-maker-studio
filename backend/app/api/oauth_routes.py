@@ -22,6 +22,7 @@ from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from app.api.deps import call_service
 from app.auth.dependencies import get_current_user
 from app.database.connection import get_db
 from app.limiter import _rate_limit_key, limiter
@@ -164,5 +165,7 @@ def decide_consent(
     """
     pending, _ = _pending_request(body.request, db)
     if body.approve:
-        return ConsentResult(redirect_url=approve_authorization(db, pending, current_user))
+        return ConsentResult(
+            redirect_url=call_service(approve_authorization, db, pending, current_user)
+        )
     return ConsentResult(redirect_url=deny_authorization(pending))

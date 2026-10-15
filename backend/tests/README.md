@@ -36,6 +36,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_migrations.py` | SQLite migration upgrades and idempotency |
 | `test_models.py` | User and prompt ORM models |
 | `test_oauth.py` | OAuth account linking for MCP clients: discovery metadata, dynamic registration and its redirect-host allowlist, consent approve/deny, PKCE, single-use codes, audience-bound access tokens rejected by the REST API, refresh-token rotation, revocation, the `offline_access` scope, rate limits on registration/token/consent, and disconnection on sign-out-everywhere or account deletion |
+| `test_oauth_revocation.py` | Client-specific access/refresh/code revocation, stale approvals after sign-out/password recovery, concurrent exchanges, atomic account-version increments, legacy tokens, and delayed revocation across reauthorization or account ID reuse |
 | `test_optimistic_concurrency.py` | Conflict detection for concurrent prompt writes: `updated_at` advances even when the wall clock steps backwards or two writes land in one instant, and any difference from the client's token is a conflict (no tolerance window to lose an update in) |
 | `test_playground.py` | Template variable compilation and PlaygroundService cost/latency math (the service evaluations run prompts through) |
 | `test_prompt_parser.py` | Text-to-fields parser service (including non-strict-schema providers and fenced JSON) and the parse-text endpoint |

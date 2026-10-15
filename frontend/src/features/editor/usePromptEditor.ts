@@ -170,6 +170,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     const draft = readDraft(draftKey);
     const starter = STARTER_TEMPLATES.find((template) => template.id === initialStarter);
     if (draft) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Browser-only draft hydration must run after mount.
       setSections(toEditorSections(draft.sections, true));
       setMetadata(draft.metadata);
       setNote(draft.note ?? '');

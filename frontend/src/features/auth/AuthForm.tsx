@@ -39,11 +39,10 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [sessionNotice] = useState(() => AuthService.getSessionExpiry?.()?.reason ?? '');
 
-  const inputRefs = {
-    username: useRef<HTMLInputElement>(null),
-    password: useRef<HTMLInputElement>(null),
-    email: useRef<HTMLInputElement>(null),
-  };
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const inputRefs = { username: usernameRef, password: passwordRef, email: emailRef };
 
   const switchView = (next: View) => {
     setView(next);
@@ -171,7 +170,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
             </label>
             <input
               id="email"
-              ref={inputRefs.email}
+              ref={emailRef}
               type="email"
               value={email}
               onChange={(e) => {
@@ -230,7 +229,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           </label>
           <input
             id="username"
-            ref={inputRefs.username}
+            ref={usernameRef}
             type="text"
             value={username}
             onChange={(e) => {
@@ -259,7 +258,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           <div className={styles.passwordWrap}>
             <input
               id="password"
-              ref={inputRefs.password}
+              ref={passwordRef}
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => {
@@ -298,7 +297,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
             </label>
             <input
               id="reg-email"
-              ref={inputRefs.email}
+              ref={emailRef}
               type="email"
               value={email}
               onChange={(e) => {

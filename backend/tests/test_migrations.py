@@ -148,6 +148,7 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
             "024_recover_unnamed_prompts",
             "025_version_notes",
             "026_user_auth_subject",
+            "027_oauth_grants",
         }
         assert "updated_at" in _columns(connection, "prompts")
         assert _table_exists(connection, "prompt_versions")
@@ -303,7 +304,7 @@ def test_run_migrations_is_idempotent_on_current_database(tmp_path):
 
     with engine.connect() as connection:
         versions = connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
-        assert len(versions) == 26
+        assert len(versions) == 27
         assert {
             "fields",
             "user_id",
@@ -711,3 +712,45 @@ def test_user_auth_subject_migration_backfills_unique_stable_subjects(tmp_path):
                 text("UPDATE users SET auth_subject = :subject WHERE id = 2"),
                 {"subject": subjects[0]},
             )
+
+
+def test_oauth_revocation_migration_invalidates_legacy_credentials_and_is_idempotent(tmp_path):
+    from app.database.migrations.v027_oauth_grants import _migration_027_oauth_grants
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'oauth-upgrade.db'}")
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE users (id INTEGER PRIMARY KEY)"))
+        connection.execute(text("CREATE TABLE oauth_clients (client_id VARCHAR(64) PRIMARY KEY)"))
+        connection.execute(
+            text("CREATE TABLE oauth_authorization_codes (code_hash TEXT PRIMARY KEY)")
+        )
+        connection.execute(text("CREATE TABLE oauth_refresh_tokens (token_hash TEXT PRIMARY KEY)"))
+        connection.execute(text("INSERT INTO oauth_authorization_codes VALUES ('old-code')"))
+        connection.execute(text("INSERT INTO oauth_refresh_tokens VALUES ('old-refresh')"))
+        _migration_027_oauth_grants(connection)
+        assert _table_exists(connection, "oauth_grants")
+        assert {"token_version", "grant_version"} <= _columns(
+            connection, "oauth_authorization_codes"
+        )
+        assert "grant_version" in _columns(connection, "oauth_refresh_tokens")
+        assert (
+            connection.execute(text("SELECT COUNT(*) FROM oauth_authorization_codes")).scalar() == 0
+        )
+        assert connection.execute(text("SELECT COUNT(*) FROM oauth_refresh_tokens")).scalar() == 0
+        connection.execute(
+            text(
+                "INSERT INTO oauth_authorization_codes (code_hash, token_version, grant_version) "
+                "VALUES ('new-code', 0, 0)"
+            )
+        )
+        connection.execute(text("INSERT INTO oauth_refresh_tokens VALUES ('new-refresh', 0)"))
+        _migration_027_oauth_grants(connection)
+        assert (
+            connection.execute(text("SELECT code_hash FROM oauth_authorization_codes")).scalar()
+            == "new-code"
+        )
+        assert (
+            connection.execute(text("SELECT token_hash FROM oauth_refresh_tokens")).scalar()
+            == "new-refresh"
+        )
+    engine.dispose()

@@ -31,7 +31,7 @@ from openai import (
     APITimeoutError,
     AuthenticationError,
     BadRequestError,
-    DefaultHttpxClient,
+    DefaultHttpx2Client,
     NotFoundError,
     OpenAI,
     OpenAIError,
@@ -268,7 +268,7 @@ def _build_connection(
     provider: Provider, model: str, base_url: str, api_key: str, *, trusted: bool = False
 ) -> LLMConnection:
     public_only = not trusted and not private_llm_urls_allowed()
-    http_client = DefaultHttpxClient(
+    http_client = DefaultHttpx2Client(
         follow_redirects=not public_only,
         trust_env=not public_only,
         **({"transport": PublicLLMTransport(trust_env=False)} if public_only else {}),

@@ -25,13 +25,11 @@ accurate for it.
 | certifi | 2026.7.22 | MPL-2.0 |
 | cffi | 2.1.0 | MIT-0 |
 | click | 8.4.2 | BSD-3-Clause |
-| cryptography | 50.0.0 | Apache-2.0 OR BSD-3-Clause |
+| cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause |
 | Deprecated | 1.3.1 | MIT |
-| distro | 1.9.0 | Apache-2.0 |
 | dnspython | 2.8.0 | ISC |
 | email-validator | 2.3.0 | Unlicense |
-| fastapi | 0.140.0 | MIT |
-| greenlet | 3.5.4 | MIT AND PSF-2.0 |
+| fastapi | 0.142.2 | MIT |
 | h11 | 0.16.0 | MIT |
 | httpcore | 1.0.9 | BSD-3-Clause |
 | httpcore2 | 2.13.1 | BSD-3-Clause |
@@ -44,35 +42,32 @@ accurate for it.
 | limits | 5.8.0 | MIT |
 | mcp | 2.3.0 | MIT |
 | mcp-types | 2.3.0 | MIT |
-| msgpack | 1.2.1 | Apache-2.0 |
-| openai | 2.48.0 | Apache-2.0 |
+| msgpack | 1.2.3 | Apache-2.0 |
+| openai | 3.13.0 | Apache-2.0 |
 | opentelemetry-api | 1.45.0 | Apache-2.0 |
 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause |
 | prometheus-fastapi-instrumentator | 8.1.0 | ISC |
 | prometheus_client | 0.26.0 | Apache-2.0 AND BSD-2-Clause |
 | pycparser | 3.0 | BSD-3-Clause |
-| pydantic | 2.13.4 | MIT |
-| pydantic_core | 2.46.4 | MIT |
+| pydantic | 2.13.5 | MIT |
+| pydantic_core | 2.46.5 | MIT |
 | PyJWT | 2.15.1 | MIT |
 | python-multipart | 0.0.32 | Apache-2.0 |
 | referencing | 0.37.0 | MIT |
 | rpds-py | 2026.9.1 | MIT |
-| slowapi | 0.1.9 | MIT |
+| slowapi | 0.1.10 | MIT |
 | sniffio | 1.3.1 | MIT OR Apache-2.0 |
-| SQLAlchemy | 2.0.51 | MIT |
+| SQLAlchemy | 2.1.3 | MIT |
 | sse-starlette | 3.5.0 | BSD-3-Clause |
-| starlette | 1.3.1 | BSD-3-Clause |
-| tqdm | 4.69.1 | MPL-2.0 AND MIT |
+| starlette | 1.7.0 | BSD-3-Clause |
 | truststore | 0.10.4 | MIT |
 | typing-inspection | 0.4.2 | MIT |
 | typing_extensions | 4.16.0 | PSF-2.0 |
 | uvicorn | 0.54.0 | BSD-3-Clause |
 | wrapt | 2.2.2 | BSD-2-Clause |
 
-The MPL-covered `certifi` and `tqdm` files are shipped unmodified. Their source
-and license information are available from
-[certifi](https://github.com/certifi/python-certifi) and
-[tqdm](https://github.com/tqdm/tqdm).
+The MPL-covered `certifi` files are shipped unmodified. Their source and license
+information are available from [certifi](https://github.com/certifi/python-certifi).
 
 ## Frontend image
 
@@ -80,16 +75,16 @@ The final image is installed with `npm ci --omit=dev --omit=optional`.
 
 | Package | Version | License |
 |---|---:|---|
-| @next/env | 16.3.8 | MIT |
+| @next/env | 16.4.1 | MIT |
 | @swc/helpers | 0.5.23 | Apache-2.0 |
 | baseline-browser-mapping | 2.11.27 | Apache-2.0 |
 | caniuse-lite | 1.0.30001814 | CC-BY-4.0 |
 | client-only | 0.0.1 | MIT |
 | js-tokens | 4.0.0 | MIT |
 | loose-envify | 1.4.0 | MIT |
-| lucide-react | 1.28.0 | ISC |
+| lucide-react | 1.57.0 | ISC |
 | nanoid | 3.3.18 | MIT |
-| next | 16.3.8 | MIT |
+| next | 16.4.1 | MIT |
 | picocolors | 1.1.1 | ISC |
 | postcss | 8.5.23 | MIT |
 | react | 18.3.1 | MIT |

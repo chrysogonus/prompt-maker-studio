@@ -83,6 +83,6 @@ def change_password(body: ChangePasswordRequest, current_user: User, db: Session
             detail="Current password is incorrect",
         )
     current_user.hashed_password = get_password_hash(body.new_password)
-    current_user.token_version = (current_user.token_version or 0) + 1
+    current_user.token_version = User.token_version + 1
     db.commit()
     db.refresh(current_user)

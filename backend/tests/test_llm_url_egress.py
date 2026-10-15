@@ -113,7 +113,7 @@ def test_omitted_local_url_still_requires_private_network_opt_in(monkeypatch, pr
 
 
 def test_transport_pins_public_ip_and_keeps_host_and_tls_identity(monkeypatch):
-    import httpx
+    import httpx2 as httpx
 
     from app.services.llm_transport import PublicLLMTransport
 
@@ -133,7 +133,7 @@ def test_transport_pins_public_ip_and_keeps_host_and_tls_identity(monkeypatch):
 
 
 def test_transport_rejects_rebound_private_address_before_connecting(monkeypatch):
-    import httpx
+    import httpx2 as httpx
 
     from app.services.llm_transport import PublicLLMTransport
 
@@ -153,7 +153,7 @@ def test_transport_rejects_rebound_private_address_before_connecting(monkeypatch
 
 
 def test_provider_client_does_not_follow_redirect_to_metadata(monkeypatch):
-    import httpx
+    import httpx2 as httpx
     from openai import APIStatusError
 
     from app.services.llm_client import _build_connection
@@ -178,7 +178,7 @@ def test_provider_client_does_not_follow_redirect_to_metadata(monkeypatch):
 def test_transport_preserves_idna_hostname_for_dns_and_tls(monkeypatch):
     import ssl
 
-    import httpx
+    import httpx2 as httpx
 
     from app.services.llm_transport import PublicLLMTransport
 
@@ -211,7 +211,7 @@ def test_transport_preserves_idna_hostname_for_dns_and_tls(monkeypatch):
 
 @pytest.mark.parametrize(("trusted", "allow_private"), [(True, False), (False, True)])
 def test_trusted_connections_keep_redirect_and_proxy_defaults(monkeypatch, trusted, allow_private):
-    import httpx
+    import httpx2 as httpx
 
     from app.services.llm_client import _build_connection
     from app.services.llm_providers import PROVIDERS

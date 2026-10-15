@@ -38,6 +38,7 @@ from app.database.migrations.v024_recover_unnamed_prompts import (
 )
 from app.database.migrations.v025_version_notes import _migration_025_version_notes
 from app.database.migrations.v026_user_auth_subject import _migration_026_user_auth_subject
+from app.database.migrations.v027_oauth_grants import _migration_027_oauth_grants
 
 Migration = tuple[str, Callable]
 
@@ -68,4 +69,5 @@ _MIGRATIONS: tuple[Migration, ...] = (
     ("024_recover_unnamed_prompts", _migration_024_recover_unnamed_prompts),
     ("025_version_notes", _migration_025_version_notes),
     ("026_user_auth_subject", _migration_026_user_auth_subject),
+    ("027_oauth_grants", _migration_027_oauth_grants),
 )

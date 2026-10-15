@@ -54,6 +54,8 @@ It currently handles:
 
 - `026_user_auth_subject` — assigns every existing account a unique UUID used by session and MCP access-token subjects. Subjects survive username changes and cannot follow a reused username or numeric row ID. Existing username-subject sessions must sign in again; MCP clients must renew their access token or reconnect.
 
+- `027_oauth_grants` — adds a revocation generation for each account/client pair and binds authorization codes and refresh tokens to it. Pending codes also retain the account version from approval. Legacy codes and refresh tokens without a grant version are cleared; old OAuth access tokens are rejected, so clients must reauthorize. Client registrations and other account data survive.
+
 Migration 020 preserves the pre-025 note schema during its rebuild, so an upgrade that crosses both steps still runs the 025 backfill. This does not guess at repairs for note history already edited after an earlier skipped backfill; recover those records from a verified backup before changing them.
 
 ## Production Migration Checklist
