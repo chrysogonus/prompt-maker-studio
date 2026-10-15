@@ -10,9 +10,11 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
-Planned for **0.5.0**: application observability and security, reliability and
-accessibility fixes. See the [release preparation](./docs/releases/0.5.0.md)
-and read **Upgrade notes** before deploying. Publication is pending.
+## [0.5.0] - 2026-10-15
+
+0.5.0: application observability, account security, public practical guides,
+and reliability and accessibility fixes. See the
+[release record](./docs/releases/0.5.0.md) and read **Upgrade notes** before deploying.
 
 ### Upgrade notes
 
@@ -570,7 +572,8 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.5.0
 [0.4.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.4.0
 [0.3.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.3.0
 [0.2.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.2.0

@@ -129,8 +129,10 @@ Invalid, expired, or userless tokens return 401. Requests with neither a
 session cookie nor a bearer credential are rejected the same way.
 
 While the user is active (keyboard or pointer input), the frontend renews the
-session at most once every five minutes, so working users stay signed in and an
-idle tab still expires after `ACCESS_TOKEN_EXPIRE_MINUTES`. It also renews a
+session every five minutes, or halfway through a shorter session lifetime, so
+working users stay signed in and an idle tab still expires after
+`ACCESS_TOKEN_EXPIRE_MINUTES`. Sign-out waits for pending refreshes before
+clearing cookies, and a new login waits for that cleanup. It also renews a
 still-valid session before a delayed prompt deletion, and retries an
 authenticated request once after a 401 — rebuilding headers per attempt,
 because a refresh rotates the CSRF token. An expired session cannot be
