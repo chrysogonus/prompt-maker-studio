@@ -54,6 +54,8 @@ and read **Upgrade notes** before deploying. Publication is pending.
   local CI and the required GitHub Compose validation job.
 - Sign in with either the username or the account email.
 - Changing the recovery email notifies the previous address.
+- Public practical guides for reusable prompts, template variables and organizing
+  a ChatGPT prompt library, with worked examples, related articles and app links.
 
 ### Changed
 
@@ -98,6 +100,9 @@ and read **Upgrade notes** before deploying. Publication is pending.
   review against a verified backup.
 - The session countdown follows the renewed session after a password change
   instead of signing out at the old expiry.
+- Sign-out waits for pending activity refreshes before clearing cookies, so a
+  delayed response cannot restore the session. Short configured sessions renew
+  before expiry while users keep working.
 - Transient session-check failures can be retried. API validation errors display
   readable messages; saving remains successful when a later history refresh
   fails; evaluation history stays usable when AI configuration loading fails.
