@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiClient, ApiError } from '../api';
 import { AuthService } from '../auth';
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.restoreAllMocks();
   localStorage.clear();
   sessionStorage.clear();
-  AuthService.logout();
+  await AuthService.logout();
 });
 
 describe('refinement snapshots', () => {

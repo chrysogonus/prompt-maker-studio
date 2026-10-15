@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 
 import { AuthService, SESSION_EXPIRED_EVENT } from '@/lib/auth';
 
-// Real input keeps the session alive; renewing at most this often is plenty
-// for a 30-minute session and keeps the refresh endpoint quiet.
+// Real input keeps the session alive. Shorter sessions renew halfway through
+// their lifetime; longer ones renew every five minutes to limit requests.
 const ACTIVITY_RENEWAL_INTERVAL_MS = 5 * 60 * 1000;
 
 export function useSession() {
@@ -117,8 +117,14 @@ export function useSession() {
     // minutes from expiry.
     let lastRenewal = 0;
     const renew = () => {
-      if (Date.now() - lastRenewal < ACTIVITY_RENEWAL_INTERVAL_MS) return;
-      lastRenewal = Date.now();
+      const now = Date.now();
+      const expiresAt = AuthService.getTokenExpiryMs();
+      const interval = expiresAt === null ? ACTIVITY_RENEWAL_INTERVAL_MS : Math.min(
+        ACTIVITY_RENEWAL_INTERVAL_MS,
+        (expiresAt - lastRenewal) / 2,
+      );
+      if (now - lastRenewal < interval) return;
+      lastRenewal = now;
       AuthService.refreshSession().catch(() => {});
     };
     window.addEventListener('keydown', renew, { passive: true });

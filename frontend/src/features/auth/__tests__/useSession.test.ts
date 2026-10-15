@@ -43,4 +43,28 @@ describe('useSession activity renewal', () => {
 
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  it('keeps a short session alive with continued input without refreshing on every keystroke', async () => {
+    const lifetime = 3 * 60 * 1000;
+    let now = Date.now();
+    let expiresAt = now + lifetime;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    vi.mocked(AuthService.getTokenExpiryMs).mockImplementation(() => expiresAt);
+    const refresh = vi.spyOn(AuthService, 'refreshSession').mockImplementation(async () => {
+      expiresAt = now + lifetime;
+    });
+    const { result } = renderHook(() => useSession());
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+
+    fireEvent.keyDown(window);
+    fireEvent.keyDown(window);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    for (let minute = 1; minute <= 6; minute++) {
+      now += 60_000;
+      fireEvent.keyDown(window);
+      expect(expiresAt - now).toBeGreaterThan(15_000);
+    }
+    expect(refresh.mock.calls.length).toBeGreaterThan(1);
+    expect(refresh.mock.calls.length).toBeLessThan(7);
+  });
 });
