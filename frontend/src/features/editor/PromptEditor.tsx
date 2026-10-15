@@ -91,6 +91,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
   const editorRef = useRef<HTMLDivElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
   const toolsButtonRef = useRef<HTMLButtonElement>(null);
+  const pasteButtonRef = useRef<HTMLButtonElement>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   useEffect(() => {
     if (!toolsOpen) return;
@@ -278,21 +279,23 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
         <fieldset className={styles.write} disabled={refineOpen}>
           {isNew && (
             <div className={styles.startRow}>
-              <div className={styles.menuWrap}>
+              <div
+                className={styles.menuWrap}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Escape' || !starterOpen) return;
+                  setStarterOpen(false);
+                  e.currentTarget.querySelector('button')?.focus();
+                }}
+              >
                 <Button
                   variant="ghost"
                   onClick={() => setStarterOpen((open) => !open)}
                   aria-expanded={starterOpen}
-                  aria-haspopup="menu"
                 >
                   Starter templates
                 </Button>
                 {starterOpen && (
-                  <div
-                    className={styles.menu}
-                    role="menu"
-                    onKeyDown={(e) => e.key === 'Escape' && setStarterOpen(false)}
-                  >
+                  <div className={styles.menu}>
                     {hasContent && (
                       <p className={styles.menuNote}>Choosing a template replaces your sections.</p>
                     )}
@@ -300,7 +303,6 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
                       <button
                         key={template.id}
                         type="button"
-                        role="menuitem"
                         className={styles.menuItem}
                         onClick={() => {
                           replaceSections(template.sections);
@@ -314,7 +316,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
                   </div>
                 )}
               </div>
-              <Button variant="ghost" onClick={() => setImportOpen(true)}>
+              <Button ref={pasteButtonRef} variant="ghost" onClick={() => setImportOpen(true)}>
                 Paste a prompt
               </Button>
             </div>
@@ -535,7 +537,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
         aiAvailable={aiAvailable}
         aiConfig={aiConfig}
         replacesContent={hasContent}
-        onClose={() => { setImportOpen(false); if (prompt) toolsButtonRef.current?.focus(); }}
+        onClose={() => { setImportOpen(false); (prompt ? toolsButtonRef : pasteButtonRef).current?.focus(); }}
         session={importSession}
         onSessionChange={setImportSession}
         onImport={(result) => {

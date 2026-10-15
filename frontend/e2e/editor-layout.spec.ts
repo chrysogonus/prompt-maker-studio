@@ -41,6 +41,26 @@ test('keeps long library folder names inside the phone content area', async ({ p
   expect(box.x + box.width).toBeLessThanOrEqual(390);
 });
 
+test('keeps every library grid card and action inside the list between breakpoints', async ({ page }) => {
+  await page.route('**/api/prompts/saved', route => route.fulfill({ json: Array.from({ length: 4 }, (_, i) => ({
+    id: i + 1, name: i % 2 ? 'Customer_support_reply_with_an_unbroken_name' : `Reply ${i + 1}`, fields, generated_prompt: '',
+    folder: 'Customer support', created_at: '2026-10-01T10:00:00Z', updated_at: '2026-10-01T10:00:00Z',
+  })) }));
+  await page.goto('/library');
+  await page.getByRole('button', { name: 'Grid', exact: true }).click();
+  for (const width of [390, 481, 518, 600, 680, 760, 761, 900]) {
+    await page.setViewportSize({ width, height: 900 });
+    const overflowing = await page.getByRole('main').locator('ul').first().evaluate(list => {
+      const listRight = list.getBoundingClientRect().right + 0.5;
+      return [...list.querySelectorAll('li, li a, li button')]
+        .map(element => element.getBoundingClientRect().right)
+        .filter(right => right > listRight)
+        .map(Math.round);
+    });
+    expect(overflowing, `cards or controls past the list at ${width}px`).toEqual([]);
+  }
+});
+
 for (const theme of ['light', 'dark']) {
   test(`keeps the sidebar in view while a long library scrolls in ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 720 });

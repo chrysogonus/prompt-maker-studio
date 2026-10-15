@@ -242,7 +242,7 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   for (const layout of ['List', 'Grid']) {
     await page.getByRole('button', { name: layout, exact: true }).click();
     await page.getByRole('button', { name: `More actions for ${promptName}`, exact: true }).click();
-    await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+    await page.getByRole('button', { name: 'Duplicate' }).click();
     await expect(page.getByRole('link', { name: duplicateName, exact: true })).toBeVisible();
 
     const deleted = page.waitForResponse(
@@ -250,7 +250,7 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
         response.request().method() === 'DELETE' && /\/api\/prompts\/\d+$/.test(response.url()),
     );
     await page.getByRole('button', { name: `More actions for ${duplicateName}`, exact: true }).click();
-    await page.getByRole('menuitem', { name: 'Delete' }).click();
+    await page.getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByRole('link', { name: duplicateName, exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
     expect((await deleted).status()).toBe(204);
@@ -413,7 +413,7 @@ test('files prompts into folders from the library and keeps Settings preferences
   // Filed from the library, the folder appears in the sidebar.
   await sidebarLink(page, /All prompts/).click();
   await page.getByRole('button', { name: /^More actions for Status update/ }).click();
-  await page.getByRole('menuitem', { name: 'Move to folder…' }).click();
+  await page.getByRole('button', { name: 'Move to folder…' }).click();
   const move = page.getByRole('dialog', { name: 'Move to folder' });
   await move.getByLabel('Folder').fill('Work');
   await move.getByRole('button', { name: 'Move' }).click();
@@ -422,7 +422,7 @@ test('files prompts into folders from the library and keeps Settings preferences
 
   // Renaming the folder moves its prompts; removing it unfiles them.
   await page.getByRole('button', { name: 'Actions for the Work folder' }).click();
-  await page.getByRole('menuitem', { name: 'Rename folder' }).click();
+  await page.getByRole('button', { name: 'Rename folder' }).click();
   const rename = page.getByRole('dialog', { name: 'Rename folder' });
   await rename.getByLabel('Name').fill('Job');
   await rename.getByRole('button', { name: 'Rename' }).click();
@@ -430,7 +430,7 @@ test('files prompts into folders from the library and keeps Settings preferences
   await expect(sidebarLink(page, /^Job/)).toBeVisible();
 
   await page.getByRole('button', { name: 'Actions for the Job folder' }).click();
-  await page.getByRole('menuitem', { name: 'Remove folder…' }).click();
+  await page.getByRole('button', { name: 'Remove folder…' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Remove folder' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Unfiled' })).toBeVisible();
   await expect(page.getByRole('link', { name: /^Status update/ })).toBeVisible();

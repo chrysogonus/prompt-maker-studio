@@ -697,6 +697,35 @@ describe('PromptEditor with a new prompt', () => {
     expect(screen.queryByRole('button', { name: 'Tools' })).not.toBeInTheDocument();
   });
 
+  it('returns focus to Paste a prompt after dismissing the importer, however it opened', async () => {
+    const user = userEvent.setup();
+    const view = render(<PromptEditor />);
+    await user.click(await screen.findByRole('button', { name: 'Paste a prompt' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Paste a prompt' })).toHaveFocus();
+    view.unmount();
+
+    render(<PromptEditor openImport />);
+    await screen.findByRole('dialog');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Paste a prompt' })).toHaveFocus();
+  });
+
+  it('closes Starter templates on Escape and returns focus to its button', async () => {
+    const user = userEvent.setup();
+    render(<PromptEditor />);
+    const starter = await screen.findByRole('button', { name: 'Starter templates' });
+    await user.click(starter);
+    await user.keyboard('{Escape}');
+    expect(starter).toHaveAttribute('aria-expanded', 'false');
+    await user.click(starter);
+    await user.tab();
+    await user.keyboard('{Escape}');
+    expect(starter).toHaveAttribute('aria-expanded', 'false');
+    expect(starter).toHaveFocus();
+  });
+
   it('asks for a name, creates the prompt, and moves to its page', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.createPrompt).mockResolvedValue(prompt({ id: 42 }));
@@ -740,7 +769,7 @@ describe('PromptEditor with a new prompt', () => {
     render(<PromptEditor />);
 
     await user.click(screen.getByRole('button', { name: 'Starter templates' }));
-    await user.click(screen.getByRole('menuitem', { name: /Rewrite my text/ }));
+    await user.click(screen.getByRole('button', { name: /Rewrite my text/ }));
 
     expect(screen.getAllByLabelText('Section name').map((el) => (el as HTMLInputElement).value)).toEqual([
       'Text',

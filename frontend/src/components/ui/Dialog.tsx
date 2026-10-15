@@ -26,10 +26,15 @@ export default function Dialog({ isOpen, title, onClose, children, actions, clas
     onCloseRef.current = onClose;
   });
 
+  // Captured lazily during render, once per opening: a child's autoFocus moves
+  // focus before any effect here runs. The effect cleanup resets it.
+  if (previouslyFocused.current == null) {
+    if (isOpen) previouslyFocused.current = document.activeElement as HTMLElement | null;
+  }
+
   useEffect(() => {
     if (!isOpen) return;
 
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
     const dialogEl = dialogRef.current;
     const focusable = dialogEl?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
     (focusable?.[0] ?? dialogEl)?.focus();
@@ -66,7 +71,11 @@ export default function Dialog({ isOpen, title, onClose, children, actions, clas
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      previouslyFocused.current?.focus();
+      // An opener that is gone (or none, when opened from a URL) leaves the
+      // parent's onClose focus alone.
+      const opener = previouslyFocused.current;
+      if (opener?.isConnected && opener !== document.body) opener.focus();
+      previouslyFocused.current = null;
     };
   }, [isOpen]);
 
