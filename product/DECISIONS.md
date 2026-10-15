@@ -942,3 +942,17 @@ quietly outliving its reason.
 **Rationale**: Shared theme tokens carry the visual treatment across the editor, library, settings, authentication and dialogs while preserving the app's current workflows.
 
 **Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/shell/Sidebar.module.css`, `frontend/src/features/editor/SectionCard.tsx`, `frontend/src/features/editor/PromptEditor.module.css`
+
+---
+
+## Dark Mode Shares Light's Layout
+
+**Status**: Accepted (2026-10-15). Supersedes the floating sidebar, Inter and radius parts of "Moodboard Direction for Dark Mode".
+
+**Context**: The floating sidebar card, tighter spacing, Inter and smaller radii made dark mode lay out differently from light. The same folders fitted in one theme and scrolled in the other, and pages shifted when the theme changed.
+
+**Decision**: Dark mode changes colour, surfaces and shadows only. The shell, sidebar, spacing, radii and UI font are the same in both themes. Dark-only outlines are drawn with `box-shadow` so they take no space.
+
+**Rationale**: Switching theme should never move content or change what fits on screen.
+
+**Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/shell/Sidebar.module.css`, `frontend/src/components/shell/AppShell.module.css`, `frontend/src/components/ui/SegmentedControl.module.css`

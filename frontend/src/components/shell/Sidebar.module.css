@@ -157,30 +157,11 @@
   color: var(--text-primary);
 }
 
-/* The floating card is 26px shorter than light's column (12px inset and a 1px
-   border, top and bottom). The tighter spacing below gives those 26px back, so
-   both themes fit the same folders before the sidebar scrolls. */
-:global([data-theme='dark']) .sidebar {
-  width: 224px;
-  top: 12px;
-  height: calc(100dvh - 24px);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-surface);
-}
-
-:global([data-theme='dark']) .brand { font-size: var(--text-xs-size); padding-inline: 2px; padding-bottom: var(--space-3); gap: var(--space-2); }
-:global([data-theme='dark']) .heading { padding-top: var(--space-3); }
-:global([data-theme='dark']) .foot { padding-top: 10px; }
-:global([data-theme='dark']) .newPrompt { margin-inline: 0; }
-/* Rows match light's height (the 1px border replaces 1px of padding), so both
-   themes fit the same number of folders before the sidebar scrolls. */
-:global([data-theme='dark']) .item { padding-block: 6px; border: 1px solid transparent; }
+/* Dark mode shares light's layout; only colour changes here. The selected
+   outline is drawn with box-shadow so it takes no space. */
 :global([data-theme='dark']) .item[aria-current='page'] {
-  border-color: var(--color-plum-edge);
   color: var(--text-primary);
-  box-shadow: inset 2px 0 0 var(--color-accent-tag);
+  box-shadow: inset 0 0 0 1px var(--color-plum-edge), inset 2px 0 0 var(--color-accent-tag);
 }
 :global([data-theme='dark']) .item[aria-current='page'] svg { color: var(--color-accent-tag); }
 :global([data-theme='dark']) .item[aria-current='page'] .count { color: var(--text-secondary); }
@@ -200,11 +181,5 @@
   .sidebar[data-open='true'] {
     transform: none;
     visibility: visible;
-  }
-
-  :global([data-theme='dark']) .sidebar {
-    inset: 8px auto 8px 8px;
-    width: 280px;
-    height: calc(100dvh - 16px);
   }
 }

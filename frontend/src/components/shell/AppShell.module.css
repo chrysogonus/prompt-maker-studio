@@ -193,15 +193,3 @@
   gap: var(--space-3);
   margin-left: var(--space-3);
 }
-
-:global([data-theme='dark']) .shell { padding: 12px; gap: var(--space-2); }
-:global([data-theme='dark']) .column { min-height: calc(100dvh - 24px); }
-:global([data-theme='dark']) .content { padding: var(--space-6); }
-:global([data-theme='dark']) .footer { padding-inline: var(--space-6); }
-
-@media (max-width: 760px) {
-  :global([data-theme='dark']) .shell { padding: 0; gap: 0; }
-  :global([data-theme='dark']) .column { min-height: 100dvh; }
-  :global([data-theme='dark']) .content,
-  :global([data-theme='dark']) .footer { padding: var(--space-4); }
-}
