@@ -1,0 +1,1123 @@
+{
+  "title": "AI & Evaluation",
+  "uid": "pms-ai-evaluation",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "tags": [
+    "prompt-maker-studio"
+  ],
+  "timezone": "browser",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "links": [
+    {
+      "title": "App Overview",
+      "type": "link",
+      "url": "/d/prompt-maker-studio-fastapi",
+      "keepTime": true,
+      "includeVars": true
+    },
+    {
+      "title": "AI & Evaluation",
+      "type": "link",
+      "url": "/d/pms-ai-evaluation",
+      "keepTime": true,
+      "includeVars": true
+    },
+    {
+      "title": "API Health",
+      "type": "link",
+      "url": "/d/pms-api-health",
+      "keepTime": true,
+      "includeVars": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "job",
+        "label": "Job",
+        "query": "label_values(up{job=\"fastapi-backend\"}, job)",
+        "current": {
+          "text": "fastapi-backend",
+          "value": "fastapi-backend"
+        },
+        "type": "query",
+        "multi": false,
+        "includeAll": false,
+        "allValue": null,
+        "refresh": 2,
+        "sort": 1,
+        "options": [],
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      },
+      {
+        "name": "instance",
+        "label": "Instance",
+        "query": "label_values(up{job=~\"$job\"}, instance)",
+        "type": "query",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "options": [],
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      },
+      {
+        "name": "operation",
+        "label": "Operation / feature",
+        "query": "label_values(pms_operations_total{job=~\"$job\",instance=~\"$instance\"}, operation)",
+        "type": "query",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "options": [],
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      },
+      {
+        "name": "channel",
+        "label": "Channel",
+        "type": "custom",
+        "query": "rest,mcp",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "options": [],
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "provider",
+        "label": "Provider",
+        "query": "label_values(pms_llm_calls_total{job=~\"$job\",instance=~\"$instance\"}, provider)",
+        "type": "query",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "options": [],
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Reading this view",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Provider calls count each explicit SDK invocation, including JSON fallback attempts. SDK-internal retries are hidden. Tokens count returned usage before response validation; estimates need usage and known pricing. Operation/feature and provider filters affect AI panels; channel applies only to operation panels. Case outcomes and pending ratings are aggregate across features/providers."
+      }
+    },
+    {
+      "id": 2,
+      "title": "Provider calls \u00b7 selected period",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_llm_calls_total{job=~\"$job\",instance=~\"$instance\",feature=~\"$operation\",provider=~\"$provider\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Input tokens \u00b7 selected period",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_llm_tokens_total{job=~\"$job\",instance=~\"$instance\",feature=~\"$operation\",provider=~\"$provider\",direction=\"input\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Output tokens \u00b7 selected period",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_llm_tokens_total{job=~\"$job\",instance=~\"$instance\",feature=~\"$operation\",provider=~\"$provider\",direction=\"output\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Estimated cost \u00b7 selected period",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_llm_estimated_cost_usd_total{job=~\"$job\",instance=~\"$instance\",feature=~\"$operation\",provider=~\"$provider\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Provider/feature calls \u00b7 selected period",
+      "description": "",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (feature,provider,outcome)(increase(pms_llm_calls_total{job=~\"$job\",instance=~\"$instance\",feature=~\"$operation\",provider=~\"$provider\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true
+            },
+            "renameByName": {
+              "Value": "Count"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Provider calls by outcome \u00b7 per bucket",
+      "description": "",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (provider,outcome)(increase(pms_llm_calls_total{job=~\"$job\",instance=~\"$instance\",feature=~\"$operation\",provider=~\"$provider\"}[$__interval]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{provider}} / {{outcome}}",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Provider latency p50 / p95",
+      "description": "Call-duration percentiles, including failed explicit attempts.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(histogram_quantile(0.5,sum by (le,provider)(rate(pms_llm_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",feature=~\"$operation\",provider=~\"$provider\"}[$__rate_interval])))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "p50 / {{provider}}",
+          "interval": "1m"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(histogram_quantile(0.95,sum by (le,provider)(rate(pms_llm_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",feature=~\"$operation\",provider=~\"$provider\"}[$__rate_interval])))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "p95 / {{provider}}",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Feature latency p95",
+      "description": "End-to-end operation duration; may include several provider calls. Channel is not a duration label.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(histogram_quantile(0.95,sum by (le,operation)(rate(pms_operation_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\"}[$__rate_interval])))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{operation}}",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Tokens by provider/direction \u00b7 per bucket",
+      "description": "",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (provider,direction)(increase(pms_llm_tokens_total{job=~\"$job\",instance=~\"$instance\",feature=~\"$operation\",provider=~\"$provider\"}[$__interval]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{provider}} / {{direction}}",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Estimated cost by provider \u00b7 per bucket",
+      "description": "Telemetry estimate, not an invoice or the billing ledger. Missing usage/pricing can make it incomplete.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (provider)(increase(pms_llm_estimated_cost_usd_total{job=~\"$job\",instance=~\"$instance\",feature=~\"$operation\",provider=~\"$provider\"}[$__interval]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{provider}}",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Evaluation case outcomes \u00b7 selected period",
+      "description": "Poor scores still count as scored. Manual cases await a separate human rating.",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (method,outcome)(increase(pms_eval_cases_total{job=~\"$job\",instance=~\"$instance\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true
+            },
+            "renameByName": {
+              "Value": "Count"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Evaluation case outcomes \u00b7 per bucket",
+      "description": "",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 31,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (outcome)(increase(pms_eval_cases_total{job=~\"$job\",instance=~\"$instance\"}[$__interval]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{outcome}}",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Manual ratings pending now",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(pms_eval_pending_ratings_current{job=~\"$job\",instance=~\"$instance\"})) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 15,
+      "title": "Partial evaluations \u00b7 selected period",
+      "description": "Partial runs have at least one execution/judge failure; this is separate from score quality.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 39,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=\"eval_run\",outcome=\"partial\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 16,
+      "title": "AI operations by outcome \u00b7 selected period",
+      "description": "Channel filter applies; provider filter does not apply to whole operations.",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 39,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (operation,outcome)(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=~\"ai_import|refine_questions|refine_draft|try_once|eval_generate|eval_run|connection_test\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true
+            },
+            "renameByName": {
+              "Value": "Count"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "AI telemetry collection errors \u00b7 per bucket",
+      "description": "Global diagnostics, independent of feature/provider filters. Malformed token usage retains call telemetry but skips token/cost collection. Pricing exceptions or unusable estimates retain call/token telemetry. Missing usage or unknown prices returning zero are separate.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_llm_cost_estimation_errors_total{job=~\"$job\",instance=~\"$instance\"}[$__interval]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "pricing calculation errors",
+          "interval": "1m"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_llm_usage_collection_errors_total{job=~\"$job\",instance=~\"$instance\"}[$__interval]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "unusable token usage",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ],
+  "annotations": {
+    "list": []
+  }
+}

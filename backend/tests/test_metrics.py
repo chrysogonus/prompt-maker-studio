@@ -1,133 +1,242 @@
-"""Tests for business-metric counters incrementing on the relevant routes."""
+"""Telemetry boundaries, snapshots and provider-attempt regressions."""
 
-from unittest.mock import patch
+import logging
+from unittest.mock import Mock, patch
 
 from openai import OpenAIError
+import pytest
 
-from app.metrics import (
-    ai_import_failures_total,
-    ai_imports_total,
-    login_successes_total,
-    prompts_saved_total,
-    user_registrations_total,
-)
-from app.services.spend_ledger import LLMUsage
+from app import metrics
+from app.services.errors import OperationError
+from app.services.llm_client import LLMResponseFormatError, json_completion, text_completion
+from tests.conftest import make_chat_response, make_connection
 
 
-def _value(counter) -> float:
-    """Read a counter's current total through prometheus_client's public API.
-
-    `counter._value.get()` reaches into library internals that carry no
-    compatibility guarantee. `collect()` yields the same samples the `/metrics`
-    endpoint exposes, which is what these assertions actually mean.
-    """
-    (metric,) = counter.collect()
-    return next(sample.value for sample in metric.samples if sample.name.endswith("_total"))
-
-
-def test_saving_a_prompt_increments_prompts_saved_total(client, auth_headers):
-    """Saving a new prompt to the library increments prompts_saved_total."""
-    before = _value(prompts_saved_total)
-
-    client.post(
-        "/api/prompts",
-        json={"fields": [{"name": "goal", "content": "x"}], "name": "My Saved Prompt"},
-        headers=auth_headers,
+def sample(metric, suffix="_total", **labels):
+    return next(
+        item.value
+        for family in metric.collect()
+        for item in family.samples
+        if item.name.endswith(suffix) and all(item.labels.get(k) == v for k, v in labels.items())
     )
 
-    assert _value(prompts_saved_total) == before + 1
 
+def test_operation_failure_and_context_cleanup(caplog):
+    labels = {"operation": "prompt_create", "outcome": "error", "channel": "rest"}
+    before = sample(metrics.operations_total, **labels)
 
-def test_renaming_already_saved_prompt_does_not_double_count(client, auth_headers):
-    """Renaming an already-saved prompt must not increment prompts_saved_total again."""
-    gen = client.post(
-        "/api/prompts",
-        json={"fields": [{"name": "goal", "content": "x"}], "name": "Original"},
-        headers=auth_headers,
-    )
-    prompt_id = gen.json()["id"]
+    def fail():
+        with metrics.operation("prompt_create"):
+            assert metrics.operation_context.get().operation == "prompt_create"
+            msg = "secret payload"
+            raise RuntimeError(msg)
 
-    before = _value(prompts_saved_total)
-    client.patch(f"/api/prompts/{prompt_id}", json={"name": "Renamed"}, headers=auth_headers)
-
-    assert _value(prompts_saved_total) == before
-
-
-def test_parse_text_success_increments_ai_imports_total_only(client, auth_headers):
-    """A successful parse-text call increments ai_imports_total but not the failure counter."""
-    imports_before = _value(ai_imports_total)
-    failures_before = _value(ai_import_failures_total)
-
-    with patch(
-        "app.api.routes.TextParserService.parse",
-        return_value=(
-            [],
-            LLMUsage(provider="openai", model="gpt-4o-mini", prompt_tokens=1, completion_tokens=1),
-        ),
+    with (
+        caplog.at_level(logging.INFO, logger="app.operation"),
+        pytest.raises(RuntimeError, match="secret payload"),
     ):
-        client.post("/api/prompts/parse-text", json={"text": "hi"}, headers=auth_headers)
-
-    assert _value(ai_imports_total) == imports_before + 1
-    assert _value(ai_import_failures_total) == failures_before
-
-
-def test_parse_text_failure_increments_both_counters(client, auth_headers):
-    """A failing parse-text call increments both the attempt and failure counters."""
-    imports_before = _value(ai_imports_total)
-    failures_before = _value(ai_import_failures_total)
-
-    with patch("app.api.routes.TextParserService.parse", side_effect=OpenAIError("down")):
-        client.post("/api/prompts/parse-text", json={"text": "hi"}, headers=auth_headers)
-
-    assert _value(ai_imports_total) == imports_before + 1
-    assert _value(ai_import_failures_total) == failures_before + 1
+        fail()
+    assert metrics.operation_context.get() is None
+    assert sample(metrics.operations_total, **labels) == before + 1
+    assert sample(metrics.operations_in_progress, "in_progress", operation="prompt_create") == 0
+    assert caplog.records[-1].error_type == "internal"
+    assert "secret payload" not in caplog.records[-1].getMessage()
 
 
-def test_register_increments_user_registrations_total(client):
-    """A successful registration increments user_registrations_total."""
-    before = _value(user_registrations_total)
+def test_rejected_operation_and_mcp_channel():
+    labels = {"operation": "prompt_update", "outcome": "rejected", "channel": "mcp"}
+    token = metrics.channel_context.set("mcp")
+    before = sample(metrics.operations_total, **labels)
+    try:
+        with pytest.raises(OperationError), metrics.operation("prompt_update"):
+            raise OperationError(409, "private prompt name")
+    finally:
+        metrics.channel_context.reset(token)
+    assert sample(metrics.operations_total, **labels) == before + 1
 
-    client.post(
-        "/api/auth/register",
-        json={"username": "metricsuser", "password": "testpass123", "email": "m@example.com"},
+
+def test_snapshot_queries_isolated_db_and_keeps_values_on_failure(db_session):
+    metrics.refresh_snapshot(db_session, force=True)
+    assert sample(metrics.accounts_current, "current") == 0
+    assert sample(metrics.prompts_current, "current") == 0
+    last_success = sample(metrics.snapshot_last_success, "seconds")
+    before = sample(metrics.snapshot_collection_errors_total)
+    with patch.object(db_session, "query", side_effect=RuntimeError("secret db url")):
+        metrics.refresh_snapshot(db_session, force=True)
+    assert sample(metrics.accounts_current, "current") == 0
+    assert sample(metrics.snapshot_last_success, "seconds") == last_success
+    assert sample(metrics.snapshot_collection_errors_total) == before + 1
+
+
+def test_snapshot_cache_does_not_query_again(db_session):
+    metrics.refresh_snapshot(db_session, force=True)
+    with patch.object(db_session, "query") as query:
+        metrics.refresh_snapshot(db_session)
+    query.assert_not_called()
+
+
+def test_current_snapshots_follow_account_deletion(client, auth_headers, monkeypatch):
+    response = client.post(
+        "/api/prompts",
+        headers=auth_headers,
+        json={"name": "Snapshot", "fields": [{"name": "task", "content": "Hello"}]},
+    )
+    assert response.status_code == 201
+    monkeypatch.setattr(metrics, "_snapshot_last_attempt", 0)
+    assert client.get("/metrics").status_code == 200
+    assert sample(metrics.accounts_current, "current") == 1
+    assert sample(metrics.prompts_current, "current") == 1
+    response = client.request(
+        "DELETE", "/api/auth/me", headers=auth_headers, json={"current_password": "testpass123!"}
+    )
+    assert response.status_code == 204
+    monkeypatch.setattr(metrics, "_snapshot_last_attempt", 0)
+    assert client.get("/metrics").status_code == 200
+    assert sample(metrics.accounts_current, "current") == 0
+    assert sample(metrics.prompts_current, "current") == 0
+
+
+def test_actual_mcp_save_counts_once_without_rest_event(client, auth_headers, test_db, monkeypatch):
+    monkeypatch.setattr("app.api.mcp_routes.SessionLocal", test_db)
+    mcp = {"operation": "prompt_create", "outcome": "success", "channel": "mcp"}
+    rest = {**mcp, "channel": "rest"}
+    before_mcp = sample(metrics.operations_total, **mcp)
+    before_rest = sample(metrics.operations_total, **rest)
+    response = client.post(
+        "/api/mcp",
+        headers={**auth_headers, "Accept": "application/json, text/event-stream"},
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "save_prompt",
+                "arguments": {
+                    "name": "MCP snapshot",
+                    "fields": [{"name": "task", "content": "Hello"}],
+                },
+            },
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["result"]["isError"] is False
+    assert sample(metrics.operations_total, **mcp) == before_mcp + 1
+    assert sample(metrics.operations_total, **rest) == before_rest
+
+
+def test_cost_estimation_failure_does_not_change_completion():
+    connection = make_connection(Mock(return_value=make_chat_response("hello", 13, 7)))
+    before = sample(metrics.llm_cost_estimation_errors_total)
+    with patch("app.metrics.cost_usd_for", side_effect=RuntimeError("private details")):
+        output, usage = text_completion(connection, [{"role": "user", "content": "private"}])
+    assert output == "hello"
+    assert usage.prompt_tokens == 13
+    assert sample(metrics.llm_cost_estimation_errors_total) == before + 1
+
+
+def test_telemetry_cost_never_refreshes_pricing_over_network():
+    connection = make_connection(Mock(return_value=make_chat_response("hello", 13, 7)))
+    with patch("app.services.llm_pricing._fetch_pricing_json") as fetch:
+        output, _ = text_completion(connection, [{"role": "user", "content": "private"}])
+    assert output == "hello"
+    fetch.assert_not_called()
+
+
+@pytest.mark.parametrize("input_tokens", [-1, float("nan"), "13"])
+def test_malformed_usage_does_not_replace_completed_response(input_tokens):
+    connection = make_connection(Mock(return_value=make_chat_response("hello", input_tokens, 7)))
+    before = sample(metrics.llm_usage_collection_errors_total)
+    output, usage = text_completion(connection, [{"role": "user", "content": "private"}])
+    assert output == "hello"
+    assert usage.completion_tokens == 7
+    assert sample(metrics.llm_usage_collection_errors_total) == before + 1
+
+
+def test_provider_usage_survives_invalid_json_and_counts_explicit_attempts():
+    connection = make_connection(Mock(return_value=make_chat_response("not JSON", 13, 7)))
+    labels = {"feature": "ai_import", "provider": "openai", "outcome": "success"}
+    before = sample(metrics.llm_calls_total, **labels)
+    token_labels = {"feature": "ai_import", "provider": "openai", "direction": "input"}
+    tokens = sample(metrics.llm_tokens_total, **token_labels)
+    with metrics.operation("ai_import"), pytest.raises(LLMResponseFormatError):
+        json_completion(connection, system_prompt="system", user_content="private", schema={})
+    assert sample(metrics.llm_calls_total, **labels) == before + 2
+    assert sample(metrics.llm_tokens_total, **token_labels) == tokens + 26
+
+
+def test_provider_failure_is_counted_once():
+    connection = make_connection(Mock(side_effect=OpenAIError("private provider detail")))
+    labels = {"feature": "try_once", "provider": "openai", "outcome": "error"}
+    before = sample(metrics.llm_calls_total, **labels)
+    with metrics.operation("try_once"), pytest.raises(OpenAIError):
+        text_completion(connection, [{"role": "user", "content": "private"}])
+    assert sample(metrics.llm_calls_total, **labels) == before + 1
+
+
+def test_metrics_endpoint_excludes_automatic_http_traffic(client):
+    client.get("/")
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert 'handler="/metrics"' not in response.text
+    assert 'handler="/"' not in response.text
+    assert "pms_accounts_current" in response.text
+
+
+def test_known_operations_start_at_zero():
+    assert (
+        sample(
+            metrics.operations_total, operation="prompt_restore", outcome="partial", channel="mcp"
+        )
+        == 0
     )
 
-    assert _value(user_registrations_total) == before + 1
+
+def test_unknown_metric_labels_are_rejected():
+    with (
+        pytest.raises(ValueError, match="Unknown telemetry operation"),
+        metrics.operation("private-user-defined-name"),
+    ):
+        pass
 
 
-def test_failed_register_does_not_increment_user_registrations_total(client):
-    """A rejected (duplicate) registration does not increment the counter."""
-    client.post(
-        "/api/auth/register",
-        json={"username": "dupmetrics", "password": "testpass123", "email": "d@example.com"},
-    )
-
-    before = _value(user_registrations_total)
-    client.post(
-        "/api/auth/register",
-        json={"username": "dupmetrics", "password": "testpass123", "email": "d2@example.com"},
-    )
-
-    assert _value(user_registrations_total) == before
-
-
-def test_login_increments_login_successes_total(client):
-    """A successful login increments login_successes_total."""
-    client.post(
-        "/api/auth/register",
-        json={"username": "loginmetrics", "password": "testpass123", "email": "l@example.com"},
-    )
-
-    before = _value(login_successes_total)
-    client.post("/api/auth/login", json={"username": "loginmetrics", "password": "testpass123"})
-
-    assert _value(login_successes_total) == before + 1
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        (401, "authentication"),
+        (403, "permission"),
+        (404, "not_found"),
+        (409, "conflict"),
+        (422, "validation"),
+        (402, "budget"),
+        (500, "internal"),
+    ],
+)
+def test_bounded_error_classification(status, expected):
+    assert metrics.classify_error(OperationError(status, "sensitive"))[1] == expected
 
 
-def test_failed_login_does_not_increment_login_successes_total(client):
-    """A failed login attempt does not increment the counter."""
-    before = _value(login_successes_total)
+def test_provider_cause_is_error_even_when_http_status_is_422():
+    error = OperationError(422, "safe public text")
+    error.__cause__ = OpenAIError("sensitive")
+    assert metrics.classify_error(error) == ("error", "provider")
 
-    client.post("/api/auth/login", json={"username": "nosuchuser", "password": "wrong"})
 
-    assert _value(login_successes_total) == before
+def test_budget_exception_subclasses_keep_budget_classification():
+    from app.services.budget_service import BudgetExceededError
+
+    class UserBudgetExceededError(BudgetExceededError):
+        pass
+
+    assert metrics.classify_error(UserBudgetExceededError("private")) == ("rejected", "budget")
+
+
+def test_format_exception_subclasses_keep_provider_classification():
+    class InvalidTemplateError(LLMResponseFormatError):
+        pass
+
+    assert metrics.classify_error(InvalidTemplateError("private")) == ("error", "provider")
+
+
+def test_unrelated_exception_with_same_name_is_not_a_budget_rejection():
+    fake_error_type = type("BudgetExceededError", (Exception,), {})
+    assert metrics.classify_error(fake_error_type("private")) == ("error", "internal")

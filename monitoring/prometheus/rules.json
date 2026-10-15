@@ -1,0 +1,91 @@
+{
+  "groups": [
+    {
+      "name": "prompt-maker-studio",
+      "interval": "15s",
+      "rules": [
+        {
+          "record": "pms:http_requests:rate5m",
+          "expr": "sum by (job,instance)(rate(http_requests_total{job=\"fastapi-backend\"}[5m]))"
+        },
+        {
+          "record": "pms:http_server_errors:rate5m",
+          "expr": "(sum by (job,instance)(rate(http_requests_total{job=\"fastapi-backend\",status=~\"5..\"}[5m])) or (0 * sum by (job,instance)(rate(http_requests_total{job=\"fastapi-backend\"}[5m]))))"
+        },
+        {
+          "record": "pms:llm_calls:rate10m",
+          "expr": "sum by (job,instance,provider)(rate(pms_llm_calls_total{job=\"fastapi-backend\"}[10m]))"
+        },
+        {
+          "record": "pms:llm_errors:rate10m",
+          "expr": "sum by (job,instance,provider)(rate(pms_llm_calls_total{job=\"fastapi-backend\",outcome=\"error\"}[10m]))"
+        },
+        {
+          "alert": "BackendUnavailable",
+          "expr": "(up{job=\"fastapi-backend\"} == 0) or absent(up{job=\"fastapi-backend\"})",
+          "for": "2m",
+          "labels": {
+            "severity": "critical",
+            "service": "prompt-maker-studio"
+          },
+          "annotations": {
+            "summary": "Backend metrics scrape unavailable or target missing",
+            "description": "Check backend health, Prometheus targets and Docker networking. A missing target also fires this alert."
+          }
+        },
+        {
+          "alert": "SustainedServerErrors",
+          "expr": "(pms:http_server_errors:rate5m / pms:http_requests:rate5m > 0.05) and on(job,instance) (sum by (job,instance)(increase(http_requests_total{job=\"fastapi-backend\"}[5m])) >= 100)",
+          "for": "5m",
+          "labels": {
+            "severity": "warning",
+            "service": "prompt-maker-studio"
+          },
+          "annotations": {
+            "summary": "Sustained HTTP 5xx rate above 5%",
+            "description": "At least 100 requests in the last 5 minutes, above 5% 5xx for 5 minutes. Inspect sanitized route/status logs."
+          }
+        },
+        {
+          "alert": "ProviderFailureRate",
+          "expr": "(pms:llm_errors:rate10m / pms:llm_calls:rate10m > 0.10) and on(job,instance,provider) (sum by (job,instance,provider)(increase(pms_llm_calls_total{job=\"fastapi-backend\"}[10m])) >= 20)",
+          "for": "5m",
+          "labels": {
+            "severity": "warning",
+            "service": "prompt-maker-studio"
+          },
+          "annotations": {
+            "summary": "Provider explicit call failure rate above 10%",
+            "description": "At least 20 explicit calls in 10 minutes, above 10% errors for 5 minutes. Internal SDK retries are not separately observed."
+          }
+        },
+        {
+          "alert": "PasswordResetDeliveryFailures",
+          "expr": "sum by(job,instance)(increase(pms_operations_total{job=\"fastapi-backend\",operation=\"password_reset_email\",outcome=\"error\"}[5m])) > 0.5",
+          "for": "0s",
+          "labels": {
+            "severity": "warning",
+            "service": "prompt-maker-studio"
+          },
+          "annotations": {
+            "summary": "Password reset email delivery failed",
+            "description": "Inspect sanitized email delivery events and SMTP configuration; do not copy raw provider errors or credentials."
+          }
+        },
+        {
+          "alert": "SnapshotStale",
+          "expr": "time() - pms_snapshot_last_success_timestamp_seconds{job=\"fastapi-backend\"} > 120",
+          "for": "2m",
+          "labels": {
+            "severity": "warning",
+            "service": "prompt-maker-studio"
+          },
+          "annotations": {
+            "summary": "Database aggregate snapshot is stale",
+            "description": "Snapshot is over 2 minutes old for 2 minutes. Cached account/prompt/pending-rating gauges may be outdated; inspect collection errors."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -2,14 +2,28 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiClient, ApiError } from '../api';
 import { AuthService } from '../auth';
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.restoreAllMocks();
   localStorage.clear();
   sessionStorage.clear();
-  AuthService.logout();
+  await AuthService.logout();
 });
 
 describe('refinement snapshots', () => {
+  it.each([
+    ['create', () => ApiClient.createPrompt({ name: 'Test', fields: [] })],
+    ['update', () => ApiClient.updatePrompt(1, { fields: [] })],
+    ['parse', () => ApiClient.parsePromptText({ text: 'Test' })],
+    ['refine', () => ApiClient.getRefinementQuestions([])],
+    ['evaluate', () => ApiClient.createEvalCase(1, { name: '', criteria: '', variables: {}, method: 'manual', intentionally_empty: true })],
+    ['oauth', () => ApiClient.getOAuthConsent('request')],
+  ])('normalizes FastAPI validation errors for %s and retains the status', async (_name, request) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 422,
+      json: async () => ({ detail: [{ loc: ['body', 'fields', 0, 'content'], msg: 'String should have at most 10000 characters' }] }),
+    } as Response);
+    await expect(request()).rejects.toMatchObject({ message: 'String should have at most 10000 characters', status: 422 });
+  });
+
   const fields = [{ name: 'Task', content: 'Explain {{topic}}' }];
   beforeEach(() => vi.spyOn(AuthService, 'ensureSessionValidity').mockResolvedValue());
 
@@ -129,14 +143,14 @@ describe('ApiClient.createPrompt', () => {
     expect(error).toMatchObject({ message: 'Budget exhausted', status: 409 });
   });
 
-  it('falls back to a plain message for field-level validation errors', async () => {
+  it('shows the field-level validation message', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: false,
       status: 422,
       json: async () => ({ detail: [{ loc: ['body', 'name'], msg: 'Field required' }] }),
     } as Response);
 
-    await expect(ApiClient.createPrompt(body)).rejects.toThrow('Failed to save prompt: 422');
+    await expect(ApiClient.createPrompt(body)).rejects.toThrow('Field required');
   });
 });
 

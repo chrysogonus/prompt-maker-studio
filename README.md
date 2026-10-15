@@ -86,6 +86,7 @@ REST and MCP share the same prompt services. AI calls are optional.
 
 - [Development](./docs/development.md) — local setup, commands and tests.
 - [Deployment](./docs/deployment.md) — hosting, HTTPS and backups.
+- [Monitoring](./docs/monitoring.md) — dashboards, metrics, alerts and operator logs.
 - [Configuration template](./.env.example) — available settings and defaults.
 - [API reference](./docs/api.md) — REST routes; interactive schemas at [localhost:8000/docs](http://localhost:8000/docs).
 - [MCP integration](./docs/mcp.md) — use your library from ChatGPT and other clients.
@@ -95,9 +96,10 @@ REST and MCP share the same prompt services. AI calls are optional.
 
 Early-stage, `0.x`. APIs and database schemas may change between releases.
 Back up before upgrading; see the [changelog](./CHANGELOG.md). The
-[0.3.0 release record](./docs/releases/0.3.0.md) records publication and migration
-checks. Rehearse the migrations on an isolated production-backup copy before
-upgrading a live instance.
+[0.5.0 release preparation](./docs/releases/0.5.0.md) lists the next release's
+changes and upgrade checks; [0.4.0](./docs/releases/0.4.0.md) is the latest
+recorded publication. Rehearse the migrations on an isolated production-backup
+copy before upgrading a live instance.
 
 ## License
 

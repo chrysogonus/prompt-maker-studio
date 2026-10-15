@@ -100,6 +100,32 @@ async function renderSaved() {
   await screen.findByRole('button', { name: 'Weekly status update' });
 }
 
+it('keeps a successful save when refreshing version history fails', async () => {
+  const user = userEvent.setup();
+  await renderSaved();
+  fireEvent.change(screen.getByLabelText('Role text'), { target: { value: 'Updated role' } });
+  vi.mocked(ApiClient.updatePrompt).mockResolvedValue(prompt({ fields: [{ name: 'Role', content: 'Updated role' }, prompt().fields[1]] }));
+  vi.mocked(ApiClient.getPromptVersions).mockRejectedValueOnce(new Error('History unavailable'));
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(await screen.findByText('Saved. Version history is unavailable; reload to retry.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Saved' })).toBeDisabled();
+  expect(screen.getByLabelText('Role text')).toHaveValue('Updated role');
+});
+
+it.each(['x', '😀'])('shows inline section length validation and prevents saving without truncating %s content', async (character) => {
+  const user = userEvent.setup();
+  await renderSaved();
+  const text = screen.getByLabelText('Role text');
+  fireEvent.change(text, { target: { value: character.repeat(10001) } });
+  expect(text).toHaveValue(character.repeat(10001));
+  expect(text).toHaveAttribute('aria-invalid', 'true');
+  expect(screen.getByText('Section text must be 10,000 characters or fewer.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
+  fireEvent.change(text, { target: { value: character.repeat(10000) } });
+  expect(text).toHaveAttribute('aria-invalid', 'false');
+});
+
 describe('variable inputs and reversible import', () => {
   it('allows restoring variable settings when the prompt text is unchanged', async () => {
     const user = userEvent.setup();

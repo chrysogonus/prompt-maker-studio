@@ -11,8 +11,9 @@ once the signed-in user approves.
 Access tokens are JWTs signed like session tokens but bound to the MCP
 endpoint through their `aud` claim. The session decoder rejects any token with
 an audience, so an access token issued to ChatGPT cannot call the REST API.
-Both access and refresh tokens carry the user's `token_version`, so a password
-change, reset, or "sign out everywhere" disconnects MCP clients too.
+Codes and tokens carry the user's `token_version`, so a password change,
+reset, or "sign out everywhere" also invalidates pending approvals. A persisted
+account/client grant version makes client revocation effective on every request.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -34,6 +35,7 @@ from mcp.server.auth.provider import (
     construct_redirect_uri,
 )
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.auth.utils import (
@@ -43,8 +45,9 @@ from app.auth.utils import (
     hash_password_reset_token,
 )
 from app.database.connection import SessionLocal
-from app.models.oauth import OAuthAuthorizationCode, OAuthClient, OAuthRefreshToken
+from app.models.oauth import OAuthAuthorizationCode, OAuthClient, OAuthGrant, OAuthRefreshToken
 from app.models.user import User
+from app.services.errors import OperationError
 from app.services.optimistic_concurrency import as_utc
 
 logger = logging.getLogger(__name__)
@@ -98,13 +101,14 @@ def _same_resource(resource: str | None) -> bool:
     return resource is None or resource.rstrip("/") == RESOURCE_URL
 
 
-def create_mcp_access_token(user: User, client_id: str) -> str:
+def create_mcp_access_token(user: User, client_id: str, grant_version: int) -> str:
     now = _now()
     payload = {
-        "sub": user.username,
+        "sub": user.auth_subject,
         "aud": RESOURCE_URL,
         "client_id": client_id,
         "tv": user.token_version or 0,
+        "gv": grant_version,
         "iat": now,
         "exp": now + ACCESS_TOKEN_LIFETIME,
     }
@@ -123,8 +127,17 @@ def user_from_mcp_access_token(token: str, db: Session) -> tuple[User, dict] | N
         )
     except jwt.PyJWTError:
         return None
-    user = db.query(User).filter(User.username == payload.get("sub")).first()
+    subject = payload.get("sub")
+    if not subject:
+        return None
+    user = db.query(User).filter(User.auth_subject == subject).first()
     if user is None or payload.get("tv", 0) != (user.token_version or 0):
+        return None
+    client_id = payload.get("client_id")
+    if not client_id or payload.get("gv") is None:
+        return None
+    grant = db.get(OAuthGrant, (user.id, client_id))
+    if grant is None or payload["gv"] != grant.version:
         return None
     return user, payload
 
@@ -145,6 +158,22 @@ def get_client_info(db: Session, client_id: str) -> OAuthClientInformationFull |
 
 def approve_authorization(db: Session, request: dict, user: User) -> str:
     """Issue a one-time code for an approved request; return the client redirect."""
+    token_version = user.token_version or 0
+    # Acquire SQLite's writer lock before reading/creating the client grant.
+    # The conditional update also rejects an in-flight consent whose session
+    # was revoked after authentication, without adopting the new version.
+    current = (
+        db.query(User)
+        .filter(User.id == user.id, User.token_version == token_version)
+        .update({User.token_version: User.token_version}, synchronize_session=False)
+    )
+    if not current:
+        db.rollback()
+        raise OperationError(status_code=401, detail="Session has been revoked. Sign in again.")
+    grant = db.get(OAuthGrant, (user.id, request["client_id"]))
+    if grant is None:
+        grant = OAuthGrant(user_id=user.id, client_id=request["client_id"], version=0)
+        db.add(grant)
     code = secrets.token_urlsafe(32)
     db.add(
         OAuthAuthorizationCode(
@@ -156,6 +185,8 @@ def approve_authorization(db: Session, request: dict, user: User) -> str:
             code_challenge=request["code_challenge"],
             scopes=request["scopes"],
             resource=request["resource"],
+            token_version=token_version,
+            grant_version=grant.version,
             expires_at=_now() + AUTHORIZATION_CODE_LIFETIME,
         )
     )
@@ -248,8 +279,7 @@ class OAuthProvider:
         return await anyio.to_thread.run_sync(self._load_access, token)
 
     async def revoke_token(self, token: AccessToken | RefreshToken) -> None:
-        # Access tokens are stateless and expire within the hour; revoking one
-        # ends the client's connection by dropping its refresh tokens instead.
+        # Disconnect this account/client pair, including existing access tokens.
         await anyio.to_thread.run_sync(self._revoke, token)
 
     # --- synchronous database work -------------------------------------------------
@@ -289,18 +319,20 @@ class OAuthProvider:
         self, client: OAuthClientInformationFull, code: AuthorizationCode
     ) -> OAuthToken:
         with SessionLocal() as db:
-            # Deleting is what makes the code single-use; a second exchange of
-            # the same code finds nothing to delete.
-            deleted = (
-                db.query(OAuthAuthorizationCode)
-                .filter(OAuthAuthorizationCode.code_hash == _hash(code.code))
-                .delete()
-            )
-            user = db.get(User, int(code.subject))
-            if not deleted or user is None:
+            # Consume and read the persisted approval in one write statement.
+            # SQLite serializes this with revocation until the commit below.
+            row = db.execute(
+                delete(OAuthAuthorizationCode)
+                .where(
+                    OAuthAuthorizationCode.code_hash == _hash(code.code),
+                    OAuthAuthorizationCode.client_id == client.client_id,
+                )
+                .returning(OAuthAuthorizationCode)
+            ).scalar_one_or_none()
+            if row is None or as_utc(row.expires_at) <= _now():
                 db.rollback()
-                raise TokenError(error="invalid_grant", error_description="Code already used")
-            return self._issue_tokens(db, user, client.client_id, code.scopes, code.resource)
+                raise TokenError(error="invalid_grant", error_description="Code invalid or used")
+            return self._issue_tokens(db, row)
 
     def _load_refresh(self, client_id: str, token: str) -> RefreshToken | None:
         with SessionLocal() as db:
@@ -308,6 +340,9 @@ class OAuthProvider:
             if row is None or row.client_id != client_id or row.user is None:
                 return None
             if row.token_version != (row.user.token_version or 0):
+                return None
+            grant = db.get(OAuthGrant, (row.user_id, client_id))
+            if grant is None or row.grant_version != grant.version:
                 return None
             return RefreshToken(
                 token=token,
@@ -322,44 +357,58 @@ class OAuthProvider:
         self, client: OAuthClientInformationFull, refresh: RefreshToken, scopes: list[str]
     ) -> OAuthToken:
         with SessionLocal() as db:
-            deleted = (
-                db.query(OAuthRefreshToken)
-                .filter(OAuthRefreshToken.token_hash == _hash(refresh.token))
-                .delete()
-            )
-            user = db.get(User, int(refresh.subject))
-            if not deleted or user is None:
+            row = db.execute(
+                delete(OAuthRefreshToken)
+                .where(
+                    OAuthRefreshToken.token_hash == _hash(refresh.token),
+                    OAuthRefreshToken.client_id == client.client_id,
+                )
+                .returning(OAuthRefreshToken)
+            ).scalar_one_or_none()
+            if row is None or as_utc(row.expires_at) <= _now():
                 db.rollback()
                 raise TokenError(
-                    error="invalid_grant", error_description="Refresh token already used"
+                    error="invalid_grant", error_description="Refresh token invalid or used"
                 )
-            return self._issue_tokens(
-                db, user, client.client_id, scopes or refresh.scopes, refresh.resource
-            )
+            return self._issue_tokens(db, row, scopes=scopes or row.scopes)
 
     def _issue_tokens(
         self,
         db: Session,
-        user: User,
-        client_id: str,
-        scopes: list[str],
-        resource: str | None,
+        credential: OAuthAuthorizationCode | OAuthRefreshToken,
+        *,
+        scopes: list[str] | None = None,
     ) -> OAuthToken:
+        user = db.get(User, credential.user_id)
+        grant = db.get(OAuthGrant, (credential.user_id, credential.client_id))
+        if (
+            user is None
+            or credential.token_version != (user.token_version or 0)
+            or grant is None
+            or credential.grant_version != grant.version
+        ):
+            db.rollback()
+            raise TokenError(error="invalid_grant", error_description="Authorization revoked")
+        scopes = credential.scopes if scopes is None else scopes
+        # Sign before commit: expire-on-commit must never reload a newer
+        # account version and turn an in-flight revoked grant into fresh access.
+        access = create_mcp_access_token(user, credential.client_id, credential.grant_version)
         refresh = secrets.token_urlsafe(32)
         db.add(
             OAuthRefreshToken(
                 token_hash=_hash(refresh),
-                client_id=client_id,
+                client_id=credential.client_id,
                 user_id=user.id,
                 scopes=scopes,
-                resource=resource,
-                token_version=user.token_version or 0,
+                resource=credential.resource,
+                token_version=credential.token_version,
+                grant_version=credential.grant_version,
                 expires_at=_now() + REFRESH_TOKEN_LIFETIME,
             )
         )
         db.commit()
         return OAuthToken(
-            access_token=create_mcp_access_token(user, client_id),
+            access_token=access,
             token_type="Bearer",
             expires_in=int(ACCESS_TOKEN_LIFETIME.total_seconds()),
             refresh_token=refresh,
@@ -383,13 +432,51 @@ class OAuthProvider:
 
     def _revoke(self, token: AccessToken | RefreshToken) -> None:
         with SessionLocal() as db:
-            query = db.query(OAuthRefreshToken)
+            # The SDK validated this token earlier. Resolve the exact credential
+            # again: a delayed revoke must not affect a reauthorized client or a
+            # replacement account that reused the original numeric user ID.
             if isinstance(token, RefreshToken):
-                query = query.filter(OAuthRefreshToken.token_hash == _hash(token.token))
+                row = db.execute(
+                    delete(OAuthRefreshToken)
+                    .where(
+                        OAuthRefreshToken.token_hash == _hash(token.token),
+                        OAuthRefreshToken.client_id == token.client_id,
+                    )
+                    .returning(OAuthRefreshToken)
+                ).scalar_one_or_none()
+                if row is None:
+                    return
+                user = db.get(User, row.user_id)
+                if user is None:
+                    return
+                client_id = row.client_id
+                token_version, grant_version = row.token_version, row.grant_version
             else:
-                query = query.filter(
-                    OAuthRefreshToken.client_id == token.client_id,
-                    OAuthRefreshToken.user_id == int(token.subject),
+                resolved = user_from_mcp_access_token(token.token, db)
+                if resolved is None:
+                    return
+                user, payload = resolved
+                client_id = payload["client_id"]
+                token_version, grant_version = payload["tv"], payload["gv"]
+            updated = (
+                db.query(OAuthGrant)
+                .filter(
+                    OAuthGrant.user_id.in_(
+                        select(User.id).where(
+                            User.auth_subject == user.auth_subject,
+                            User.token_version == token_version,
+                        )
+                    ),
+                    OAuthGrant.client_id == client_id,
+                    OAuthGrant.version == grant_version,
                 )
-            query.delete()
+                .update({OAuthGrant.version: OAuthGrant.version + 1}, synchronize_session=False)
+            )
+            if not updated:
+                db.rollback()
+                return
+            for model in (OAuthAuthorizationCode, OAuthRefreshToken):
+                db.query(model).filter(
+                    model.user_id == user.id, model.client_id == client_id
+                ).delete()
             db.commit()

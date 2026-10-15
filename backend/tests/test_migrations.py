@@ -147,6 +147,8 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
             "023_recover_drifted_prompt_sections",
             "024_recover_unnamed_prompts",
             "025_version_notes",
+            "026_user_auth_subject",
+            "027_oauth_grants",
         }
         assert "updated_at" in _columns(connection, "prompts")
         assert _table_exists(connection, "prompt_versions")
@@ -302,7 +304,7 @@ def test_run_migrations_is_idempotent_on_current_database(tmp_path):
 
     with engine.connect() as connection:
         versions = connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
-        assert len(versions) == 25
+        assert len(versions) == 27
         assert {
             "fields",
             "user_id",
@@ -358,8 +360,9 @@ def test_migration_020_adds_cascades_and_clears_orphans(tmp_path):
         # exactly what the pre-enforcement schema allowed to accumulate.
         connection.execute(
             text(
-                "INSERT INTO users (id, username, email, hashed_password, created_at) "
-                "VALUES (1, 'keeper', 'keeper@example.com', 'x', '2026-01-01 00:00:00')"
+                "INSERT INTO users (id, auth_subject, username, email, hashed_password, created_at) "
+                "VALUES (1, '00000000-0000-4000-8000-000000000001', "
+                "'keeper', 'keeper@example.com', 'x', '2026-01-01 00:00:00')"
             )
         )
         connection.execute(
@@ -428,8 +431,9 @@ def _current_database(tmp_path):
         Base.metadata.create_all(bind=connection)
         connection.execute(
             text(
-                "INSERT INTO users (id, username, email, hashed_password, created_at) "
-                "VALUES (1, 'owner', 'owner@example.com', 'x', '2026-01-01 00:00:00')"
+                "INSERT INTO users (id, auth_subject, username, email, hashed_password, created_at) "
+                "VALUES (1, '00000000-0000-4000-8000-000000000001', "
+                "'owner', 'owner@example.com', 'x', '2026-01-01 00:00:00')"
             )
         )
     return engine
@@ -625,3 +629,128 @@ def test_version_note_migration_tolerates_missing_tables(tmp_path):
         connection.execute(text("CREATE TABLE prompts (id INTEGER PRIMARY KEY)"))
         _migration_025_version_notes(connection)
         assert "current_note" in _columns(connection, "prompts")
+
+
+def test_version_notes_backfill_after_cascade_schema_rebuild(tmp_path):
+    from app.database.migrations.runner import _apply_with_foreign_keys_disabled
+    from app.database.migrations.v020_delete_cascades import _migration_020_delete_cascades
+    from app.database.migrations.v025_version_notes import _migration_025_version_notes
+    from app.models.user import User
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'upgrade.db'}")
+    User.metadata.create_all(engine)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO users "
+                "(id, username, hashed_password, created_at, auth_subject) "
+                "VALUES (1, 'upgrade', 'unused', CURRENT_TIMESTAMP, 'upgrade-subject')"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO prompts (id, user_id, fields, generated_prompt) "
+                "VALUES (1, 1, '[]', 'before')"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO prompt_versions "
+                "(id, prompt_id, version_number, note, fields, generated_prompt) "
+                "VALUES (1, 1, 1, 'Edit to v2', '[]', 'before')"
+            )
+        )
+        connection.exec_driver_sql("ALTER TABLE prompts DROP COLUMN current_note")
+        connection.exec_driver_sql("ALTER TABLE prompt_versions DROP COLUMN legacy_note")
+        connection.exec_driver_sql("ALTER TABLE prompt_versions DROP COLUMN variable_metadata")
+    _apply_with_foreign_keys_disabled(engine, _migration_020_delete_cascades)
+    with engine.begin() as connection:
+        _migration_025_version_notes(connection)
+        _migration_025_version_notes(connection)
+        assert connection.execute(text("SELECT note, legacy_note FROM prompt_versions")).all() == [
+            (None, "Edit to v2")
+        ]
+        assert connection.execute(text("SELECT current_note FROM prompts")).scalar() == "Edit to v2"
+
+
+def test_user_auth_subject_migration_backfills_unique_stable_subjects(tmp_path):
+    from uuid import UUID
+
+    from sqlalchemy.exc import IntegrityError
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'subjects.db'}")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, "
+                "hashed_password TEXT, created_at DATETIME)"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO users VALUES (1, 'one', 'hash', '2026-01-01'), "
+                "(2, 'two', 'hash', '2026-01-01')"
+            )
+        )
+        Base.metadata.create_all(connection)
+    run_migrations(engine)
+    with engine.connect() as connection:
+        assert "auth_subject" in _columns(connection, "users")
+        subjects = (
+            connection.execute(text("SELECT auth_subject FROM users ORDER BY id")).scalars().all()
+        )
+        assert all(UUID(subject).version == 4 for subject in subjects)
+        assert len(set(subjects)) == 2
+    run_migrations(engine)
+    with engine.begin() as connection:
+        assert (
+            connection.execute(text("SELECT auth_subject FROM users ORDER BY id")).scalars().all()
+            == subjects
+        )
+        with pytest.raises(IntegrityError):
+            connection.execute(
+                text("UPDATE users SET auth_subject = :subject WHERE id = 2"),
+                {"subject": subjects[0]},
+            )
+
+
+def test_oauth_revocation_migration_invalidates_legacy_credentials_and_is_idempotent(tmp_path):
+    from app.database.migrations.v027_oauth_grants import _migration_027_oauth_grants
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'oauth-upgrade.db'}")
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE users (id INTEGER PRIMARY KEY)"))
+        connection.execute(text("CREATE TABLE oauth_clients (client_id VARCHAR(64) PRIMARY KEY)"))
+        connection.execute(
+            text("CREATE TABLE oauth_authorization_codes (code_hash TEXT PRIMARY KEY)")
+        )
+        connection.execute(text("CREATE TABLE oauth_refresh_tokens (token_hash TEXT PRIMARY KEY)"))
+        connection.execute(text("INSERT INTO oauth_authorization_codes VALUES ('old-code')"))
+        connection.execute(text("INSERT INTO oauth_refresh_tokens VALUES ('old-refresh')"))
+        _migration_027_oauth_grants(connection)
+        assert _table_exists(connection, "oauth_grants")
+        assert {"token_version", "grant_version"} <= _columns(
+            connection, "oauth_authorization_codes"
+        )
+        assert "grant_version" in _columns(connection, "oauth_refresh_tokens")
+        assert (
+            connection.execute(text("SELECT COUNT(*) FROM oauth_authorization_codes")).scalar() == 0
+        )
+        assert connection.execute(text("SELECT COUNT(*) FROM oauth_refresh_tokens")).scalar() == 0
+        connection.execute(
+            text(
+                "INSERT INTO oauth_authorization_codes (code_hash, token_version, grant_version) "
+                "VALUES ('new-code', 0, 0)"
+            )
+        )
+        connection.execute(text("INSERT INTO oauth_refresh_tokens VALUES ('new-refresh', 0)"))
+        _migration_027_oauth_grants(connection)
+        assert (
+            connection.execute(text("SELECT code_hash FROM oauth_authorization_codes")).scalar()
+            == "new-code"
+        )
+        assert (
+            connection.execute(text("SELECT token_hash FROM oauth_refresh_tokens")).scalar()
+            == "new-refresh"
+        )
+    engine.dispose()

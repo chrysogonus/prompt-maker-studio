@@ -24,16 +24,30 @@ function refreshResponse(seconds: number) {
   } as Response;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.restoreAllMocks();
   vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, status: 204 } as Response);
   localStorage.clear();
   sessionStorage.clear();
-  AuthService.logout();
+  await AuthService.logout();
   vi.restoreAllMocks();
 });
 
 describe('AuthService session refresh', () => {
+  it.each(['network', 'json'])('retries the current-user request after a %s rejection while deduplicating callers', async (failure) => {
+    const user = { username: 'alex' };
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    if (failure === 'network') fetchMock.mockRejectedValueOnce(new Error('Offline'));
+    else fetchMock.mockResolvedValueOnce(new Response('Invalid JSON'));
+    fetchMock.mockResolvedValue({ ok: true, json: async () => user } as Response);
+
+    const failed = await Promise.allSettled([AuthService.getCurrentUser(), AuthService.getCurrentUser()]);
+    expect(failed.map((result) => result.status)).toEqual(['rejected', 'rejected']);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await expect(Promise.all([AuthService.getCurrentUser(), AuthService.getCurrentUser()])).resolves.toEqual([user, user]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('does not refresh a session with enough validity remaining', async () => {
     sessionExpiringIn(600);
     const fetchMock = vi.spyOn(globalThis, 'fetch');
@@ -71,6 +85,16 @@ describe('AuthService session refresh', () => {
 
     expect(AuthService.isAuthenticated()).toBe(false);
   });
+
+  it('records the re-issued session expiry after a password change', async () => {
+    sessionExpiringIn(60);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(refreshResponse(1_800));
+
+    await AuthService.changePassword({ current_password: 'old', new_password: 'newpass456!' });
+
+    // Otherwise the UI would sign the user out at the old deadline.
+    expect(AuthService.getTokenExpiryMs()).toBeGreaterThan(Date.now() + 1_700_000);
+  });
 });
 
 describe('AuthService sign-out', () => {
@@ -106,6 +130,81 @@ describe('AuthService sign-out', () => {
       expect.stringMatching(/\/api\/auth\/logout$/),
       expect.objectContaining({ method: 'POST', credentials: 'include' }),
     );
+  });
+
+  it.each(['success', 'network', 'json'])('clears cookies after a pending refresh finishes with %s without restoring the session', async (outcome) => {
+    const order: string[] = [];
+    let logoutHeaders: HeadersInit | undefined;
+    let completeRefresh!: (response: Response) => void;
+    let rejectRefresh!: (error: Error) => void;
+    const pending = new Promise<Response>((resolve, reject) => {
+      completeRefresh = resolve;
+      rejectRefresh = reject;
+    });
+    vi.spyOn(globalThis, 'fetch')
+      .mockImplementationOnce(async () => {
+        try {
+          return await pending;
+        } finally {
+          document.cookie = 'csrf_token=renewed-csrf';
+          order.push('refresh');
+        }
+      })
+      .mockImplementationOnce(async (_url, init) => {
+        order.push('logout');
+        logoutHeaders = init?.headers;
+        return { ok: true, status: 204 } as Response;
+      });
+
+    const refresh = AuthService.refreshSession().catch(() => {});
+    const logout = AuthService.logout();
+    expect(AuthService.isAuthenticated()).toBe(false);
+    if (outcome === 'network') rejectRefresh(new Error('Offline'));
+    else if (outcome === 'json') completeRefresh(new Response('Invalid JSON'));
+    else completeRefresh(refreshResponse(1_800));
+    await Promise.all([refresh, logout]);
+
+    expect(AuthService.isAuthenticated()).toBe(false);
+    expect(order).toEqual(['refresh', 'logout']);
+    expect(logoutHeaders).toEqual(expect.objectContaining({ 'X-CSRF-Token': 'renewed-csrf' }));
+  });
+
+  it('prevents further refreshes while sign-out is pending', async () => {
+    let completeLogout!: (response: Response) => void;
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() => new Promise((resolve) => {
+      completeLogout = resolve;
+    })).mockResolvedValue(refreshResponse(1_800));
+
+    const logout = AuthService.logout();
+    await AuthService.refreshSession().catch(() => {});
+    completeLogout({ ok: true, status: 204 } as Response);
+    await logout;
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(AuthService.isAuthenticated()).toBe(false);
+  });
+
+  it('finishes clearing old cookies before a new login', async () => {
+    const order: string[] = [];
+    let completeLogout!: (response: Response) => void;
+    vi.spyOn(globalThis, 'fetch')
+      .mockImplementationOnce(async () => {
+        const response = await new Promise<Response>((resolve) => { completeLogout = resolve; });
+        order.push('logout');
+        return response;
+      })
+      .mockImplementationOnce(async () => {
+        order.push('login');
+        return refreshResponse(1_800);
+      });
+
+    const logout = AuthService.logout();
+    const login = AuthService.login({ username: 'alex', password: 'testpass123!' });
+    completeLogout({ ok: true, status: 204 } as Response);
+    await Promise.all([logout, login]);
+
+    expect(order).toEqual(['logout', 'login']);
+    expect(AuthService.isAuthenticated()).toBe(true);
   });
 
   it('signs out locally even when the server call fails', async () => {

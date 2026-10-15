@@ -1,0 +1,1186 @@
+{
+  "title": "App Overview",
+  "uid": "prompt-maker-studio-fastapi",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "tags": [
+    "prompt-maker-studio"
+  ],
+  "timezone": "browser",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "links": [
+    {
+      "title": "App Overview",
+      "type": "link",
+      "url": "/d/prompt-maker-studio-fastapi",
+      "keepTime": true,
+      "includeVars": true
+    },
+    {
+      "title": "AI & Evaluation",
+      "type": "link",
+      "url": "/d/pms-ai-evaluation",
+      "keepTime": true,
+      "includeVars": true
+    },
+    {
+      "title": "API Health",
+      "type": "link",
+      "url": "/d/pms-api-health",
+      "keepTime": true,
+      "includeVars": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "job",
+        "label": "Job",
+        "query": "label_values(up{job=\"fastapi-backend\"}, job)",
+        "current": {
+          "text": "fastapi-backend",
+          "value": "fastapi-backend"
+        },
+        "type": "query",
+        "multi": false,
+        "includeAll": false,
+        "allValue": null,
+        "refresh": 2,
+        "sort": 1,
+        "options": [],
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      },
+      {
+        "name": "instance",
+        "label": "Instance",
+        "query": "label_values(up{job=~\"$job\"}, instance)",
+        "type": "query",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "options": [],
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      },
+      {
+        "name": "operation",
+        "label": "Operation / feature",
+        "query": "label_values(pms_operations_total{job=~\"$job\",instance=~\"$instance\"}, operation)",
+        "type": "query",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "options": [],
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      },
+      {
+        "name": "channel",
+        "label": "Channel",
+        "type": "custom",
+        "query": "rest,mcp",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "options": [],
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "provider",
+        "label": "Provider",
+        "query": "label_values(pms_llm_calls_total{job=~\"$job\",instance=~\"$instance\"}, provider)",
+        "type": "query",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "options": [],
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Reading this view",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Current totals** are cached database snapshots. **Selected period** counts completed operations in the time picker (sampled and approximate). Detail filters affect breakdowns; channel applies to event totals. Zero means a quiet initialized series; **No data** means missing telemetry or insufficient samples. Check scrape status and snapshot age before trusting totals."
+      }
+    },
+    {
+      "id": 2,
+      "title": "Accounts now",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(pms_accounts_current{job=~\"$job\",instance=~\"$instance\"})) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Prompts now",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(pms_prompts_current{job=~\"$job\",instance=~\"$instance\"})) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Manual ratings pending now",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(pms_eval_pending_ratings_current{job=~\"$job\",instance=~\"$instance\"})) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Snapshot age",
+      "description": "Cached gauges refresh at most every 30 seconds. Previous values remain after a collection failure.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(time() - min(pms_snapshot_last_success_timestamp_seconds{job=~\"$job\",instance=~\"$instance\"})) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Signups \u00b7 selected period",
+      "description": "Successful completed operations, channel filter applied. Approximate scrape-based increase, not an audit count.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=\"signup\",outcome=\"success\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "title": "Logins \u00b7 selected period",
+      "description": "Successful completed operations, channel filter applied. Approximate scrape-based increase, not an audit count.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=\"login\",outcome=\"success\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 8,
+      "title": "Prompt creations \u00b7 selected period",
+      "description": "Successful completed operations, channel filter applied. Approximate scrape-based increase, not an audit count.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=\"prompt_create\",outcome=\"success\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 9,
+      "title": "Prompt updates \u00b7 selected period",
+      "description": "Successful completed operations, channel filter applied. Approximate scrape-based increase, not an audit count.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=\"prompt_update\",outcome=\"success\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 10,
+      "title": "Prompt duplications \u00b7 selected period",
+      "description": "Successful completed operations, channel filter applied. Approximate scrape-based increase, not an audit count.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=\"prompt_duplicate\",outcome=\"success\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 11,
+      "title": "Account deletions \u00b7 selected period",
+      "description": "Successful completed operations, channel filter applied. Approximate scrape-based increase, not an audit count.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=\"account_delete\",outcome=\"success\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 12,
+      "title": "Active operations \u00b7 selected period",
+      "description": "Only active operation/outcome rows are shown, scoped to the selected channels. An empty table with healthy scrape status means no activity; headline totals still show initialized zeros.",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (operation,outcome)(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1) > 0",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true
+            },
+            "renameByName": {
+              "Value": "Count"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Activity by outcome \u00b7 per bucket",
+      "description": "Counts per display bucket, not events per second.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (outcome)(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\",channel=~\"$channel\"}[$__interval]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{outcome}}",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Daily activity by channel",
+      "description": "Minimum one-day display buckets; zoom out to compare multiple days. Last 24h remains the default.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (channel)(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\",channel=~\"$channel\"}[$__interval]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{channel}}",
+          "interval": "1d"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "maxDataPoints": 30
+    },
+    {
+      "id": 15,
+      "title": "Backend scrape availability",
+      "description": "1 = healthy scrape; 0 = failed scrape; no series = missing target/source. This is scrape availability, not user-facing uptime.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "up{job=~\"$job\",instance=~\"$instance\"}",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{instance}}",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "title": "Errors and partial outcomes \u00b7 selected period",
+      "description": "",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (operation,outcome)(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\",channel=~\"$channel\",outcome=~\"error|partial\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true
+            },
+            "renameByName": {
+              "Value": "Count"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Operation/channel activity \u00b7 per bucket",
+      "description": "",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 31,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (operation,channel)(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\",channel=~\"$channel\"}[$__interval]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{operation}} / {{channel}}",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "title": "Refinement requests \u00b7 selected period",
+      "description": "Completed attempts across question/draft generation; see operation breakdown for stages and outcomes.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=~\"refine_questions|refine_draft\",outcome=~\".*\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 19,
+      "title": "Evaluations completed \u00b7 selected period",
+      "description": "Completed evaluation runs with success or partial outcomes; partial means at least one execution/judge failure.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(increase(pms_operations_total{job=~\"$job\",instance=~\"$instance\",operation=~\"eval_run\",outcome=~\"success|partial\",channel=~\"$channel\"}[$__range]))) and on() (min(up{job=~\"$job\",instance=~\"$instance\"}) == 1)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "",
+          "interval": "1m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      }
+    }
+  ],
+  "annotations": {
+    "list": []
+  }
+}

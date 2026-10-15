@@ -170,6 +170,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     const draft = readDraft(draftKey);
     const starter = STARTER_TEMPLATES.find((template) => template.id === initialStarter);
     if (draft) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Browser-only draft hydration must run after mount.
       setSections(toEditorSections(draft.sections, true));
       setMetadata(draft.metadata);
       setNote(draft.note ?? '');
@@ -237,6 +238,10 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
       showNotice({ text: 'Fix the highlighted section names before saving.', tone: 'error' });
       return;
     }
+    if (fields.some((field) => Array.from(field.content).length > 10000)) {
+      showNotice({ text: 'Shorten the highlighted section text before saving.', tone: 'error' });
+      return;
+    }
     if (!prompt) {
       setSaveDialog({ name: '', folder: '', error: '' });
       return;
@@ -257,8 +262,12 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
       setRestoredDraft(false);
       setConflict(false);
       setDraftAction(null);
-      setVersions(await ApiClient.getPromptVersions(updated.id));
-      showNotice({ text: 'Saved' });
+      try {
+        setVersions(await ApiClient.getPromptVersions(updated.id));
+        showNotice({ text: 'Saved' });
+      } catch {
+        showNotice({ text: 'Saved. Version history is unavailable; reload to retry.' }, 8000);
+      }
     } catch (err) {
       reportError(err, 'Failed to save prompt.');
     } finally {
@@ -286,6 +295,10 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
   const createPrompt = async (event: FormEvent) => {
     event.preventDefault();
     if (!saveDialog || savingRef.current) return;
+    if (fields.some((field) => Array.from(field.content).length > 10000)) {
+      setSaveDialog({ ...saveDialog, error: 'Section text must be 10,000 characters or fewer.' });
+      return;
+    }
     const name = saveDialog.name.trim();
     if (!name) {
       setSaveDialog({ ...saveDialog, error: 'Give the prompt a name.' });

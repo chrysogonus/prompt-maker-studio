@@ -37,4 +37,9 @@ class EvalRun(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
 
     prompt = relationship("Prompt", back_populates="eval_runs")
-    results = relationship("EvalRunResult", back_populates="run", cascade="all, delete-orphan")
+    results = relationship(
+        "EvalRunResult",
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="EvalRunResult.id",
+    )

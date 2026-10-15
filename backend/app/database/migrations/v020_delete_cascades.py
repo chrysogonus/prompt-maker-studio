@@ -80,6 +80,15 @@ def _rebuild_table_with_current_schema(connection, model) -> None:
 
     connection.execute(text(f'ALTER TABLE "{table_name}" RENAME TO "{table_name}__old"'))
     connection.execute(CreateTable(target))
+    # Migration 025 uses legacy_note's presence as its transactional backfill
+    # guard. A rebuild from today's ORM must not pre-create that later schema.
+    later_columns = {
+        "prompts": ("current_note",),
+        "prompt_versions": ("legacy_note", "variable_metadata"),
+    }
+    for name in later_columns.get(table_name, ()):
+        if name not in old_columns:
+            connection.exec_driver_sql(f'ALTER TABLE "{table_name}" DROP COLUMN "{name}"')
 
     # Core constructs rather than an interpolated INSERT ... SELECT. The
     # identifiers are dynamic — SQL cannot bind those as parameters — and

@@ -345,7 +345,7 @@ export default function LLMConnectionForm() {
           {error}
         </div>
       )}
-      {status && <div className={styles.success}>{status}</div>}
+      {status && <div className={styles.success} role="status">{status}</div>}
 
       <div className={styles.actions}>
         <Button type="submit" disabled={isSaving || !providerHandle || !model.trim()}>

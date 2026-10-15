@@ -121,14 +121,14 @@ def user_from_token(token: str, db: Session) -> User | None:
         logger.debug("Token could not be decoded or has expired")
         return None
 
-    username: str | None = payload.get("sub")
-    if username is None:
+    subject: str | None = payload.get("sub")
+    if not subject:
         logger.debug("Token payload is missing the 'sub' claim")
         return None
 
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(User.auth_subject == subject).first()
     if user is None:
-        logger.debug("Token subject %r does not match any user", username)
+        logger.debug("Token subject %r does not match any user", subject)
         return None
 
     # A token minted before the user's last password change, reset, or explicit
@@ -136,7 +136,7 @@ def user_from_token(token: str, db: Session) -> User | None:
     # left. Tokens issued before this claim existed have no "tv" and are treated
     # as version 0, which matches the column default.
     if payload.get("tv", 0) != (user.token_version or 0):
-        logger.debug("Token for %r was issued before sessions were last revoked", username)
+        logger.debug("Token for %r was issued before sessions were last revoked", subject)
         return None
 
     return user

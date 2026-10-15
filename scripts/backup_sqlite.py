@@ -4,12 +4,12 @@
 from __future__ import annotations
 
 import argparse
-from datetime import UTC, datetime, timedelta
 import gzip
-from pathlib import Path
 import shutil
 import sqlite3
 import tempfile
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 
 def create_backup(db_path: Path, output_dir: Path, *, label: str = "prompts") -> Path:
@@ -24,6 +24,7 @@ def create_backup(db_path: Path, output_dir: Path, *, label: str = "prompts") ->
 
     with tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False) as temp_file:
         temp_path = Path(temp_file.name)
+    archive_temp_path = None
 
     try:
         source = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
@@ -36,10 +37,22 @@ def create_backup(db_path: Path, output_dir: Path, *, label: str = "prompts") ->
         finally:
             source.close()
 
-        with temp_path.open("rb") as raw, gzip.open(backup_path, "wb") as compressed:
-            shutil.copyfileobj(raw, compressed)
+        # NamedTemporaryFile creates mode 0600; the final name is visible only
+        # after compression completes, on the same filesystem as the archive.
+        with tempfile.NamedTemporaryFile(
+            dir=output_dir, suffix=".tmp", delete=False
+        ) as archive:
+            archive_temp_path = Path(archive.name)
+            with (
+                temp_path.open("rb") as raw,
+                gzip.GzipFile(fileobj=archive, mode="wb") as compressed,
+            ):
+                shutil.copyfileobj(raw, compressed)
+        archive_temp_path.replace(backup_path)
     finally:
         temp_path.unlink(missing_ok=True)
+        if archive_temp_path is not None:
+            archive_temp_path.unlink(missing_ok=True)
 
     return backup_path
 
@@ -67,11 +80,17 @@ def prune_backups(output_dir: Path, *, label: str, keep_days: int) -> list[Path]
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Create a SQLite database backup")
-    parser.add_argument("--db", required=True, type=Path, help="Path to the SQLite database file")
-    parser.add_argument("--out", required=True, type=Path, help="Directory for backup files")
+    parser.add_argument(
+        "--db", required=True, type=Path, help="Path to the SQLite database file"
+    )
+    parser.add_argument(
+        "--out", required=True, type=Path, help="Directory for backup files"
+    )
     parser.add_argument("--label", default="prompts", help="Backup file prefix")
     parser.add_argument(
-        "--keep-days", type=int, help="Delete this label's backups older than this many days"
+        "--keep-days",
+        type=int,
+        help="Delete this label's backups older than this many days",
     )
     args = parser.parse_args()
 

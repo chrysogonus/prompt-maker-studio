@@ -66,6 +66,18 @@ server (`backend/app/services/oauth_provider.py`, built on the MCP SDK's handler
 | `POST /api/oauth/revoke` | Token revocation (RFC 7009) |
 | `GET`, `POST /api/oauth/consent` | Consent-screen details and decision (session-authenticated) |
 
+Revoking either an OAuth access token or refresh token disconnects that
+account/client pair immediately: existing access tokens, refresh tokens and
+pending authorization codes stop working. Other clients and accounts remain
+connected. Reauthorizing creates credentials on the new grant version without
+reviving old tokens. Global sign-out, password changes and resets also invalidate
+previous approvals and tokens, including exchanges already in progress. Manually
+configured session bearer tokens use account-wide revocation instead.
+
+Upgrading to 0.5.0 requires OAuth clients to reauthorize: migration
+`027_oauth_grants` clears legacy codes and refresh tokens, and old access tokens
+lack the required grant version. Registered client metadata is retained.
+
 Access tokens are JWTs whose `aud` is `<FRONTEND_URL>/api/mcp`. The REST API's session
 decoder rejects any token with an audience, so a token issued to ChatGPT works only on
 the MCP endpoint. Access and refresh tokens both carry the user's `token_version`, so

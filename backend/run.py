@@ -7,6 +7,8 @@ import os
 
 import uvicorn
 
+from app.logging_config import LOGGING_CONFIG
+
 if __name__ == "__main__":
     reload = os.getenv("UVICORN_RELOAD", "false").lower() == "true"
     # forwarded_allow_ips="*" would make uvicorn trust the X-Forwarded-For
@@ -24,4 +26,6 @@ if __name__ == "__main__":
         reload=reload,
         proxy_headers=True,
         forwarded_allow_ips=forwarded_allow_ips,
+        log_config=LOGGING_CONFIG,
+        access_log=False,
     )

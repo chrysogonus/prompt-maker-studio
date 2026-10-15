@@ -44,6 +44,8 @@ class OAuthAuthorizationCode(Base):
     code_challenge = Column(String(128), nullable=False)
     scopes = Column(JSON, nullable=False, default=list)
     resource = Column(Text, nullable=True)
+    token_version = Column(Integer, nullable=False)
+    grant_version = Column(Integer, nullable=False)
     expires_at = Column(DateTime, nullable=False)
 
     user = relationship("User", back_populates="oauth_authorization_codes")
@@ -66,6 +68,21 @@ class OAuthRefreshToken(Base):
     # users.token_version when issued: a password change, reset, or "sign out
     # everywhere" bumps it and so revokes the connection along with sessions.
     token_version = Column(Integer, nullable=False)
+    grant_version = Column(Integer, nullable=False)
     expires_at = Column(DateTime, nullable=False)
 
     user = relationship("User", back_populates="oauth_refresh_tokens")
+
+
+class OAuthGrant(Base):
+    """Revocation generation for one account's connection to one client."""
+
+    __tablename__ = "oauth_grants"
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    client_id = Column(
+        String(64), ForeignKey("oauth_clients.client_id", ondelete="CASCADE"), primary_key=True
+    )
+    version = Column(Integer, nullable=False, default=0, server_default="0")
+
+    user = relationship("User", back_populates="oauth_grants")

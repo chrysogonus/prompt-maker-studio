@@ -1,25 +1,32 @@
 """Session HTTP endpoints."""
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 import logging
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.api import deps
-from app.auth.cookies import clear_session, issue_session, session_expires_at
-from app.auth.dependencies import get_current_user
+from app.auth.cookies import (
+    SESSION_COOKIE_NAME,
+    clear_session,
+    issue_session,
+    session_expires_at,
+)
+from app.auth.dependencies import get_current_user, security
 from app.auth.utils import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
+    MAX_SESSION_AGE,
     create_access_token,
+    decode_access_token,
+    get_password_hash,
     verify_password,
 )
 from app.database.connection import get_db
 from app.limiter import limiter
-from app.metrics import (
-    login_successes_total,
-)
+from app.metrics import observe_operation
 from app.models.user import User
 from app.schemas.accounts import (
     Token,
@@ -37,6 +44,9 @@ _REGISTER_RATE_LIMIT = os.getenv("REGISTER_RATE_LIMIT", "5/minute")
 
 
 _LOGIN_RATE_LIMIT = os.getenv("LOGIN_RATE_LIMIT", "10/minute")
+
+# Match the cost of a failed password check even when the username is unknown.
+_DUMMY_PASSWORD_HASH = get_password_hash("unused-login-password")
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -61,6 +71,7 @@ def register(request: Request, user_data: UserCreate, db: Session = Depends(get_
 
 @router.post("/login", response_model=Token)
 @limiter.limit(_LOGIN_RATE_LIMIT)
+@observe_operation("login")
 def login(
     request: Request,
     response: Response,
@@ -75,7 +86,7 @@ def login(
     countdown and which reveals nothing on its own.
 
     Args:
-        user_credentials: User login credentials (username and password)
+        user_credentials: User login credentials (username or email, and password)
         db: Database session
 
     Returns:
@@ -84,19 +95,23 @@ def login(
     Raises:
         HTTPException: If credentials are invalid
     """
-    normalized_username = user_credentials.username.strip().lower()
-    user = db.query(User).filter(User.username == normalized_username).first()
+    # Usernames cannot contain "@", so the identifier is unambiguous.
+    identifier = user_credentials.username.strip().lower()
+    column = User.email if "@" in identifier else User.username
+    user = db.query(User).filter(column == identifier).first()
 
-    if not user or not verify_password(user_credentials.password, user.hashed_password):
+    password_matches = verify_password(
+        user_credentials.password, user.hashed_password if user else _DUMMY_PASSWORD_HASH
+    )
+    if user is None or not password_matches:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect username, email, or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    login_successes_total.inc()
     access_token = create_access_token(
-        subject=user.username,
+        subject=user.auth_subject,
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         token_version=user.token_version or 0,
     )
@@ -111,15 +126,38 @@ def refresh_access_token(
     request: Request,
     response: Response,
     current_user: User = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ):
-    """Renew a still-valid session before a long-running operation."""
+    """
+    Renew a still-valid session while the user is active.
+
+    Renewal never extends a session past `MAX_SESSION_AGE` after the user last
+    authenticated; once that is reached the user has to sign in again.
+    """
+    # Same precedence as get_current_user, which has already validated it.
+    token = request.cookies.get(SESSION_COOKIE_NAME) or credentials.credentials
+    payload = decode_access_token(token)
+    # Tokens issued before auth_time existed fall back to their issue time.
+    auth_time = payload.get("auth_time", payload["iat"])
+
+    now = datetime.now(UTC)
+    session_end = datetime.fromtimestamp(auth_time, UTC) + MAX_SESSION_AGE
+    lifetime = min(timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES), session_end - now)
+    if lifetime <= timedelta(0):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session reached its maximum length. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     access_token = create_access_token(
-        subject=current_user.username,
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        subject=current_user.auth_subject,
+        expires_delta=lifetime,
         token_version=current_user.token_version or 0,
+        auth_time=auth_time,
     )
     issue_session(response, access_token)
-    return {"token_type": "bearer", "expires_at": session_expires_at()}
+    return {"token_type": "bearer", "expires_at": now + lifetime}
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -150,6 +188,6 @@ def logout_everywhere(
     authentication, so a session copied to another machine stops working
     immediately rather than at its own expiry.
     """
-    current_user.token_version = (current_user.token_version or 0) + 1
+    current_user.token_version = User.token_version + 1
     db.commit()
     clear_session(response)

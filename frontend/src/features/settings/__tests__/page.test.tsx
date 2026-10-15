@@ -29,10 +29,11 @@ vi.mock('@/lib/api', () => ({
 }));
 
 const logout = vi.fn();
+const setCurrentUser = vi.fn();
 
 function renderSettings() {
   return render(
-    <AuthContext.Provider value={{ currentUser: 'testuser', logout }}>
+    <AuthContext.Provider value={{ currentUser: 'testuser', logout, setCurrentUser }}>
       <SettingsPage />
     </AuthContext.Provider>
   );
@@ -84,6 +85,7 @@ function connection(overrides: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   logout.mockClear();
+  setCurrentUser.mockClear();
   vi.mocked(AuthService.getCurrentUser).mockResolvedValue(user());
   vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection());
   vi.mocked(ApiClient.getPromptsConfig).mockResolvedValue({
@@ -122,11 +124,44 @@ describe('SettingsPage', () => {
     const input = screen.getByPlaceholderText('you@example.com');
     await userEvent.clear(input);
     await userEvent.type(input, 'new@example.com');
+    await userEvent.type(screen.getByLabelText('Current password'), 'testpass123!');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
-      expect(AuthService.updateProfile).toHaveBeenCalledWith({ email: 'new@example.com' });
+      expect(AuthService.updateProfile).toHaveBeenCalledWith({
+        email: 'new@example.com',
+        current_password: 'testpass123!',
+      });
     });
+  });
+
+  it('asks for the current password before changing the email', async () => {
+    vi.mocked(AuthService.updateProfile).mockClear();
+    renderSettings();
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit email' }));
+
+    await userEvent.clear(screen.getByPlaceholderText('you@example.com'));
+    await userEvent.type(screen.getByPlaceholderText('you@example.com'), 'new@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Enter your current password to change your email.',
+    );
+    expect(AuthService.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it('renames the account in place without signing out', async () => {
+    vi.mocked(AuthService.updateProfile).mockResolvedValue(user({ username: 'renamed' }));
+    renderSettings();
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit username' }));
+
+    const input = screen.getByDisplayValue('testuser');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'renamed');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(setCurrentUser).toHaveBeenCalledWith('renamed'));
+    expect(logout).not.toHaveBeenCalled();
   });
 
   it('shows an inline error when saving an empty username instead of silently ignoring it', async () => {

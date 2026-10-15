@@ -3,7 +3,7 @@
   "name": "io.github.chrysogonus/prompt-maker-studio",
   "title": "Prompt Maker Studio",
   "description": "Your prompt library in any MCP client: list, fetch, save and version prompt templates.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "websiteUrl": "https://neadlab.com",
   "icons": [
     {

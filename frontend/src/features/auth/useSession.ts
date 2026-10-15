@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 
 import { AuthService, SESSION_EXPIRED_EVENT } from '@/lib/auth';
 
+// Real input keeps the session alive. Shorter sessions renew halfway through
+// their lifetime; longer ones renew every five minutes to limit requests.
+const ACTIVITY_RENEWAL_INTERVAL_MS = 5 * 60 * 1000;
+
 export function useSession() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -93,7 +97,7 @@ export function useSession() {
       setIsSessionUrgent(minutesRemaining <= 2);
       setSessionWarning(
         minutesRemaining > 0 && minutesRemaining <= 5
-          ? `Your session expires in about ${minutesRemaining} minute${minutesRemaining === 1 ? '' : 's'}. Save in-progress work before signing in again.`
+          ? `Your session expires in about ${minutesRemaining} minute${minutesRemaining === 1 ? '' : 's'} unless you keep working.`
           : '',
       );
     };
@@ -105,13 +109,41 @@ export function useSession() {
     };
   }, [isAuthenticated]);
 
+  // Only deliberate input counts, so an idle open tab still expires. The server
+  // refuses renewal once the session reaches its maximum length.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    // The first input after mount renews at once: a reloaded page may be
+    // minutes from expiry.
+    let lastRenewal = 0;
+    const renew = () => {
+      const now = Date.now();
+      const expiresAt = AuthService.getTokenExpiryMs();
+      const interval = expiresAt === null ? ACTIVITY_RENEWAL_INTERVAL_MS : Math.min(
+        ACTIVITY_RENEWAL_INTERVAL_MS,
+        (expiresAt - lastRenewal) / 2,
+      );
+      if (now - lastRenewal < interval) return;
+      lastRenewal = now;
+      AuthService.refreshSession().catch(() => {});
+    };
+    window.addEventListener('keydown', renew, { passive: true });
+    window.addEventListener('pointerdown', renew, { passive: true });
+    return () => {
+      window.removeEventListener('keydown', renew);
+      window.removeEventListener('pointerdown', renew);
+    };
+  }, [isAuthenticated]);
+
   const handleAuthSuccess = async () => {
     try {
       const user = await AuthService.getCurrentUser();
       setCurrentUser(user.username);
       setIsAuthenticated(true);
-    } catch (err) {
-      console.error('Failed to get user info:', err);
+    } catch {
+      if (AuthService.isAuthenticated()) {
+        setAuthCheckError('Your session is still saved, but it could not be verified.');
+      }
     }
   };
 
@@ -131,6 +163,7 @@ export function useSession() {
     isAuthenticated,
     isCheckingAuth,
     currentUser,
+    setCurrentUser,
     authCheckError,
     sessionWarning,
     isSessionUrgent,

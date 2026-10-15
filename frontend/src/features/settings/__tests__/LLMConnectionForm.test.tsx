@@ -62,6 +62,13 @@ beforeEach(() => {
 });
 
 describe('LLMConnectionForm', () => {
+  it('announces successful connection tests as a status', async () => {
+    vi.mocked(AuthService.testLLMConnection).mockResolvedValue({ ok: true, message: 'Connection verified' });
+    render(<LLMConnectionForm />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Test connection' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Connection verified');
+  });
+
   it('groups non-text models separately and distinguishes configuration from a successful test', async () => {
     const user = userEvent.setup();
     vi.mocked(AuthService.getLLMModels).mockResolvedValue(['gpt-4o-mini', 'text-embedding-3-small', 'whisper-1', 'custom-local'].map((id) => ({

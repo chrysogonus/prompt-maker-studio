@@ -6,7 +6,7 @@ import AppLayout from '../layout';
 import { AuthService } from '@/lib/auth';
 
 vi.mock('@/features/auth/AuthForm', () => ({
-  default: () => <div>Auth form</div>,
+  default: ({ onSuccess }: { onSuccess: () => void }) => <button onClick={onSuccess}>Auth form</button>,
 }));
 
 vi.mock('@/components/shell/Sidebar', () => ({
@@ -33,6 +33,18 @@ beforeEach(() => {
 });
 
 describe('AppLayout', () => {
+  it('offers a recoverable session check when the profile request after login fails', async () => {
+    vi.mocked(AuthService.isAuthenticated).mockReturnValue(false);
+    render(<AppLayout><p>Page content</p></AppLayout>);
+    await screen.findByRole('button', { name: 'Auth form' });
+    vi.mocked(AuthService.isAuthenticated).mockReturnValue(true);
+    vi.mocked(AuthService.getCurrentUser).mockRejectedValueOnce(new Error('Offline'));
+    await userEvent.click(screen.getByRole('button', { name: 'Auth form' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your session is still saved, but it could not be verified.');
+    await userEvent.click(screen.getByRole('button', { name: 'Retry session check' }));
+    expect(await screen.findByText('Page content')).toBeInTheDocument();
+  });
+
   it('provides a skip link whose target is the main content landmark', async () => {
     render(
       <AppLayout>

@@ -5,6 +5,7 @@
 import { ChangePasswordRequest, ForgotPasswordRequest, LLMConnection, LLMConnectionTestResult, LLMConnectionUpdate, LLMModelPriceInfo, LoginRequest, RegisterRequest, ResetPasswordRequest, TokenResponse, User, UserUpdate } from '@/types/auth';
 import { clearUserContentKeys, migrateLegacyStorageKeys, storageKey } from '@/lib/branding';
 import { API_URL } from './apiBase';
+import { extractErrorMessage } from './api/errors';
 
 // Runs at import time, not in an effect: the app layout reads the stored
 // session expiry during render, which is already too late to rescue a
@@ -18,25 +19,10 @@ export const SESSION_EXPIRED_EVENT = storageKey('session-expired');
 import { CREDENTIALS, csrfHeaders } from './authCookies';
 export { CREDENTIALS, CSRF_HEADER_NAME, csrfHeaders, getCsrfToken } from './authCookies';
 
-/**
- * Normalize a FastAPI error detail into a user-readable string.
- * FastAPI returns `detail` as a plain string for HTTP errors but as an array
- * of Pydantic validation objects for 422 Unprocessable Entity responses.
- */
-function extractErrorMessage(detail: unknown): string {
-  if (typeof detail === 'string') {
-    return detail;
-  }
-  if (Array.isArray(detail) && detail.length > 0) {
-    // Pydantic v2 format: [{ loc: [...], msg: '...', type: '...' }]
-    return detail.map((e) => (typeof e?.msg === 'string' ? e.msg : String(e))).join('; ');
-  }
-  return '';
-}
-
 export class AuthService {
   private static cachedUserPromise: Promise<User> | null = null;
   private static refreshPromise: Promise<void> | null = null;
+  private static logoutPromise: Promise<void> | null = null;
 
   /**
    * Register a new user
@@ -62,6 +48,8 @@ export class AuthService {
    * us; the body carries only when the session expires.
    */
   static async login(data: LoginRequest): Promise<TokenResponse> {
+    // A pending logout must not clear the cookies issued by this login.
+    if (this.logoutPromise) await this.logoutPromise;
     const response = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -87,7 +75,7 @@ export class AuthService {
    */
   static async getCurrentUser(): Promise<User> {
     if (!this.cachedUserPromise) {
-      this.cachedUserPromise = (async () => {
+      const request = (async () => {
         const response = await fetch(`${API_URL}/api/auth/me`, {
           credentials: CREDENTIALS,
         });
@@ -97,12 +85,16 @@ export class AuthService {
             this.removeToken();
             throw new Error('Session expired. Please login again.');
           }
-          this.cachedUserPromise = null; // Clear on error so next call retries
           throw new Error('Failed to get user info');
         }
 
         return response.json();
-      })();
+      })().catch((error) => {
+        // A failed fetch or JSON read must not poison subsequent session checks.
+        if (this.cachedUserPromise === request) this.cachedUserPromise = null;
+        throw error;
+      });
+      this.cachedUserPromise = request;
     }
 
     return this.cachedUserPromise;
@@ -113,6 +105,7 @@ export class AuthService {
    * request so route transitions cannot create a refresh stampede.
    */
   static async refreshSession(): Promise<void> {
+    if (this.logoutPromise) throw new Error('Session is signing out. Please login again.');
     if (this.refreshPromise) return this.refreshPromise;
 
     this.refreshPromise = (async () => {
@@ -126,7 +119,7 @@ export class AuthService {
         throw new Error('Session could not be refreshed. Please login again.');
       }
       const tokenData = (await response.json()) as TokenResponse;
-      this.recordSessionExpiry(tokenData.expires_at);
+      if (!this.logoutPromise) this.recordSessionExpiry(tokenData.expires_at);
     })();
 
     try {
@@ -155,18 +148,29 @@ export class AuthService {
    * itself. Local state is cleared regardless of whether it succeeds — a failed
    * request must never leave the user apparently still signed in.
    */
-  static logout(): void {
+  static logout(): Promise<void> {
     this.cachedUserPromise = null;
-    this.refreshPromise = null;
-    if (typeof window === 'undefined') return;
-    void fetch(`${API_URL}/api/auth/logout`, {
-      method: 'POST',
-      headers: csrfHeaders(),
-      credentials: CREDENTIALS,
-    }).catch(() => {});
+    if (typeof window === 'undefined') return Promise.resolve();
     localStorage.removeItem(CLIENT_SESSION_EXPIRY_KEY);
     sessionStorage.removeItem(SESSION_EXPIRY_KEY);
     clearUserContentKeys();
+    if (!this.logoutPromise) {
+      const clearCookies = async () => {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: csrfHeaders(),
+          credentials: CREDENTIALS,
+        });
+      };
+      // Refresh can set httpOnly cookies even if its body is ignored. Clear
+      // them afterward, reading the CSRF cookie that refresh may have rotated.
+      this.logoutPromise = (this.refreshPromise
+        ? this.refreshPromise.catch(() => {}).then(clearCookies)
+        : clearCookies())
+        .catch(() => {})
+        .finally(() => { this.logoutPromise = null; });
+    }
+    return this.logoutPromise;
   }
 
   /**
@@ -186,7 +190,7 @@ export class AuthService {
     if (!response.ok) {
       throw new Error('Could not sign out your other sessions. Please try again.');
     }
-    this.logout();
+    await this.logout();
   }
 
   /**
@@ -234,7 +238,7 @@ export class AuthService {
     sessionStorage.setItem(
       SESSION_EXPIRY_KEY,
       JSON.stringify({
-        reason: 'You were signed out due to inactivity. Your unsaved work is still available.',
+        reason: 'Your session expired. Your unsaved work is still available.',
         returnTo: `${window.location.pathname}${window.location.search}`,
       }),
     );
@@ -370,7 +374,7 @@ export class AuthService {
 
   /**
    * Change the authenticated user's password (verifies current_password server-side).
-   * Does not invalidate the current token — no re-login needed afterward.
+   * The server revokes other sessions and re-issues this one, so record its new expiry.
    */
   static async changePassword(data: ChangePasswordRequest): Promise<void> {
     const response = await fetch(`${API_URL}/api/auth/change-password`, {
@@ -386,5 +390,8 @@ export class AuthService {
         extractErrorMessage(errorData.detail) || `Password change failed: ${response.status}`,
       );
     }
+
+    const { expires_at } = (await response.json()) as { expires_at: string };
+    this.recordSessionExpiry(expires_at);
   }
 }

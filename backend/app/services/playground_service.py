@@ -9,11 +9,12 @@ import time
 from openai import OpenAIError
 from sqlalchemy.orm import Session
 
+from app.metrics import observe_operation
 from app.services.budget_service import BudgetExceededError, BudgetService
 from app.services.errors import OperationError
 from app.services.llm_client import LLMConnection, describe_llm_error, text_completion
 from app.services.llm_pricing import cost_usd_for
-from app.services.spend_ledger import LLMUsage, record_billed_call
+from app.services.spend_ledger import LLMUsage, bill_failed_attempts, record_billed_call
 
 
 class PlaygroundRunError(Exception):
@@ -76,6 +77,7 @@ class PlaygroundService:
         )
 
 
+@observe_operation("try_once")
 def try_once(text: str, connection: LLMConnection, db: Session, user_id: int) -> PlaygroundResult:
     """Run a draft snapshot; only spend is persisted, never a user prompt."""
     try:
@@ -83,7 +85,8 @@ def try_once(text: str, connection: LLMConnection, db: Session, user_id: int) ->
     except BudgetExceededError as exc:
         raise OperationError(status_code=402, detail=str(exc)) from exc
     try:
-        result = PlaygroundService.run(text, connection)
+        with bill_failed_attempts(db, user_id, "try_once"):
+            result = PlaygroundService.run(text, connection)
     except Exception as exc:
         # Preserve the original OpenAI error type for the shared safe error mapper.
         error = exc.__cause__ if isinstance(exc, PlaygroundRunError) else exc

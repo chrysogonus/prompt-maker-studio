@@ -31,6 +31,7 @@ export default function SectionCard({
   // A blank name only matters once the section has been left or saved; a
   // name typed wrong is worth flagging straight away.
   const showNameError = Boolean(nameError && (section.touched || section.name.trim()));
+  const contentError = Array.from(section.content).length > 10000;
 
   // Grow with the content instead of scrolling inside a small box.
   useLayoutEffect(() => {
@@ -42,11 +43,12 @@ export default function SectionCard({
 
   const nameId = `section-name-${section.key}`;
   const errorId = `section-error-${section.key}`;
+  const contentErrorId = `section-content-error-${section.key}`;
 
   return (
     <div
       className={styles.section}
-      data-invalid={showNameError}
+      data-invalid={showNameError || contentError}
     >
       <div className={styles.sectionHead}>
         <input
@@ -94,8 +96,11 @@ export default function SectionCard({
         onBlur={() => !section.touched && onChange({ touched: true })}
         placeholder={section.hint || 'Write this section…'}
         aria-label={`${label} text`}
+        aria-invalid={contentError}
+        aria-describedby={contentError ? contentErrorId : undefined}
         rows={1}
       />
+      {contentError && <p id={contentErrorId} className={styles.sectionError}>Section text must be 10,000 characters or fewer.</p>}
       {showNameError && (
         <p id={errorId} className={styles.sectionError}>
           {nameError}

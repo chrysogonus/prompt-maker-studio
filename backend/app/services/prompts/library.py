@@ -5,9 +5,7 @@ from http import HTTPStatus
 
 from sqlalchemy.orm import Session
 
-from app.metrics import (
-    prompts_saved_total,
-)
+from app.metrics import observe_operation
 from app.models.eval_case import EvalCase
 from app.models.prompt import Prompt
 from app.schemas.prompts import PromptCreateRequest, PromptUpdateRequest, VariableMetadataItem
@@ -19,6 +17,7 @@ from app.services.prompt_version_service import PromptVersionService
 from app.services.prompts.ownership import get_owned_prompt as _get_owned_prompt
 
 
+@observe_operation("prompt_create")
 def create_prompt(body: PromptCreateRequest, db: Session, user_id: int):
     """Save a new prompt to the calling user's library."""
     fields = [{"name": field.name, "content": field.content} for field in body.fields]
@@ -38,8 +37,6 @@ def create_prompt(body: PromptCreateRequest, db: Session, user_id: int):
     db.add(prompt)
     db.commit()
     db.refresh(prompt)
-
-    prompts_saved_total.inc()
 
     return prompt
 
@@ -61,6 +58,7 @@ def get_prompt_by_id(prompt_id: int, db: Session, user_id: int):
     return _get_owned_prompt(prompt_id, user_id, db)
 
 
+@observe_operation("prompt_update")
 def update_prompt(prompt_id: int, body: PromptUpdateRequest, db: Session, user_id: int):
     """Update an owned prompt's name, sections, or organisation."""
     prompt = _get_owned_prompt(prompt_id, user_id, db)
@@ -113,6 +111,7 @@ def update_prompt(prompt_id: int, body: PromptUpdateRequest, db: Session, user_i
     return prompt
 
 
+@observe_operation("prompt_delete")
 def delete_prompt(prompt_id: int, db: Session, user_id: int):
     """Delete an owned prompt permanently."""
     prompt = _get_owned_prompt(prompt_id, user_id, db)
@@ -120,6 +119,7 @@ def delete_prompt(prompt_id: int, db: Session, user_id: int):
     db.commit()
 
 
+@observe_operation("prompt_duplicate")
 def duplicate_prompt(prompt_id: int, db: Session, user_id: int):
     """Duplicate an existing prompt.  Only the owner may duplicate a prompt.
     The duplicate receives a collision-free copy name and preserves all
@@ -179,5 +179,4 @@ def duplicate_prompt(prompt_id: int, db: Session, user_id: int):
     db.commit()
     db.refresh(duplicated)
 
-    prompts_saved_total.inc()
     return duplicated

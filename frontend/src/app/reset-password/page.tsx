@@ -13,6 +13,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AuthService } from '@/lib/auth';
+import { PASSWORD_HINT, passwordPolicyError } from '@/features/auth/passwordPolicy';
 import styles from './page.module.css';
 
 function ResetPasswordForm() {
@@ -28,6 +29,12 @@ function ResetPasswordForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const policyError = passwordPolicyError(newPassword);
+    if (policyError) {
+      setError(policyError);
+      return;
+    }
 
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match.');
@@ -98,9 +105,9 @@ function ResetPasswordForm() {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className={styles.input}
-              placeholder="Min 8 characters"
+              placeholder={PASSWORD_HINT}
               required
-              minLength={8}
+              minLength={10}
               maxLength={72}
               autoComplete="new-password"
             />
@@ -118,7 +125,7 @@ function ResetPasswordForm() {
               className={styles.input}
               placeholder="Repeat new password"
               required
-              minLength={8}
+              minLength={10}
               maxLength={72}
               autoComplete="new-password"
             />
