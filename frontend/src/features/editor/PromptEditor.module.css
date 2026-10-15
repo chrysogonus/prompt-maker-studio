@@ -853,6 +853,17 @@ button.version:hover {
   background: color-mix(in srgb, var(--color-danger) 16%, transparent);
 }
 
+/* Pale tints over dark plum turn olive and grey; colour the text instead. */
+:global([data-theme='dark']) .diff ins,
+:global([data-theme='dark']) .diffLegend ins {
+  color: var(--color-accent-success);
+}
+
+:global([data-theme='dark']) .diff del,
+:global([data-theme='dark']) .diffLegend del {
+  color: var(--color-danger);
+}
+
 .diffActions {
   display: flex;
   align-items: center;

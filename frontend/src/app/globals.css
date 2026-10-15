@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --pm-coral: #f0997b;
   --pm-ink: #141416;
   --pm-surface-tile: #17171a;
@@ -135,6 +136,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --pm-mark-color: var(--pm-coral);
 
   --color-canvas: #1d1219;

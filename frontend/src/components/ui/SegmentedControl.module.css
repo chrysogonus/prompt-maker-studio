@@ -32,7 +32,7 @@
 /* The chosen option is raised, not coloured: coral is kept for actions. */
 .option[data-active='true'],
 .option[data-has-icon='true'][data-active='true'] {
-  background: var(--color-panel);
+  background: var(--color-overlay);
   color: var(--text-primary);
   font-weight: var(--weight-semibold);
   box-shadow: 0 1px 2px rgba(43, 27, 40, 0.12);

@@ -71,6 +71,11 @@
   opacity: 0.6;
 }
 
+/* A coral tint over dark surfaces turns brown; stay neutral there. */
+:global([data-theme='dark']) .primary:disabled {
+  background: var(--bg-tertiary);
+}
+
 .secondary:disabled {
   background: transparent;
   border-color: var(--border-primary);

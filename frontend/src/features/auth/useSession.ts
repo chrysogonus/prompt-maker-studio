@@ -147,13 +147,6 @@ export function useSession() {
     }
   };
 
-  // Applied once per mount of the authenticated shell; Settings owns the toggle control.
-  useEffect(() => {
-    const storedTheme = localStorage.getItem('theme');
-    // Light unless the user chose dark.
-    document.documentElement.setAttribute('data-theme', storedTheme === 'dark' ? 'dark' : 'light');
-  }, []);
-
   const logout = () => {
     AuthService.logout();
     setIsAuthenticated(false);

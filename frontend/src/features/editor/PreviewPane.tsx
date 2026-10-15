@@ -199,7 +199,7 @@ export default function PreviewPane({
           <p id="required-input-warning" className={styles.previewWarning}>Required inputs missing: {missingRequired.join(', ')}. Fill them in or choose Copy with placeholders.</p>
         )}
         {filled && missingOptional.length > 0 && (
-          <p className={styles.previewWarning}>
+          <p className={styles.previewLong}>
             {missingOptional.length === 1 ? (
               <>
                 <code>{missingOptional[0]}</code> is not filled in.
@@ -229,7 +229,7 @@ export default function PreviewPane({
           <>
             <AICallContext config={aiConfig} />
             {filledText.length > TRY_PROMPT_CHARS && <p className={styles.previewWarning}>Try once accepts up to 100,000 characters. Shorten the prompt before running.</p>}
-            {filled && missingOptional.length > 0 && <p className={styles.previewWarning}>Try once keeps unfilled optional inputs as placeholders.</p>}
+            {filled && missingOptional.length > 0 && <p className={styles.previewLong}>Try once keeps unfilled optional inputs as placeholders.</p>}
             <button type="button" className={styles.copyButton} data-secondary="true" onClick={tryOnce}
               disabled={filledText.length > TRY_PROMPT_CHARS || trying || !hasContent || missingRequired.length > 0 || !aiConfig?.provider_connected || aiConfig.budget_exhausted}>
               {trying ? 'Running…' : 'Try once'}
