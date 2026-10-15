@@ -1,10 +1,12 @@
 import { ArrowUpRight, CodeXml } from 'lucide-react';
 import styles from './RepositoryLink.module.css';
 
+export const REPOSITORY_URL = 'https://github.com/chrysogonus/prompt-maker-studio';
+
 export default function RepositoryLink({ className }: { className?: string }) {
   return (
     <a
-      href="https://github.com/chrysogonus/prompt-maker-studio"
+      href={REPOSITORY_URL}
       className={[styles.link, className].filter(Boolean).join(' ')}
       aria-label="Open source on GitHub"
       title="Open source on GitHub"

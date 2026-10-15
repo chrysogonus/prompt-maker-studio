@@ -112,50 +112,55 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByLabel('Task text').fill('Explain {{topic}} to beginners briefly.');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Tools', exact: true }).click();
     await page.getByRole('button', { name: 'History', exact: true }).click();
     await expect(page.getByRole('button', { name: /Version 1/ })).toBeVisible();
   });
 }
 
-test('keeps page headings in one place across navigation and adapts the shell to phones', async ({
-  page,
-}) => {
-  const user = uniqueUser('layout');
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await register(page, user);
+for (const theme of ['light', 'dark'] as const) {
+  test(`aligns page content across navigation and adapts the shell to phones (${theme})`, async ({ page }) => {
+    await page.addInitScript((value) => localStorage.setItem('theme', value), theme);
+    const user = uniqueUser('layout');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await register(page, user);
 
-  await sidebarLink(page, 'Settings').click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  const settingsHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
+    await sidebarLink(page, 'Settings').click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    const settingsHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
 
-  await sidebarLink(page, 'New prompt').click();
-  await expect(page.getByRole('heading', { level: 1, name: 'New prompt' })).toBeVisible();
-  const editorHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
+    await sidebarLink(page, 'New prompt').click();
+    await expect(page.getByRole('heading', { level: 1, name: 'New prompt' })).toBeVisible();
+    const editorHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
 
-  await sidebarLink(page, /All prompts/).click();
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  const libraryHeading = await page.getByRole('heading', { level: 1 }).boundingBox();
+    await sidebarLink(page, /All prompts/).click();
+    const libraryTitle = page.getByRole('heading', { level: 1, name: 'Your prompt library is empty' });
+    await expect(libraryTitle).toBeVisible();
+    const libraryHeading = await libraryTitle.boundingBox();
 
-  for (const box of [settingsHeading, editorHeading, libraryHeading]) expect(box).not.toBeNull();
-  expect(Math.abs(settingsHeading!.x - libraryHeading!.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(editorHeading!.x - libraryHeading!.x)).toBeLessThanOrEqual(8);
-  expect(Math.abs(settingsHeading!.y - libraryHeading!.y)).toBeLessThanOrEqual(1);
-  expect(
-    await page.evaluate(() => getComputedStyle(document.documentElement).scrollbarGutter),
-  ).toContain('stable');
+    for (const box of [settingsHeading, editorHeading, libraryHeading]) expect(box).not.toBeNull();
+    expect(Math.abs(settingsHeading!.x - libraryHeading!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(editorHeading!.x - libraryHeading!.x)).toBeLessThanOrEqual(8);
+    // The empty-library introduction has extra vertical space; ordinary page
+    // headings share the top row, with room for vertically centred toolbar actions.
+    expect(Math.abs(settingsHeading!.y - editorHeading!.y)).toBeLessThanOrEqual(8);
+    expect(
+      await page.evaluate(() => getComputedStyle(document.documentElement).scrollbarGutter),
+    ).toContain('stable');
 
-  // On a phone the sidebar becomes a drawer behind the menu button.
-  await page.setViewportSize({ width: 390, height: 844 });
-  const sidebar = page.getByRole('dialog', { name: 'Sidebar' });
-  await expect(sidebar).not.toBeInViewport();
-  await page.getByRole('button', { name: 'Open navigation' }).click();
-  await expect(sidebar).toBeInViewport();
-  await sidebarLink(page, 'Settings').click();
-  await expect(page).toHaveURL(/\/settings$/);
-  await expect(sidebar).not.toBeInViewport();
-  const newLink = await page.getByRole('banner').getByRole('link', { name: 'New' }).boundingBox();
-  expect(newLink!.x + newLink!.width).toBeLessThanOrEqual(390);
-});
+    // On a phone the sidebar becomes a drawer behind the menu button.
+    await page.setViewportSize({ width: 390, height: 844 });
+    const sidebar = page.getByRole('dialog', { name: 'Sidebar' });
+    await expect(sidebar).not.toBeInViewport();
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await expect(sidebar).toBeInViewport();
+    await sidebarLink(page, 'Settings').click();
+    await expect(page).toHaveURL(/\/settings$/);
+    await expect(sidebar).not.toBeInViewport();
+    const newLink = await page.getByRole('banner').getByRole('link', { name: 'New' }).boundingBox();
+    expect(newLink!.x + newLink!.width).toBeLessThanOrEqual(390);
+  });
+}
 
 /** Create and save a one-section prompt from /editor/new, returning its id. */
 async function createSavedPrompt(page: Page, name: string, content: string) {
@@ -278,6 +283,8 @@ test('edits a saved prompt twice and restores an earlier version', async ({ page
   const secondSave = promptPatch(page, promptId);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   expect((await secondSave).status()).toBe(200);
+
+  await page.getByRole('button', { name: 'Tools', exact: true }).click();
 
   await page.getByRole('button', { name: 'History' }).click();
   const history = page.getByRole('complementary', { name: 'Version history' });

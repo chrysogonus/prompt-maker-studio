@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import { Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
+import { Hanken_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
 import { pageTitle } from '@/lib/branding';
 import './globals.css';
 
 // Self-hosted at build time, so no request leaves for a font CDN at runtime.
 const hanken = Hanken_Grotesk({ subsets: ['latin'], variable: '--font-hanken', display: 'swap' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap', preload: false });
 const jetbrains = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-jetbrains',
@@ -27,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     // The inline script applies a saved dark theme before first paint, on every page.
-    <html lang="en" data-theme="light" className={`${hanken.variable} ${jetbrains.variable}`} suppressHydrationWarning>
+    <html lang="en" data-theme="light" className={`${hanken.variable} ${inter.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>

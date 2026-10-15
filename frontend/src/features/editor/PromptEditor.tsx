@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 import Button, { ButtonLink } from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
@@ -88,6 +89,27 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
   } = usePromptEditor({ promptId, initialStarter, initialMode, openImport });
 
   const editorRef = useRef<HTMLDivElement>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
+  const toolsButtonRef = useRef<HTMLButtonElement>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  useEffect(() => {
+    if (!toolsOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!toolsRef.current?.contains(event.target as Node)) setToolsOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setToolsOpen(false);
+      toolsButtonRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [toolsOpen]);
   const focusImported = useRef(false);
   useEffect(() => {
     if (!importOpen && focusImported.current) {
@@ -162,13 +184,6 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
           {dirty && <span className={styles.edited}>Edited</span>}
         </div>
         <div className={styles.headActions}>
-          {prompt && !dirty && !saving ? (
-            <ButtonLink variant="ghost" href={`/editor/${prompt.id}/evaluate`}>Evaluate</ButtonLink>
-          ) : (
-            <Button variant="ghost" disabled title={prompt ? 'Save your changes before evaluating.' : 'Save this prompt before evaluating.'}>
-              Evaluate
-            </Button>
-          )}
           {prompt && dirty && (
             <input
               className={styles.noteInput}
@@ -179,7 +194,6 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               maxLength={255}
             />
           )}
-          {prompt && <Button variant="ghost" disabled={refineOpen || saving} onClick={() => setImportOpen(true)}>Paste a prompt</Button>}
           {prompt && dirty && (
             <Button variant="ghost" onClick={discardEdits} disabled={refineOpen}>
               Discard
@@ -193,15 +207,29 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
           >
             Refine
           </Button>
-          {prompt && (
-            <Button
-              variant="ghost"
-              onClick={() => { setRefineOpen(false); setHistoryOpen((open) => !open); }}
-              aria-pressed={historyOpen}
-            >
-              History
+          {prompt && <div className={styles.tools} ref={toolsRef} onBlur={(event) => {
+            // Safari doesn't focus clicked buttons, so a null relatedTarget is a
+            // click inside the menu; outside clicks are handled on pointerdown.
+            if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setToolsOpen(false);
+          }}>
+            <Button ref={toolsButtonRef} variant="secondary" aria-expanded={toolsOpen} aria-controls="editor-tools" onClick={() => setToolsOpen((open) => !open)}>
+              Tools <ChevronDown size={14} aria-hidden="true" />
             </Button>
-          )}
+            {toolsOpen && <div id="editor-tools" className={styles.toolsMenu}>
+              {!dirty && !saving ? (
+                <ButtonLink variant="ghost" href={`/editor/${prompt.id}/evaluate`} onClick={() => setToolsOpen(false)}>Evaluate</ButtonLink>
+              ) : (
+                <Button variant="ghost" disabled title="Save your changes before evaluating.">Evaluate</Button>
+              )}
+              <Button variant="ghost" disabled={refineOpen || saving} onClick={() => { setToolsOpen(false); setImportOpen(true); }}>Paste a prompt</Button>
+              <Button variant="ghost" onClick={() => {
+                setToolsOpen(false);
+                setRefineOpen(false);
+                if (historyOpen) toolsButtonRef.current?.focus();
+                setHistoryOpen((open) => !open);
+              }} aria-pressed={historyOpen}>History</Button>
+            </div>}
+          </div>}
           <Button variant="primary" onClick={save} disabled={saving || refineOpen || (!!prompt && !dirty)}>
             {saving ? 'Saving…' : prompt && !dirty ? 'Saved' : 'Save'}
           </Button>
@@ -393,7 +421,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
             current={prompt}
             versions={versions}
             dirty={dirty}
-            onClose={() => setHistoryOpen(false)}
+            onClose={() => { setHistoryOpen(false); toolsButtonRef.current?.focus(); }}
             onRestore={restore}
           />
         )}
@@ -507,7 +535,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
         aiAvailable={aiAvailable}
         aiConfig={aiConfig}
         replacesContent={hasContent}
-        onClose={() => setImportOpen(false)}
+        onClose={() => { setImportOpen(false); if (prompt) toolsButtonRef.current?.focus(); }}
         session={importSession}
         onSessionChange={setImportSession}
         onImport={(result) => {

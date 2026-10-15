@@ -240,11 +240,11 @@ function LibraryContent() {
               <div className={styles.rowMain}>
                 {name(prompt)}
                 <p className={styles.excerpt}>{excerpt(prompt)}</p>
-              </div>
-              <div className={styles.meta}>
-                {view.type !== 'folder' && <span>{prompt.folder ?? 'Unfiled'}</span>}
-                <span>{variables ? `${variables} variable${variables === 1 ? '' : 's'}` : 'No variables'}</span>
-                <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
+                <div className={styles.meta}>
+                  {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
+                  <span>{variables ? `${variables} variable${variables === 1 ? '' : 's'}` : 'No variables'}</span>
+                  <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
+                </div>
               </div>
               <div className={styles.actions}>
                 {variables > 0 && (

@@ -33,8 +33,7 @@
 
 .head {
   display: flex;
-  /* Top-aligned so the title lines up with other pages' headings. */
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
   padding-bottom: var(--space-3);
@@ -72,7 +71,7 @@
 .title {
   background: none;
   border: 0;
-  font-size: var(--text-lg-size);
+  font-size: var(--text-xl-size);
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
   color: var(--text-primary);
@@ -130,6 +129,24 @@ button.title:hover {
   gap: var(--space-2);
   flex-wrap: wrap;
 }
+
+.tools { position: relative; }
+
+.toolsMenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 30;
+  display: grid;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-float);
+}
+
+.toolsMenu > * { justify-content: flex-start; min-height: 40px; }
 
 .noteInput {
   font: inherit;
@@ -309,7 +326,8 @@ button.title:hover {
 /* Section card */
 
 .section {
-  background: var(--color-panel);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-surface);
   border: 1px solid var(--color-border);
   border-left: 3px solid var(--color-plum-wash);
   border-radius: var(--radius-md);
@@ -330,6 +348,8 @@ button.title:hover {
   align-items: center;
   gap: var(--space-2);
 }
+
+.sectionIcon { display: none; }
 
 .sectionName {
   flex: 1;
@@ -519,8 +539,8 @@ button.title:hover {
   grid-row: 1;
   position: sticky;
   top: var(--space-4);
-  /* Fits below the editor header before scrolling, so Copy is never off-screen. */
-  height: calc(100vh - 112px);
+  /* Leave room for the page heading and the canvas below the panel. */
+  height: calc(100dvh - 128px);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
@@ -528,9 +548,12 @@ button.title:hover {
 .preview {
   display: flex;
   flex-direction: column;
-  background: var(--pv-bg);
+  background: var(--surface-preview);
   color: var(--pv-text);
+  overflow-y: auto;
 }
+
+.preview > * { flex-shrink: 0; }
 
 .previewClosed {
   background: var(--pv-bg);
@@ -599,7 +622,7 @@ button.title:hover {
 .previewValues {
   flex: 0 1 auto;
   min-height: 0;
-  max-height: 45%;
+  max-height: 42%;
   overflow-y: auto;
   display: grid;
   gap: 10px;
@@ -638,7 +661,7 @@ button.title:hover {
 }
 
 .previewText {
-  flex: 1;
+  flex: 1 0 160px;
   min-height: 0;
   overflow-y: auto;
   margin: 0;
@@ -679,10 +702,30 @@ button.title:hover {
 
 .previewFoot {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-2);
   padding: 12px 18px 16px;
   border-top: 1px solid var(--pv-border);
 }
+
+.previewFoot > p { grid-column: 1 / -1; }
+
+.tryPanel {
+  align-self: start;
+}
+
+.tryPanel[open] { grid-column: 1 / -1; }
+
+.tryPanel summary {
+  padding-block: var(--space-3);
+  color: var(--pv-muted);
+  font-size: var(--text-sm-size);
+  cursor: pointer;
+}
+
+.tryPanel summary:hover { color: var(--pv-text); }
+.tryPanel summary:focus-visible { outline: 2px solid var(--pv-var); outline-offset: 2px; }
+.tryControls { display: grid; gap: var(--space-3); padding-bottom: var(--space-3); font-size: var(--text-sm-size); }
 
 .previewWarning {
   font-size: var(--text-sm-size);
@@ -703,7 +746,8 @@ button.title:hover {
   padding: 0 16px;
   border: 0;
   border-radius: var(--radius-sm);
-  background: var(--color-accent-tag);
+  background: var(--surface-accent);
+  box-shadow: var(--shadow-action);
   color: var(--on-accent);
   font: inherit;
   font-weight: var(--weight-semibold);
@@ -935,12 +979,21 @@ button.version:hover {
 
 @media (max-width: 760px) {
   .head {
-    gap: var(--space-2);
+    gap: var(--space-1);
+    padding-bottom: var(--space-2);
   }
 
   .headActions {
     width: 100%;
+    justify-content: flex-end;
   }
+
+  .headActions > button,
+  .tools > button { min-height: 44px; }
+
+  .toolsMenu > * { min-height: 44px; }
+
+  .title { font-size: var(--text-lg-size); }
 
   .noteInput {
     flex: 1;
@@ -950,7 +1003,7 @@ button.version:hover {
   .tabs {
     display: flex;
     gap: 2px;
-    margin-top: var(--space-3);
+    margin-top: var(--space-2);
     padding: 2px;
     border-radius: var(--radius-sm);
     background: var(--color-panel-raised);
@@ -977,6 +1030,7 @@ button.version:hover {
   .body,
   .body[data-preview='closed'] {
     grid-template-columns: minmax(0, 1fr);
+    margin-top: var(--space-3);
   }
 
   .editor[data-tab='use'] .write,
@@ -996,7 +1050,16 @@ button.version:hover {
 
   .previewValues {
     max-height: none;
+    flex: none;
+    gap: var(--space-2);
+    padding: var(--space-3) 14px;
   }
+
+  .previewHead { padding-block: var(--space-2); }
+  .valueField span { margin-bottom: 2px; }
+  .previewLong { font-size: var(--text-xs-size); line-height: var(--text-sm-line); }
+  .previewFoot { grid-template-columns: minmax(0, 1fr); }
+  .tryPanel { border-top: 1px solid var(--pv-border); margin-top: var(--space-1); }
 
   .copyButton {
     justify-self: stretch;
@@ -1053,13 +1116,48 @@ button.version:hover {
   .sectionName { flex-basis: 50%; }
   .sectionTag { display: none; }
 }
-.preview { overflow-y: auto; }
-.preview > * { flex-shrink: 0; }
-.previewText { flex: 1 0 100px; }
-.previewValues { flex: 0 0 auto; }
 .tryResult { max-height: 35vh; overflow-y: auto; }
 .variableOptions input { grid-column: auto; }
 
 .previewActions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .copyButton[data-secondary='true'] { background: transparent; color: var(--pv-text); border: 1px solid var(--pv-muted); }
 .previewFoot > p { font-size: var(--text-sm-size); }
+
+:global([data-theme='dark']) .section {
+  border-left-width: 1px;
+  padding: 10px 16px 16px;
+}
+
+:global([data-theme='dark']) .sectionIcon { display: block; flex: none; color: var(--color-plum); margin-right: 4px; }
+:global([data-theme='dark']) .sectionName { font-size: 15px; }
+/* 30px = icon (18px) + its margin (4px) + head gap (8px), lining text up with the name. */
+:global([data-theme='dark']) .sectionText { margin-left: 30px; width: calc(100% - 30px); }
+:global([data-theme='dark']) .sectionTag { font-size: 11px; opacity: 0; }
+:global([data-theme='dark']) .section:hover .sectionTag,
+:global([data-theme='dark']) .section:focus-within .sectionTag { opacity: 1; }
+:global([data-theme='dark']) .section:focus-within { border-color: var(--color-accent-tag); }
+:global([data-theme='dark']) .section[data-invalid='true'] { border-color: var(--color-danger); }
+
+:global([data-theme='dark']) .preview {
+  border: 1px solid var(--pv-border);
+  box-shadow: inset 0 1px 0 rgba(224,183,219,0.04), 0 12px 32px rgba(0,0,0,0.24);
+}
+
+:global([data-theme='dark']) .previewHead { padding-block: 0; min-height: 56px; }
+:global([data-theme='dark']) .modeSwitch { background: none; padding: 0; gap: var(--space-2); }
+:global([data-theme='dark']) .modeSwitch button { height: 56px; padding-inline: 8px; border-radius: 0; }
+:global([data-theme='dark']) .modeSwitch button[aria-checked='true'] {
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--color-accent-tag);
+}
+:global([data-theme='dark']) .previewText { font-size: 13px; line-height: 1.7; }
+:global([data-theme='dark']) .previewTag { color: var(--pv-var); }
+:global([data-theme='dark']) .previewFilled { background: color-mix(in srgb, var(--pv-var) 8%, transparent); }
+:global([data-theme='dark']) .copyButton[data-secondary='true'] { border-color: var(--color-border-strong); box-shadow: none; }
+:global([data-theme='dark']) .toolsMenu { background: var(--surface-panel); }
+
+@media (max-width: 760px) {
+  :global([data-theme='dark']) .previewHead { min-height: 48px; }
+  :global([data-theme='dark']) .modeSwitch button { height: 48px; }
+  :global([data-theme='dark']) .sectionText { margin-left: 0; width: 100%; }
+}

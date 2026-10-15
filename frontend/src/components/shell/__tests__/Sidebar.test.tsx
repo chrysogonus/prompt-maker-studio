@@ -108,6 +108,10 @@ describe('Sidebar', () => {
       '/library?folder=Learning',
     );
     expect(screen.getByRole('link', { name: 'New prompt' })).toHaveAttribute('href', '/editor/new');
+    expect(screen.getByRole('link', { name: 'Open source on GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/chrysogonus/prompt-maker-studio',
+    );
   });
 
   it('marks the view being shown', async () => {

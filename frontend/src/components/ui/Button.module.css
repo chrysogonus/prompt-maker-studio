@@ -22,7 +22,8 @@
 }
 
 .primary {
-  background: var(--color-accent-tag);
+  background: var(--surface-accent);
+  box-shadow: var(--shadow-action);
   border-color: var(--color-accent-tag);
   color: var(--on-accent);
 }
@@ -74,6 +75,7 @@
 /* A coral tint over dark surfaces turns brown; stay neutral there. */
 :global([data-theme='dark']) .primary:disabled {
   background: var(--bg-tertiary);
+  box-shadow: none;
 }
 
 .secondary:disabled {

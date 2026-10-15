@@ -95,6 +95,7 @@ test('captures the README screenshots', async ({ page }) => {
   await shoot(page, 'editor');
 
   // Comparing an earlier version with the current text.
+  await page.getByRole('button', { name: 'Tools', exact: true }).click();
   await page.getByRole('button', { name: 'History' }).click();
   const history = page.getByRole('complementary', { name: 'Version history' });
   await history.getByRole('button', { name: /^Version 1/ }).click();

@@ -137,6 +137,8 @@ test.describe('accessibility audit', () => {
     await expect(page).toHaveURL(/\/editor\/\d+$/);
     await auditPage(page, 'editor saved prompt (dark)');
 
+    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+
     await page.getByRole('button', { name: 'History' }).click();
     await auditPage(page, 'editor history (dark)');
 

@@ -95,6 +95,19 @@
   white-space: pre-wrap;
 }
 
+:global([data-theme='dark']) .container {
+  background: radial-gradient(ellipse at 15% 85%, rgba(108,63,122,0.16), transparent 60%), var(--app-background);
+  background-size: auto;
+}
+
+:global([data-theme='dark']) .heroTitle { max-width: 100%; font-size: clamp(1.875rem, 3vw, 2.25rem); line-height: 1.22; }
+:global([data-theme='dark']) .promptSample {
+  background: var(--surface-preview);
+  border: 1px solid var(--pv-border);
+  box-shadow: var(--shadow-surface);
+}
+:global([data-theme='dark']) .sampleTag { color: var(--pv-var); }
+
 .sampleTag {
   color: var(--pv-muted);
 }
@@ -111,7 +124,7 @@
   padding: var(--space-8);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  background: var(--color-panel);
+  background: var(--surface-panel);
   box-shadow: var(--shadow-panel-hover);
   transition: border-color var(--motion-fast);
 }

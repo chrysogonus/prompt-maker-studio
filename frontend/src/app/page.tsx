@@ -48,18 +48,49 @@ export default async function LandingPage() {
 
       <main>
         <section className={styles.hero}>
-          <h1>Save, fill in and reuse your best AI prompts.</h1>
-          <p className={styles.lede}>
-            {APP_NAME} is a prompt library and template editor. Write each prompt as named sections,
-            mark the parts that change with <code className={styles.variable}>{'{{variables}}'}</code>,
-            and copy a filled-in version into ChatGPT, Claude, Gemini or any other assistant.
-          </p>
-          <div className={styles.actions}>
-            <ButtonLink href="/library" variant="primary" className={styles.cta}>
-              Open the app
-            </ButtonLink>
-            <RepositoryLink />
+          <div className={styles.heroCopy}>
+            <h1>Save, fill in and reuse your best AI prompts.</h1>
+            <p className={styles.lede}>
+              Keep the instructions that work. Fill in what changes, then copy a ready-to-use prompt
+              into any AI assistant.
+            </p>
+            <div className={styles.actions}>
+              <ButtonLink href="/library" variant="primary" className={styles.cta}>
+                Open the app
+              </ButtonLink>
+              <RepositoryLink className={styles.sourceLink} />
+            </div>
+            <p className={styles.heroNote}>Save, fill and copy. No AI connection needed.</p>
           </div>
+          <figure className={styles.demo}>
+            <div className={styles.demoTemplate}>
+              <h2>Write it once</h2>
+              <pre><span className={styles.demoTag}>{'<TASK>\n'}</span>
+                {'Write a '}
+                <span className={styles.demoVariable}>{'{{tone}}'}</span>
+                {' reply to a customer\nwhose order is '}
+                <span className={styles.demoVariable}>{'{{days_late}}'}</span>
+                {' days late.\nSay what happens next. Keep it under 120 words.\n'}
+                <span className={styles.demoTag}>{'</TASK>'}</span>
+              </pre>
+            </div>
+            <dl className={styles.demoInputs}>
+              <div><dt>tone</dt><dd>warm and direct</dd></div>
+              <div><dt>days_late</dt><dd>3</dd></div>
+            </dl>
+            <div className={styles.demoResult}>
+              <h2>Make it yours</h2>
+              <pre><span className={styles.demoTag}>{'<TASK>\n'}</span>
+                {'Write a '}
+                <mark>warm and direct</mark>
+                {' reply to a customer\nwhose order is '}
+                <mark>3</mark>
+                {' days late.\nSay what happens next. Keep it under 120 words.\n'}
+                <span className={styles.demoTag}>{'</TASK>'}</span>
+              </pre>
+            </div>
+            <figcaption>The same instructions. Fresh details every time.</figcaption>
+          </figure>
         </section>
 
         <figure className={styles.shot}>

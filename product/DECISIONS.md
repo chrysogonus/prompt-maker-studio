@@ -928,3 +928,17 @@ quietly outliving its reason.
 **Consequences**: Signed-out pages now follow a saved dark preference. The dark text, accent and status colours were rechecked and clear WCAG AA on the canvas, sidebar, panel, raised, overlay and plum-wash surfaces.
 
 **Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`
+
+---
+
+## Moodboard Direction for Dark Mode
+
+**Status**: Accepted (2026-10-15)
+
+**Context**: The owner supplied a dark-mode moodboard with a near-black canvas, aubergine satin surfaces, peach-coral actions, Inter UI typography and JetBrains Mono prompt blocks.
+
+**Decision**: Apply that direction through dark-theme tokens and the existing CSS Modules. Dark mode gets subtle surface gradients, a floating bordered sidebar, section icons, and coral preview tags and selection indicators. Inter is self-hosted and used only in dark mode; light retains Hanken Grotesk and its existing layout. Muted text is slightly brighter than the moodboard swatch to maintain WCAG AA on raised surfaces.
+
+**Rationale**: Shared theme tokens carry the visual treatment across the editor, library, settings, authentication and dialogs while preserving the app's current workflows.
+
+**Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/shell/Sidebar.module.css`, `frontend/src/features/editor/SectionCard.tsx`, `frontend/src/features/editor/PromptEditor.module.css`

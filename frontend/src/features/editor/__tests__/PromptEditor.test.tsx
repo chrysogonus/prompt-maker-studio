@@ -100,6 +100,70 @@ async function renderSaved() {
   await screen.findByRole('button', { name: 'Weekly status update' });
 }
 
+it('closes secondary tools on Escape, outside input and opening history', async () => {
+  const user = userEvent.setup();
+  await renderSaved();
+  const tools = screen.getByRole('button', { name: 'Tools' });
+  expect(screen.queryByRole('button', { name: 'History' })).not.toBeInTheDocument();
+  await user.click(tools);
+  expect(screen.getByRole('link', { name: 'Evaluate' })).toHaveAttribute('href', '/editor/1/evaluate');
+  await user.keyboard('{Escape}');
+  expect(tools).toHaveFocus();
+  expect(tools).toHaveAttribute('aria-expanded', 'false');
+  await user.click(tools);
+  await user.click(screen.getByLabelText('Role text'));
+  expect(tools).toHaveAttribute('aria-expanded', 'false');
+  await user.click(tools);
+  await openTool(user, 'History');
+  expect(screen.getByRole('complementary', { name: 'Version history' })).toBeInTheDocument();
+  expect(tools).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.getByRole('button', { name: 'Close history' })).toHaveFocus();
+  await user.click(screen.getByRole('button', { name: 'Close history' }));
+  expect(tools).toHaveFocus();
+  await openTool(user, 'History');
+  await openTool(user, 'History');
+  expect(screen.queryByRole('complementary', { name: 'Version history' })).not.toBeInTheDocument();
+  expect(tools).toHaveFocus();
+});
+
+it('keeps AI testing open with its output across a Template and Filled switch', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.tryPrompt).mockResolvedValueOnce({ output_text: 'One output', provider: 'openai', model: 'gpt-4.1-mini' });
+  await renderSaved();
+  await user.type(screen.getByPlaceholderText('Team or project name'), 'Platform');
+  await user.click(screen.getByText('Test with AI'));
+  await user.click(screen.getByRole('button', { name: 'Try once' }));
+  await screen.findByRole('region', { name: 'Try once output' });
+  await user.click(screen.getByRole('radio', { name: 'Template' }));
+  await user.click(screen.getByRole('radio', { name: 'Filled' }));
+  expect(screen.getByRole('region', { name: 'Try once output' })).toBeVisible();
+});
+
+it('returns focus to Tools after dismissing the saved-prompt importer', async () => {
+  const user = userEvent.setup();
+  await renderSaved();
+  await openTool(user, 'Paste a prompt');
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog', { name: 'Paste a prompt' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Tools' })).toHaveFocus();
+});
+
+it('opens AI testing explicitly without running or saving the prompt', async () => {
+  const user = userEvent.setup();
+  await renderSaved();
+  expect(screen.getByRole('button', { name: 'Try once' })).not.toBeVisible();
+  await user.click(screen.getByText('Test with AI'));
+  expect(screen.getByRole('button', { name: 'Try once' })).toBeEnabled();
+  expect(within(screen.getByRole('complementary', { name: 'Preview' })).getByText(/May incur provider charges/)).toBeVisible();
+  expect(ApiClient.tryPrompt).not.toHaveBeenCalled();
+  expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
+});
+
+async function openTool(user: ReturnType<typeof userEvent.setup>, name: string) {
+  if (!screen.queryByRole('button', { name })) await user.click(screen.getByRole('button', { name: 'Tools' }));
+  await user.click(screen.getByRole('button', { name }));
+}
+
 it('keeps a successful save when refreshing version history fails', async () => {
   const user = userEvent.setup();
   await renderSaved();
@@ -134,7 +198,7 @@ describe('variable inputs and reversible import', () => {
     })]);
     vi.mocked(ApiClient.restorePromptVersion).mockResolvedValue(prompt({ variable_metadata: {} }));
     await renderSaved();
-    await user.click(screen.getByRole('button', { name: 'History' }));
+    await openTool(user, 'History');
     await user.click(screen.getByRole('button', { name: /Version 1/ }));
     expect(screen.getByRole('button', { name: 'Restore version 1' })).toBeEnabled();
     await user.click(screen.getByRole('button', { name: 'Restore version 1' }));
@@ -179,7 +243,7 @@ describe('variable inputs and reversible import', () => {
     fireEvent.change(screen.getByLabelText('Task text'), { target: { value: 'Explain {{topic}}.' } });
     await user.type(screen.getByLabelText('Example input for topic'), 'Space');
     vi.mocked(ApiClient.parsePromptText).mockResolvedValue({ fields: [{ name: 'Imported', content: 'New text' }] });
-    await user.click(screen.getByRole('button', { name: 'Paste a prompt' }));
+    await openTool(user, 'Paste a prompt');
     expect(screen.getByText(/current draft stays as it is/)).toBeInTheDocument();
     expect(within(screen.getByRole('dialog', { name: 'Paste a prompt' })).getByText(/Uses OpenAI \/ gpt-4.1-mini/)).toBeInTheDocument();
     await user.type(screen.getByLabelText('Prompt to convert'), 'New text');
@@ -196,8 +260,10 @@ describe('variable inputs and reversible import', () => {
 it('only opens evaluation for a saved prompt without unsaved changes', async () => {
   const user = userEvent.setup();
   await renderSaved();
+  await user.click(screen.getByRole('button', { name: 'Tools' }));
   expect(screen.getByRole('link', { name: 'Evaluate' })).toHaveAttribute('href', '/editor/1/evaluate');
   await user.type(screen.getByLabelText('Role text'), ' Updated.');
+  await user.click(screen.getByRole('button', { name: 'Tools' }));
   expect(screen.queryByRole('link', { name: 'Evaluate' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Evaluate' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Evaluate' })).toHaveAttribute('title', 'Save your changes before evaluating.');
@@ -497,6 +563,8 @@ describe('PromptEditor with a saved prompt', () => {
 
     await user.type(screen.getByPlaceholderText('Team or project name'), 'Payments');
     expect(screen.getByText(/is not filled in/)).toHaveTextContent('notes is not filled in');
+    // Optional gaps already copy as placeholders, so no second copy button.
+    expect(screen.queryByRole('button', { name: 'Copy with placeholders' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Copy filled prompt' }));
 
     expect(await navigator.clipboard.readText()).toBe(
@@ -542,7 +610,7 @@ describe('PromptEditor with a saved prompt', () => {
     );
     await renderSaved();
 
-    await user.click(screen.getByRole('button', { name: 'History' }));
+    await openTool(user, 'History');
     const history = screen.getByRole('complementary', { name: 'Version history' });
     expect(within(history).getByText('Version 2, current')).toBeInTheDocument();
     await user.click(within(history).getByRole('button', { name: /Version 1/ }));
@@ -560,7 +628,7 @@ describe('PromptEditor with a saved prompt', () => {
     await renderSaved();
 
     await user.type(screen.getByLabelText('Role text'), ' Edited.');
-    await user.click(screen.getByRole('button', { name: 'History' }));
+    await openTool(user, 'History');
     await user.click(screen.getByRole('button', { name: /Version 1/ }));
 
     expect(screen.getByRole('button', { name: 'Restore version 1' })).toBeDisabled();
@@ -623,6 +691,12 @@ describe('PromptEditor with a saved prompt', () => {
 });
 
 describe('PromptEditor with a new prompt', () => {
+  it('keeps Paste a prompt inline and offers no saved-prompt tools', async () => {
+    render(<PromptEditor />);
+    expect(await screen.findByRole('button', { name: 'Paste a prompt' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tools' })).not.toBeInTheDocument();
+  });
+
   it('asks for a name, creates the prompt, and moves to its page', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.createPrompt).mockResolvedValue(prompt({ id: 42 }));
@@ -687,7 +761,7 @@ describe('PromptEditor with a new prompt', () => {
     });
     render(<PromptEditor />);
 
-    await user.click(screen.getByRole('button', { name: 'Paste a prompt' }));
+    await openTool(user, 'Paste a prompt');
     const dialog = await screen.findByRole('dialog', { name: 'Paste a prompt' });
     await user.type(within(dialog).getByLabelText('Prompt to convert'), 'Proofread my text, typos only');
     await user.click(within(dialog).getByRole('button', { name: 'Create template' }));
@@ -711,7 +785,7 @@ describe('PromptEditor with a new prompt', () => {
     render(<PromptEditor />);
     await waitFor(() => expect(ApiClient.getPromptsConfig).toHaveBeenCalled());
 
-    await user.click(screen.getByRole('button', { name: 'Paste a prompt' }));
+    await openTool(user, 'Paste a prompt');
 
     const dialog = await screen.findByRole('dialog', { name: 'Paste a prompt needs an AI connection' });
     expect(within(dialog).getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
@@ -739,6 +813,7 @@ it('tries filled draft once without saving and preserves output across errors', 
   vi.mocked(ApiClient.tryPrompt).mockResolvedValueOnce({ output_text: 'One output', provider: 'openai', model: 'gpt-4.1-mini' });
   await renderSaved();
   await user.type(screen.getByPlaceholderText('Team or project name'), 'Platform');
+  await user.click(screen.getByText('Test with AI'));
   await user.click(screen.getByRole('button', { name: 'Try once' }));
   const output = await screen.findByRole('region', { name: 'Try once output' });
   expect(output).toHaveTextContent('One output');
@@ -760,7 +835,7 @@ describe('paste a prompt recovery and save handoff', () => {
 
   async function review(user: ReturnType<typeof userEvent.setup>) {
     vi.mocked(ApiClient.parsePromptText).mockResolvedValue(conversion);
-    await user.click(screen.getByRole('button', { name: 'Paste a prompt' }));
+    await openTool(user, 'Paste a prompt');
     fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: 'Plan a trip to Lisbon.' } });
     await user.click(screen.getByRole('button', { name: 'Create template' }));
     await screen.findByRole('button', { name: 'Use in editor' });
@@ -834,7 +909,7 @@ describe('paste a prompt recovery and save handoff', () => {
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(screen.getByLabelText('team', { exact: true })).toHaveValue('Payments');
     expect(screen.getByLabelText('Context text')).toHaveValue(prompt().fields[1].content);
-    await user.click(screen.getByRole('button', { name: 'Paste a prompt' }));
+    await openTool(user, 'Paste a prompt');
     expect(screen.getByLabelText('Value for destination')).toHaveValue('Lisbon');
     await user.click(screen.getByRole('button', { name: 'Use in editor' }));
     vi.mocked(ApiClient.updatePrompt).mockResolvedValue(prompt({ fields: conversion.fields, variable_metadata: {
@@ -887,7 +962,7 @@ it('keeps import Undo available when loading unchanged example inputs', async ()
       { name: 'duration', value: '3-day', description: 'Length', source_text: '3-day' },
     ],
   });
-  await user.click(screen.getByRole('button', { name: 'Paste a prompt' }));
+  await openTool(user, 'Paste a prompt');
   fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: 'Plan a 3-day trip to Lisbon.' } });
   await user.click(screen.getByRole('button', { name: 'Create template' }));
   await user.click(await screen.findByRole('checkbox', { name: 'Keep these inputs as examples' }));
