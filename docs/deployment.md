@@ -312,9 +312,10 @@ schemas (see [mcp.md](./mcp.md#contract-changes-in-030)).
 
 ### Upgrading to 0.5.0
 
-0.5.0 is in preparation; publish and approve deployment before using its image
-tag. See the [release preparation](releases/0.5.0.md) for validation and remaining
-gates. Upgrades from before 0.3.0 must also follow the earlier recovery checklist.
+0.5.0 is published; approve deployment separately before using its images.
+See the [release record](releases/0.5.0.md) for immutable digests, validation and
+remaining deployment gates. Upgrades from before 0.3.0 must also follow the
+earlier recovery checklist.
 
 1. Back up with the updated scripts, verify the archive and copy it off-host.
    Rehearse on an isolated backup copy before touching the live database.
