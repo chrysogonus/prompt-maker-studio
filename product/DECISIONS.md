@@ -912,3 +912,19 @@ quietly outliving its reason.
 **Consequences**: An active user signs in at most every 12 hours. Existing passwords keep working until changed. Email changes are not verified by a link to the new address — a mistyped address breaks recovery until corrected. `MAX_SESSION_AGE` is a constant, not configuration.
 
 **Source**: `backend/app/auth/utils.py`, `backend/app/api/session_routes.py`, `backend/app/services/accounts/profile.py`, `backend/app/schemas/accounts.py`, `frontend/src/features/auth/useSession.ts`, `frontend/src/features/auth/passwordPolicy.ts`
+
+---
+
+## Quieter Dark Surfaces, Plum Where It Means Something
+
+**Status**: Accepted (2026-10-15)
+
+**Context**: Dark-mode surfaces were all low-saturation mauve within a few lightness points of each other, so panels, canvas and sidebar barely separated. Screenshots of the real editor compared the current palette, a more saturated plum and a quieter variant.
+
+**Decision**: Dark mode uses near-neutral, plum-tinted surfaces with clearer lightness steps, a distinctly plum sidebar and preview, plum selected states, and slightly softer coral. Light mode is unchanged. A saved theme is applied by an inline script before first paint on every page.
+
+**Rationale**: More saturation alone barely improved separation and tinted everything purple. Concentrating plum on navigation and the preview keeps the 0.3.0 identity while giving content room. The preview stays distinct from the panels through hue, not just darkness.
+
+**Consequences**: Signed-out pages now follow a saved dark preference. The dark text, accent and status colours were rechecked and clear WCAG AA on the canvas, sidebar, panel, raised, overlay and plum-wash surfaces.
+
+**Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`

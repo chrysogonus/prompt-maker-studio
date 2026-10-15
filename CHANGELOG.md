@@ -10,6 +10,19 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Changed
+
+- Dark mode uses near-neutral surfaces with clearer steps between them, keeps
+  plum for the sidebar, selected states and the preview, and softens coral.
+
+### Fixed
+
+- A saved dark theme now applies before the first paint on every page, including
+  sign-in and the landing page, and native controls follow the active theme.
+- Dark mode no longer shows a bright GitHub button, brown disabled primary
+  buttons, sunken selected segments or muddy history diff highlights. Optional
+  preview notes are muted instead of coral.
+
 ## [0.5.0] - 2026-10-15
 
 0.5.0: application observability, account security, public practical guides,

@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: color-mix(in srgb, #1d1219 38%, transparent);
+  background: var(--scrim);
   padding: var(--space-4);
   display: flex;
   align-items: center;

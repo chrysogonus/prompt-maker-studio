@@ -193,7 +193,7 @@
     position: fixed;
     inset: 0;
     z-index: 60;
-    background: color-mix(in srgb, #1d1219 38%, transparent);
+    background: var(--scrim);
   }
 
   .content {

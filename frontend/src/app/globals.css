@@ -99,6 +99,7 @@
   --shadow-panel-hover: 0 2px 4px rgba(43,27,40,0.10), 0 6px 16px rgba(43,27,40,0.10);
   /* Only floating layers (menus, dialogs, side panels) cast a shadow. */
   --shadow-float: 0 1px 2px rgba(43,27,40,0.08), 0 8px 28px rgba(43,27,40,0.14);
+  --scrim: color-mix(in srgb, #1d1219 38%, transparent);
 
   --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236e5868' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --bg-primary: var(--color-panel);
@@ -139,34 +140,37 @@
   color-scheme: dark;
   --pm-mark-color: var(--pm-coral);
 
-  --color-canvas: #1d1219;
-  --color-panel: #261923;
-  --color-panel-raised: #2e1f2a;
-  --color-overlay: #352030;
-  --color-border: #3b2935;
-  --color-border-strong: #4e3747;
-  --color-text-primary: #f3e9ee;
-  --color-text-secondary: #cdb9c5;
-  --color-text-muted: #b79faf;
-  --color-sidebar: #170e14;
-  --color-plum: #e5b5d4;
-  --color-plum-wash: #3a2234;
-  --color-coral-wash: #3f2320;
+  /* Near-neutral surfaces with clear steps between them; plum is kept for the
+     sidebar, selected states and the preview, so structure reads at a glance. */
+  --color-canvas: #130d11;
+  --color-panel: #221c21;
+  --color-panel-raised: #2f272d;
+  --color-overlay: #382e35;
+  --color-border: #3d333a;
+  --color-border-strong: #52464f;
+  --color-text-primary: #ebe4e8;
+  --color-text-secondary: #c5b5bf;
+  --color-text-muted: #a795a1;
+  --color-sidebar: #230e1f;
+  --color-plum: #edb8da;
+  --color-plum-wash: #472540;
+  --color-coral-wash: #3c241c;
   --color-coral-wash-text: #ffb59c;
-  --pv-bg: #120a10;
-  --pv-border: #34212f;
-  --pv-input: #22141e;
-  --color-accent-tag: #ff8a65;
-  --color-accent-tag-hover: #ff9e80;
-  --color-accent-value: #e5b5d4;
+  --pv-bg: #280d26;
+  --pv-border: #41243f;
+  --pv-input: #341832;
+  --color-accent-tag: #f38e65;
+  --color-accent-tag-hover: #ff9e73;
+  --color-accent-value: #edb8da;
   --color-accent-success: #b4e197;
   --color-danger: #f07a90;
   --on-accent: #1d1219;
   --warning: #e7b45c;
   --shadow-float: 0 1px 2px rgba(0,0,0,0.3), 0 10px 32px rgba(0,0,0,0.45);
+  --scrim: rgba(0,0,0,0.6);
   /* Dark theme's coral already has ample contrast against dark backgrounds as text. */
   --accent-text: var(--color-accent-tag);
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23b79faf' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23a795a1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 *,
