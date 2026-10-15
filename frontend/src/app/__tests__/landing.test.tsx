@@ -37,6 +37,19 @@ describe('Landing page', () => {
     await expect(LandingPage()).rejects.toThrow('NEXT_REDIRECT /library');
   });
 
+  it('helps visitors discover the guides and their individual articles', async () => {
+    render(await LandingPage());
+
+    expect(screen.getByRole('link', { name: 'Guides' })).toHaveAttribute('href', '/guides');
+    for (const href of [
+      '/guides/reusable-ai-prompts',
+      '/guides/prompt-template-variables',
+      '/guides/organize-chatgpt-prompts',
+    ]) {
+      expect(document.querySelector(`a[href="${href}"]`)).toBeInTheDocument();
+    }
+  });
+
   it('builds canonical and preview links from FRONTEND_URL at request time', async () => {
     vi.stubEnv('FRONTEND_URL', 'https://prompts.example/');
     const metadata = await generateMetadata();
@@ -55,6 +68,12 @@ describe('robots.txt and sitemap.xml', () => {
 
     expect(rules.sitemap).toBe('https://prompts.example/sitemap.xml');
     expect(rules.rules).toMatchObject({ allow: '/', disallow: expect.arrayContaining(['/library', '/api/']) });
-    expect(sitemap()).toEqual([{ url: 'https://prompts.example/' }]);
+    expect(sitemap()).toEqual([
+      { url: 'https://prompts.example/' },
+      { url: 'https://prompts.example/guides' },
+      { url: 'https://prompts.example/guides/reusable-ai-prompts' },
+      { url: 'https://prompts.example/guides/prompt-template-variables' },
+      { url: 'https://prompts.example/guides/organize-chatgpt-prompts' },
+    ]);
   });
 });
