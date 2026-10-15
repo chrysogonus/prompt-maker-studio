@@ -7,6 +7,7 @@ import LegalLinks from '@/components/LegalLinks';
 import RepositoryLink from '@/components/RepositoryLink';
 import { ButtonLink } from '@/components/ui/Button';
 import Wordmark from '@/components/ui/Wordmark';
+import GuideList from '@/components/guides/GuideList';
 import { APP_NAME, siteUrl } from '@/lib/branding';
 import styles from './page.module.css';
 
@@ -39,9 +40,10 @@ export default async function LandingPage() {
         <Link href="/" className={styles.home} aria-label={`${APP_NAME} home`}>
           <Wordmark icon="mark" />
         </Link>
-        <Link href="/library" className={styles.signIn}>
-          Sign in
-        </Link>
+        <nav aria-label="Main navigation" className={styles.navigation}>
+          <Link href="/guides" className={styles.signIn}>Guides</Link>
+          <Link href="/library" className={styles.signIn}>Sign in</Link>
+        </nav>
       </header>
 
       <main>
@@ -124,6 +126,11 @@ export default async function LandingPage() {
             alt="The prompt library: prompts sorted into folders, with favorites and search."
           />
         </figure>
+
+        <section className={styles.features} aria-labelledby="guides-title">
+          <h2 id="guides-title">Learn with examples</h2>
+          <GuideList />
+        </section>
 
         <section className={styles.openSource} aria-labelledby="open-source-title">
           <h2 id="open-source-title">Open source, and yours to host</h2>

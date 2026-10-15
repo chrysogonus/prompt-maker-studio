@@ -1,0 +1,144 @@
+.article,
+.index {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-8) 0 clamp(64px, 10vh, 112px);
+  overflow-wrap: anywhere;
+}
+
+.article h1,
+.index h1 {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: var(--weight-semibold);
+  text-wrap: balance;
+}
+
+.intro {
+  margin-top: var(--space-6);
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  line-height: 1.65;
+}
+
+.breadcrumb {
+  margin-bottom: var(--space-8);
+}
+
+.breadcrumb a,
+.prose a,
+.guideList a {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.prose {
+  margin-top: var(--space-10);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.prose h2,
+.next h2 {
+  margin-top: var(--space-10);
+  font-size: 1.5rem;
+  line-height: 1.25;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.015em;
+}
+
+.prose p,
+.prose ol,
+.prose ul,
+.prose pre,
+.prose figure {
+  margin-top: var(--space-4);
+}
+
+.prose ol,
+.prose ul {
+  padding-left: var(--space-6);
+}
+
+.prose li + li {
+  margin-top: var(--space-3);
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+.prose :not(pre) > code {
+  background: var(--color-coral-wash);
+  color: var(--color-coral-wash-text);
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+}
+
+.prose pre {
+  padding: var(--space-6);
+  background: var(--pv-bg);
+  color: var(--pv-text);
+  border: 1px solid var(--pv-border);
+  border-radius: var(--radius-md);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.prose figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.prose figcaption {
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-sm-size);
+}
+
+.next {
+  margin-top: var(--space-10);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--color-border);
+}
+
+.next h2 {
+  margin-top: 0;
+}
+
+.next > p {
+  margin: var(--space-4) 0 var(--space-6);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.guideList {
+  margin-top: var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.guideList li {
+  padding: var(--space-6) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.guideList a {
+  font-size: 1.125rem;
+  font-weight: var(--weight-semibold);
+}
+
+.guideList p {
+  max-width: 65ch;
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.65;
+}
