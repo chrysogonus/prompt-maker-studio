@@ -98,7 +98,8 @@ Early-stage, `0.x`. APIs and database schemas may change between releases.
 Back up before upgrading; see the [changelog](./CHANGELOG.md). The
 [0.5.0 release record](./docs/releases/0.5.0.md) records publication, immutable
 image digests and upgrade checks. Rehearse the migrations on an isolated
-production-backup copy before upgrading a live instance.
+production-backup copy before upgrading a live instance. The
+[0.5.1 release preparation](./docs/releases/0.5.1.md) lists the next release's changes.
 
 ## License
 

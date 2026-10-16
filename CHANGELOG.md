@@ -10,10 +10,26 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Planned for **0.5.1**: dark-mode and editor polish, and fixes from the UI and UX
+review. Frontend only, with no database migrations or API changes. See the
+[release preparation](./docs/releases/0.5.1.md). Publication is pending.
+
+### Added
+
+- The sidebar links to the source code on GitHub.
+- The landing page shows a worked example of a template being filled in.
+
 ### Changed
 
 - Dark mode uses near-neutral surfaces with clearer steps between them, keeps
   plum for the sidebar, selected states and the preview, and softens coral.
+  Both themes share one layout, so switching theme never moves content.
+- On a saved prompt, Evaluate, Paste a prompt and History sit in the editor's
+  Tools menu, and Try once sits in a collapsible Test with AI panel.
+- Copy with placeholders appears only while required inputs are missing.
+- The library, folder and Starter templates menus are plain lists of buttons.
+  Escape closes them and returns focus to the button that opened them.
+- Settings calls the AI import feature Paste a prompt, matching the editor.
 
 ### Fixed
 
@@ -22,6 +38,11 @@ any release. See [Project status](./README.md#project-status).
 - Dark mode no longer shows a bright GitHub button, brown disabled primary
   buttons, sunken selected segments or muddy history diff highlights. Optional
   preview notes are muted instead of coral.
+- The sidebar and the editor preview stay in view while the page scrolls.
+- The library grid no longer cuts off card actions in narrow windows; it keeps
+  one column until two whole cards fit.
+- Closing a dialog returns focus to the control that opened it. A Paste a prompt
+  dialog opened from a link returns focus to the Paste a prompt button.
 
 ## [0.5.0] - 2026-10-15
 
