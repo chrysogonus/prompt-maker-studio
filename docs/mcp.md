@@ -11,7 +11,7 @@ runs in stateless, JSON-response mode, so each request is independent.
 
 ## Tools
 
-| Tool | Read-only | Wraps |
+| Tool | Read-only | REST equivalent |
 |---|---|---|
 | `list_saved_prompts` | Yes | `GET /api/prompts/saved` (summaries only, no prompt text; filter by `folder` or `favorite_only`) |
 | `get_prompt` | Yes | `GET /api/prompts/{id}`, including each variable's hint in `variable_metadata` |
@@ -19,9 +19,10 @@ runs in stateless, JSON-response mode, so each request is independent.
 | `update_prompt` | No | `PATCH /api/prompts/{id}` |
 | `list_prompt_versions` | Yes | `GET /api/prompts/{id}/versions` |
 
-The tools call the same route handlers as the REST API, so ownership checks (404 for
-another user's prompt), section rules, text rendering, version snapshots, and
-edit-conflict detection are shared. The server renders the prompt text from the
+The tools call shared operations in `backend/app/services/prompts/`, as do the
+REST handlers. Ownership checks, section rules, text rendering, version snapshots
+and edit-conflict detection are shared. REST maps operation failures to HTTP
+errors (404 for missing or unowned prompts); MCP maps them to tool errors. The server renders the prompt text from the
 fields for both, and `update_prompt` always requires `last_updated_at`. Field names
 may contain spaces ("Output format"); they become tags such as `<OUTPUT_FORMAT>`.
 
@@ -34,6 +35,14 @@ Clients that cached the 0.2.0 tool schemas should refresh them:
 - `get_prompt` and the save/update results no longer include `tags` or `run_count`.
 - `save_prompt` and `update_prompt` accept field names with spaces, and reject two
   names that render to the same tag (`Role`/`role`).
+
+`save_prompt` accepts a name and complete section list. `update_prompt` accepts
+a prompt ID, required `last_updated_at`, and optional complete replacement
+`fields`, `name`, and `note`. Folder/favorite/variable-metadata edits remain on
+the REST API; the MCP detail responses include existing variable metadata.
+`list_saved_prompts` wraps summaries in `prompts`; `list_prompt_versions` wraps
+history in `versions` and excludes the current state. Listing follows creation
+time, newest first.
 
 Delete and version restore are intentionally not exposed.
 
@@ -118,7 +127,7 @@ certificate.
 
 ### 1. Prepare the server
 
-Deploy a build that includes this endpoint, then check:
+After an explicitly approved deployment of the endpoint, check:
 
 - **Caddy** uses the repository's `Caddyfile`, which routes `/.well-known/oauth-*` to the
   backend. Without it the discovery documents return the frontend's 404 page.
@@ -127,7 +136,8 @@ Deploy a build that includes this endpoint, then check:
   page are all built from it.
 - **`REGISTRATION_MODE=open`** if people who do not have an account yet should be able to
   sign up from the connect flow. With `closed`, only existing users can connect.
-- **Back up the database** before the first start: migration `022_oauth_tables` runs then.
+- **Back up the database** before the first start: all pending migrations run then, including OAuth tables (022), immutable
+  subjects (026), and grant revocation (027).
 
 Confirm discovery works from outside:
 
@@ -142,37 +152,32 @@ start with your `FRONTEND_URL`.
 
 ### 2. Add it in ChatGPT
 
-These steps follow OpenAI's
-[Connect and test your plugin](https://developers.openai.com/plugins/deploy/connect-chatgpt)
-guide; check it if the labels have changed. Workspace policies may require an admin to
-allow developer mode.
+Follow OpenAI's [connection guide](https://developers.openai.com/plugins/deploy/connect-chatgpt)
+for the current ChatGPT UI and workspace requirements. Configure a custom remote
+MCP server with:
 
-1. In ChatGPT, open **Settings → Security and login** and turn on **Developer mode**.
-2. Go to **ChatGPT Plugins** (chatgpt.com/plugins), select the plus button, then
-   **Add custom MCP server**.
-3. Enter a name and description, and as the MCP server URL
-   `https://yourdomain.com/api/mcp`.
-4. Choose **OAuth** authentication. Leave client ID and secret empty: ChatGPT registers
-   itself through dynamic registration.
-5. Confirm the warning with **I understand and want to continue**, then
-   **Create as a plugin**.
-6. A sign-in window opens on your site. Sign in (or create an account), check the account
-   name on the consent screen, and select **Allow**.
-7. ChatGPT scans the tools; all five listed above should appear.
+- Server URL: `https://yourdomain.com/api/mcp`.
+- Authentication: OAuth, using this server's discovery and dynamic client
+  registration; leave manually supplied client credentials empty.
+- Account linking: sign in on this site's consent page, verify the account,
+  and allow access.
+
+After connecting, confirm all five tools above are available. Refresh the
+client's tool catalogue after a server-side tool-schema change.
 
 ### 3. Use it
 
-Start a new conversation, type `@`, and select the plugin. For example:
+Select the connected integration in a new conversation. For example:
 
 - "Help me write a prompt for a customer-support assistant, then save it as Support reply."
-- "Show my saved prompts tagged `marketing`."
+- "Show my saved prompts in the `Marketing` folder."
 - "Open my Support reply prompt, make it more concise, and save the new version."
 
 ChatGPT drafts and revises the text itself and calls the tools to store it, so the prompt
 appears in the website's library straight away and earlier versions stay in its history.
 
-After changing the tools on the server, select **Refresh** on the plugin in ChatGPT
-Plugins and start a new conversation.
+After changing the tools on the server, refresh the integration's tool catalogue
+and start a new conversation.
 
 ### 4. Disconnect
 
@@ -190,12 +195,13 @@ password: access and refresh tokens are rejected immediately.
 | Consent page says the request expired | More than 15 minutes passed since ChatGPT started the flow; connect again. |
 | "Registration is closed on this instance" | `REGISTRATION_MODE` is `closed`; create the account another way or open registration. |
 | `429` from `/api/oauth/register` or `/token` | Many users connecting at once from OpenAI's shared addresses; raise the limits above. |
-| A tool is missing or outdated | Select **Refresh** on the plugin in ChatGPT Plugins. |
+| A tool is missing or outdated | Refresh the integration's tool catalogue. |
 
 
 ## Testing it locally
 
 ```bash
+# For local HTTP, configure COOKIE_SECURE=false in the server environment.
 # Log in and read the session JWT from the cookie jar
 curl -s -c /tmp/jar -X POST http://localhost:8000/api/auth/login \
   -H 'Content-Type: application/json' \

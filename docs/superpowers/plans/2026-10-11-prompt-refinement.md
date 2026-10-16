@@ -1,5 +1,10 @@
 # Prompt refinement implementation plan
 
+> Historical implementation record. This work is complete and was included in
+> a published release. Session constraints and verification totals below refer
+> to that implementation; use the [current documentation index](../../README.md)
+> for current behavior and commands.
+
 **Goal:** Restore refinement inside the editor with explicit AI requests, reviewable section edits, local Apply/Undo and normal Save.
 
 **Spec:** The user approved the in-chat proposal on 2026-10-11. Desktop refinement replaces the preview; mobile uses a full-screen dialog. Questions and answers survive closing while the source remains unchanged. Editing the source invalidates a session. No automatic AI calls or saves. Existing refinement endpoints remain compatible.

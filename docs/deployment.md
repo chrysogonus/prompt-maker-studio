@@ -19,13 +19,13 @@ Services communicate over the `prompt-maker-studio-network` Docker bridge networ
 > rolling or concurrent multi-replica startup. Introduce an external migration
 > job and a multi-writer database before scaling the backend horizontally.
 
-> **Local development**: `docker compose up` automatically applies `docker-compose.override.yml`, which adds direct host port mappings (3000 and 8000) in addition to Caddy. Do not use the override file in production.
+> **Local development**: `docker compose up` automatically applies `docker-compose.override.yml`, which adds loopback host port mappings (3000 and 8000) and excludes Caddy unless its `caddy` profile is enabled. Do not use the override file in production.
 
 ## Prerequisites
 
 - Docker and Docker Compose installed on the VM
 - Git (to clone the repository)
-- A domain name or IP address for accessing the application (optional but recommended)
+- A domain name resolving to the VM for the documented public Caddy/auto-TLS setup
 
 ## Environment Configuration
 
@@ -48,7 +48,9 @@ Edit `.env` with your VM-specific settings:
 
 ```bash
 # Backend Configuration
-DATABASE_URL=sqlite:////app/data/prompts.db
+# Compose hardcodes this persistent path; DATABASE_URL overrides apply only
+# to non-Docker backend processes.
+# DATABASE_URL=sqlite:////app/data/prompts.db
 # Cross-origin frontend/backend topologies only; Caddy's /api path is same-origin.
 # CORS_ORIGINS=https://separate-frontend.example.com
 
@@ -63,9 +65,20 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 COOKIE_DOMAIN=
 COOKIE_SECURE=true
 
-# No LLM API key here — access is bring-your-own, configured per user in
-# Settings → API access. Optionally pin the credential-encryption key so
-# rotating SECRET_KEY doesn't invalidate stored provider keys:
+# Default registration admits only the first account, then closes.
+REGISTRATION_MODE=closed
+# Keep user-supplied private provider URLs disabled unless every account is trusted.
+ALLOW_PRIVATE_LLM_URLS=false
+
+# Users configure their own provider under Settings → AI connection.
+# Optional shared default for users without a usable own connection:
+LLM_PROVIDER=
+LLM_BASE_URL=
+LLM_MODEL=
+LLM_API_KEY=
+# This operator-trusted URL may be private without ALLOW_PRIVATE_LLM_URLS.
+# Pin the credential-encryption key so rotating SECRET_KEY does not
+# invalidate stored user provider keys:
 # LLM_ENCRYPTION_KEY=<Fernet key>
 
 # Optional monthly usage ceilings (USD); unset means unlimited.
@@ -75,7 +88,8 @@ COOKIE_SECURE=true
 
 # Frontend Configuration
 # No API URL to set — browsers call /api on YOUR_DOMAIN and Caddy routes it to
-# the backend. FRONTEND_URL is used server-side to build password-reset links.
+# the backend. FRONTEND_URL also supplies reset links, MCP/OAuth discovery,
+# the landing-page canonical URL, robots.txt and sitemap.
 FRONTEND_URL=https://YOUR_DOMAIN
 
 # SMTP (required for password-reset emails)
@@ -84,14 +98,16 @@ SMTP_PORT=587
 SMTP_USER=your-smtp-username
 SMTP_PASSWORD=your-smtp-password
 SMTP_FROM=Prompt Maker Studio <no-reply@yourdomain.com>
+SMTP_TLS_MODE=starttls  # use implicit for TLS-on-connect, e.g. port 465
 
 # Caddy Reverse Proxy
 # One domain serves both the app and the API (/api); Caddy obtains TLS for it
 DOMAIN=yourdomain.com
 
 # Monitoring Configuration
-# Required only if you start the opt-in `monitoring` profile; the default
-# stack does not include Grafana. Generate with: openssl rand -hex 16
+# Compose requires a nonempty value when parsing, even without monitoring.
+# Replace the placeholder before enabling Grafana; its entrypoint rejects it.
+# Generate with: openssl rand -hex 16
 GRAFANA_ADMIN_PASSWORD=change-this-to-a-secure-password
 ```
 
@@ -112,13 +128,13 @@ GRAFANA_ADMIN_PASSWORD=change-this-to-a-secure-password
 
 5. **COOKIE_DOMAIN / COOKIE_SECURE**: The session token is delivered in an httpOnly cookie. Leave `COOKIE_DOMAIN` unset — the app and the API are the same origin, so a host-only cookie covers both, and widening it only exposes the cookie to other subdomains. `COOKIE_SECURE` must be `true` over HTTPS; `.env.example` ships `false` for local plain-HTTP development, so check it after copying.
 
-6. **GRAFANA_ADMIN_PASSWORD**: Needed only for the opt-in monitoring stack (`docker compose -f docker-compose.yml --profile monitoring up -d`). Prometheus and Grafana are large third-party images carrying upstream advisories this project cannot fix, so the default stack — `backend`, `frontend`, `caddy` — leaves them out. Enable them deliberately; both bind to loopback only.
+6. **GRAFANA_ADMIN_PASSWORD**: Compose requires a nonempty value even when the profile is inactive. Replace the template placeholder with a unique password before enabling the opt-in monitoring stack (`docker compose -f docker-compose.yml --profile monitoring up -d`). Prometheus and Grafana are large third-party images carrying upstream advisories this project cannot fix, so the default stack — `backend`, `frontend`, `caddy` — leaves them out. Enable them deliberately; both bind to loopback only.
 
 ## Deployment Steps
 
 ### Option 1: Standard Deployment (with Caddy + Auto-TLS)
 
-The repo ships a `Caddyfile` and a `caddy` service in `docker-compose.yml`. Caddy automatically obtains and renews TLS certificates from Let's Encrypt. All you need are two DNS records pointing to your VM.
+The repo ships a `Caddyfile` and a `caddy` service in `docker-compose.yml`. Caddy automatically obtains and renews TLS certificates from Let's Encrypt. Point the public domain's DNS record at your VM.
 
 1. **Create a DNS record** pointing your domain to the VM's public IP. One
    record is enough — the API is served from `/api` on the same domain:
@@ -167,10 +183,10 @@ docker buildx imagetools inspect ghcr.io/OWNER/prompt-maker-studio-backend:1.2.3
 
 **Prerequisites:**
 - Set `GHCR_OWNER` in your `.env` file (your GitHub username or organisation, e.g. `chrysogonus`)
-- Set `IMAGE_TAG` in `.env` to a published version (`1.2.3`) or `sha-<short>` tag. The publish job's summary prints the immutable `@sha256:` digest for each image — prefer that for anything you intend to reproduce.
+- Set `IMAGE_TAG` in `.env` to a published version (`1.2.3`) or `sha-<short>` tag. The publish job's summary prints the immutable `@sha256:` digest for each image; record it to identify the exact artifact. The supplied override accepts tags in `IMAGE_TAG`, not digest references. To pin digests, supply a further Compose override with each service's full `image: ghcr.io/...@sha256:...` reference.
 - If the packages are private, authenticate once:
   ```bash
-  echo $GITHUB_PAT | docker login ghcr.io -u <github-username> --password-stdin
+  printf '%s' "$GITHUB_PAT" | docker login ghcr.io -u <github-username> --password-stdin
   ```
   If the packages are public (GitHub → Packages → Change visibility), no login is needed.
 
@@ -187,7 +203,8 @@ IMAGE_TAG=1.2.3 docker compose -f docker-compose.yml -f docker-compose.prod.yml 
 docker compose up -d --build
 ```
 
-This exposes ports 3000 and 8000 directly on the host in addition to the Caddy service.
+This binds ports 3000 and 8000 to loopback. Caddy stays excluded unless its
+`caddy` profile is explicitly enabled.
 
 ## Accessing the Application
 
@@ -196,7 +213,8 @@ After production deployment:
 - **Frontend**: `https://YOUR_DOMAIN` (Caddy serves with auto-HTTPS)
 - **Backend API**: `https://YOUR_DOMAIN/api`
 - **API Documentation**: not published. FastAPI serves `/docs` and
-  `/openapi.json` at the backend root, and Caddy routes only `/api/*` to the
+  `/openapi.json` at the backend root. Caddy forwards `/api/*` and OAuth
+  `/.well-known/oauth-*` discovery to the
   backend, so the interactive docs are reachable from inside the Compose
   network (or a local run) but not from the internet. This is deliberate — it
   keeps the schema and the try-it console off a public deployment.
@@ -238,7 +256,8 @@ separate private repository and set `LEGAL_PAGES_PATH` to its checkout, e.g.
 
 All services run on the `prompt-maker-studio-network` Docker bridge network:
 - The frontend container reaches the backend at `http://backend:8000` (server-side only)
-- Caddy proxies `DOMAIN/api/*` to `backend:8000` and everything else to `frontend:3000`
+- Caddy proxies `DOMAIN/api/*` and OAuth `/.well-known/oauth-*` discovery to
+  `backend:8000`, rejects `/metrics*`, and sends other routes to `frontend:3000`
 - Browsers reach the API same-origin at `https://DOMAIN/api` (never via the Docker-internal name)
 
 ## Monitoring and Maintenance
@@ -246,21 +265,21 @@ All services run on the `prompt-maker-studio-network` Docker bridge network:
 ### View logs:
 ```bash
 # All services
-docker compose logs -f
+docker compose -f docker-compose.yml logs -f
 
 # Specific service
-docker compose logs -f backend
-docker compose logs -f frontend
-docker compose logs -f caddy
+docker compose -f docker-compose.yml logs -f backend
+docker compose -f docker-compose.yml logs -f frontend
+docker compose -f docker-compose.yml logs -f caddy
 ```
 
 ### Restart services:
 ```bash
 # All services
-docker compose restart
+docker compose -f docker-compose.yml restart
 
 # Specific service
-docker compose restart backend
+docker compose -f docker-compose.yml restart backend
 ```
 
 ### Update application:
@@ -353,11 +372,32 @@ Database migrations are forward-only; deploying an older image does not undo
 schema changes. Create and verify a backup with `make backup-db` before every
 release that includes a migration.
 
-If the release did not apply a bad migration, redeploy the previous pinned
-`IMAGE_TAG` using the GHCR commands above. If data or schema must also be
-rolled back, stop the backend, restore the pre-deploy backup with
-`make restore-db BACKUP=backups/<backup>.sqlite3.gz`, then deploy the previous
-image. The restore script integrity-checks the backup and preserves a
+If the previous image is compatible with the current schema and no data
+rollback is needed, redeploy its pinned `IMAGE_TAG` using the GHCR commands
+above. If data or schema must also be rolled back, prepare the previous
+backend container **before** restoring: `make restore-db` automatically starts
+the existing backend container after success. Leaving the newer container in
+place would let it reapply its migrations immediately to the restored data.
+
+For a GHCR deployment, after approving the backup and data-loss window:
+
+```bash
+# Example only: replace this with the compatible previous published tag.
+ROLLBACK_TAG=1.2.2
+docker compose -f docker-compose.yml --profile backup stop db-backup backend
+IMAGE_TAG="$ROLLBACK_TAG" docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+# Create the older backend container without starting it against the newer DB.
+IMAGE_TAG="$ROLLBACK_TAG" docker compose -f docker-compose.yml -f docker-compose.prod.yml create --no-build backend
+make restore-db BACKUP='backups/replace-with-verified-backup.sqlite3.gz'
+IMAGE_TAG="$ROLLBACK_TAG" docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+```
+
+For source builds, build and create the compatible previous backend container
+without starting it before invoking the restore helper. Resume the backup
+profile explicitly if it was enabled: because it was stopped before the helper,
+the helper will leave it stopped. Validate the restored application first.
+
+The restore script integrity-checks the backup and preserves a
 `.pre-restore-<timestamp>` copy of the replaced database. Restoring discards
 all writes made after the selected backup, so confirm that data-loss window
 before proceeding.
@@ -432,13 +472,14 @@ workflow.
    docker network inspect prompt-maker_prompt-maker-studio-network
    ```
 
-2. Check which environment variables each service receives:
+2. Inspect the declared service environment template:
    ```bash
-   docker compose config --no-interpolate
+   COMPOSE_DISABLE_ENV_FILE=1 docker compose --env-file /dev/null -f docker-compose.yml config --no-interpolate
    ```
 
-   > `--no-interpolate` leaves `${VAR}` references unexpanded. Never run plain
-   > `docker compose config` when you intend to share the output — it resolves
+   > This command inspects the declared template without opening the operator
+   > environment file. `--no-interpolate` leaves `${VAR}` references unexpanded.
+   > Never run plain `docker compose config` when you intend to share the output — it resolves
    > and prints every value from `.env`, including `SECRET_KEY`,
    > `LLM_ENCRYPTION_KEY`, `SMTP_PASSWORD`, and `GRAFANA_ADMIN_PASSWORD`.
 
@@ -448,13 +489,13 @@ workflow.
 2. For a deliberately separate frontend origin, add its exact URL to
    `CORS_ORIGINS`, then restart the backend:
    ```bash
-   docker compose restart backend
+   docker compose -f docker-compose.yml restart backend
    ```
 
 ### Health check failures:
 ```bash
-# Check backend health
-curl http://localhost:8000/
+# Check backend health inside the production container
+docker compose -f docker-compose.yml exec backend curl -fsS http://localhost:8000/
 
 # View detailed health status
 docker inspect prompt-maker-studio-backend | grep -A 10 Health
@@ -466,11 +507,8 @@ docker inspect prompt-maker-studio-backend | grep -A 10 Health
 2. **Use HTTPS**: Caddy handles this automatically with Let's Encrypt. Confirm `COOKIE_SECURE=true` so session cookies are never sent in the clear
 3. **Configure firewall** to only expose ports 80 and 443 (Caddy); block direct access to 3000 and 8000
 4. **Regular backups** of the database volume
-5. **Keep Docker images updated**:
-   ```bash
-   docker compose pull
-   docker compose up -d
-   ```
+5. **Keep Docker images updated** through the source-build or pinned-GHCR
+   update procedure above; use the same explicit Compose files used to deploy.
 
 ## Scaling limits
 

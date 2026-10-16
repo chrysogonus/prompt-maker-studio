@@ -59,7 +59,8 @@ make up
 
 Open **[localhost:3000](http://localhost:3000)** and create your account.
 The first account can register; further registration is closed by default.
-For AI features, connect a provider under **Settings → AI connection**.
+For AI features, connect a provider under **Settings → AI connection**, or use
+the operator's optional server default when configured.
 
 `make setup` creates local configuration with a generated signing key.
 Browser API calls stay on the same origin through the frontend proxy.
@@ -84,6 +85,7 @@ REST and MCP share the same prompt services. AI calls are optional.
 
 ## Go further
 
+- [Documentation index](./docs/README.md) — current guides, architecture, product records and release history.
 - [Development](./docs/development.md) — local setup, commands and tests.
 - [Deployment](./docs/deployment.md) — hosting, HTTPS and backups.
 - [Monitoring](./docs/monitoring.md) — dashboards, metrics, alerts and operator logs.
@@ -98,7 +100,10 @@ Early-stage, `0.x`. APIs and database schemas may change between releases.
 Back up before upgrading; see the [changelog](./CHANGELOG.md). The
 [0.5.0 release record](./docs/releases/0.5.0.md) records publication, immutable
 image digests and upgrade checks. Rehearse the migrations on an isolated
-production-backup copy before upgrading a live instance.
+production-backup copy before upgrading a live instance. The
+[0.5.1 release preparation](./docs/releases/0.5.1.md) describes the unpublished
+candidate currently on `dev`: dark-mode/editor polish and accessibility fixes.
+The candidate introduces no database migrations or REST/MCP contract changes.
 
 ## License
 

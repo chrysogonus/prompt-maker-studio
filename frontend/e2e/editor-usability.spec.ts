@@ -59,6 +59,7 @@ for (const width of [1440, 390]) {
       expect(route.request().postDataJSON().text).toContain('Explain Saturn.');
       return route.fulfill({ json: { output_text: 'Saturn has rings.', provider: 'ollama', model: 'test-model' } });
     });
+    await page.getByText('Test with AI', { exact: true }).click();
     await page.getByRole('button', { name: 'Try once' }).click();
     await expect(page.getByRole('region', { name: 'Try once output' })).toContainText('Saturn has rings.');
     await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
@@ -82,17 +83,20 @@ for (const width of [1440, 390]) {
     await expect(page.getByLabel('Version note')).toHaveValue('Make it brief');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Tools', exact: true }).click();
     await page.getByRole('button', { name: 'History', exact: true }).click();
     await expect(page.getByText('Version 2, current').locator('..')).toContainText('Make it brief');
     await page.getByRole('button', { name: 'Close history' }).click();
     await page.getByLabel('Task text').fill('Explain {{topic}} clearly.');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Tools', exact: true }).click();
     await page.getByRole('button', { name: 'History', exact: true }).click();
     await expect(page.getByRole('button', { name: /Version 2/ })).toContainText('Make it brief');
     await page.getByRole('button', { name: 'Close history' }).click();
 
     await page.route('**/api/prompts/parse-text', (route) => route.fulfill({ json: { fields: [{ name: 'Imported', content: 'Imported draft.' }] } }));
+    await page.getByRole('button', { name: 'Tools', exact: true }).click();
     await page.getByRole('button', { name: 'Paste a prompt' }).click();
     const importer = page.getByRole('dialog', { name: 'Paste a prompt' });
     await expect(importer).toContainText('current draft stays as it is');

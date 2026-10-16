@@ -1,6 +1,7 @@
 # Authentication System
 
-Prompt Maker Studio uses JWT bearer authentication with bcrypt password hashes. JWTs are
+Prompt Maker Studio uses JWT sessions in httpOnly cookies (with optional bearer authentication) and
+bcrypt password hashes. JWTs are
 signed with HS256 through PyJWT and expire after the configured number of minutes
 (30 by default).
 
@@ -21,10 +22,12 @@ Overlength passwords submitted for verification are rejected safely.
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | POST | `/api/auth/register` | No | Create an account (201) |
-| POST | `/api/auth/login` | No | Return a JWT access token |
+| POST | `/api/auth/login` | No | Set session/CSRF cookies and return expiry metadata |
 | POST | `/api/auth/refresh` | Yes | Renew a still-valid JWT while the user is active |
+| POST | `/api/auth/logout` | No | Clear the current browser session cookies |
+| POST | `/api/auth/logout-all` | Yes | Revoke all account sessions and linked OAuth credentials |
 | GET | `/api/auth/me` | Yes | Return the current profile |
-| PATCH | `/api/auth/me` | Yes | Update username, or email (requires `current_password`) |
+| PATCH | `/api/auth/me` | Yes | Update `new_username`, library/eval preferences, or email (changed email requires `current_password`) |
 | DELETE | `/api/auth/me` | Yes | Delete account and owned prompts |
 | POST | `/api/auth/change-password` | Yes | Verify current password and set a new one |
 | POST | `/api/auth/forgot-password` | No | Request a password-reset email |
@@ -43,9 +46,11 @@ Content-Type: application/json
 }
 ```
 
-The response contains `id`, `username`, `email`, and `created_at`.
+The response contains `id`, `username`, `email`, `created_at`, and library/evaluation
+preferences. `REGISTRATION_MODE` defaults to `closed`: the first account can
+always register, then registration returns 403 unless the operator sets `open`.
 Usernames are normalized with `.strip().lower()` during registration and login.
-Duplicate usernames and emails receive the same generic conflict response.
+Duplicate usernames and emails receive the same generic 400 response.
 The login `username` field accepts either the username or the account email:
 an identifier containing `@` is matched against the email, since usernames
 cannot contain one. Failed logins check a dummy bcrypt hash for unknown
@@ -58,7 +63,7 @@ cookies and returns only `{"token_type", "expires_at"}`:
 
 | Cookie | httpOnly | Purpose |
 |---|---|---|
-| `access_token` | yes | The JWT. Unreadable by page scripts, so an XSS cannot exfiltrate it. |
+| `access_token` | yes | The JWT; inaccessible through `document.cookie`. |
 | `csrf_token` | no | Random per issue. The client reads it and echoes it back. |
 
 The browser attaches `access_token` automatically, so every frontend request
@@ -111,6 +116,14 @@ Tokens minted before this claim existed carry no `tv` and are read as version 0,
 which matches the column default. This version compatibility does not accept
 legacy username subjects; migration 026 requires those sessions to authenticate again.
 
+### Password recovery
+
+Forgot-password always returns the same 200 response, including for unknown
+addresses and email-delivery failures. A reset link expires after one hour;
+only its SHA-256 digest is persisted. Successful reset consumes the token,
+replaces the password and increments the account revocation version. Expired
+tokens are cleared; invalid or expired links return 400.
+
 ### CSRF
 
 Because the session cookie travels automatically, cookie-authenticated
@@ -121,12 +134,14 @@ the header.
 
 - Safe methods (GET/HEAD/OPTIONS/TRACE) are exempt.
 - **Bearer-authenticated requests are exempt**, since a browser never attaches
-  `Authorization` on its own. `Authorization: Bearer <jwt>` still works for
-  scripts and CI, and is what the backend test suite uses.
+  `Authorization` on its own. `Authorization: Bearer <jwt>` works for
+  scripts and CI that do not send a session cookie, and is used by backend tests.
 - A missing or mismatched token returns 403.
 
 Invalid, expired, or userless tokens return 401. Requests with neither a
-session cookie nor a bearer credential are rejected the same way.
+session cookie nor a bearer credential are rejected the same way. The session
+cookie takes precedence when both are sent, so including a bearer header does
+not bypass CSRF while that cookie is present.
 
 While the user is active (keyboard or pointer input), the frontend renews the
 session every five minutes, or halfway through a shorter session lifetime, so
@@ -146,7 +161,8 @@ the claim existed fall back to their `iat`.
 
 ## Prompt Access
 
-All mutating prompt operations and prompt data retrieval require authentication:
+All prompt operations, including Try once, refinement and retained evaluation
+endpoints, require authentication. Core library routes include:
 
 - `POST /api/prompts` and `POST /api/prompts/parse-text`
 - `GET /api/prompts/saved` and `GET`, `PATCH`, `DELETE /api/prompts/folders`
@@ -156,18 +172,28 @@ All mutating prompt operations and prompt data retrieval require authentication:
 `GET /api/prompts/config` **requires authentication**. It used to be the one
 unauthenticated route in `routes.py`, back when AI availability was a global
 env check; with bring-your-own provider credentials, "is AI available" is a
-question about the calling user's own connection. It returns
-`provider_connected` (so Import text can point at Settings instead of failing
-at call time), `provider` / `provider_label` / `model`
-describing that connection, `available_models` (empty when unconnected, so the
-UI never advertises a model it cannot run), and the operator's global budget
+question about the calling user's effective connection: a usable own connection
+first, otherwise the optional operator server default. It returns
+`provider_connected` (so AI features can point at Settings instead of failing
+at call time when neither connection exists), `provider` / `provider_label` / `model`
+describing that effective connection, `available_models` (suggestions, empty
+when neither connection exists; discovery is not proof of feature compatibility), and the operator's global budget
 snapshot — `budget_exhausted` plus `global_budget_remaining_usd`, which is
 `null` when no `GLOBAL_MONTHLY_BUDGET_USD` ceiling is configured. It never
 returns the stored API key.
 
 The connection itself is managed through `/api/auth/me/llm-connection`
-(GET/PUT/DELETE, plus `POST .../test` for a probe). Keys are stored Fernet-
-encrypted; responses carry only a masked `api_key_hint`.
+(GET/PUT/DELETE, plus `POST .../test` for a probe and `GET .../models` for the
+provider's model/pricing catalogue). Keys are stored Fernet-encrypted; responses
+carry only a masked `api_key_hint`. `configured` describes the user's own
+connection; `server_default` exposes only the operator connection's provider
+label and model. Disconnecting removes the own connection and key, so AI
+features fall back to the server default if one exists. Updating the same
+provider without `api_key` retains the key; switching provider cannot reuse it.
+
+User-supplied provider URLs are checked against the public-egress policy;
+`ALLOW_PRIVATE_LLM_URLS=true` permits private/self-hosted endpoints. The
+operator-configured `LLM_*` server default is trusted and may use a private URL.
 
 Owned prompt lookups return 404 both for missing records and records owned by
 another user, preventing resource-existence disclosure.
@@ -220,6 +246,8 @@ From the repository root:
 
 ```bash
 make test-file FILE=tests/test_auth.py
+make test-file FILE=tests/test_auth_cookies.py
+make test-file FILE=tests/test_auth_identity.py
 ```
 
 For direct pytest, activate `.venv`, change into `backend/`, and run

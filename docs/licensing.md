@@ -20,8 +20,9 @@ installed by pip or npm remain alongside their packages.
 ## Frontend optional dependencies
 
 Next.js declares `sharp` as an optional dependency for image optimization.
-This application does not use `next/image`, so the final frontend image runs
-`npm ci --omit=dev --omit=optional`. The builder stage may contain optional
+This application does not use `next/image`, so a separate dependency stage runs
+`npm ci --omit=dev --omit=optional` and its `node_modules` tree is copied into
+the final frontend image. The builder stage may contain optional
 build dependencies, but that stage is discarded and is not a published
 artifact.
 
@@ -39,7 +40,8 @@ When a lockfile changes:
 2. Run `make check-locks`.
 3. Rebuild both final images.
 4. Re-inventory the final runtime dependencies and update
-   `THIRD_PARTY_NOTICES.md`.
+   `THIRD_PARTY_NOTICES.md`. Run `make check-notices` against the built `:test`
+   images to compare package names and versions.
 5. Verify all project and package license files remain available.
 6. Obtain legal advice before distributing a newly introduced copyleft
    dependency.

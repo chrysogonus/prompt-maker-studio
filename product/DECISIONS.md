@@ -2,7 +2,11 @@
 
 Lightweight decision log (ADR-style). Records significant choices and their rationale to guide future development.
 
-> Last reviewed against the codebase: 2026-10-11.
+> Reviewed against the codebase: 2026-10-16 (0.5.1 candidate).
+> This is a historical decision log. Superseded entries describe the behavior
+> and source locations at the time; current amendments are stated explicitly.
+> Use [FEATURES.md](FEATURES.md) and the [documentation index](../docs/README.md)
+> for the current supported behavior.
 
 ---
 
@@ -18,7 +22,7 @@ Lightweight decision log (ADR-style). Records significant choices and their rati
 
 **Consequences**: Prompt fields cannot be queried individually at the database level without JSON path operators. Full-text search on field contents requires application-layer filtering or a dedicated search index.
 
-**Source**: `backend/migrations/001_migrate_to_dynamic_fields.sql`
+**Source**: `backend/app/database/migrations/v001_dynamic_prompt_fields.py`, `backend/app/models/prompt.py` (the SQL file under `backend/migrations/` is historical reference only)
 
 ---
 
@@ -32,7 +36,7 @@ Lightweight decision log (ADR-style). Records significant choices and their rati
 
 **Rationale**: User-scoped data is a security and privacy requirement. Ownership enforcement prevents users from reading or modifying each other's prompts. The backfill strategy (assign to oldest user) was chosen as a safe default for existing data during migration.
 
-**Consequences**: Prompt data operations require an authenticated user. The ownership check helper in `routes.py` returns HTTP 404 for both missing prompts and prompts not owned by the requesting user. `GET /api/prompts/config` was originally an intentionally public capability check; it became authenticated when bring-your-own providers made capability state user-specific (see the superseding decision below).
+**Consequences**: Prompt data operations require an authenticated user. The shared ownership check in `backend/app/services/prompts/ownership.py` returns HTTP 404 for both missing prompts and prompts not owned by the requesting user. `GET /api/prompts/config` was originally an intentionally public capability check; it became authenticated when bring-your-own providers made capability state user-specific (see the superseding decision below).
 
 **Source**: `backend/migrations/002_add_user_id_to_prompts.sql`, `backend/app/api/routes.py`
 
@@ -72,15 +76,14 @@ a readable `csrf_token` cookie). `Authorization: Bearer` is still accepted, and
 is exempt from CSRF, since a browser never sets that header on its own.
 
 **Rationale**: httpOnly is the one storage a page script cannot read, so it
-removes token theft from the XSS blast radius. Lax rather than Strict, and a
-`COOKIE_DOMAIN` on the shared parent, because the app and API sit on sibling
-subdomains — those requests are same-site, so Lax still sends the cookie while
-genuinely cross-site requests do not. Keeping the bearer path avoids breaking
+removes token theft from the XSS blast radius. Lax permits ordinary navigation back to the app while limiting cross-site
+credential attachment. The default deployment is same-origin through Caddy or
+the Next.js proxy; a shared `COOKIE_DOMAIN` is optional for split-subdomain setups. Keeping the bearer path avoids breaking
 scripts and CI, and costs nothing: nothing stores a readable token any more.
 
-**Consequences**: Two new required settings in production, `COOKIE_DOMAIN` and
-`COOKIE_SECURE` — a deployment that omits `COOKIE_DOMAIN` will authenticate on
-the API subdomain but not the app. Plain-HTTP environments (local dev, the E2E
+**Consequences**: HTTPS deployments use `COOKIE_SECURE=true`. `COOKIE_DOMAIN`
+is optional for the default same-origin setup; split-subdomain deployments may
+need a shared parent domain. Plain-HTTP environments (local dev, the E2E
 stack) must set `COOKIE_SECURE=false` or every request looks signed out.
 `CORS_ORIGINS` can no longer be a wildcard, because credentialed CORS forbids
 it. The client can no longer tell whether it is signed in without asking the
@@ -130,11 +133,11 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Context**: The authentication and prompt generation endpoints are exposed to the internet and must be protected against brute-force and abuse.
 
-**Decision**: Apply per-route rate limits using SlowAPI: register 5/min, login 10/min, parse-text 20/min, generate 30/min.
+**Decision**: Apply per-route rate limits using SlowAPI. Registration and login default to 5/min and 10/min (operator-overridable); parse-text is 20/min. Password, profile, refinement, Try once, evaluation, OAuth and diagnostic routes have their own limits. The old generate route was removed in 0.3.0; see [the API reference](../docs/api.md) and route decorators for current limits.
 
 **Rationale**: SlowAPI integrates directly with FastAPI and provides decorator-based per-route limits with minimal overhead. The limits chosen reflect: tighter limits on auth endpoints (brute-force protection) and higher limits on operational endpoints (normal usage headroom).
 
-**Consequences**: Legitimate users who burst-generate prompts may hit the generate limit. The limits should be tuned based on observed usage patterns. Behind Caddy in production, the client IP is extracted from forwarded headers — this must be correctly configured to avoid all requests appearing as the same IP.
+**Consequences**: Legitimate users making bursts of AI requests can hit a feature limit. The limits should be tuned based on observed usage patterns. Behind Caddy in production, the client IP is extracted from forwarded headers — this must be correctly configured to avoid all requests appearing as the same IP.
 
 **Source**: `backend/app/limiter.py`, `backend/app/api/routes.py`, `backend/app/api/auth_routes.py`
 
@@ -148,7 +151,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Decision**: Use SQLite as the primary database.
 
-**Rationale**: SQLite requires no separate database service, simplifying local development and Docker deployment. The current user base and data volume do not require PostgreSQL's concurrency or replication features. SQLAlchemy's abstraction means migration to PostgreSQL is possible without changing application code, only the connection string.
+**Rationale**: SQLite requires no separate database service, simplifying local development and Docker deployment. The current user base and data volume do not require PostgreSQL's concurrency or replication features. SQLAlchemy provides a starting point for another database, but the custom migrations, SQLite maintenance scripts and concurrency behavior would require an explicit portability project.
 
 **Consequences**: SQLite has limited concurrency (single writer). High concurrent write throughput will require a move to PostgreSQL. JSONB support in SQLite is handled via a compatibility shim in the model — behavior may differ subtly from native PostgreSQL JSONB.
 
@@ -162,13 +165,13 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Context**: As new columns and constraints are added to SQLite database tables during active feature development, `SQLAlchemy.metadata.create_all()` is insufficient for upgrading existing databases. However, integrating full-blown migrations frameworks like Alembic adds significant operational complexity and overhead for a simple SQLite setup.
 
-**Decision**: Implement a custom, lightweight, and idempotent migration runner (`backend/app/database/migrations.py`) executed automatically at FastAPI startup.
+**Decision**: Implement a custom, lightweight, and idempotent migration runner (`backend/app/database/migrations/runner.py`) executed automatically at FastAPI startup.
 
 **Rationale**: A lightweight runner written directly in Python maintains a minimal runtime and dependency footprint. Idempotent check functions (e.g. checking `PRAGMA table_info` and tracking applied schema versions in a `schema_migrations` table) ensure that migrations can be run repeatedly without causing errors or data loss, even if schema columns or indices are already present.
 
-**Consequences**: The migration framework is tailored for SQLite only. Complex migrations (such as dropping columns or altering constraints in ways not natively supported by SQLite) require manual table rebuilding scripts. If the application is migrated to PostgreSQL in the future, migrations will need to be transitioned to a compatible system (e.g. Alembic).
+**Consequences**: The migration framework is tailored for SQLite only. Complex migrations (such as dropping columns or altering constraints in ways not natively supported by SQLite) require versioned migration steps that rebuild tables when needed. If the application is migrated to PostgreSQL in the future, migrations will need to be transitioned to a compatible system (e.g. Alembic).
 
-**Source**: `backend/app/database/migrations.py`, `backend/app/main.py`
+**Source**: `backend/app/database/migrations/runner.py`, `backend/app/main.py`
 
 ---
 
@@ -184,11 +187,11 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Consequences**: Every username change requires the user to log back in with their new username. This is a known friction point — users should be warned in the UI before confirming the change. The sliding-renewal endpoint added 2026-07-19 (`POST /api/auth/refresh`) does not change this: it re-issues a token for the *same* subject, and after a username change the old subject no longer matches the user record, so forced re-login remains the correct behavior. This decision would only need revisiting if tokens moved to a stable subject (e.g. user ID).
 
-**Amendment — immutable token subjects**: Migration 026 replaces username subjects with unique account UUIDs. A renamed account keeps its identity, and a token cannot follow a username or numeric ID into another account. The frontend still signs out after a rename, but username mismatch is no longer a server-side revocation mechanism. Existing username-subject tokens must authenticate again.
+**Amendment — immutable token subjects**: Migration 026 replaces username subjects with unique account UUIDs. A renamed account keeps its identity, and a token cannot follow a username or numeric ID into another account. This initially retained frontend sign-out after a rename; the subsequent amendment below removes it. Username mismatch is no longer a server-side revocation mechanism. Existing username-subject tokens must authenticate again.
 
 **Amendment — rename keeps the session (2026-10-15)**: With stable subjects the forced sign-out protected nothing, so Settings now updates the displayed username from the `PATCH` response and the session continues. Editor drafts are stored under username-keyed browser keys; drafts saved under the old name are no longer offered after a rename and are purged on the next explicit sign-out — previously the forced sign-out deleted them outright.
 
-**Source**: `backend/app/api/auth_routes.py`, `backend/app/models/schemas.py`, `frontend/src/app/(app)/settings/page.tsx`
+**Source**: `backend/app/api/account_routes.py`, `backend/app/schemas/accounts.py`, `frontend/src/features/settings/ProfileSettings.tsx`
 
 ---
 
@@ -198,13 +201,13 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Context**: The `updated_at` column on the `prompts` table must be set whenever a prompt is updated via `PATCH /api/prompts/{id}`. SQLAlchemy supports an `onupdate` hook on column definitions that fires automatically on ORM `UPDATE` operations.
 
-**Decision**: Explicitly set `prompt.updated_at = datetime.now(UTC)` inside the `update_prompt` route handler before `db.commit()`, rather than relying on `Column(..., onupdate=...)`.
+**Decision**: Explicitly assign `updated_at` in the shared prompt mutation service before committing, rather than relying on `Column(..., onupdate=...)`. The current `next_write_stamp()` guarantees a timestamp greater than the prior stamp, including writes within one clock tick.
 
-**Rationale**: SQLAlchemy's `onupdate` hook does not fire in all circumstances — specifically it is bypassed when `db.execute()` raw SQL is used, or when the ORM session bulk-updates without going through individual model instances. Explicit assignment in the route handler is predictable, visible, and testable. It also makes the intent clear to future maintainers.
+**Rationale**: SQLAlchemy's `onupdate` hook does not fire in all circumstances — specifically it is bypassed when `db.execute()` raw SQL is used, or when the ORM session bulk-updates without going through individual model instances. Explicit assignment at the service mutation boundary is predictable, visible, and testable. It also makes the intent clear to future maintainers.
 
 **Consequences**: Any future code path that updates a prompt record must remember to set `updated_at` manually. If a bulk update pathway is added later, it must explicitly include the timestamp.
 
-**Source**: `backend/app/api/routes.py`, `backend/app/models/prompt.py`
+**Source**: `backend/app/services/prompts/library.py`, `backend/app/services/optimistic_concurrency.py`, `backend/app/models/prompt.py`
 
 ---
 
@@ -234,9 +237,9 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Rationale**: This codebase already treats password-related actions (`forgot-password`, `reset-password`) as distinct, verb-named endpoints separate from profile updates. A credential change is more security-sensitive than an email/username edit — it deserves its own rate-limit tier (5/min, matching `register`) and its own explicit current-password check, rather than being one more optional field on a general-purpose PATCH.
 
-**Consequences**: Unlike a username change, a password change does **not** force re-login — the JWT subject is the username, which a password change does not affect, so the existing token remains valid. Any future auth endpoint should follow this same verb-endpoint convention rather than growing `PATCH /api/auth/me`.
+**Consequences**: Password change reissues a cookie for the calling browser with a new account token version and authentication time; every other session and linked MCP authorization is invalidated. Both password change and username rename keep the caller signed in, for different reasons. Tokens now identify immutable account UUIDs.
 
-**Source**: `backend/app/api/auth_routes.py`, `backend/app/models/schemas.py`
+**Source**: `backend/app/api/account_routes.py`, `backend/app/schemas/accounts.py`, `backend/app/services/accounts/profile.py`
 
 ---
 
@@ -396,7 +399,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Consequences**: Variable substitution (`compile_prompt` on the backend, `compilePrompt` in `lib/placeholders.ts` on the frontend) still treats every value as a plain string regardless of declared type — `variable_metadata` changes what control is shown and what gets persisted as documentation, not the substitution mechanism. `[Insert ...]`-style placeholders (the other branch of `extractPromptPlaceholders`) can also receive type/description like any `{{var}}` row; no special-casing was added to exclude them.
 
-**Source**: `backend/app/database/migrations.py` (012), `backend/app/models/prompt.py`, `backend/app/models/schemas.py` (`VariableMetadataItem`), `frontend/src/components/EditorDetail.tsx`, `frontend/src/components/PlaygroundView.tsx`
+**Source**: `backend/app/database/migrations/registry.py` (012), `backend/app/models/prompt.py`, `backend/app/schemas/` (`VariableMetadataItem`), `frontend/src/components/EditorDetail.tsx`, `frontend/src/components/PlaygroundView.tsx`
 
 ---
 
@@ -410,7 +413,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Rationale**: Denormalizing the descriptive result fields preserves meaningful history even when the live eval set changes. Version context makes scores traceable to the prompt state under test. The three methods provide deterministic checks, flexible rubric-based grading, and human judgment without pretending they are equivalent.
 
-**Consequences**: Rule scoring was initially limited to comma-separated substring presence (extended 2026-07-18 with prefix operators — see "Rule Criteria Operators as In-String Prefix Syntax" below). Judge scoring uses a fixed rubric prompt and pinned model, while the prompt-output run for each case uses the user's supported default model or the first available model. Custom judges and multi-model comparisons remain backlog items.
+**Consequences**: Rule scoring was initially limited to comma-separated substring presence (extended 2026-07-18 with prefix operators — see "Rule Criteria Operators as In-String Prefix Syntax" below). Judge scoring uses a fixed rubric and the active connection's model, which also executes each test case; there is no centrally pinned judge model. Custom judges and multi-model comparisons remain backlog items.
 
 **Source**: `backend/app/models/eval_case.py`, `backend/app/models/eval_run.py`, `backend/app/models/eval_run_result.py`, `backend/app/services/eval_service.py`, `backend/migrations/014_create_eval_tables.sql`
 
@@ -428,13 +431,13 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Consequences**: A single eval run's own cost isn't reflected in `playground_runs.cost_usd` (only the per-case `PlaygroundService.run` calls are — the Judge grading call never was and still isn't persisted to that table), so `AnalyticsService`'s Dashboard cost figures and the new budget ceiling in `product/DECISIONS.md`'s budget entry did not include eval-run cost until the unified `billed_calls` ledger (2026-07-18) began recording every billed call path. Custom Judge system-prompt/model overrides remain a separate backlog item ("Custom Eval Judges"); this migration only snapshots whichever judge model is currently hardcoded.
 
-**Source**: `backend/app/database/migrations.py` (015), `backend/app/models/eval_run.py`, `backend/app/models/eval_run_result.py`, `backend/app/services/eval_service.py`, `frontend/src/components/editor/EvaluateTab.tsx`
+**Source**: `backend/app/database/migrations/registry.py` (015), `backend/app/models/eval_run.py`, `backend/app/models/eval_run_result.py`, `backend/app/services/eval_service.py`, `frontend/src/features/evaluation/EvaluationPage.tsx`
 
 ---
 
 ## API Spend Budgets Enforced Against Historical Playground Cost, Server-Controlled Only
 
-**Status**: Accepted
+**Status**: Superseded by the unified spend ledger and bring-your-own/default-provider decisions below; operator-controlled budget ceilings remain supported.
 
 **Context**: Every user shares the one operator `OPENAI_API_KEY` (see "Playground Uses the Operator's OpenAI Key" above). Per-route rate limits (10/min Playground, 10/min eval runs, 10-20/min refine) bound request *frequency* but not spend — a single eval run can already fan out to 20 case calls plus 20 Judge calls, and nothing capped cumulative dollar spend.
 
@@ -444,7 +447,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Consequences**: The ceiling is not a comprehensive measure of all OpenAI spend. Eval-case execution, Judge grading, eval-case generation, and refinement calls do not write their cost to `playground_runs`, so they are checked against the recorded Playground total but do not move that total themselves. A large evaluation therefore cannot trigger the ceiling mid-run based on its own spend. *(Resolved 2026-07-18: the unified `billed_calls` ledger — see the spend-ledger decision below — now records every billed call path, and `BudgetService` reads it.)* Monthly windows are fixed (calendar month, UTC) with no admin UI to reset or adjust mid-cycle.
 
-**Source**: `backend/app/services/budget_service.py`, `backend/app/api/routes.py`, `backend/app/api/eval_routes.py`, `backend/app/api/refine_routes.py`, `backend/app/models/schemas.py` (`PromptsConfigResponse`), `frontend/src/components/PlaygroundView.tsx`, `frontend/src/components/editor/EvaluateTab.tsx`
+**Source**: `backend/app/services/budget_service.py`, `backend/app/api/routes.py`, `backend/app/api/eval_routes.py`, `backend/app/api/refine_routes.py`, `backend/app/schemas/` (`PromptsConfigResponse`), `frontend/src/components/PlaygroundView.tsx`, `frontend/src/features/evaluation/EvaluationPage.tsx`
 
 ---
 
@@ -454,13 +457,13 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Context**: AI assistance can reduce the effort of building an eval set, but generated cases may contain unsuitable variables, weak criteria, or an inappropriate scoring method. Persisting them immediately would silently alter the user's test suite and could consume the prompt's 20-case allowance with low-quality cases.
 
-**Decision**: `POST /api/prompts/{id}/eval/cases/generate` returns up to 10 structured proposals derived from the current template, variable metadata, and an optional testing goal. The endpoint does not write `EvalCase` rows. The Evaluate tab exposes each proposal's method, criteria, and variables for editing, and only an explicit Accept action persists it through the existing create-case endpoint; Reject discards it client-side.
+**Decision**: `POST /api/prompts/{id}/eval/cases/generate` returns up to 10 structured proposals derived from the current template, variable metadata, and an optional testing goal. The endpoint does not write `EvalCase` rows. The current Evaluate workspace opens a proposal through Review and add, exposes its method, criteria and variables for editing, and persists it only on Save test case. Discard suggestions clears the unsaved proposals; there is no per-proposal Reject control.
 
 **Rationale**: Review-before-save keeps the user in control while reusing the existing ownership, validation, ordering, and case-limit behavior of normal case creation. It also avoids creating a second bulk-write path with different persistence semantics.
 
 **Consequences**: Unsaved proposals disappear on navigation or reload. Generation is a billed, budget-checked OpenAI call and is rate-limited to 10/minute. The backend caps proposals to the remaining capacity under the 20-case limit, but accepted cases can still require user refinement before they are useful quality gates.
 
-**Source**: `backend/app/api/eval_routes.py`, `backend/app/services/eval_generator_service.py`, `backend/app/models/schemas.py`, `frontend/src/components/editor/EvaluateTab.tsx`
+**Source**: `backend/app/api/eval_routes.py`, `backend/app/services/eval_generator_service.py`, `backend/app/schemas/`, `frontend/src/features/evaluation/EvaluationPage.tsx`
 
 ---
 
@@ -476,7 +479,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Consequences**: API clients do not receive preflight feedback, and direct backend calls can still submit templates that the UI would warn about. The checks identify structural risks, not semantic prompt quality, and must remain synchronized with placeholder parsing and supported template conventions.
 
-**Source**: `frontend/src/lib/preflight.ts`, `frontend/src/components/ui/PreflightPanel.tsx`, `frontend/src/components/OutputPanel.tsx`, `frontend/src/components/PlaygroundView.tsx`, `frontend/src/components/editor/EvaluateTab.tsx`
+**Source**: `frontend/src/lib/preflight.ts`, `frontend/src/components/ui/PreflightPanel.tsx`, `frontend/src/components/OutputPanel.tsx`, `frontend/src/components/PlaygroundView.tsx`, `frontend/src/features/evaluation/EvaluationPage.tsx`
 
 ---
 
@@ -492,7 +495,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Consequences**: A literal leading `!` or `~` in a wanted substring now needs awareness of the operator syntax (unprefixed terms starting with those characters are interpreted as operators). CSV-imported criteria get operator semantics automatically. The unshipped tail (JSON-path value checks, numeric ranges) is tracked in `product/BACKLOG.md` as the remaining scope of “Rich Deterministic Eval Assertions”.
 
-**Source**: `backend/app/services/eval_service.py` (`_split_criteria`, `_score_rule`), `backend/app/models/schemas.py`, `frontend/src/components/editor/EvaluateTab.tsx`
+**Source**: `backend/app/services/eval_service.py` (`_split_criteria`, `_score_rule`), `backend/app/schemas/`, `frontend/src/features/evaluation/EvaluationPage.tsx`
 
 ---
 
@@ -508,13 +511,13 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Consequences**: Historical judge rationales stored as plain text still render (the UI falls back to raw text when the rationale isn’t parseable JSON). The char caps mean a very large compiled prompt is truncated in the judge’s view — noted with an explicit truncation marker. The judge rubric and model remain hardcoded; user-configurable judges stay a backlog item (“Custom Eval Judges”).
 
-**Source**: `backend/app/services/eval_service.py`, `backend/app/services/playground_service.py`, `frontend/src/components/editor/EvaluateTab.tsx`
+**Source**: `backend/app/services/eval_service.py`, `backend/app/services/playground_service.py`, `frontend/src/features/evaluation/EvaluationPage.tsx`
 
 ---
 
 ## Unified AI Spend Ledger (`billed_calls`) with No Backfill — Migration 016
 
-**Status**: Accepted
+**Status**: Accepted for the shared spend ledger; original Dashboard displays were retired in 0.3.0. Pricing and failed-attempt capture were subsequently extended.
 
 **Context**: Budget ceilings and the Dashboard spend figure summed only `playground_runs.cost_usd`, while eval case runs, Judge grading, eval-case generation, refinement, and AI parse billed the shared operator key without recording their cost anywhere the budget could see. The budget decision above explicitly flagged the gap: a large evaluation could not trip the ceiling on its own spend.
 
@@ -524,13 +527,15 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Consequences**: The refiner, parser, and eval-generator services now return `(result, usage)` tuples so their routes can record spend (they previously discarded `response.usage` entirely). `playground_runs.cost_usd` continues to exist for run history and per-run analytics but is no longer the budget's source of truth. The Dashboard's "Total cost" card was relabeled "Total AI spend" since it now includes eval/refine/parse usage and diverges from cost-per-run × runs.
 
-**Source**: `backend/app/models/billed_call.py`, `backend/app/services/spend_ledger.py`, `backend/app/services/budget_service.py`, `backend/app/database/migrations.py`
+**Amendment — current billing boundary**: Costs resolve through provider/model pricing, not a fixed shared OpenAI table. The spend ledger remains the budget source; there is no product Dashboard. Completed usage is retained across structured-output retries and failures, and evaluation workers return usage for persistence on the request thread. Optional server-default calls use the same ledger and budgets.
+
+**Source**: `backend/app/models/billed_call.py`, `backend/app/services/spend_ledger.py`, `backend/app/services/budget_service.py`, `backend/app/services/llm_pricing.py`, `backend/app/database/migrations/v016_billed_calls.py`
 
 ---
 
 ## Eval Runs Fan Out on a Thread Pool with One Batch Budget Pre-Check
 
-**Status**: Accepted
+**Status**: Accepted for thread-pool fan-out and batch budget pre-check; the separate 90-second future ceiling was removed, as amended below.
 
 **Context**: `EvalService.run_evaluation` executed up to 20 cases strictly sequentially inside one synchronous HTTP request — a Judge-heavy set meant up to 40 back-to-back OpenAI calls, risking Caddy/browser timeouts that would waste the whole run's billed spend. This was the final unresolved finding from the pre-launch evaluation and refinement audit. The judge's OpenAI client also had no timeout at all (SDK default ~10 minutes).
 
@@ -539,6 +544,8 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 **Rationale**: Parallelism cuts a worst-case run from ~40 sequential calls to ~8 waves of 5, comfortably inside proxy timeouts, without introducing the persistent-job machinery that the backlog's progress/cancellation item will eventually need. Keeping workers session-free sidesteps SQLAlchemy/SQLite thread-safety entirely.
 
 **Consequences**: A ceiling crossed mid-run no longer halts remaining cases — bounded by the 20-case cap, and the run's own ledger rows (see the spend-ledger decision above) block the next billed call. Tests that rely on sequential mock call order pin `max_workers=1`. The run remains a single synchronous request; per-case progress and cancellation stay on the backlog.
+
+**Amendment — provider timeouts and usage retention (0.5.0)**: The service waits for workers to settle, captures returned usage even after invalid output or a failed judge, and performs database writes on the request thread after provider work. Each worker receives operation context with `copy_context`. Provider I/O timeouts replace the future deadline, which could not stop a running call and lost billed usage; this is not an end-to-end wall-clock deadline.
 
 **Source**: `backend/app/services/eval_service.py`, `backend/tests/test_eval_service.py`
 
@@ -556,7 +563,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Consequences**: Deleted prompt IDs remain gaps permanently. New prompt-creation paths must call `PromptIdService.next_id`; direct model inserts in tests may still use SQLite defaults because the allocator reconciles before its next application allocation.
 
-**Source**: `backend/app/services/prompt_id_service.py`, `backend/app/database/migrations.py` (018), `backend/app/api/routes.py`
+**Source**: `backend/app/services/prompt_id_service.py`, `backend/app/database/migrations/registry.py` (018), `backend/app/api/routes.py`
 
 ---
 
@@ -566,13 +573,13 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Context**: Positional case labels made run history hard to scan, while robustness cases with deliberately blank variables triggered a permanent preflight warning indistinguishable from incomplete setup.
 
-**Decision**: Eval cases persist an optional `name` and an `intentionally_empty` boolean. Names become the run-result label when present. The missing-variable preflight warning excludes only cases explicitly marked intentionally empty; generated proposals with blank inputs start with that marker selected for review.
+**Decision**: Eval cases persist an optional `name` and an `intentionally_empty` boolean. Names become the run-result label when present. The current case form requires each detected input unless the user explicitly selects This case intentionally leaves inputs blank; the Run action follows the same rule. Suggested cases open for review with that acknowledgement cleared, so the user must fill inputs or opt into blank placeholders.
 
-**Rationale**: Persisted intent survives reloads, duplication, and CSV round trips without weakening the advisory preflight check for ordinary incomplete cases.
+**Rationale**: Persisted intent survives reloads, duplication, and CSV round trips while requiring an explicit choice before saving or running incomplete cases.
 
 **Consequences**: CSV exports include `name` and `intentionally_empty` metadata columns after the required `method,criteria` prefix. Older imports remain valid.
 
-**Source**: `backend/app/models/eval_case.py`, `backend/app/api/eval_routes.py`, `frontend/src/components/editor/EvaluateTab.tsx`
+**Source**: `backend/app/models/eval_case.py`, `backend/app/api/eval_routes.py`, `frontend/src/features/evaluation/EvaluationPage.tsx`
 
 ---
 
@@ -584,11 +591,11 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Decision**: Removed the `escape()` call. Field content now passes through `generate()` byte-for-byte; only the field-name-derived `<TAG>` wrapper is real markup.
 
-**Rationale**: Nothing in this app parses the generated prompt as strict XML at runtime — the `<GOAL>`/`<AUDIENCE>`-style tags are a convention for the LLM reading the prompt (the same pattern Claude's own docs recommend), not machine-parsed structure. The one caller that ever did (`ElementTree.fromstring`) was a test asserting well-formedness for its own sake, not a real consumer. `frontend/src/lib/preflight.ts`'s "unbalanced XML tags" check is advisory-only and never blocks (see the Preflight Checks decision above), so it tolerates content that includes stray `<`/`>`/`&`. Given that, content-fidelity through save/compile/copy/export is the correct thing to guarantee, not strict XML well-formedness.
+**Rationale**: Nothing in this app parses the generated prompt as strict XML at runtime — the `<GOAL>`/`<AUDIENCE>`-style tags are a convention for the LLM reading the prompt (the same pattern Claude's own docs recommend), not machine-parsed structure. The one caller that ever did (`ElementTree.fromstring`) was a test asserting well-formedness for its own sake, not a real consumer. The current section-level checks in `frontend/src/lib/sections.ts` and `frontend/src/features/editor/SectionCard.tsx` flag uneven tags as advisory notices, tolerating content that includes stray `<`/`>`/`&`. Given that, content-fidelity through save/compile/copy/export is the correct thing to guarantee, not strict XML well-formedness.
 
-**Consequences**: A field value containing a bare `</TAG>`-shaped line can visually confuse the syntax-highlighted code view's block grouping (`frontend/src/components/OutputPanel.tsx`) — cosmetic only, since React renders it as text, not parsed markup. If a future feature needs to machine-parse the generated prompt as real XML, it will need its own escaping at that boundary, not a reintroduction of escaping at generation time.
+**Consequences**: A field value containing a bare `</TAG>`-shaped line can look like a wrapper boundary in the preview. It remains text rendered by React, not executable HTML; the old OutputPanel syntax-highlighting component was retired. If a future feature needs to machine-parse the generated prompt as real XML, it will need its own escaping at that boundary, not a reintroduction of escaping at generation time.
 
-**Source**: `backend/app/services/prompt_generator.py`, `backend/tests/test_prompt_generator.py`
+**Source**: `backend/app/services/prompt_sections.py`, `backend/tests/test_prompt_sections.py`, `frontend/src/lib/sections.ts`, `frontend/src/features/editor/SectionCard.tsx`
 
 ---
 
@@ -610,33 +617,35 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 ## Uniform 30-Second Timeout for OpenAI Requests
 
-**Status**: Amended by "Bring-Your-Own LLM Provider over an OpenAI-Compatible Transport" (below) — 30s remains the default for *hosted* providers; self-hosted ones default to 180s
+**Status**: Amended by "Bring-Your-Own LLM Provider over an OpenAI-Compatible Transport" (below). Provider-specific I/O timeouts and retries replace the original uniform timeout, no-retry policy and separate evaluation future deadline.
 
 **Context**: AI import, Playground execution, eval output generation and Judge grading, eval-case generation, and both refinement stages all run synchronously inside user-triggered HTTP requests. Some clients already set a 30-second timeout, while others inherited the OpenAI SDK's much longer default and could leave the UI waiting well beyond the reverse proxy's practical request window.
 
-**Decision**: Construct every OpenAI client with `timeout=30.0`. Keep evaluation's separate 90-second per-case future ceiling because one case may make both an output-generation call and a Judge call.
+**Original decision**: Construct every OpenAI client with `timeout=30.0`. Keep evaluation's separate 90-second per-case future ceiling because one case may make both an output-generation call and a Judge call.
 
 **Rationale**: A consistent upstream bound gives every billed AI feature predictable failure behavior, avoids multi-minute hung requests, and aligns service behavior with the Playground and proxy timeouts already used in production.
 
-**Consequences**: A slow upstream response now fails the affected feature instead of waiting for the SDK default. There is no automatic retry, so callers receive the feature's existing error state and can retry explicitly. Evaluation continues to capture per-case Judge failures without aborting the whole run; other features return their established route-level failure responses.
+**Original consequences**: A slow upstream response fails the affected feature instead of waiting for the SDK default, without an automatic retry. Evaluation captures per-case Judge failures without aborting the whole run; other features return their established route-level failure responses.
 
-**Source**: `backend/app/services/prompt_parser.py`, `backend/app/services/playground_service.py`, `backend/app/services/eval_service.py`, `backend/app/services/eval_generator_service.py`, `backend/app/services/prompt_refiner.py`
+**Amendment — current timeout and retry behavior**: `llm_client.py` now applies 30s for hosted providers, 180s for Ollama/vLLM and 120s for custom endpoints, overridable with `LLM_TIMEOUT_SECONDS`. The SDK permits one retry, and structured-output calls can make one further capability fallback. Evaluation waits for workers to settle and retains reported usage; the separate future deadline was removed because it could not cancel running calls and lost billed usage. These are I/O timeouts, not an absolute end-to-end deadline.
+
+**Source**: `backend/app/services/llm_client.py`, `backend/app/services/llm_providers.py`, `backend/app/services/prompt_parser.py`, `backend/app/services/playground_service.py`, `backend/app/services/eval_service.py`, `backend/app/services/eval_generator_service.py`, `backend/app/services/prompt_refiner.py`
 
 ---
 
 ## Bring-Your-Own LLM Provider over an OpenAI-Compatible Transport
 
-**Status**: Accepted
+**Status**: Accepted for transport, encrypted credentials and per-user connections. "Bring-your-own only" is amended by the optional server-default decision below.
 
 **Context**: Every AI feature — AI import, Refine questions/draft, the Playground, eval case runs, judge grading, eval-case generation — constructed its own `OpenAI(api_key=os.getenv("OPENAI_API_KEY"))` client at five separate call sites. That hard-wired the product to OpenAI and made the operator the payer for every user's usage. It blocked self-hosting (an Ollama or vLLM server on the operator's own hardware could not be used at all), blocked anyone without an OpenAI account, and made opening registration a direct financial liability. It also reversed two prior positions: the "Playground Uses the Operator's OpenAI Key" decision above, and the `product/BACKLOG.md` Icebox entry "Per-user BYO OpenAI keys", both of which deferred this work on the grounds that per-user credential storage was a materially larger, security-sensitive feature. It is — that judgment was correct; the tradeoff simply changed once portability and self-hosting became the goal.
 
 **Decision**:
 
-1. **Bring-your-own only.** Each user configures a provider connection in Settings → API access: a provider handle from a known registry (`openai`, `anthropic`, `gemini`, `ollama`, `vllm`, `custom`), an optional base-URL override, an API key, and a free-text model name. There is no operator fallback key; `OPENAI_API_KEY` is gone from the backend and from `docker-compose.yml`.
+1. **Bring-your-own only.** Each user configures a provider connection in Settings → AI connection: a provider handle from a known registry (`openai`, `anthropic`, `gemini`, `ollama`, `vllm`, `custom`), an optional base-URL override, an API key, and a free-text model name. There is no operator fallback key; `OPENAI_API_KEY` is gone from the backend and from `docker-compose.yml`.
 2. **OpenAI-compatible transport, not native SDKs.** Every provider is reached through its OpenAI-compatible chat-completions endpoint using the existing `openai` SDK with a per-provider `base_url`. No `anthropic` or `google-genai` dependency is added.
 3. **One construction site.** `backend/app/services/llm_client.py` is the only place `OpenAI(...)` is constructed. `client_for(user)` resolves the acting user's connection or raises a typed `LLMConnectionError`; the five services take an `LLMConnection` as an argument.
 4. **Prompt-carried JSON schema.** Four services need machine-readable JSON back. `response_format` is *not* portable: Anthropic's compatibility layer documents it as **silently ignored** (so a "try strict, fall back on error" strategy would never trigger — it returns prose with a 200), Ollama honours only the coarse `{"type": "json_object"}` form, and an arbitrary gateway may reject it outright. So `json_completion()` always puts the JSON Schema in the system prompt, layers `response_format` on top only where the provider registry says it helps, parses tolerantly (code fences, surrounding prose), and retries once at a lower capability rung. Token usage from every attempt is billed, because every attempt was really spent.
-5. **Pricing keyed by `(provider, model)`.** `services/llm_pricing.py` replaces the model-keyed table in `playground_service.py`; `billed_calls` gains a `provider` column. Self-hosted providers price at 0.0; unknown pairs still degrade to 0.0 rather than raising, preserving the previous behaviour.
+5. **Pricing keyed by `(provider, model)`.** `services/llm_pricing.py` replaces the model-keyed table in `playground_service.py`; `billed_calls` gains a `provider` column. Self-hosted providers price at 0.0. Unknown pairs originally degraded to 0.0; current spend-ledger estimates use conservative fallback rates when either monthly ceiling is configured. Missing usage can also receive a cost estimate, while recorded token counts remain the reported counts. Without a ceiling, unknown pairs remain unpriced in the catalogue and cost calculations return 0.0.
 6. **Credentials encrypted at rest.** `services/secret_store.py` wraps Fernet from the already-vendored `cryptography` package. Key material comes from `LLM_ENCRYPTION_KEY` when set, otherwise it is HKDF-derived from `SECRET_KEY` so existing deployments gain encryption without a new mandatory variable.
 7. **`users.default_model` retired from the API.** The model now lives on the connection; a second, separately-validated model preference had no coherent meaning. The column remains (migration 019 backfills `llm_model` from it, and SQLite cannot drop a column without rebuilding the table) but is no longer read or exposed.
 
@@ -645,14 +654,14 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 **Consequences**:
 
 - **Existing users must re-enter a key.** Migration 019 pre-fills `llm_provider='openai'` and `llm_model` from their old `default_model`, so the Settings form opens already pointing at what they were implicitly using — but deliberately **without** a key. The operator's shared `OPENAI_API_KEY` is never copied into user rows: fanning one credential across N database rows is a worse outcome than a signposted empty state. Until a user adds a key, AI features show a "Connect a provider in Settings" notice rather than failing at call time.
-- **Budget ceilings change meaning.** `GLOBAL_MONTHLY_BUDGET_USD` / `USER_MONTHLY_BUDGET_USD` no longer protect an operator wallet — the user pays their provider directly. They remain useful as usage guard rails (capping how much activity the app drives on anyone's behalf) and are documented as such. They never bind for a self-hosted connection, which prices at 0.0.
+- **Budget ceilings apply to the active payer.** Users fund their own connections; the optional server default is funded by the operator. `GLOBAL_MONTHLY_BUDGET_USD` / `USER_MONTHLY_BUDGET_USD` cap recorded estimated spend before metered operations. Evaluations pre-check a conservative estimate for the complete batch, rather than checking each worker call. Checks do not reserve funds, so concurrent requests may overshoot. Ollama/vLLM calls add zero estimated spend, but a ceiling already reached can still block them.
 - **Output quality varies by provider.** The prompts were tuned against OpenAI models. A small local model may return JSON that fails both attempts; that surfaces as an actionable "try a more capable model" error rather than a 500.
 - **Judge grading uses the user's own model.** There is no operator-pinned judge model to fall back on, so `_score_judge` reuses the case's connection. Scores are therefore not comparable across users with different providers.
-- **Provider I/O timeouts bound eval calls.** Hosted providers use 30s and self-hosted providers 180s per I/O operation, overridable via `LLM_TIMEOUT_SECONDS`, with one SDK retry and at most one structured-output fallback. Evaluation waits for workers to settle and records received usage, including unusable responses. A separate thread timeout was removed because it cannot cancel a running call and discarded completed spend. This is not an absolute end-to-end wall-clock deadline.
+- **Provider I/O timeouts bound eval calls.** Hosted providers use 30s, Ollama/vLLM 180s and custom endpoints 120s per I/O operation, overridable via `LLM_TIMEOUT_SECONDS`, with one SDK retry and at most one structured-output fallback. Evaluation waits for workers to settle and records received usage, including unusable responses. A separate thread timeout was removed because it cannot cancel a running call and discarded completed spend. This is not an absolute end-to-end wall-clock deadline.
 - **Base URLs are user-supplied server-side request targets.** They are validated at the boundary (http/https only, real host, no embedded credentials, no query/fragment), including provider defaults. Private and non-global addresses require `ALLOW_PRIVATE_LLM_URLS=true`. Public-only clients disable redirects and environment proxies and pin each request to a validated IP while retaining the original HTTP Host and TLS identity. Operator-configured server defaults remain trusted. Network-level egress restrictions remain useful defense in depth.
 - **Key rotation.** Rotating `SECRET_KEY` (or `LLM_ENCRYPTION_KEY`) makes stored ciphertexts undecryptable. That surfaces as a typed `StoredKeyUnreadableError` and reaches the user as "re-enter your API key", never as a 500.
 
-**Source**: `backend/app/services/llm_client.py`, `backend/app/services/llm_providers.py`, `backend/app/services/llm_pricing.py`, `backend/app/services/secret_store.py`, `backend/app/database/migrations.py` (019), `backend/app/api/auth_routes.py` (`/api/auth/me/llm-connection`), `backend/app/api/routes.py` (`GET /api/prompts/config`), `frontend/src/components/LLMConnectionForm.tsx`
+**Source**: `backend/app/services/llm_client.py`, `backend/app/services/llm_providers.py`, `backend/app/services/llm_pricing.py`, `backend/app/services/secret_store.py`, `backend/app/database/migrations/registry.py` (019), `backend/app/api/llm_connection_routes.py` (`/api/auth/me/llm-connection`), `backend/app/api/routes.py` (`GET /api/prompts/config`), `frontend/src/features/settings/LLMConnectionForm.tsx`
 
 ---
 
@@ -666,9 +675,9 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Rationale**: Fallback rather than enforcement keeps bring-your-own intact and makes the change one branch in the single client-construction seam. Keeping the credential in env rather than copying it into user rows avoids the fan-out the BYO decision rejected.
 
-**Consequences**: The operator funds and rate-limits every fallback call — budgets still apply, but a self-hosted provider prices at zero. Error copy still points at "Settings → API access", which for a fallback user means "connect your own" rather than "fix the server default".
+**Consequences**: The operator funds fallback calls according to their provider agreement; budgets and route limits still apply, while self-hosted providers price at zero. Settings → AI connection shows the active default and lets a user connect their own provider. Disconnecting their own connection returns to a configured server default.
 
-**Source**: `backend/app/services/llm_client.py` (`server_default`, `client_for`), `backend/app/api/auth_routes.py`, `frontend/src/components/LLMConnectionForm.tsx`
+**Source**: `backend/app/services/llm_client.py` (`server_default`, `client_for`), `backend/app/api/llm_connection_routes.py`, `frontend/src/features/settings/LLMConnectionForm.tsx`
 
 ---
 
@@ -681,8 +690,8 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 **Decision**:
 
 1. **One source of truth per stack.** `frontend/src/lib/branding.ts` exports `APP_NAME`, `APP_SLUG`, `pageTitle()`, and `storageKey()`; `backend/app/branding.py` exports `APP_NAME`. No user-visible name literal remains outside those two files.
-2. **One `Wordmark` component.** `frontend/src/components/ui/Wordmark.tsx` replaces the three duplicated copies and is rendered in the NavBar, so the name is visible on every authenticated page rather than only in the footer. The accent colour falls on the last word of `APP_NAME`, derived rather than hardcoded.
-3. **Storage keys migrate, they don't break.** `migrateLegacyStorageKeys()` copies any `prompt-maker:*` entry to `prompt-maker-studio:*` and removes the original. It runs at import time in `lib/auth.ts`, not in an effect, because the app layout reads the token during render.
+2. **One `Wordmark` component.** `frontend/src/components/ui/Wordmark.tsx` replaces the three duplicated copies and is rendered in the authenticated sidebar and public/authentication surfaces. The accent colour falls on the last word of `APP_NAME`, derived rather than hardcoded.
+3. **Storage keys migrate, they don't break.** `migrateLegacyStorageKeys()` copies any `prompt-maker:*` entry to `prompt-maker-studio:*` and removes the original. It runs at import time in `lib/auth.ts`, not in an effect, before the app reads expiry hints or browser drafts.
 4. **Ciphertext falls back, then upgrades.** `secret_store.decrypt_secret()` retries the pre-rename HKDF derivation when the current one fails, and any subsequent write re-encrypts under the new one. The fallback is skipped when `LLM_ENCRYPTION_KEY` is set, since an explicit key is used verbatim and never went through HKDF.
 5. **The Compose project name is pinned to `prompt-maker`.** Volume names derive from it, so the `prompt-maker_backend-data` volume holding the production database is unaffected by the rename — or by any future rename of the checkout directory.
 
@@ -693,7 +702,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 - Two compatibility paths now exist that will look like dead code to a future reader. Both carry comments naming the condition for removal: no active session predating the rename, and no ciphertext predating the rename.
 - Published images move to `ghcr.io/<owner>/prompt-maker-studio-{backend,frontend}`. Deployments pinning the old image name must update `docker-compose.prod.yml` or their `IMAGE_TAG` source; the old tags are not republished.
 - The Grafana dashboard UID changed, so bookmarked dashboard links break. Accepted — the dashboard is operator-facing and the provisioner recreates it on restart.
-- The GitHub repository, the checkout directory, and the `prompt-maker_backend-data` volume keep the old slug. Documentation URLs and clone commands therefore still say `prompt-maker`, which is correct until the repository itself is renamed.
+- The GitHub repository and checkout are now `prompt-maker-studio`; documentation and clone URLs use that slug. The Compose project and `prompt-maker_backend-data` volume retain `prompt-maker` to preserve existing data.
 
 **Source**: `frontend/src/lib/branding.ts`, `frontend/src/components/ui/Wordmark.tsx`, `backend/app/branding.py`, `backend/app/services/secret_store.py`, `docker-compose.yml`
 
@@ -705,14 +714,14 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 **Why.** A nonce is the correct fix and is what Next documents. It was
 implemented and measured: Next serves its App Router flight data as roughly six
 inline `<script>` blocks per document, and a nonce has to be minted per
-response — but every page here is statically prerendered, so the prerendered HTML
-cannot carry one. The result was a policy that parsed correctly, blocked the
+response — but the then-static pages could not carry a per-request nonce. The result was a policy that parsed correctly, blocked the
 app's own scripts, and left "Loading..." on screen. Build-time hashes are no
 better: the inline contents differ per page and per build.
 
-Closing this properly means opting the whole app into dynamic rendering. That is
-a rendering-architecture change with a real cost, so it is recorded here as a
-known exposure rather than made silently as part of a security fix.
+Public landing, guide and metadata routes now render dynamically, but there is
+still no shared nonce propagation across middleware, application pages, Next.js
+scripts and the theme bootstrap. Closing this requires an explicit CSP/rendering
+change and validation across every route; it remains a documented hardening item.
 
 **Consequences.** An injected script would still execute with the victim's
 session, so XSS prevention in application code remains the primary control. The
@@ -735,7 +744,7 @@ quietly outliving its reason.
 
 **Consequences**: The library is the home page; one editor replaces two; features that do not serve the job were retired or deferred (see the next decisions). Validated with a clickable prototype before implementation.
 
-**Source**: `product/VISION.md`, `frontend/src/components/editor/`, `frontend/src/app/(app)/library/page.tsx`
+**Source**: `product/VISION.md`, `frontend/src/features/editor/`, `frontend/src/app/(app)/library/page.tsx`
 
 ---
 
@@ -751,7 +760,7 @@ quietly outliving its reason.
 
 **Consequences**: Prompts recovered as one section copy with a `<PROMPT>` wrapper; the original text stays in their history. Output stays XML-style only.
 
-**Source**: `backend/app/services/prompt_sections.py`, `backend/app/api/routes.py`, `backend/app/database/migrations.py` (023)
+**Source**: `backend/app/services/prompt_sections.py`, `backend/app/api/routes.py`, `backend/app/database/migrations/registry.py` (023)
 
 ---
 
@@ -767,7 +776,7 @@ quietly outliving its reason.
 
 **Consequences**: The MCP `save_prompt` contract accepts spaced names. Existing names are unchanged.
 
-**Source**: `backend/app/models/schemas.py`, `frontend/src/lib/sections.ts`
+**Source**: `backend/app/schemas/`, `frontend/src/lib/sections.ts`
 
 ---
 
@@ -783,7 +792,7 @@ quietly outliving its reason.
 
 **Consequences**: Saving is explicit (button or Ctrl/⌘+S) with local draft recovery instead of autosave or an unsaved-changes prompt. Users can delete recovered prompts they do not need.
 
-**Source**: `backend/app/api/routes.py`, `backend/app/database/migrations.py` (024), `frontend/src/components/editor/PromptEditor.tsx`
+**Source**: `backend/app/api/routes.py`, `backend/app/database/migrations/registry.py` (024), `frontend/src/features/editor/PromptEditor.tsx`
 
 ---
 
@@ -815,13 +824,13 @@ quietly outliving its reason.
 
 **Consequences**: Operators must remove any `make send-weekly-summary` cron entry. API clients of the removed endpoints break; this is a 0.x release with the changes listed in the changelog.
 
-**Source**: `CHANGELOG.md` (0.3.0), `backend/app/models/user.py`, `monitoring/grafana/provisioning/dashboards/prompt-maker-studio.json`
+**Source**: `CHANGELOG.md` (0.3.0), `backend/app/models/user.py`, `monitoring/grafana/provisioning/dashboards/`
 
 ---
 
 ## Refine and Evaluate Are Deferred, Not Removed — 0.3.0
 
-**Status**: Accepted (2026-10-11)
+**Status**: Superseded by the refinement/evaluation restoration decisions below. Automatic evaluation remains disabled.
 
 **Context**: Refinement and evaluation are expected to matter, but their behaviour was closer to placeholder than useful.
 
@@ -861,7 +870,7 @@ quietly outliving its reason.
 
 **Rationale**: Refinement belongs next to the text being improved. Explicit calls, review and ordinary Save make its effects clear while preserving sections as the only writable representation. Structural validation checks preservation, not whether the wording performs better.
 
-**Consequences**: Refinement sessions do not survive navigation or reload. Apply preserves variable metadata and filled values. Evaluate remains deferred; no automatic evaluation is introduced.
+**Consequences**: Refinement sessions do not survive navigation or reload. Apply preserves variable metadata and filled values. Evaluate was subsequently restored as an explicit workflow; no automatic evaluation is introduced.
 
 **Source**: `frontend/src/features/editor/RefinePanel.tsx`, `frontend/src/features/editor/usePromptEditor.ts`, `backend/app/api/refine_routes.py`, `backend/app/services/prompt_refiner.py`
 
@@ -912,3 +921,47 @@ quietly outliving its reason.
 **Consequences**: An active user signs in at most every 12 hours. Existing passwords keep working until changed. Email changes are not verified by a link to the new address — a mistyped address breaks recovery until corrected. `MAX_SESSION_AGE` is a constant, not configuration.
 
 **Source**: `backend/app/auth/utils.py`, `backend/app/api/session_routes.py`, `backend/app/services/accounts/profile.py`, `backend/app/schemas/accounts.py`, `frontend/src/features/auth/useSession.ts`, `frontend/src/features/auth/passwordPolicy.ts`
+
+---
+
+## Quieter Dark Surfaces, Plum Where It Means Something
+
+**Status**: Accepted (2026-10-15)
+
+**Context**: Dark-mode surfaces were all low-saturation mauve within a few lightness points of each other, so panels, canvas and sidebar barely separated. Screenshots of the real editor compared the current palette, a more saturated plum and a quieter variant.
+
+**Decision**: Dark mode uses near-neutral, plum-tinted surfaces with clearer lightness steps, a distinctly plum sidebar and preview, plum selected states, and slightly softer coral. Light mode is unchanged. A saved theme is applied by an inline script before first paint on every page.
+
+**Rationale**: More saturation alone barely improved separation and tinted everything purple. Concentrating plum on navigation and the preview keeps the 0.3.0 identity while giving content room. The preview stays distinct from the panels through hue, not just darkness.
+
+**Consequences**: Signed-out pages now follow a saved dark preference. The dark text, accent and status colours were rechecked and clear WCAG AA on the canvas, sidebar, panel, raised, overlay and plum-wash surfaces.
+
+**Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`
+
+---
+
+## Moodboard Direction for Dark Mode
+
+**Status**: Partly superseded by "Dark Mode Shares Light's Layout" below; only the colour/surface direction remains.
+
+**Context**: The owner supplied a dark-mode moodboard with a near-black canvas, aubergine satin surfaces, peach-coral actions, Inter UI typography and JetBrains Mono prompt blocks.
+
+**Decision**: Apply that direction through dark-theme tokens and the existing CSS Modules. Dark mode gets subtle surface gradients, a floating bordered sidebar, section icons, and coral preview tags and selection indicators. Inter is self-hosted and used only in dark mode; light retains Hanken Grotesk and its existing layout. Muted text is slightly brighter than the moodboard swatch to maintain WCAG AA on raised surfaces.
+
+**Rationale**: Shared theme tokens carry the visual treatment across the editor, library, settings, authentication and dialogs while preserving the app's current workflows.
+
+**Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/shell/Sidebar.module.css`, `frontend/src/features/editor/SectionCard.tsx`, `frontend/src/features/editor/PromptEditor.module.css`
+
+---
+
+## Dark Mode Shares Light's Layout
+
+**Status**: Accepted (2026-10-15). Supersedes the floating sidebar, section icons, Inter and radius parts of "Moodboard Direction for Dark Mode".
+
+**Context**: The floating sidebar card, tighter spacing, section icons, a restyled preview header, Inter and smaller radii made dark mode lay out differently from light. The same folders fitted in one theme and scrolled in the other, and pages shifted when the theme changed.
+
+**Decision**: Dark mode changes colour, surfaces and shadows only. The shell, sidebar, editor, preview, sign-in screen, spacing, radii and UI font are the same in both themes, and section icons are dropped. Dark-only outlines are drawn with `box-shadow` or `outline` so they take no space.
+
+**Rationale**: Switching theme should never move content or change what fits on screen.
+
+**Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/shell/Sidebar.module.css`, `frontend/src/components/shell/AppShell.module.css`, `frontend/src/components/ui/SegmentedControl.module.css`, `frontend/src/features/editor/PromptEditor.module.css`, `frontend/src/features/auth/AuthForm.module.css`

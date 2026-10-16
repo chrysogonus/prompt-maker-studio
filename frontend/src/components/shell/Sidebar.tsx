@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { CodeXml } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { PromptMakerTile } from '@/components/brand/PromptMakerMark';
+import { REPOSITORY_URL } from '@/components/RepositoryLink';
 import {
   AllPromptsIcon,
   FavoriteIcon,
@@ -171,6 +173,10 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
           <SettingsIcon tone="inherit" />
           <span className={styles.label}>Settings</span>
         </Link>
+        <a href={REPOSITORY_URL} className={styles.sourceLink}>
+          <CodeXml size={16} strokeWidth={1.75} aria-hidden="true" />
+          Open source on GitHub
+        </a>
         <div className={styles.account}>
           <span className={styles.user}>Signed in as {currentUser}</span>
           <button type="button" className={styles.signOut} onClick={logout}>

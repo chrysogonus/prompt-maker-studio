@@ -38,6 +38,13 @@ describe('dark theme accessibility tokens', () => {
   });
 });
 
+describe('native controls', () => {
+  it('declares a color scheme for each theme', () => {
+    expect(globalsCss).toMatch(/:root\s*\{[^}]*color-scheme:\s*light;/);
+    expect(globalsCss).toMatch(/\[data-theme="dark"\]\s*\{[^}]*color-scheme:\s*dark;/);
+  });
+});
+
 describe('root layout stability', () => {
   it('reserves the scrollbar gutter across route transitions', () => {
     expect(globalsCss).toMatch(/html\s*\{[^}]*scrollbar-gutter:\s*stable;/);

@@ -56,7 +56,7 @@ export default function HistoryPanel({
     <aside className={styles.history} aria-label="Version history">
       <div className={styles.historyHead}>
         <h2>History</h2>
-        <button type="button" className={styles.historyClose} onClick={onClose} aria-label="Close history">
+        <button type="button" className={styles.historyClose} onClick={onClose} aria-label="Close history" autoFocus>
           ×
         </button>
       </div>

@@ -1,7 +1,7 @@
 ---
 name: code-review
 description: 'Perform a structured code review. Use when: reviewing a file, PR, function, or module for quality, security, and correctness. Covers Python, JavaScript, TypeScript, Docker, clean code principles, and OWASP security. Triggers: "review this code", "code review", "check my code", "review for security", "clean code check".'
-argument-hint: 'Optional: file path or area to focus on (e.g., "backend/tools.py" or "security only")'
+argument-hint: 'Optional: file path or area to focus on (e.g., "backend/app/api/routes.py" or "security only")'
 ---
 
 # Code Review Skill

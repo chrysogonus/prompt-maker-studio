@@ -58,10 +58,10 @@ Use direct file reads or a subagent to gather:
 - `README.md` — product description, feature list, architecture
 - `docs/` folder contents if present
 - Route files (e.g. `backend/app/api/routes.py`, `backend/app/api/auth_routes.py`) → derive API capabilities
-- Frontend pages/components (e.g. `frontend/src/app/`, `frontend/src/components/`) → derive UI features
+- Frontend pages/components (e.g. `frontend/src/app/`, `frontend/src/features/`, `frontend/src/components/`) → derive UI features
 - Model/schema files → understand data entities
 - Migration files → understand data evolution over time
-- `package.json` and `pyproject.toml` → understand tech stack and dependencies
+- `frontend/package.json` and `backend/pyproject.toml` → understand tech stack and dependencies
 
 ### 3b. Create the `product/` folder with these files
 

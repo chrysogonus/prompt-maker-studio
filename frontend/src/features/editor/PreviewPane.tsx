@@ -46,6 +46,8 @@ export default function PreviewPane({
   const [trying, setTrying] = useState(false);
   const [result, setResult] = useState<{ text: string; response: TryPromptResponse } | null>(null);
   const [tryError, setTryError] = useState('');
+  // Kept here so the panel and its output reopen after a Template/Filled switch.
+  const [tryOpen, setTryOpen] = useState(false);
   const tryingRef = useRef(false);
   const copiedTimer = useRef<number | null>(null);
   useEffect(
@@ -199,7 +201,7 @@ export default function PreviewPane({
           <p id="required-input-warning" className={styles.previewWarning}>Required inputs missing: {missingRequired.join(', ')}. Fill them in or choose Copy with placeholders.</p>
         )}
         {filled && missingOptional.length > 0 && (
-          <p className={styles.previewWarning}>
+          <p className={styles.previewLong}>
             {missingOptional.length === 1 ? (
               <>
                 <code>{missingOptional[0]}</code> is not filled in.
@@ -219,32 +221,34 @@ export default function PreviewPane({
         >
           {copied === copyKind ? 'Copied' : copyLabel}
         </button>
-        {filled && unfilled.length > 0 && (
+        {filled && missingRequired.length > 0 && (
           <button type="button" className={styles.copyButton} data-secondary="true" disabled={!hasContent} onClick={() => copy('placeholders')}>
             {copied === 'placeholders' ? 'Copied with placeholders' : 'Copy with placeholders'}
           </button>
         )}
         </div>
         {(filled || variables.length === 0) && (
-          <>
-            <AICallContext config={aiConfig} />
-            {filledText.length > TRY_PROMPT_CHARS && <p className={styles.previewWarning}>Try once accepts up to 100,000 characters. Shorten the prompt before running.</p>}
-            {filled && missingOptional.length > 0 && <p className={styles.previewWarning}>Try once keeps unfilled optional inputs as placeholders.</p>}
-            <button type="button" className={styles.copyButton} data-secondary="true" onClick={tryOnce}
-              disabled={filledText.length > TRY_PROMPT_CHARS || trying || !hasContent || missingRequired.length > 0 || !aiConfig?.provider_connected || aiConfig.budget_exhausted}>
-              {trying ? 'Running…' : 'Try once'}
-            </button>
-          </>
+          <details className={styles.tryPanel} open={tryOpen} onToggle={(event) => setTryOpen(event.currentTarget.open)}>
+            <summary>Test with AI</summary>
+            <div className={styles.tryControls}>
+              <AICallContext config={aiConfig} />
+              {filledText.length > TRY_PROMPT_CHARS && <p className={styles.previewWarning}>Try once accepts up to 100,000 characters. Shorten the prompt before running.</p>}
+              <button type="button" className={styles.copyButton} data-secondary="true" onClick={tryOnce}
+                disabled={filledText.length > TRY_PROMPT_CHARS || trying || !hasContent || missingRequired.length > 0 || !aiConfig?.provider_connected || aiConfig.budget_exhausted}>
+                {trying ? 'Running…' : 'Try once'}
+              </button>
+            </div>
+            {trying && <p className={styles.tryResult} role="status">Running the filled prompt…</p>}
+            {tryError && <p className={styles.tryResult} role="alert">{tryError}</p>}
+            {result && <section className={styles.tryResult} aria-label="Try once output">
+              <h3>Output</h3>
+              <p>{result.response.provider} / {result.response.model}</p>
+              {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier inputs. Run again to try the current prompt.</p>}
+              <pre tabIndex={0}>{result.response.output_text || 'The model returned no text.'}</pre>
+            </section>}
+          </details>
         )}
       </div>
-      {trying && <p className={styles.tryResult} role="status">Running the filled prompt…</p>}
-      {tryError && <p className={styles.tryResult} role="alert">{tryError}</p>}
-      {result && <section className={styles.tryResult} aria-label="Try once output">
-        <h3>Output</h3>
-        <p>{result.response.provider} / {result.response.model}</p>
-        {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier inputs. Run again to try the current prompt.</p>}
-        <pre tabIndex={0}>{result.response.output_text || 'The model returned no text.'}</pre>
-      </section>}
     </aside>
   );
 }

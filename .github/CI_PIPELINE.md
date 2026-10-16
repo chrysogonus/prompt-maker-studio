@@ -8,7 +8,7 @@ equivalents without duplicating every YAML step.
 
 The workflow runs for:
 
-- every pull request, regardless of target branch;
+- pull requests targeting a branch matched by the workflow's `branches: ['*']` filter;
 - pushes to `main`, `dev`, and `development`;
 - pushes of a `v*` version tag, which is what triggers publishing;
 - manual `workflow_dispatch` runs.
@@ -76,10 +76,9 @@ Two consequences worth knowing:
 - Do **not** also enable GitHub's *default setup* for code scanning. This
   workflow is an advanced-setup configuration, and running both produces
   duplicate or conflicting analyses.
-- `publish` lists `codeql` among its `needs`, so a skipped CodeQL also skips
-  publishing. Tagging a release while the repository is private therefore
-  produces no images. That is deliberate: images are not published from a
-  codebase whose static analysis never ran.
+- `publish` depends on `all-checks-passed`, which accepts the private-repository
+  CodeQL skip. A `v*` push can therefore publish from a private repository when
+  all other gates pass.
 
 See [`.github/BRANCH_PROTECTION.md`](BRANCH_PROTECTION.md) for the recommended
 repository ruleset. That document describes a desired configuration; repository
@@ -99,7 +98,9 @@ Run commands from the repository root:
 | `make test-frontend` | Vitest with the coverage floors (same command CI runs) |
 | `make security-backend` | Bandit and pip-audit |
 | `make security-frontend` | Informational full audit plus gating production audit |
-| `make docker-smoke-test` | Both image builds and backend container smoke test |
+| `make docker-smoke-test` | Both image builds, license-material/LGPL-bundle checks and backend container smoke test |
+| `make security-images` | Fixable HIGH/CRITICAL vulnerabilities in the two built `:test` images |
+| `make check-notices` | Dependency inventories in `THIRD_PARTY_NOTICES.md` match the built `:test` images |
 | `make check-docker-context` | Actual Docker build-context exclusion for root and nested environment files |
 | `make compose-check` | All supported Compose combinations |
 | `make monitoring-check` | Prometheus config/rules and semantic dashboard/alert fixtures in the pinned image, with networking disabled |
@@ -109,6 +110,9 @@ Run commands from the repository root:
 
 `make ci-local` expects the development toolchains, Playwright Chromium, and a
 working Docker daemon. See [`docs/development.md`](../docs/development.md).
+
+The local Docker smoke target does not run GitHub CI's explicit no-baked-API-origin
+or no-package-manager checks; those remain additional workflow checks.
 
 `codeql` has no Make equivalent — it needs GitHub's hosted analysis and uploads
 results to the repository's security tab. Review its findings there rather than

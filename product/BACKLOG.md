@@ -1,221 +1,168 @@
 # Product Backlog
 
-> Items here are **NOT yet implemented**. See FEATURES.md for what is built.
-> Sorted by priority within each category.
-> Last reviewed against the codebase: 2026-10-11 (re-triaged for the 0.3.0 redesign).
-
----
-
----
+> Reviewed against the codebase: 2026-10-16 (0.5.1 candidate).
+> Items below describe unimplemented scope. See [implemented features](FEATURES.md)
+> and the [roadmap](ROADMAP.md) for delivered work and release status.
+> Existing priorities are retained; this sync does not select new product work.
 
 ## Priority: High
 
 ### Extend AI Refinement Controls
-- **Value**: People who reuse prompts want to direct a specific change and keep only the suggested edits they need.
-- **Approach**: Add direct change instructions and individual section acceptance to the restored question-and-answer flow. The UI must continue writing sections, never raw text.
-- **Effort**: High
-- **Status**: The editor now offers questions, section diffs, local Apply/Undo and normal Save. Direct change instructions and individual section acceptance remain unimplemented.
+
+- **Value**: Direct a specific change and keep only the suggested edits needed.
+- **Current gap**: Questions, section diffs, local Apply/Undo and Save are implemented. Direct change instructions and individual section acceptance are absent.
+- **Suggested approach**: Extend `frontend/src/features/editor/RefinePanel.tsx` and `backend/app/services/prompt_refiner.py`, keeping section structure and explicit review before Save.
+- **Effort**: High.
 
 ### Calibrate Evaluation Scores
-- **Value**: Shows whether a prompt change helped, with evidence a non-specialist can read.
-- **Approach**: Start from concrete user goals (does this template still produce what I want?), keep the existing eval engine, and check automated scores against human judgments before trusting them.
-- **Effort**: High
-- **Status**: The evaluation UI is restored with explicit runs, editable cases, reviewed suggestions, CSV tools, historical outputs, run comparison and manual ratings. Score calibration against human judgments remains open; automatic runs remain disabled.
 
----
+- **Value**: Give scores an understood relationship to a user's goal.
+- **Current gap**: Explicit runs, reviewed suggestions, case CSV tools, historical outputs, run comparison and manual ratings are implemented; automated scores have not been calibrated against human judgments.
+- **Suggested approach**: Compare automatic and AI-review scores with human ratings on representative cases before treating them as quality gates. Keep automatic execution disabled.
+- **Source**: `frontend/src/features/evaluation/`, `backend/app/services/eval_service.py`.
+- **Effort**: High.
 
 ## Priority: Medium
 
 ### First-Run Onboarding With a Seeded Sample Prompt
-- **Value**: Jordan lands in an empty workspace where every advanced feature (eval, refine, Playground) needs a saved prompt to even be visible; a pre-seeded example makes the product self-demonstrating and shortens time-to-first-value.
-- **Gap identified**: `backend/scripts/seed_demo_user.py` already builds exactly this data shape for QA, but nothing equivalent exists for real new users; registration creates a bare account.
-- **Suggested approach**: On registration, create one well-commented sample prompt with variables, tags, and 2–3 eval cases (a trimmed reuse of the seed script's builders), plus a dismissible "start here" pointer. Purely additive — deletable like any prompt.
-- **Effort estimate**: Low
-- **Priority recommendation**: Nice-to-have
-- **0.3.0 note**: An empty library now explains itself and offers New prompt, Import text and starter templates; a seeded sample prompt for new accounts is still open.
 
-### Version Notes & Milestones
-- **Value**: Riley can record why a revision was made and identify important snapshots such as "production", "experiment", or "known good" without relying on version numbers alone.
-- **Gap identified**: The update API and version model already support an optional note, and version history displays it, but normal editor updates never ask for or send a user-authored note (`backend/app/models/schemas.py`, `backend/app/models/prompt_version.py`, `frontend/src/components/EditorDetail.tsx`, `frontend/src/components/editor/ConfigurationTab.tsx`).
-- **Suggested approach**: Add an optional change-note field to the update flow and let users mark a version as a named milestone. Show notes and milestone labels consistently in version history, evaluation history, and restore confirmation.
-- **Effort estimate**: Low
-- **Priority recommendation**: Nice-to-have
-- **0.3.0 note**: Optional notes on save shipped; milestones (pinned, labelled versions) remain.
+- **Value**: Make the first reusable template easier to understand.
+- **Current gap**: The empty library offers New prompt, Paste a prompt and starter templates; registration creates no sample prompt. `backend/scripts/seed_demo_user.py` is opt-in QA data, not new-account onboarding.
+- **Suggested approach**: Offer a deletable sample with variables and optional evaluation cases; tags and the retired Playground are outside the current workflow.
+- **Effort**: Low.
+
+### Version Milestones
+
+- **Value**: Identify important snapshots such as "known good".
+- **Current gap**: Optional save notes, current-version notes, historical notes and variable metadata snapshots already exist. Named or pinned milestones do not.
+- **Suggested approach**: Add milestone labels to existing version history and show them consistently in comparisons and restore confirmation.
+- **Source**: `backend/app/services/prompt_version_service.py`, `frontend/src/features/editor/HistoryPanel.tsx`.
+- **Effort**: Low.
 
 ### Prompt Trash & Restore
-- **Value**: Users can recover a prompt deleted by mistake without asking an operator to restore the entire database, protecting the versions, evaluations, and Playground evidence accumulated around valuable templates.
-- **Gap identified**: Prompt deletion is immediate and cascades through owned versions and evaluation data; the frontend offers no user-visible recovery state (`backend/app/api/routes.py`, `backend/app/models/prompt.py`, `frontend/src/app/(app)/library/page.tsx`).
-- **Suggested approach**: Soft-delete prompts into a Trash view for 30 days, with restore and explicit permanent-delete actions. Exclude trashed prompts from normal library, dashboard, and execution queries while retaining their dependent records until final deletion.
-- **Effort estimate**: Medium
-- **Priority recommendation**: Must-have
 
-### Variable Contracts, Defaults & Required Inputs
-- **Value**: Prompt authors can define a dependable input contract, while Playground users and generated code receive useful defaults and cannot accidentally run a prompt with required placeholders unresolved.
-- **Gap identified**: `variable_metadata` persists only `type` and `description`. Both prompt compilers leave an unmatched placeholder untouched, and the Playground permits a run without checking that all detected variables have values.
-- **Suggested approach**: Extend variable metadata with `required`, `default_value`, and optional validation constraints appropriate to each type. Apply the same contract in the Playground, code-snippet export, and backend compilation boundary.
-- **Effort estimate**: Medium
-- **Priority recommendation**: Nice-to-have
-- **0.3.0 note**: Per-variable hints shipped; types are no longer edited. Required inputs and defaults remain.
+- **Value**: Recover a deleted prompt with its versions and evaluation history.
+- **Current gap**: The library provides a five-second local Undo before sending DELETE. Once committed, server deletion is permanent and cascades through dependent records; there is no persistent trash.
+- **Suggested approach**: A 30-day soft-delete view with restore and explicit permanent deletion, excluded from normal library and execution queries.
+- **Source**: `frontend/src/features/library/useLibrary.ts`, `backend/app/services/prompts/library.py`.
+- **Effort**: Medium.
+
+### Variable Defaults & Typed Validation
+
+- **Value**: Reuse predictable inputs without confusing examples with defaults.
+- **Current gap**: Hints, required flags and explicitly loaded example inputs are implemented. Missing required values block normal filled copying and Try once in the UI; Copy with placeholders remains explicit. Automatic defaults and typed backend execution validation are absent; legacy types remain stored.
+- **Suggested approach**: Define defaults and optional type constraints separately from examples, then apply a consistent contract to relevant execution boundaries.
+- **Source**: `backend/app/schemas/prompts.py`, `backend/app/services/prompt_compiler.py`, `frontend/src/features/editor/VariablesPanel.tsx`, `frontend/src/features/editor/PreviewPane.tsx`.
+- **Effort**: Medium.
 
 ### Scalable Library Search, Sort & Folder Filtering
-- **Value**: Users with a large personal library can find prompts by name, content, tag, folder, favorite status, or recency without downloading and filtering the entire collection in the browser.
-- **Gap identified**: `GET /api/prompts/saved` returns every named prompt and supports tag/folder/favorite filters, but the Library uses only the tag filter, performs text search client-side, exposes no folder control, and always orders by creation date.
-- **Suggested approach**: Add server-side `search`, `limit`, `offset`, and validated sort parameters to the saved-prompts endpoint. Wire folder/favorite filters and sorting into the Library with paginated or incremental loading and a total count.
-- **Effort estimate**: Medium
-- **Priority recommendation**: Nice-to-have
-- **0.3.0 note**: Folder views, search across section text, and recently-edited ordering shipped; server-side pagination and other sort orders remain.
 
-### Bulk Prompt Delete / Clear History
-- **Problem it solves**: Users can only delete prompts one at a time. As history accumulates, clearing unwanted entries becomes tedious. Power users who experiment heavily may want to clear all history without deleting their saved templates.
-- **Proposed solution**: Add multi-select mode to the History tab (checkboxes appear on hover). A "Delete selected" action fires one `DELETE` request per checked item. A "Clear all history" button (unnamed prompts only) provides a single-click cleanup option. The backend API already supports individual deletes; no new endpoints needed.
-- **Effort**: Medium
-- **Dependencies**: None (individual delete endpoints already exist)
-- **0.3.0 note**: More useful now: Recovered history can hold many near-duplicate prompts. A user-controlled cleanup (select several, or find duplicates) is the deliberate follow-up to migration 024, which does not deduplicate.
+- **Value**: Find prompts without downloading the complete library.
+- **Current gap**: The saved-prompts API returns all named prompts with optional folder/favorite filters. The browser already has folder/favorite views, name/folder/section-text search and recently-edited ordering; it lacks server-side search, pagination and alternative sort controls. Tags were retired.
+- **Suggested approach**: Add server-side search, validated sort and pagination with a count, then connect the existing library controls.
+- **Source**: `backend/app/services/prompts/library.py`, `frontend/src/features/library/useLibrary.ts`.
+- **Effort**: Medium.
+
+### Bulk Prompt Delete / Recovered History Cleanup
+
+- **Value**: Tidy large collections and recovered near-duplicates.
+- **Current gap**: Individual deletion and folder rename/removal exist; multi-select prompt deletion and duplicate detection do not. The old unnamed History tab no longer exists; migration 024 retained entries as named prompts in Recovered history.
+- **Suggested approach**: Add deliberate multi-selection to the library, preserving deletion feedback and Undo. Individual DELETE is available; confirm transaction/error behavior before choosing batch requests.
+- **Effort**: Medium.
 
 ### Multiple Output Formats
-- **Problem it solves**: XML is the only output format. Some LLMs and workflows prefer Markdown headings or plain JSON. Users must manually reformat output after generation.
-- **Proposed solution**: Add an `output_format` parameter to the generate request (`xml` | `markdown` | `json`). The `prompt_generator.py` service adds format-specific rendering logic. UI adds a format selector.
-- **Effort**: Medium
-- **Dependencies**: None
 
----
-- **0.3.0 note**: Output stays XML-style tags; a Markdown-headings option for ChatGPT and Gemini users is the likeliest first addition.
+- **Value**: Copy Markdown headings or JSON for workflows that prefer them.
+- **Current gap**: `backend/app/services/prompt_sections.py` and `frontend/src/lib/sections.ts` render XML-style tags only. There is no generate endpoint or format selector.
+- **Suggested approach**: Start with a Markdown copy option and keep frontend/server rendering contracts aligned.
+- **Effort**: Medium.
 
----
+## Evaluation Follow-ups
 
-## Deferred with Refine and Evaluate
-
-_Re-plan these when the rebuilds above start; until then they have no UI to attach to._
+Refinement and evaluation are implemented. These are extensions to their current
+workflows, rather than rebuild prerequisites.
 
 ### Evaluation-Informed Refinement
-- **Value**: Riley gets refinement that fixes *observed* failures instead of generic improvements — closing the product's core loop (test → understand → refine) that currently runs as two disconnected features.
-- **Gap identified**: `prompt_refiner.py` sees only the template and the user's Q&A answers; it has no awareness of eval results, even though `EvalRunResult` rows carry failing outputs, criteria, and structured Judge weaknesses for the same prompt.
-- **Suggested approach**: Optionally include the latest run's low-scoring results (case label, criteria, output excerpt, judge weaknesses) in the refine draft call's context, behind a toggle in the Refine tab ("Use latest evaluation results"). Char-cap the context like the Judge call does.
-- **Effort estimate**: Medium
-- **Priority recommendation**: Nice-to-have
 
-### Eval Health on Library Cards & Dashboard
-- **Value**: Riley can see at a glance which templates are tested, passing, or stale — today evaluation results are invisible outside the Evaluate tab, so a library of 30 prompts gives no signal about which are trustworthy.
-- **Gap identified**: The Library page contains zero references to eval data. `EvalRun.prompt_version_number` already records which version a run scored, so "evaluated against an older version" (stale) is directly computable.
-- **Suggested approach**: A small badge per saved prompt — latest aggregate score, "stale" when the current version has no run, "untested" when no cases exist — via a grouped query like the existing `run_counts_by_prompt_ids` pattern; optionally a Dashboard "eval coverage" stat.
-- **Effort estimate**: Low
-- **Priority recommendation**: Nice-to-have
+- **Value**: Target observed failures when refining a prompt.
+- **Current gap**: The refiner receives sections and Q&A answers, without evaluation-result context.
+- **Suggested approach**: Explicitly opt into a bounded selection of failing outputs, criteria and judge feedback from the latest run.
+- **Source**: `backend/app/services/prompt_refiner.py`, `frontend/src/features/editor/RefinePanel.tsx`.
+- **Effort**: Medium.
 
-_"Graceful Session Expiry & Sliding Token Refresh" shipped 2026-07-19 exactly as proposed: an authenticated `POST /api/auth/refresh` with client-side sliding renewal (`ensureSessionValidity` before long operations, shared single-flight refresh, one retry after a 401). Full refresh-token rotation remains unimplemented and would be a new backlog item if security posture demands it — see `product/FEATURES.md` ("Sliding session renewal")._
+### Evaluation Health on Library Cards
+
+- **Value**: See whether a template is tested and whether its last run used the current version.
+- **Current gap**: The library shows no evaluation coverage or score badge; run version context exists. The product dashboard and its run-count service were retired.
+- **Suggested approach**: A grouped evaluation summary for library cards, with explicit untested/stale states.
+- **Effort**: Low.
 
 ### Eval Run Results Export (CSV)
-- **Value**: Riley can analyze evaluation results in a spreadsheet or share them outside the app — today eval *cases* round-trip via CSV but run *results* (outputs, scores, rationales) are locked in the UI.
-- **Gap identified**: `eval_routes.py` exports cases only; `EvalRunResult` rows (including snapshotted criteria/variables and structured judge feedback) have no export path.
-- **Suggested approach**: `GET /api/prompts/{id}/eval/runs/{run_id}/export` mirroring the existing case-export CSV conventions, one row per result with score, method, criteria snapshot, output, and rationale fields.
-- **Effort estimate**: Low
-- **Priority recommendation**: Nice-to-have
+
+- **Value**: Analyze outputs and scores outside the app.
+- **Current gap**: CSV endpoints transfer test cases, not historical run results.
+- **Suggested approach**: Add an owned-run export with snapshots, outputs, scores and rationales.
+- **Source**: `backend/app/api/eval_routes.py`, `backend/app/models/eval_run_result.py`.
+- **Effort**: Low.
 
 ### Evaluation Progress, Cancellation & Partial Results
-- **Value**: Users running larger or Judge-based eval sets can see useful progress, stop unnecessary spend, and retain results already completed instead of waiting behind a single opaque request.
-- **Gap identified**: Eval cases now run in parallel with per-case timeouts (shipped 2026-07-18), but the run is still one synchronous API request while the UI shows only a generic "Running…" state — there is no per-case progress, no cancellation, and a failure before commit still discards the in-progress run (`backend/app/services/eval_service.py`, `backend/app/api/eval_routes.py`, `frontend/src/components/editor/EvaluateTab.tsx`).
-- **Suggested approach**: Represent an evaluation as a persistent job with queued/running/completed/cancelled status and per-case progress. Let users cancel the remaining cases, preserve completed results and incurred usage, and resume UI polling after navigation or reload.
-- **Effort estimate**: High
-- **Priority recommendation**: Nice-to-have
 
-_"Saved-Editor Draft Recovery" completed 2026-07-19: the remaining follow-ups (leave-page confirmation on unsaved changes, and a visible "Unsaved draft — restored from this device" banner with a discard action) shipped on top of the 2026-07-18 core recovery — see `product/FEATURES.md` ("Action confirmations & unsaved-changes guard")._
+- **Value**: See progress and stop remaining work during a larger evaluation.
+- **Current gap**: Cases run on a five-worker thread pool, but the API is one synchronous request without progress/cancellation. Completed worker outcomes and reported usage are collected before persistence; provider I/O timeouts bound calls, without a separate future deadline.
+- **Suggested approach**: A persistent job with per-case status, cancellation of remaining work, retained results/usage and UI recovery after navigation.
+- **Source**: `backend/app/services/eval_service.py`, `frontend/src/features/evaluation/useEvaluation.ts`.
+- **Effort**: High.
 
 ### Custom Eval Judges
-- **Value**: The current "Judge" eval method uses a hardcoded rubric prompt and reuses the user's own connection model. Power users need to define their own grading rubrics or use more powerful models (`gpt-4o`) to score complex outputs accurately.
-- **Gap identified**: `eval_service.py` hardcodes `_JUDGE_SYSTEM_PROMPT`, and grading always runs on the same connection as the case itself, so there is no way to grade with a stronger model than the one under test. (The judge's *output* became structured — score/strengths/weaknesses/rationale JSON with the compiled prompt as context, shipped 2026-07-18 — but the rubric and model remain fixed.)
-- **Suggested approach**: Add an "Advanced Judge Settings" section in the Evaluate tab to override the default system prompt and model used for grading.
-- **Effort estimate**: Medium
-- **Priority recommendation**: Nice-to-have
+
+- **Value**: Choose a grading rubric or model suitable for a task.
+- **Current gap**: Judge feedback is structured, but the system rubric is fixed and grading reuses the execution connection/model.
+- **Suggested approach**: Explicit advanced judge settings with clear provider and charge context.
+- **Effort**: Medium.
 
 ### Evaluation Baselines & Regression Gates
-- **Value**: Riley can designate a known-good result and see a clear pass/fail regression signal before accepting a prompt revision, instead of interpreting a list of raw historical scores manually.
-- **Gap identified**: Eval history displays scores by prompt version and notifications compare with the previous scored run, but there is no selected baseline, acceptable-drop threshold, or editor gate tied to the evaluation result.
-- **Suggested approach**: Let users mark an eval run as the baseline and configure a minimum score or maximum allowed decline. Show per-case and aggregate deltas, and warn before accepting an AI refinement or update that fails the gate without preventing an explicit override.
-- **Effort estimate**: Medium
-- **Priority recommendation**: Nice-to-have
 
-### Rich Deterministic Eval Assertions — Remaining Scope (JSON-path & typed checks)
-- **Status note**: The core of this item shipped 2026-07-18 as rule criteria prefix operators — contains (default), `!` not-contains, `~` regex, and `{json}` valid-JSON checks with bracket-aware splitting (see `product/FEATURES.md`). What remains below is the unshipped tail.
-- **Value**: Developers can verify values *inside* structured outputs — a JSON-path pointing at an expected value, or a numeric range check — without paying for an AI judge.
-- **Gap identified**: `eval_service.py` can now assert an output is valid JSON but cannot inspect its contents; there is no numeric-range assertion, and failures report which term missed but not a richer structured explanation.
-- **Suggested approach**: Add JSON-path value checks (e.g. `$.result.status == "ok"`) and numeric-range assertions as further prefix operators or a structured assertion config; keep existing criteria backward compatible.
-- **Effort estimate**: Medium
-- **Priority recommendation**: Nice-to-have
+- **Value**: Compare a change with an explicitly chosen known-good run.
+- **Current gap**: Historical run comparison exists; selected baselines, acceptable-drop thresholds and acceptance gates do not. Evaluation completion/regression emails were retired.
+- **Suggested approach**: Baseline selection, per-case/aggregate deltas and an overridable warning before accepting a regression.
+- **Effort**: Medium.
+
+### Rich Deterministic Eval Assertions — JSON-Path & Typed Checks
+
+- **Value**: Check structured values without an AI judge.
+- **Current gap**: Contains, `!` not-contains, `~` regex and `{json}` checks already exist with bracket-aware criteria splitting. JSON-path value assertions and numeric-range checks do not.
+- **Suggested approach**: Extend the rule contract while preserving existing criteria and CSV behavior.
+- **Source**: `backend/app/services/eval_service.py`, `backend/app/services/safe_regex.py`.
+- **Effort**: Medium.
 
 ### Multi-Model Evaluation (A/B Testing)
-- **Value**: Users need to know if a cheaper model (e.g., `gpt-4o-mini`) can perform as well as an expensive model (`gpt-4o`) for their specific prompt and eval set.
-- **Gap identified**: `EvalService` currently runs against the single model configured on the user's provider connection. The Playground allows selection among that connection's suggested models, but bulk eval does not allow side-by-side comparison.
-- **Suggested approach**: Allow selecting multiple models in the Evaluate tab. `EvalService` executes each case against all selected models and displays a comparative scorecard.
-- **Effort estimate**: High
-- **Priority recommendation**: Future
 
----
+- **Value**: Compare a template across models.
+- **Current gap**: An evaluation uses the active connection's single configured model; there is no per-run model picker or multi-model scorecard. The standalone Playground was retired.
+- **Suggested approach**: Explicit model selection and comparable per-model results, after defining provider/charge semantics.
+- **Effort**: High; future priority.
 
 ## Priority: Low / Future
 
-### Prompt Branching (Non-Linear Versioning)
-- **Value**: Users often want to explore two different styles of a prompt simultaneously and run evals on both to see which performs better, without overwriting their main prompt's history.
-- **Gap identified**: Duplicating a prompt creates a completely separate entity with no lineage linking it to the original. Version history is strictly linear.
-- **Suggested approach**: Add a `parent_prompt_id` column to the `prompts` table. When duplicating, record the parent. Add a visual tree/branch indicator in the UI.
-- **Effort estimate**: High
-- **Priority recommendation**: Future
+- **Prompt branching**: Duplication has no lineage; add parent/branch context if non-linear versioning becomes valuable. High effort.
+- **Prompt import from file**: Settings exports JSON including version history, but cannot import it. Define naming conflicts and duplicate handling before adding restore/import. Medium effort.
+- **Shareable prompt links**: No public per-prompt sharing endpoint exists; copied text is the current sharing path. Medium effort.
+- **Rate-limit retry countdown**: Rate-limited routes return 429; the UI has no dedicated retry timer. Use the actual response headers and current route limits, rather than the removed generate endpoint. Low effort.
+- **Operator diagnostics administration UI**: `POST /api/admin/smtp/check` exists, but no admin page. Keep diagnostics credentials separate from normal account authorization. Medium effort.
 
-### Prompt Import (from file)
-- **Problem it solves**: `GET /api/prompts/export` (shipped 2026-07-12) lets users back up their prompts as JSON, but there's no way to bring that file back in — to restore, migrate between environments, or onboard from a shared template pack.
-- **Proposed solution**: A Settings → Data "Import" action accepting the export JSON shape; creates new prompts (and optionally their version history) under the importing user's account. Needs de-duplication/naming-conflict handling.
-- **Effort**: Medium
-- **Dependencies**: None (export already shipped)
+## Parked with the Retired Playground
 
-### Shareable Prompt Links
-- **Problem it solves**: There is no way to share a specific prompt with another person (e.g. via a URL). Collaboration is manual — users must copy/paste generated XML.
-- **Proposed solution**: Generate a time-limited or permanent read-only public URL for a prompt (e.g. `/share/{token}`). Viewer sees the rendered XML without needing an account.
-- **Effort**: Medium
-- **Dependencies**: None
+The standalone Playground and its endpoints were retired in 0.3.0. Try once now
+runs a bounded draft without saving prompt/run history, and evaluations reuse the
+internal `PlaygroundService`; neither is a restored conversational workbench.
 
-### Rate Limit Retry Countdown
-- **Problem it solves**: Users hitting rate limits (register 5/min, generate 30/min) are blocked with generic error alerts. There is no countdown telling them when they can resume work.
-- **Proposed solution**: Extract the `Retry-After` header sent by FastAPI slowapi on `429 Too Many Requests` responses. Render a visual countdown timer overlay in the UI and temporarily disable action buttons until the window clears.
-- **Effort**: Low
-- **Dependencies**: None
-
-### Operator Diagnostics Administration UI
-- **Problem it solves**: The operator SMTP check API route (`POST /api/admin/smtp/check`) requires using custom HTTP clients (like Postman or curl) with diagnostic headers. There is no web interface for administrators to trigger maintenance checks or view database metrics.
-- **Proposed solution**: Create a dedicated, token-guarded admin diagnostics page (e.g. `/admin`) where operators can input their `ADMIN_DIAGNOSTICS_TOKEN`, trigger SMTP connectivity smoke checks, and view database size/integrity metrics in real-time.
-- **Effort**: Medium
-- **Dependencies**: None
-
----
-
----
-
-## Parked with the retired Playground
-
-_The standalone Playground was retired in 0.3.0 (see `product/DECISIONS.md`); these only make sense if in-app runs return._
-
-### Playground Generation Controls & Presets
-- **Value**: Developers can test the same prompt under realistic generation settings and save repeatable configurations for deterministic or creative use cases.
-- **Gap identified**: `PlaygroundRunRequest` accepts only `model` and variables, while `PlaygroundService` sends no temperature, maximum-output-token, or related generation controls to the connected provider and does not persist such settings with a run.
-- **Suggested approach**: Add a small advanced panel for supported controls, validated per model, with safe defaults and named presets. Persist the resolved settings on each Playground run and reuse them when replaying a run.
-- **Effort estimate**: Medium
-- **Priority recommendation**: Nice-to-have
-
-### Multi-Turn Playground Sessions
-- **Value**: Developers can test prompts intended for conversational workflows across follow-up turns, rather than validating only the first model response in isolation.
-- **Gap identified**: The Playground compiles one template into a single model request and persists one output per run; there is no conversation transcript or follow-up-message model (`backend/app/services/playground_service.py`, `backend/app/models/playground_run.py`, `frontend/src/components/PlaygroundView.tsx`).
-- **Suggested approach**: Add an optional session mode with a persisted message transcript, follow-up user messages, resolved model and variables, and cumulative usage/cost. Sequence this after or alongside the existing system/user message-role proposal so message semantics are shared rather than implemented twice.
-- **Effort estimate**: High
-- **Priority recommendation**: Future
-
-### Prompt Output Format Selection (System vs User Messages)
-- **Value**: The current system flattens all fields into a single XML block. Most LLMs distinguish between System (instructions) and User (data) messages.
-- **Gap identified**: `prompt_generator.py` forcibly wraps all fields into a single text block. There's no way to designate a field like "goal" as the System prompt.
-- **Suggested approach**: Add a toggle on each field in the `InputPanel` for "Role: System/User". The generator then produces a JSON array of message objects rather than a single string, and the Playground/Eval services pass this array natively to the OpenAI client.
-- **Effort estimate**: Medium
-- **Priority recommendation**: Nice-to-have
-
----
+- **Generation controls and presets**: No temperature/output-token preset API or persisted generation configuration exists. Reassess against Try once/evaluation needs before restoring Playground-specific UI. Medium effort.
+- **Multi-turn sessions**: No stored conversational transcript or follow-up execution exists. High effort.
+- **System/user message roles**: Sections render into one text block; authors cannot assign sections to message roles. A role-aware contract would need coordinated rendering and execution changes. Medium effort.
 
 ## Icebox (no current priority)
-- **Team workspaces** — Shared prompt libraries for organizations; requires multi-tenancy and significant auth refactor
-- **Prompt quality rating** — User-annotated satisfaction scores on generated prompts for self-reference
-- **Webhook / API key access** — Allow external tools to call the generate endpoint programmatically with a long-lived API key
-- **Mobile-responsive layout** — Responsive hamburger navigation shipped 2026-07-19, but content pages (Library, Editor, Playground, Evaluate) remain desktop-first; full mobile-optimized layouts are unexplored
+
+- **Team workspaces**: Private per-account libraries exist; shared workspace ownership does not.
+- **Prompt quality ratings**: Per-prompt satisfaction annotations are absent; manual ratings currently apply to evaluation results.
+- **Webhooks / long-lived API keys**: MCP OAuth linking exists; generic webhook subscriptions and user-managed API keys do not.
+- **Further mobile usability work**: Phone navigation, editor tabs, full-screen refinement/history, responsive library cards and mobile evaluation layouts already exist. No specific additional mobile feature is committed here.

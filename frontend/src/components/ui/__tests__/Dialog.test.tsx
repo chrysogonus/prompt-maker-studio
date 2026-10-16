@@ -96,3 +96,20 @@ it('keeps focus inside when Tab starts on a review heading', async () => {
   await userEvent.tab();
   expect(screen.getByLabelText('First input')).toHaveFocus();
 });
+
+it('returns focus to its opener even when a field inside autofocuses', async () => {
+  function Opener() {
+    const [open, setOpen] = useState(false);
+    return <>
+      <button onClick={() => setOpen(true)}>Open</button>
+      <Dialog isOpen={open} title="Paste" onClose={() => setOpen(false)}>
+        <textarea aria-label="Text" autoFocus />
+      </Dialog>
+    </>;
+  }
+  render(<Opener />);
+  await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+  expect(screen.getByLabelText('Text')).toHaveFocus();
+  await userEvent.keyboard('{Escape}');
+  expect(screen.getByRole('button', { name: 'Open' })).toHaveFocus();
+});

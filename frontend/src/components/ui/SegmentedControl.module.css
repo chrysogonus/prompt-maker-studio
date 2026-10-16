@@ -32,7 +32,7 @@
 /* The chosen option is raised, not coloured: coral is kept for actions. */
 .option[data-active='true'],
 .option[data-has-icon='true'][data-active='true'] {
-  background: var(--color-panel);
+  background: var(--color-overlay);
   color: var(--text-primary);
   font-weight: var(--weight-semibold);
   box-shadow: 0 1px 2px rgba(43, 27, 40, 0.12);
@@ -56,4 +56,10 @@
   outline-offset: -2px;
   z-index: 1;
   position: relative;
+}
+
+:global([data-theme='dark']) .seg { box-shadow: inset 0 0 0 1px var(--color-border); background: var(--color-sidebar); }
+:global([data-theme='dark']) .option[data-active='true'] {
+  background: var(--surface-selected);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
 }

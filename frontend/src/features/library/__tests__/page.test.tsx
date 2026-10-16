@@ -182,17 +182,30 @@ describe('LibraryPage', () => {
     const view = await renderLibrary();
 
     await user.click(screen.getByRole('button', { name: 'More actions for LinkedIn post' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
     expect(rowNames()).not.toContain('LinkedIn post');
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(rowNames()).toContain('LinkedIn post');
     expect(ApiClient.deletePrompt).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: 'More actions for LinkedIn post' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
     // Leaving before the window closes still sends the delete.
     view.unmount();
     expect(ApiClient.flushDeletePrompt).toHaveBeenCalledWith(3);
+  });
+
+  it('closes a prompt menu on Escape and returns focus to its button', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    const more = screen.getByRole('button', { name: 'More actions for Weekly status update' });
+
+    await user.click(more);
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Copy template' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('button', { name: 'Duplicate' })).not.toBeInTheDocument();
+    expect(more).toHaveFocus();
   });
 
   it('renames a prompt in place', async () => {
@@ -201,7 +214,7 @@ describe('LibraryPage', () => {
     await renderLibrary();
 
     await user.click(screen.getByRole('button', { name: 'More actions for Weekly status update' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    await user.click(screen.getByRole('button', { name: 'Rename' }));
     const input = screen.getByLabelText('Prompt name');
     await user.clear(input);
     await user.type(input, 'Status update{Enter}');
@@ -216,7 +229,7 @@ describe('LibraryPage', () => {
     await renderLibrary();
 
     await user.click(screen.getByRole('button', { name: 'More actions for LinkedIn post' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Move to folder…' }));
+    await user.click(screen.getByRole('button', { name: 'Move to folder…' }));
     const dialog = screen.getByRole('dialog', { name: 'Move to folder' });
     await user.type(within(dialog).getByLabelText('Folder'), 'Writing');
     await user.click(within(dialog).getByRole('button', { name: 'Move' }));
@@ -233,7 +246,7 @@ describe('LibraryPage', () => {
     await renderLibrary();
 
     await user.click(screen.getByRole('button', { name: 'More actions for Weekly status update' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
+    await user.click(screen.getByRole('button', { name: 'Duplicate' }));
     await user.click(await screen.findByRole('button', { name: 'Open copy' }));
 
     expect(push).toHaveBeenCalledWith('/editor/9');
@@ -245,7 +258,7 @@ describe('LibraryPage', () => {
     await renderLibrary('folder=Work');
 
     await user.click(screen.getByRole('button', { name: 'Actions for the Work folder' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Rename folder' }));
+    await user.click(screen.getByRole('button', { name: 'Rename folder' }));
     const dialog = screen.getByRole('dialog', { name: 'Rename folder' });
     await user.clear(within(dialog).getByLabelText('Name'));
     await user.type(within(dialog).getByLabelText('Name'), 'Job');
@@ -261,7 +274,7 @@ describe('LibraryPage', () => {
     await renderLibrary('folder=Work');
 
     await user.click(screen.getByRole('button', { name: 'Actions for the Work folder' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Remove folder…' }));
+    await user.click(screen.getByRole('button', { name: 'Remove folder…' }));
     const dialog = screen.getByRole('dialog', { name: 'Remove “Work”?' });
     expect(within(dialog).getByText(/will move to Unfiled. No prompts are deleted/)).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Remove folder' }));

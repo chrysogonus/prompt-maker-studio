@@ -87,6 +87,8 @@ export function useLibrary() {
     const close = (event: MouseEvent | KeyboardEvent) => {
       if (event instanceof KeyboardEvent && event.key !== 'Escape') return;
       if (event instanceof MouseEvent && (event.target as Element).closest('[data-menu]')) return;
+      // Escape from inside an open menu returns focus to its trigger, the wrapper's first button.
+      if (event instanceof KeyboardEvent) document.activeElement?.closest('[data-menu]')?.querySelector('button')?.focus();
       setMenuId(null);
       setFolderMenuOpen(false);
     };

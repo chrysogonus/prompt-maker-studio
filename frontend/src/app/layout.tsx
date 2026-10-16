@@ -16,13 +16,21 @@ export const metadata: Metadata = {
   description: 'A prompt library and template editor for reusable AI prompts.',
 };
 
+// Light unless the user chose dark; Settings owns the toggle control.
+const THEME_SCRIPT =
+  "try{if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}";
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-theme="light" className={`${hanken.variable} ${jetbrains.variable}`}>
+    // The inline script applies a saved dark theme before first paint, on every page.
+    <html lang="en" data-theme="light" className={`${hanken.variable} ${jetbrains.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>{children}</body>
     </html>
   );

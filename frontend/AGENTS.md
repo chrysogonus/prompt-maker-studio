@@ -2,14 +2,15 @@
 
 Next.js 16 (App Router), React 18, TypeScript 6. CSS Modules co-located with components (`Component.tsx` + `Component.module.css`). Tests co-located in `__tests__/` subfolders using Vitest + Testing Library + jsdom.
 
-No Prettier — ESLint 9 flat config (`eslint-config-next/core-web-vitals`, see `frontend/eslint.config.mjs`) is the only formatter/linter. Run `make lint-frontend` (runs `tsc --noEmit` then ESLint).
+No Prettier — ESLint 9 flat config (`eslint-config-next/core-web-vitals`, see `frontend/eslint.config.mjs`) provides the lint rules. Run `make lint-frontend` (runs `tsc --noEmit` then ESLint).
 
-Inner loop: `npm test` in `frontend/`. `make test-frontend` wraps `npm ci && npm test` — slower,
-but it's the gate that matches CI.
+Inner loop: `npm test` in `frontend/`. `make test-frontend` wraps `npm ci && npm run test:coverage` — slower,
+but it's the gate that matches CI. Coverage floors live in `vitest.config.ts`.
+`make lint-frontend` also checks `e2e/` and `playwright.config.ts`; `npm run lint` checks only `src/`.
 
 API calls to the backend go through `frontend/src/lib/api.ts` — extend that rather than calling `fetch` ad hoc from components.
 
-Feature UI, controllers and tests live under `src/features/{editor,library,settings,auth}/`.
+Feature UI, controllers and tests live under `src/features/{editor,library,settings,auth,evaluation}/`.
 App Router pages stay thin; shared design primitives and the authenticated shell live
 under `src/components/`. Preserve presentation and browser storage keys during refactors.
 
@@ -20,3 +21,9 @@ on retries. Keep password/auth failures distinguishable from session expiry.
 `LibraryDataProvider` belongs inside the authenticated shell and is keyed by account.
 Use it for shared library loading/invalidation; keep pending undo mutations local
 until they commit. Never use a global cache for account data.
+
+`src/app/layout.tsx` applies the stored theme before first paint on every route.
+Light is the default; preserve the unnamespaced `theme` key and explicit light/dark choices.
+The JWT stays in an HttpOnly cookie; browser storage contains session-expiry hints,
+preferences, and account-scoped drafts. Preserve draft recovery on session expiry
+and content cleanup on explicit sign-out.

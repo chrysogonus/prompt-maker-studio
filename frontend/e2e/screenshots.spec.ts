@@ -1,5 +1,6 @@
 /**
- * Captures the screenshots embedded in the root README.
+ * Captures six standard documentation views in docs/assets/.
+ * Curated README feature illustrations are maintained separately.
  *
  * Not part of the CI E2E suite — `playwright.config.ts` excludes this file via
  * `testIgnore`, because it writes into the repository rather than asserting
@@ -95,6 +96,7 @@ test('captures the README screenshots', async ({ page }) => {
   await shoot(page, 'editor');
 
   // Comparing an earlier version with the current text.
+  await page.getByRole('button', { name: 'Tools', exact: true }).click();
   await page.getByRole('button', { name: 'History' }).click();
   const history = page.getByRole('complementary', { name: 'Version history' });
   await history.getByRole('button', { name: /^Version 1/ }).click();

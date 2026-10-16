@@ -22,7 +22,7 @@ Two documents are worth checking before proposing a feature:
 
 ## Development setup
 
-Prerequisites: **Docker & Docker Compose**, **Python 3.12**, **Node.js 22**
+Prerequisites: **Docker & Docker Compose**, **Python 3.12+**, **Node.js 22**
 (pinned in `frontend/.nvmrc`). AI-assisted features require a user-configured
 hosted or self-hosted provider; the rest of the app runs without one.
 
@@ -37,9 +37,13 @@ make setup
 The default local stack needs no further environment edits. Set
 `FRONTEND_URL=http://localhost:3000` if you are testing reset-email links; the
 [Quick Start in `README.md`](./README.md#quick-start-with-docker) explains why
-CORS is not involved. There is no LLM key in `.env` — if you are touching an
-AI-backed feature, register an account and connect a provider under Settings →
-API access (a local Ollama server needs no key and costs nothing).
+CORS is not involved. If you are touching an AI feature, connect a provider
+under Settings → AI connection or use an operator-configured server default
+(`LLM_BASE_URL` and `LLM_MODEL`, plus provider/key settings when needed).
+A user-supplied local Ollama endpoint needs `ALLOW_PRIVATE_LLM_URLS=true` on a
+trusted development instance; see [local provider setup](./docs/development.md#1-environment-setup).
+Registration admits the first account by default; deliberately set
+`REGISTRATION_MODE=open` if a development instance needs further accounts.
 
 ```bash
 # Option A — full containerized stack
@@ -49,7 +53,7 @@ make up
 make install
 
 # Terminal 1: FastAPI on :8000 with a process-scoped signing key
-SECRET_KEY="$(.venv/bin/python -c 'import secrets; print(secrets.token_hex(32))')" make dev-backend
+COOKIE_SECURE=false SECRET_KEY="$(.venv/bin/python -c 'import secrets; print(secrets.token_hex(32))')" make dev-backend
 
 # Terminal 2: Next.js on :3000, proxying /api to the local backend
 API_PROXY_TARGET=http://localhost:8000 make dev-frontend
@@ -70,7 +74,7 @@ a public signing key makes every session token forgeable.
 Both stacks are locked. Regenerate after changing a dependency:
 
 ```bash
-make lock          # backend/requirements.lock, from backend/pyproject.toml
+make lock          # both backend/requirements*.lock, from backend/pyproject.toml
 cd frontend && npm install   # frontend/package-lock.json
 ```
 
@@ -151,7 +155,7 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 feat(library): add bulk delete for recovered prompts
 fix(auth): reject expired reset tokens
 docs(readme): document ADMIN_DIAGNOSTICS_TOKEN
-chore(backend)(deps): bump openai to 2.46.0
+chore(deps): update backend dependencies
 ```
 
 Common types: `feat`, `fix`, `docs`, `ref`, `chore`, `test`. Scope is
@@ -168,7 +172,8 @@ breaking changes.
 
 All CI jobs must pass: backend lint/security/tests, frontend
 lint/security/build/tests, CodeQL static analysis, Docker build validation,
-Playwright E2E, and Compose config validation. Review is by the maintainer;
+Playwright E2E, and Compose/monitoring/backup validation. CodeQL is skipped
+for private repositories under the current workflow. Review is by the maintainer;
 expect a few days.
 
 ### What gets a PR rejected

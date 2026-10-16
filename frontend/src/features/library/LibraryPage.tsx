@@ -69,7 +69,6 @@ function LibraryContent() {
         type="button"
         className={styles.iconButton}
         aria-label={`More actions for ${prompt.name}`}
-        aria-haspopup="menu"
         aria-expanded={menuId === prompt.id}
         onClick={(e) => {
           e.stopPropagation();
@@ -79,13 +78,12 @@ function LibraryContent() {
         <MoreIcon tone="inherit" />
       </button>
       {menuId === prompt.id && (
-        <div className={styles.menu} role="menu">
-          <button type="button" role="menuitem" onClick={() => copyTemplate(prompt)}>
+        <div className={styles.menu}>
+          <button type="button" onClick={() => copyTemplate(prompt)}>
             Copy template
           </button>
           <button
             type="button"
-            role="menuitem"
             onClick={() => {
               setMenuId(null);
               setRenamingId(prompt.id);
@@ -95,7 +93,6 @@ function LibraryContent() {
           </button>
           <button
             type="button"
-            role="menuitem"
             onClick={() => {
               setMenuId(null);
               setMoving({ prompt, folder: prompt.folder ?? '' });
@@ -103,10 +100,10 @@ function LibraryContent() {
           >
             Move to folder…
           </button>
-          <button type="button" role="menuitem" onClick={() => duplicate(prompt)}>
+          <button type="button" onClick={() => duplicate(prompt)}>
             Duplicate
           </button>
-          <button type="button" role="menuitem" className={styles.danger} onClick={() => remove(prompt)}>
+          <button type="button" className={styles.danger} onClick={() => remove(prompt)}>
             Delete
           </button>
         </div>
@@ -240,11 +237,11 @@ function LibraryContent() {
               <div className={styles.rowMain}>
                 {name(prompt)}
                 <p className={styles.excerpt}>{excerpt(prompt)}</p>
-              </div>
-              <div className={styles.meta}>
-                {view.type !== 'folder' && <span>{prompt.folder ?? 'Unfiled'}</span>}
-                <span>{variables ? `${variables} variable${variables === 1 ? '' : 's'}` : 'No variables'}</span>
-                <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
+                <div className={styles.meta}>
+                  {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
+                  <span>{variables ? `${variables} variable${variables === 1 ? '' : 's'}` : 'No variables'}</span>
+                  <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
+                </div>
               </div>
               <div className={styles.actions}>
                 {variables > 0 && (
@@ -313,17 +310,15 @@ function LibraryContent() {
               type="button"
               className={styles.iconButton}
               aria-label={`Actions for the ${view.folder} folder`}
-              aria-haspopup="menu"
               aria-expanded={folderMenuOpen}
               onClick={() => setFolderMenuOpen((open) => !open)}
             >
               <MoreIcon tone="inherit" />
             </button>
             {folderMenuOpen && (
-              <div className={styles.menu} role="menu">
+              <div className={styles.menu}>
                 <button
                   type="button"
-                  role="menuitem"
                   onClick={() => {
                     setFolderMenuOpen(false);
                     setFolderRename(view.folder);
@@ -333,7 +328,6 @@ function LibraryContent() {
                 </button>
                 <button
                   type="button"
-                  role="menuitem"
                   className={styles.danger}
                   onClick={() => {
                     setFolderMenuOpen(false);

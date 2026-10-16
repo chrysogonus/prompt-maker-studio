@@ -1,7 +1,7 @@
 .shell {
   min-height: 100vh;
   display: flex;
-  background: var(--color-canvas);
+  background: var(--app-background);
 }
 
 .column {
@@ -13,14 +13,7 @@
 }
 
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  width: 100%;
-  max-width: 1320px;
-  min-height: 64px;
-  margin: 0 auto;
-  padding: var(--space-3) var(--space-8) 0;
+  display: none;
 }
 
 .menuButton,
@@ -54,7 +47,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: var(--space-6) var(--space-8);
+  padding: var(--space-8);
   max-width: 1320px;
   width: 100%;
   margin: 0 auto;
@@ -171,21 +164,11 @@
     height: 32px;
     padding: 0 12px;
     border-radius: var(--radius-sm);
-    background: var(--color-accent-tag);
+    background: var(--surface-accent);
+    box-shadow: var(--shadow-action);
     color: var(--on-accent);
     font-size: var(--text-sm-size);
     font-weight: var(--weight-semibold);
-  }
-
-  .repositoryLink {
-    width: 44px;
-    min-height: 44px;
-    padding: 0;
-  }
-
-  .repositoryLink span,
-  .repositoryLink svg:last-child {
-    display: none;
   }
 
   .scrim {
@@ -193,7 +176,7 @@
     position: fixed;
     inset: 0;
     z-index: 60;
-    background: color-mix(in srgb, #1d1219 38%, transparent);
+    background: var(--scrim);
   }
 
   .content {

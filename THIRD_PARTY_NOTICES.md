@@ -1,17 +1,19 @@
 # Third-party software notices
 
 Prompt Maker Studio is licensed under Apache-2.0. Its published container
-images also contain the runtime dependencies listed below. Versions are
-generated from `backend/requirements.lock` and `frontend/package-lock.json`;
+images also contain the runtime dependencies listed below. Versions reflect
+`backend/requirements.lock` and the production, non-optional install of
+`frontend/package-lock.json`, checked against the built images;
 package-specific license and notice files installed by pip and npm remain
 alongside the corresponding packages in each image.
 
 Development and test dependencies are not included in the published images.
 The images also contain their official `python:3.12-slim` or `node:22-alpine`
 base-image components, whose package metadata and license files remain in the
-base filesystem. Both base images are pinned by digest in the Dockerfiles, so
-rebuilding a given commit retrieves the same bytes and this inventory stays
-accurate for it.
+base filesystem. Both base images are pinned by digest in the Dockerfiles.
+The builds also install or upgrade OS packages from their distribution
+repositories, so a pinned base does not make the entire final image reproducible
+byte for byte; inspect the built artifact when updating its inventory.
 
 ## Backend image
 
@@ -139,7 +141,9 @@ Whenever either lockfile changes:
 2. Rebuild both final images.
 3. Re-inventory licenses from the final images, including transitive packages.
 4. Update this file in the same change.
-5. Confirm the frontend image still contains no `sharp-libvips` path.
+5. Run `make check-notices` to compare the documented package names and versions
+   with both built `:test` images, and confirm the frontend image still contains
+   no `sharp-libvips` path.
 
 Inventory both images directly rather than reading the lockfiles — the frontend
 table is the output of `npm ci --omit=dev --omit=optional` as it exists in the

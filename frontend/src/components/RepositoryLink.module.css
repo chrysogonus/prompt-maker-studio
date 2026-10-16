@@ -21,6 +21,19 @@
   border-color: var(--color-plum);
 }
 
+/* Inverted ink is right on light chrome; on dark it becomes a white block
+   that outshines the coral actions, so it sits quietly there instead. */
+:global([data-theme='dark']) .link {
+  background: var(--color-panel-raised);
+  border-color: var(--color-border-strong);
+  color: var(--text-primary);
+}
+
+:global([data-theme='dark']) .link:hover {
+  background: var(--color-plum-wash);
+  border-color: var(--color-plum-wash);
+}
+
 .link svg {
   flex-shrink: 0;
 }

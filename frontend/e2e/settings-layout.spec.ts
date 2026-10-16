@@ -1,7 +1,13 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+// Matches the shell's 760px phone breakpoint, where the sidebar becomes a drawer.
+const PHONE_MAX_WIDTH = 760;
+// The link must sit inside the sidebar column, not the page content.
+const SIDEBAR_MAX_X = 248;
+
 test.beforeEach(async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(() => {
     localStorage.setItem('prompt-maker-studio:client-session-expiry', String(Date.now() + 3_600_000));
   });
@@ -23,7 +29,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('repository badge and settings controls remain aligned across sizes and themes', async ({ page }, testInfo) => {
+test('sidebar source link and settings controls remain accessible across sizes and themes', async ({ page }, testInfo) => {
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Provider', exact: true })).toBeVisible();
@@ -31,12 +37,14 @@ test('repository badge and settings controls remain aligned across sizes and the
     await page.evaluate((value) => document.documentElement.setAttribute('data-theme', value), theme);
     for (const width of [1440, 900, 390, 320]) {
       await page.setViewportSize({ width, height: 900 });
+      if (width <= PHONE_MAX_WIDTH) await page.getByRole('button', { name: 'Open navigation' }).click();
       const link = page.getByRole('link', { name: 'Open source on GitHub' });
       await expect(link).toBeVisible();
       await expect(link).toHaveAttribute('href', 'https://github.com/chrysogonus/prompt-maker-studio');
       const linkBox = (await link.boundingBox())!;
-      expect(linkBox.y).toBeLessThan(40);
-      expect(linkBox.x + linkBox.width).toBeGreaterThan(width - 50);
+      expect(linkBox.x).toBeLessThan(SIDEBAR_MAX_X);
+      expect(linkBox.y + linkBox.height).toBeLessThanOrEqual(900);
+      if (width <= PHONE_MAX_WIDTH) await page.keyboard.press('Escape');
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       if (width >= 900) {
         const controls = await Promise.all([

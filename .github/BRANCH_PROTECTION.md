@@ -71,8 +71,9 @@ After applying or changing the rules:
 2. Open a test pull request against `main`.
 3. Confirm direct merge is blocked while `All Quality Gates Passed` is pending
    or failing.
-4. Confirm the check becomes successful only after backend, frontend, Docker,
-   browser, and Compose jobs pass.
+4. Confirm the check becomes successful only after the secret scan, backend,
+   frontend, Docker, browser, and Compose jobs pass. CodeQL must pass on public
+   repositories; its private-repository skip is accepted by the aggregate.
 5. Confirm force-push and branch-deletion restrictions behave as documented.
 6. Record any intentional differences in this file.
 

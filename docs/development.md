@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - Docker & Docker Compose (recommended)
-- OR: Python 3.12 and Node.js 22 for local development (CI pins `node-version: '22'`; `frontend/.nvmrc` pins `22.14.0` for local version managers)
+- OR: Python 3.12+ and Node.js 22 for local development (CI pins `node-version: '22'`; `frontend/.nvmrc` pins `22.14.0` for local version managers)
 
 ## Quickest Start (Docker)
 
@@ -62,10 +62,12 @@ It never touches an existing `.env`.
 No edit is required for the default local stack. Set `FRONTEND_URL` as shown
 under [Quickest Start](#quickest-start-docker) when testing reset emails.
 
-There is no LLM API key in `.env` — AI access is bring-your-own. Register an
+AI access normally uses each user's own connection. Register the first
 account, then connect a provider (OpenAI, Anthropic, Gemini, or a local Ollama
-/ vLLM server) under Settings → API access. A local Ollama server is the
-cheapest way to exercise the AI features while developing:
+/ vLLM server) under Settings → AI connection. An operator may instead configure
+a server default with `LLM_BASE_URL` and `LLM_MODEL` (plus `LLM_PROVIDER` and
+`LLM_API_KEY` when needed); a usable user connection takes precedence.
+A local Ollama server can exercise the AI features without provider charges:
 
 ```
 Provider:  Ollama (self-hosted)
@@ -73,6 +75,18 @@ Base URL:  http://localhost:11434/v1
 Model:     llama3
 API key:   (leave blank)
 ```
+
+For a user-supplied local endpoint, set `ALLOW_PRIVATE_LLM_URLS=true` in the
+backend process environment (or Compose configuration). Only enable this on a
+trusted instance: it permits every account to target private-network services.
+`localhost` above works when Ollama and a non-Docker backend share the host;
+inside a container it means that container. Use an address reachable from the
+backend container for a Docker setup. An operator-configured server default
+can reach private addresses without this opt-in.
+
+Registration defaults to `closed`: the first account can register, then new
+signups are blocked. Set `REGISTRATION_MODE=open` only for a deliberate
+multi-account development setup.
 
 > If you copy `.env.example` by hand instead of running `make setup`, generate
 > the signing key yourself with `openssl rand -hex 32`. The backend refuses to
@@ -96,8 +110,8 @@ manual commands and `make`:
 # interpreter for you.
 python3.12 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r backend/requirements-dev.lock
-pip install -e "backend/" --no-deps
+pip install --require-hashes -r backend/requirements-dev.lock
+pip install --no-build-isolation --no-deps -e "backend/"
 ```
 
 ### 3. Frontend Setup
@@ -112,6 +126,7 @@ npm install
 ```bash
 source .venv/bin/activate
 export SECRET_KEY="$(openssl rand -hex 32)"
+export COOKIE_SECURE=false  # local HTTP only
 # Optional: correct reset-email links during local SMTP testing
 export FRONTEND_URL="http://localhost:3000"
 make dev-backend
@@ -134,12 +149,16 @@ does not come into it.
 ## Quick Test
 
 1. Open http://localhost:3000
-2. Register a new account (username ≥ 3 chars, password ≥ 8 chars, valid email required) — you land on the empty **library**
+2. Register the first account with a valid email and a username of 3–50 ASCII
+   letters, digits, underscores or hyphens. Choose a password of at least 10
+   characters with a number and a special character, within 72 UTF-8 bytes.
+   You land on the empty **library**.
 3. Click **New prompt** and write in the first section, for example `Explain {{topic}} to a beginner.`
    Use **Add section** for another one, named `Output format`
 4. Watch the preview on the right: it shows the tagged text exactly as it will be copied
 5. Press **Ctrl/⌘+S**, name it `Tutor`, and save — you're moved to its `/editor/{id}` page
-6. Switch the preview to **Filled**, type a topic, and click **Copy filled prompt**
+6. Switch the preview to **Filled** (on a phone, first open **Fill and copy**),
+   type a topic, and click **Copy filled prompt**
 7. Click **All prompts** in the sidebar and open it again from the list
 
 ## Project Structure Overview
@@ -244,8 +263,8 @@ Safe to re-run — it replaces the account's data rather than duplicating it.
 The application uses **dynamic fields** — users can add any named field from the UI or API without code changes. No schema update is needed for new field types.
 
 If you need to add a new **system-level** field (e.g. a required metadata field), update:
-1. `backend/app/schemas/prompts.py` — add field to `PromptField` or `PromptRequest` validators
-2. `backend/app/services/prompt_generator.py` — adjust generation logic if special-casing is needed
+1. `backend/app/schemas/prompts.py` — add field to `PromptField`, `PromptCreateRequest` or `PromptUpdateRequest` validators
+2. `backend/app/services/prompt_sections.py` and `frontend/src/lib/sections.ts` — keep section rendering aligned; update shared fixtures if the rendering contract changes
 3. Update relevant tests in `backend/tests/`
 
 ## Troubleshooting
@@ -273,24 +292,17 @@ the Next dev server is forwarding `/api` to the Compose service name instead of
 your local backend. Restart `npm run dev` after adding it.
 
 ### Intermittent 503s on `?_rsc=` requests
-Next.js `<Link>` prefetches the React Server Component payload for a route as a
-`GET /<route>?_rsc=<hash>` request. Occasional 503s on those — with the UI
-recovering on the following full navigation and nothing in the console — do
-**not** come from this application:
+Next.js `<Link>` prefetches route data with `?_rsc=` requests. If one fails
+intermittently, inspect the response and proxy/frontend logs around that time.
+A restarting or unreachable frontend can interrupt both prefetches and full
+navigation; a successful retry alone does not establish the cause.
 
-- Next.js' own server has no 503 code path (`grep -r 503 node_modules/next/dist/server`
-  finds nothing); it answers a prefetch with 200, 404, or 500.
-- The only 503s this codebase emits are `backend/app/api/admin_routes.py`'s
-  admin guards, on `/api/admin/*` — never on a frontend route.
-
-They come from whatever sits between the browser and the Next server: Caddy
-answers `503` while `frontend:3000` is unreachable (recreated, rebuilt, or still
-booting), and any other proxy in front of the app can do the same. If you see
-them, check `docker compose ps`/`docker compose logs frontend` for a restart
-around that timestamp rather than looking for an application bug. A burst of
-700 RSC requests (sequential and 50-way concurrent, across `/library`,
-`/editor/{id}`, and the then-existing `/playground/{id}` and `/dashboard`) against a healthy stack
-returns 200 every time.
+```bash
+docker compose ps
+docker compose logs --since 10m frontend
+# Production uses the base file explicitly:
+docker compose -f docker-compose.yml logs --since 10m caddy frontend
+```
 
 ## Testing
 
@@ -310,22 +322,23 @@ make test-cov
 make test-file FILE=tests/test_api.py
 ```
 
-**Test suites**: backend pytest (with a 90% coverage gate), frontend Vitest + React Testing Library, and Playwright browser tests covering registration and saving, the sidebar shell on desktop and phone, versioning and restore, section-name rules, filling variables and concurrent-edit handling, Import text without a connection, folders and Settings, the Content-Security-Policy, and accessibility across themes and pages. Exact counts are deliberately not listed here — they went stale within weeks last time; run `make test`, `make test-frontend`, and `make test-e2e` for current figures.
+**Test suites**: backend pytest (with a 90% coverage gate), frontend Vitest + React Testing Library, and Playwright browser tests covering registration and saving, the sidebar shell on desktop and phone, versioning and restore, section-name rules, filling variables and concurrent-edit handling, Paste a prompt without a connection, folders and Settings, the Content-Security-Policy, and accessibility across themes and pages. Exact counts are deliberately not listed here — they went stale within weeks last time; run `make test`, `make test-frontend`, and `make test-e2e` for current figures.
 
 ## Dependency Locks
 
-`backend/requirements*.lock` are generated with `--generate-hashes`, and every
-install path (`make install`, `make setup-venv`, CI, and the backend image) uses
-`pip install --require-hashes`. A hash in the file that nothing verifies is
-decoration, so the two go together.
+`backend/requirements*.lock` are generated with `--generate-hashes`.
+`make install`, `make setup-venv`, CI and the backend image explicitly use
+`pip install --require-hashes`. The `make test`, `make test-file` and
+`make dev-backend` targets install the same hash-bearing locks; pip enables
+hash checking when it encounters their hash entries.
 
 Consequences worth knowing:
 
 - Adding or changing a dependency means running `make lock` and committing both
   files. Hand-editing a version will fail the install, not just the gate.
-- `pip` and `setuptools` are pinned in the dev lock (`--allow-unsafe`), so they
-  are installed from it rather than upgraded separately — an unpinned upgrade
-  alongside hashed installs would defeat the point.
+- `pip`, `setuptools` and `wheel` are pinned in the dev lock (`--allow-unsafe`).
+  CI installs them from that lock. Local setup targets first upgrade the
+  bootstrap tools, then install the pinned dev lock.
 - Base images are pinned by digest in the Dockerfiles and `docker-compose.yml`,
   with the readable tag kept in a comment. Dependabot's `docker` ecosystem
   updates both together.

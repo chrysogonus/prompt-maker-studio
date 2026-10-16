@@ -1,6 +1,12 @@
 # Repository refactoring
 
-Completed 2026-10-11. Approved 2026-10-11. Preserve functionality and simplify internals, including the
+Historical implementation record: completed and approved 2026-10-11.
+The structures and verification counts below describe that refactoring snapshot,
+not the current release. For current architecture, features and release work, see
+the [documentation index](README.md), [feature inventory](../product/FEATURES.md)
+and [roadmap](../product/ROADMAP.md).
+
+Original goal: preserve functionality and simplify internals, including the
 0.3.0 UI cleanup. Refactoring happens on `dev`; intentional feature changes use
 separate `feat/...` branches from `dev` and merge back into `dev`.
 
@@ -116,5 +122,7 @@ Final state: all ten phases complete on the user-requested `dev` checkout.
 The user requested committing the verified changes after implementation. No
 feature was added, so no feature branch or merge was needed. No push,
 publication or deployment was performed.
-The existing production-data migration rehearsal remains release work in the
-roadmap; only synthetic/legacy fixtures and isolated test databases were used.
+At completion, production-data migration rehearsal remained release work; this
+session used only synthetic/legacy fixtures and isolated test databases. Later
+releases are recorded separately; production upgrades still require rehearsal
+and explicit deployment approval.

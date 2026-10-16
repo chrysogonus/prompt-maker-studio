@@ -28,7 +28,7 @@ body:
       label: What happened?
       description: Describe the bug and what you expected instead.
       placeholder: |
-        Expected: saving a prompt version returns 201 and appears in the version list.
+        Expected: editing a saved prompt and choosing Save returns 200 and keeps the previous state in History.
         Actual: returns 500 and the version list is unchanged.
     validations:
       required: true
@@ -41,8 +41,8 @@ body:
       placeholder: |
         1. `make setup && make up`
         2. Register a new account at http://localhost:3000
-        3. Create a prompt with two fields
-        4. Click "Save version"
+        3. Create a prompt with two sections, choose Save, and give it a name
+        4. Edit a section and click "Save" again
     validations:
       required: true
 
@@ -64,10 +64,9 @@ body:
       label: Affected area
       options:
         - Authentication / accounts
-        - Dashboard / analytics
-        - Library / folders / tags
+        - Library / folders / favorites
         - Editor / versioning
-        - Playground
+        - Paste a prompt / Try once
         - Evaluation
         - AI refinement
         - Settings / preferences
@@ -83,7 +82,7 @@ body:
     attributes:
       label: Version or commit SHA
       description: Output of `git rev-parse --short HEAD`, or the release tag.
-      placeholder: v0.1.0 or 788eafd
+      placeholder: v0.5.0 or 39bb0db
     validations:
       required: true
 

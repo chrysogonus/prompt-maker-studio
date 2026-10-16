@@ -29,7 +29,7 @@ body:
       description: Describe the situation you hit, not the solution you have in mind.
       placeholder: |
         When I have 40+ saved prompts, finding the one I used last week means
-        scrolling the whole library — search only matches titles, not body text.
+        scanning similar results — I cannot sort them by name or oldest edit.
     validations:
       required: true
 
@@ -53,10 +53,9 @@ body:
       label: Affected area
       options:
         - Authentication / accounts
-        - Dashboard / analytics
-        - Library / folders / tags
+        - Library / folders / favorites
         - Editor / versioning
-        - Playground
+        - Paste a prompt / Try once
         - Evaluation
         - AI refinement
         - Settings / preferences

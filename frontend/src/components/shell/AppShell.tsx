@@ -7,7 +7,6 @@ import Sidebar from '@/components/shell/Sidebar';
 import { MenuIcon, NewIcon } from '@/components/ui/icon';
 import EmailReminderBanner from '@/features/auth/EmailReminderBanner';
 import LegalLinks from '@/components/LegalLinks';
-import RepositoryLink from '@/components/RepositoryLink';
 import Button from '@/components/ui/Button';
 import { LibraryDataProvider } from '@/features/library/LibraryData';
 import { AuthContext } from '@/lib/auth-context';
@@ -84,7 +83,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <NewIcon size={16} tone="inherit" />
                 New
               </Link>
-              <RepositoryLink className={styles.repositoryLink} />
             </header>
             <EmailReminderBanner />
             {sessionWarning && (
