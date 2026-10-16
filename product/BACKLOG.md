@@ -1,6 +1,6 @@
 # Product Backlog
 
-> Reviewed against the codebase: 2026-10-16 (0.5.1 candidate).
+> Reviewed against the codebase: 2026-10-16 (published 0.5.1).
 > Items below describe unimplemented scope. See [implemented features](FEATURES.md)
 > and the [roadmap](ROADMAP.md) for delivered work and release status.
 > Existing priorities are retained; this sync does not select new product work.

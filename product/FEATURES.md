@@ -1,7 +1,7 @@
 # Implemented Features
 
-> Reviewed against the codebase: 2026-10-16 (0.5.1 candidate on `dev`).
-> Latest published release: 0.5.0. Implementation status includes unpublished candidate changes; see [release preparation](../docs/releases/0.5.1.md).
+> Reviewed against the codebase: 2026-10-16 (published 0.5.1).
+> Latest published release: 0.5.1; see the [release record](../docs/releases/0.5.1.md).
 
 Prompt Maker Studio is a home for prompts people keep retyping into chat assistants: each prompt
 is a list of named sections with `{{variables}}`, saved in a personal library and copied, filled

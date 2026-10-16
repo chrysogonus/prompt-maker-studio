@@ -1,8 +1,8 @@
 # Documentation
 
-Reviewed against the codebase on 2026-10-16. `dev` contains an unpublished
-**0.5.1 candidate**; **0.5.0** is the latest published release. Publication,
-MCP Registry updates and production deployment are separate operations.
+Reviewed against the codebase on 2026-10-16. **0.5.1** is the latest published
+release. Publication, MCP Registry updates and production deployment are
+separate operations.
 
 ## Start here
 
@@ -38,16 +38,15 @@ MCP Registry updates and production deployment are separate operations.
 
 ## Product and release state
 
-- [Implemented features](../product/FEATURES.md): current code, including
-  unpublished candidate changes.
+- [Implemented features](../product/FEATURES.md): current supported behavior.
 - [Vision](../product/VISION.md), [user stories](../product/USER-STORIES.md),
   [roadmap](../product/ROADMAP.md) and [backlog](../product/BACKLOG.md).
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
-- [0.5.1 preparation](releases/0.5.1.md): unpublished candidate and remaining
-  publication checks.
-- Published release records: [0.5.0](releases/0.5.0.md),
+- [0.5.1 release record](releases/0.5.1.md): publication, immutable image digests
+  and verification.
+- Earlier release records: [0.5.0](releases/0.5.0.md),
   [0.4.0](releases/0.4.0.md), [0.3.0](releases/0.3.0.md).
 
 ## Historical implementation records

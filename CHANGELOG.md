@@ -10,9 +10,11 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
-Planned for **0.5.1**: dark-mode and editor polish, and fixes from the UI and UX
+## [0.5.1] - 2026-10-16
+
+0.5.1: dark-mode and editor polish, and fixes from the UI and UX
 review. Frontend only, with no database migrations or API changes. See the
-[release preparation](./docs/releases/0.5.1.md). Publication is pending.
+[release record](./docs/releases/0.5.1.md).
 
 ### Added
 
@@ -610,7 +612,8 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.5.1
 [0.5.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.5.0
 [0.4.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.4.0
 [0.3.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.3.0
