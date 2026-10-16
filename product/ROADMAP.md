@@ -1,9 +1,8 @@
 # Product Roadmap
 
-> Reviewed against the codebase: 2026-10-16. Latest published release: 0.5.0; 0.5.1 is an unpublished candidate.
+> Reviewed against the codebase: 2026-10-16. Latest published release: 0.5.1.
 
 ## Now — Current Sprint / Active Development
-- [ ] **0.5.1 publication** — Dark-mode/editor polish, responsive library fixes and keyboard-focus fixes are implemented; versions, changelog and local validation are prepared. Remaining: candidate review, push/release PR, GitHub gates, approved merge/tag, images and release record. See [release preparation](../docs/releases/0.5.1.md).
 - [ ] **Deployment rehearsal and approval** — Release publication does not establish production deployment. Rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations; approve deployment separately. See [deployment](../docs/deployment.md).
 
 ## Next — Coming Soon (next 1–2 sprints)
@@ -28,7 +27,7 @@ Dates below record original delivery. Notes identify later replacements; they
 are not a list of current controls. The current inventory is [FEATURES.md](FEATURES.md).
 | Item | Completed | Notes |
 |---|---|---|
-| 0.5.1 UI and accessibility work | 2026-10-16 | Implemented on `dev`, publication pending: shared light/dark layout, saved theme before first paint, Tools menu, Test with AI panel, responsive library cards and keyboard focus restoration |
+| 0.5.1 release | 2026-10-16 | Published: shared light/dark layout, saved theme before first paint, Tools menu, Test with AI panel, responsive library cards, keyboard focus restoration and synchronized documentation; [release record](../docs/releases/0.5.1.md) |
 | 0.5.0 release | 2026-10-15 | Published: application observability, immutable auth/OAuth identities, account/session hardening, public guides, provider/billing/backup reliability and dependency updates; [release record](../docs/releases/0.5.0.md) |
 | 0.4.0 release | 2026-10-14 | Published: public landing page, request-time SEO metadata, packaged public assets and MCP Registry descriptor; [release record](../docs/releases/0.4.0.md) |
 | 0.3.0 release | 2026-10-13 | Published: sections editor, library redesign, recovered history, version notes, pasted-prompt conversion, refinement, evaluation and Try once; [release record](../docs/releases/0.3.0.md) |

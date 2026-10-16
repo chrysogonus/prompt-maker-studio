@@ -1,6 +1,6 @@
 # User Personas & Stories
 
-> Last reviewed against the codebase: 2026-10-16 (0.5.1 candidate). Stories below describe implemented behavior except the explicitly planned section.
+> Last reviewed against the codebase: 2026-10-16 (published 0.5.1). Stories below describe implemented behavior except the explicitly planned section.
 
 ## Personas
 
