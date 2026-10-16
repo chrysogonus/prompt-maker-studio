@@ -7,23 +7,23 @@ enforces that in both directions, so this table cannot silently drift.
 |---|---|
 | `test_admin_routes.py` | Token-protected SMTP diagnostics |
 | `test_application.py` | Application factory, startup lifecycle, and test initialization isolation |
-| `test_api.py` | Prompt generation, saved prompts (incl. folder/tag/favorite filters), history, pagination, search, updates, ownership, real per-prompt run counts, and variable_metadata |
+| `test_api.py` | Section-based prompt creation, library and folder/favorite filters, updates, ownership, duplicate configuration/eval-case copying, permanent deletion, non-reused IDs, and Try once without persistence |
 | `test_auth.py` | Registration, JWT lifecycle, profile, account deletion, password reset, password change, and the `SECRET_KEY` startup guard that rejects every published example key |
 | `test_auth_cookies.py` | The browser session path: httpOnly session cookie, the readable CSRF cookie, double-submit CSRF enforcement on cookie-authenticated writes (and its bearer/safe-method exemptions), logout, and the `COOKIE_DOMAIN`/`COOKIE_SECURE` deployment settings |
 | `test_auth_identity.py` | Immutable token subjects across renames, deletion and reused IDs; bcrypt byte limits, generic registration conflicts, and missing-user password verification |
 | `test_failed_llm_billing.py` | Persisted provider usage after JSON/shape failures, retries, malformed output, and failed judge grading |
 | `test_backup_restore.py` | Consistent SQLite backup and integrity-checked restore |
 | `test_budget_service.py` | BudgetService global/per-user monthly spend-ceiling parsing, enforcement, and the config endpoint's remaining-budget snapshot |
-| `test_database_connection.py` | SQLite engine PRAGMA configuration: journal_mode=WAL and busy_timeout |
-| `test_docker_compose_config.py` | Compose service config: neither application container mounts `.env`, the backend database stays on its persistent volume, no operator-wide provider API key is passed in, local ports default to loopback, and the backup worker is non-root with a read-only database mount |
+| `test_database_connection.py` | SQLite engine PRAGMA configuration: WAL, busy timeout, and foreign-key enforcement |
+| `test_docker_compose_config.py` | Compose service config: neither application container mounts `.env`, the backend database stays on its persistent volume, the legacy `OPENAI_API_KEY` is absent and documented settings are forwarded, local ports default to loopback, and the backup worker is non-root with a read-only database mount |
 | `test_email_service.py` | SMTP configuration, TLS verification, and password-reset email delivery |
 | `test_error_handling.py` | Request-id correlation middleware, sanitized request-validation logging, and the catch-all handler for unhandled (non-HTTPException) exceptions |
 | `test_eval_generator_service.py` | EvalGeneratorService synthetic test-case proposal generation (standard, edge-case, adversarial, robustness, output-format) with a mocked provider connection and token/cost tracking |
-| `test_eval_routes.py` | Eval case CRUD, run creation (rule/judge/manual scoring), run history, manual star ratings, completion/regression email hooks, and budget-ceiling rejection |
+| `test_eval_routes.py` | Eval case CRUD and caps, AI proposals, atomic CSV import/export, run creation/history pagination, manual ratings, ownership/cascade isolation, and budget-ceiling rejection |
 | `test_eval_service.py` | EvalService rule/judge/manual scoring, aggregate computation, per-case PlaygroundRunError isolation, and run/result reproducibility metadata (resolved model, aggregate cost/latency/tokens, criteria/variables/judge-model snapshot) |
 | `test_go_live_smoke.py` | Production readiness smoke coverage |
 | `test_limiter.py` | Rate-limiter key function: per-client isolation, loopback fallback, and rejection of a client-supplied spoofed forwarding header |
-| `test_llm_client.py` | The single provider-client construction seam: connection resolution per user, per-provider timeouts, the portable JSON-completion strategy (prompt-carried schema, capability-aware `response_format`, tolerant parsing, bounded retry, usage across attempts), and provider-neutral error mapping |
+| `test_llm_client.py` | The single provider-client construction seam: own-connection/server-default resolution, per-provider timeouts, the portable JSON-completion strategy (prompt-carried schema, capability-aware `response_format`, tolerant parsing, bounded retry, usage across attempts), and provider-neutral error mapping |
 | `test_llm_connection_models.py` | Authenticated live model catalogue: provider listing, pricing enrichment, static/empty fallbacks, Anthropic compatibility behavior, per-user TTL caching, and update/delete invalidation |
 | `test_llm_connection_routes.py` | `/api/auth/me/llm-connection` GET/PUT/DELETE and its probe: provider switching, key retention/clearing, base-URL validation, per-user isolation, and assertions that the stored key never appears in a response body or log line |
 | `test_llm_url_egress.py` | Egress policy for user-supplied provider base URLs: private, loopback, link-local, multicast, and cloud-metadata destinations are rejected after DNS resolution (every answer, not just the first), with the ALLOW_PRIVATE_LLM_URLS opt-in for self-hosted Ollama/vLLM |
@@ -43,13 +43,13 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_prompt_refiner.py` | PromptRefinerService question/draft calls and structural validation of section edits, variables and embedded tags |
 | `test_prompt_sections.py` | Rendering sections to tagged text, display names with spaces, and recovering sections from text only when that round-trips exactly |
 | `test_prompt_service.py` | Transport-independent prompt operations, ownership, versions, and failed-write rollback |
-| `test_prompt_versions.py` | Version snapshotting on edit, restore semantics, ownership, cascade delete, run_count passthrough |
+| `test_prompt_versions.py` | Version snapshotting on section/metadata edits, resulting-state notes and legacy notes, metadata restore semantics, ownership, and cascade delete |
 | `test_prompts_config.py` | Per-user AI capability endpoint: connection state, model list, budget status, and per-user scoping |
 | `test_refine_routes.py` | Saved-prompt and unsaved-snapshot refinement, authentication, section/answer validation, spend recording (including rejected drafts), separate save/versioning, and budget rejection |
 | `test_safe_regex.py` | Time-bounded matching for user-supplied eval regexes: catastrophic patterns are abandoned within a fixed budget regardless of input length, the runaway worker is killed rather than merely abandoned, workers come from a fork server rather than a fork of the threaded server, the pool recovers, and `re` semantics (backreferences, lookaround) are preserved |
 | `test_schemas.py` | Pydantic request and response validation, including `VariableMetadataItem`, eval case/rating, and refine draft schemas |
 | `test_secret_store.py` | Fernet encryption of stored provider API keys: round-trip, non-determinism, key-rotation failure mode, and display masking |
-| `test_seed_demo_user.py` | `backend/scripts/seed_demo_user.py` — the `SEED_DEMO_USER` opt-in guard, idempotent demo-account seeding, and its downstream analytics |
+| `test_seed_demo_user.py` | `backend/scripts/seed_demo_user.py` — the `SEED_DEMO_USER` opt-in guard, idempotent library/version seeding, clearing legacy run data, and complete model registration |
 | `test_tests_readme_sync.py` | This table itself: every `test_*.py` module has a row, and no row names a deleted module |
 | `test_user_preferences.py` | Settings preferences (library view, eval defaults) and the full data-export endpoint |
 

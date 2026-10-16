@@ -1,5 +1,10 @@
 # App Observability Implementation Plan
 
+> Historical implementation record. This work is complete and was included in
+> a published release. Session constraints and verification totals below refer
+> to that implementation; use the [current documentation index](../../README.md)
+> for current behavior and commands.
+
 > For agentic workers: execute the scoped tasks below, using parallel agents for
 > disjoint file ownership. No commits or deployment.
 

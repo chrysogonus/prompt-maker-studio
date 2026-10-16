@@ -1,5 +1,10 @@
 # App observability
 
+> Historical implementation record. This work is complete and was included in
+> a published release. Session constraints and verification totals below refer
+> to that implementation; use the [current documentation index](../../README.md)
+> for current behavior and commands.
+
 The accepted scope is metrics refactoring, three provisioned Grafana dashboards,
 and structured Docker logs. Keep the existing monitoring profile opt-in. No
 deployment, commits, new dependencies, database schema changes, Loki or Alloy.

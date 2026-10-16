@@ -90,7 +90,8 @@ export default function TemplateVariablesPage() {
       <p>
         This is the text you send to the assistant, rather than an AI-generated update. Generating
         the update happens in the assistant you paste into, or through the optional{' '}
-        <strong>Try once</strong> action using your connected provider.
+        <strong>Try once</strong> action inside <strong>Test with AI</strong>, using your
+        connected provider.
       </p>
 
       <h2>Choose the right copy action</h2>

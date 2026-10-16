@@ -18,7 +18,8 @@ prompt-maker-studio/
     └── Dockerfile               # Frontend container
 ```
 
-See `docs/deployment.md` for how `docker-compose.prod.yml` is used to deploy pinned GHCR images.
+See the [VM deployment guide](./deployment.md) for deploying pinned GHCR images
+with `docker-compose.prod.yml`.
 
 ## Quick Start
 
@@ -124,10 +125,11 @@ The Docker setup uses:
 - `grafana_data` — Stores Grafana's dashboards and settings
 
 `docker-compose.yml` also defines `prometheus` and `grafana` services behind the opt-in
-`monitoring` profile (`docker compose --profile monitoring up -d`; Grafana then requires
-`GRAFANA_ADMIN_PASSWORD` in `.env`) and an optional
-`db-backup` service gated behind the `backup` Compose profile — see `docs/deployment.md` for
-enabling scheduled backups.
+`monitoring` profile (`docker compose --profile monitoring up -d`; Grafana requires a unique, non-placeholder
+`GRAFANA_ADMIN_PASSWORD`; Compose requires a nonempty value during interpolation
+even when monitoring is inactive) and an optional
+`db-backup` service gated behind the `backup` Compose profile — see the
+[backup procedure](./deployment.md#backup-database).
 
 ## Environment Variables
 
@@ -167,8 +169,19 @@ DEV_BIND_ADDRESS=127.0.0.1
 BACKEND_PORT=8000
 FRONTEND_PORT=3000
 
-# LLM access is bring-your-own — no operator API key. Each user connects
-# their own provider in Settings → API access.
+# Registration admits the first account, then closes by default.
+REGISTRATION_MODE=closed
+# Permit user-supplied private provider URLs only on a trusted instance.
+ALLOW_PRIVATE_LLM_URLS=false
+
+# Users normally connect their own provider in Settings → AI connection.
+# Optional shared server default for users without a usable own connection.
+# Enabled only when both LLM_BASE_URL and LLM_MODEL are set. The operator's
+# URL is trusted and may be private without ALLOW_PRIVATE_LLM_URLS.
+LLM_PROVIDER=
+LLM_BASE_URL=
+LLM_MODEL=
+LLM_API_KEY=
 
 # Optional. Encrypts stored per-user provider keys. Defaults to a value
 # derived from SECRET_KEY; set it explicitly to rotate JWT signing without
@@ -176,25 +189,30 @@ FRONTEND_PORT=3000
 # LLM_ENCRYPTION_KEY=<Fernet key>
 
 # Optional. Overrides the per-request provider timeout (default 30s hosted,
-# 180s self-hosted).
+# 180s for Ollama/vLLM, 120s for custom endpoints).
 # LLM_TIMEOUT_SECONDS=180
 
 # Optional monthly usage ceilings (USD). Unset means unlimited. Users pay
-# their own provider, so these cap how much billed activity the app will
-# drive rather than protecting an operator wallet. Enforced before every
-# billed call (Import text, and the deferred eval and refinement endpoints);
+# their own provider, or use the shared server default. These bound estimated
+# spend without reserving budget across concurrent requests. Enforced before
+# billed AI work (Paste a prompt, Try once, refinement and evaluation);
 # GLOBAL_MONTHLY_BUDGET_USD's exhausted state is also reported by
 # GET /api/prompts/config. Operator-controlled only.
 # GLOBAL_MONTHLY_BUDGET_USD=50
 # USER_MONTHLY_BUDGET_USD=5
 
-# Password-reset links and email delivery
+# Public origin for reset links, MCP/OAuth discovery, canonical URL and sitemap.
+# Use the public HTTPS origin in production.
 FRONTEND_URL=http://localhost:3000
+OAUTH_REDIRECT_HOSTS=chatgpt.com
+
+# Password-reset email delivery
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USER=your-smtp-username
 SMTP_PASSWORD=your-smtp-password
 SMTP_FROM=Prompt Maker Studio <no-reply@example.com>
+SMTP_TLS_MODE=starttls  # use implicit for TLS-on-connect, e.g. port 465
 
 # Caddy Reverse Proxy (production only)
 # See Caddyfile — read by the Caddy container at runtime. One domain serves
@@ -224,7 +242,7 @@ The 4-slash version is required in Docker because the database must use an absol
 
 ## Networking
 
-All services (`backend`, `frontend`, `caddy`) run on the `prompt-maker-studio-network` bridge network, allowing them to communicate using Docker's internal DNS (e.g., `http://backend:8000` from Caddy or the frontend container).
+The application services and optional backup/monitoring services run on the `prompt-maker-studio-network` bridge network, allowing them to communicate using Docker's internal DNS (e.g., `http://backend:8000` from Caddy or the frontend container).
 
 ## Troubleshooting
 
@@ -275,7 +293,7 @@ docker compose down -v --rmi local
 
 For production deployment:
 
-1. Use proper secrets management (not `.env` files)
+1. Protect host-side environment configuration and backups; never commit secret values
 2. Plan around **SQLite only**. Prompt Maker Studio has no PostgreSQL or MySQL
    support: `backend/app/database/migrations/runner.py` is a SQLite-specific migration
    runner, and the schema, backup, and restore tooling all assume a single
@@ -284,6 +302,8 @@ For production deployment:
    `backend-data` volume and schedule `make backup-db` instead of reaching for
    a client/server database.
 3. Set `DOMAIN` in `.env`; Caddy will obtain a TLS certificate automatically via Let's Encrypt
-4. Deploy using only `docker-compose.yml` (without the override): `docker compose -f docker-compose.yml up -d`
+4. Exclude the local override. Build from source with `docker compose -f docker-compose.yml up -d --build`,
+   or use the GHCR production override and a published `IMAGE_TAG` as described in
+   [deployment](./deployment.md#option-2-production-deployment-via-ghcr-pre-built-images).
 5. Configure logging and monitoring
 6. Set resource limits in `docker-compose.yml`

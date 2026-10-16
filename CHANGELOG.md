@@ -30,6 +30,10 @@ review. Frontend only, with no database migrations or API changes. See the
 - The library, folder and Starter templates menus are plain lists of buttons.
   Escape closes them and returns focus to the button that opened them.
 - Settings calls the AI import feature Paste a prompt, matching the editor.
+- Developer, API, operations, product and agent documentation is synchronized
+  with the current codebase, with a documentation index and explicit separation
+  of implemented features, backlog work and historical records. Documentation
+  screenshots and public guide instructions reflect the current controls.
 
 ### Fixed
 

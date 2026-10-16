@@ -87,11 +87,14 @@ Anyone self-hosting Prompt Maker Studio is responsible for their own deployment:
   carry known HIGH/CRITICAL advisories with no fix this project can apply.
   If you enable them, set a strong `GRAFANA_ADMIN_PASSWORD`; the stack is not
   exposed publicly by default and should stay that way.
-- LLM access is **bring-your-own**: there is no operator API key. Each user
-  supplies their own provider credential in Settings → API access, and is
-  billed by that provider directly. `GLOBAL_MONTHLY_BUDGET_USD` and
-  `USER_MONTHLY_BUDGET_USD` remain available as usage guard rails, capping
-  how much activity the app will drive on anyone's behalf.
+- LLM access normally uses each user's own provider credential from
+  Settings → AI connection. An operator may configure a shared server default
+  with `LLM_BASE_URL` and `LLM_MODEL`, plus `LLM_PROVIDER` and `LLM_API_KEY`
+  when needed. A usable user connection takes precedence. The owner of the
+  selected credential pays the provider; a shared default can therefore incur
+  operator charges. `GLOBAL_MONTHLY_BUDGET_USD` and `USER_MONTHLY_BUDGET_USD`
+  cap estimated monthly activity, with no reservation across concurrent calls;
+  they are bounded usage controls rather than exact spending guarantees.
 - Per-user provider API keys are stored **encrypted at rest** (Fernet, via
   `backend/app/services/secret_store.py`). Key material comes from
   `LLM_ENCRYPTION_KEY` when set, otherwise it is derived from `SECRET_KEY`.
@@ -115,13 +118,17 @@ Anyone self-hosting Prompt Maker Studio is responsible for their own deployment:
   metadata endpoints. Response bodies are parsed as chat completions (so a
   non-JSON service yields an error rather than content), but timing and error
   shape are observable, and a service that returns JSON could echo content back
-  through a Playground run.
+  through a Try once run.
 
-  Two residual limits are worth stating plainly. Validation happens when the
-  URL is saved, so DNS that changes afterwards (rebinding) is not covered, and
-  redirects are followed by the provider SDK rather than re-validated here.
-  Network-level egress restrictions remain the durable control; treat this
-  check as defence in depth rather than a boundary.
+  With the default private-address block enabled, outbound user connections
+  resolve and validate every address again in `PublicLLMTransport`, then connect
+  to those exact IPs while retaining the original Host header and TLS hostname.
+  Redirects and environment proxies are disabled on these clients, closing the
+  save-time DNS-rebinding and redirect gaps. `ALLOW_PRIVATE_LLM_URLS=true`
+  disables this transport policy. Operator-configured server defaults are
+  trusted and also bypass it, allowing a private local provider without granting
+  private-network access to user-supplied URLs. Network-level egress controls
+  remain useful defence in depth.
 - **Registration is closed by default.** `REGISTRATION_MODE=closed` admits only
   the first account, so a fresh install is usable and then locks. Set it to
   `open` only if you intend anyone who can reach the instance to be able to
@@ -132,11 +139,10 @@ Anyone self-hosting Prompt Maker Studio is responsible for their own deployment:
   and `object-src` is `'none'`. `script-src` still allows `'unsafe-inline'`,
   which is the policy's remaining weak point: Next's App Router streams flight
   data as inline `<script>` blocks whose contents vary per page and per build, so
-  neither `script-src 'self'` alone nor build-time hashes work, and a nonce
-  cannot be minted for a statically prerendered page. Closing it properly means
-  opting the app into dynamic rendering — a deliberate decision, not a header
-  change. An injected script could therefore still act through the victim's
-  session, so treat XSS prevention in the app code as the primary control.
+  neither `script-src 'self'` alone nor a single fixed hash covers them.
+  Adopting per-response nonces would require changes to rendering and header
+  delivery beyond the current static Caddy policy. An injected script could
+  therefore still act through the victim's session, so treat XSS prevention in the app code as the primary control.
 - **Outbound traffic.** Beyond your own LLM provider and SMTP server, the
   backend makes one kind of request: published model prices, from a pinned
   revision of LiteLLM's model index on `raw.githubusercontent.com`, cached for

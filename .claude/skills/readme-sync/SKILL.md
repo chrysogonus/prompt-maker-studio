@@ -1,6 +1,6 @@
 ---
 name: readme-sync
-description: 'Generate or update the root README.md to reflect the current state of the codebase. Use when: creating a README from scratch, refreshing an outdated README, documenting a project, "write a README", "update README", "document this project", "what should the README say". Reads doc/ folder first, then source files for details.'
+description: 'Generate or update the root README.md to reflect the current state of the codebase. Use when: creating a README from scratch, refreshing an outdated README, documenting a project, "write a README", "update README", "document this project", "what should the README say". Reads docs/ folder first, then source files for details.'
 argument-hint: 'Optional: specific sections to focus on (e.g., "installation and usage only")'
 ---
 
@@ -29,7 +29,7 @@ Create or update the root `README.md` so it accurately reflects the current code
 
 Read available documentation in this order, stopping when you have sufficient context:
 
-1. **`doc/`** — Read all files in `doc/` (or `docs/`). These are the authoritative source of intent, architecture decisions, and design.
+1. **`docs/`** — Read all files in `docs/` (or `doc/` in other projects). These are the authoritative source of intent, architecture decisions, and design.
 2. **Config and manifest files** — `package.json`, `pyproject.toml`, `setup.py`, `setup.cfg`, `Cargo.toml`, `go.mod`, `requirements.txt` — for project name, description, version, dependencies, and scripts.
 3. **`Makefile`** — Extract available targets and their purpose (build, test, run commands).
 4. **`docker-compose.yml`** — Identify services, ports, and dependencies.

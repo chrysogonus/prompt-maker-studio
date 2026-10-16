@@ -79,7 +79,7 @@ export default function OrganizePromptsPage() {
       </p>
       <p>
         Edit the saved template when you find a better instruction, then choose <strong>Save</strong>.
-        In <strong>History</strong>, select an earlier version to compare it with the current
+        In <strong>Tools → History</strong>, select an earlier version to compare it with the current
         saved version. Save or discard pending edits before choosing <strong>Restore version</strong>{' '}
         with its number. Restoring keeps the version you replace in history.
       </p>

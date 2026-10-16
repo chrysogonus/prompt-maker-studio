@@ -1,6 +1,6 @@
 # User Personas & Stories
 
-> Last reviewed against the codebase: 2026-10-11 (0.3.0 redesign).
+> Last reviewed against the codebase: 2026-10-16 (0.5.1 candidate). Stories below describe implemented behavior except the explicitly planned section.
 
 ## Personas
 
@@ -50,12 +50,18 @@
 - As **Alex in ChatGPT**, I want an update to be rejected if the prompt changed elsewhere in the meantime so that I never overwrite my own edits.
 
 ### AI connection
-- As **Alex**, I want Import text to tell me what it needs and where to set it up when no AI connection exists.
+- As **Alex**, I want Paste a prompt to tell me what it needs and where to set it up when no AI connection exists.
 - As **Alex**, I want to connect my own OpenAI-compatible provider, or use the server's default, and see that my key is never shown again.
 
+### Improving and testing a prompt
+- As **Alex**, I want to answer clarifying questions, review section diffs, apply a refinement with Undo, and save only when ready.
+- As **Alex**, I want to test a filled draft once without saving it, after reviewing the provider and charge notice.
+- As **Alex**, I want to create reusable test cases with automatic checks, AI review or manual ratings, run them explicitly and compare historical outputs.
+- As **Alex**, I want to mark inputs as required and load saved examples only when I ask, so I know what I am copying or sending to AI.
+
 ### Planned stories (not yet implemented)
-- As **Alex**, I want to describe how a prompt should change and review suggested section edits before accepting them (refinement rebuild).
-- As **Alex**, I want to see evidence that an edit made a prompt better for my goal (evaluation rebuild).
+- As **Alex**, I want to give direct refinement instructions and accept individual section edits instead of applying a whole proposal.
+- As **Alex**, I want evaluation scores calibrated against human judgment so the numbers have a validated meaning.
 - As **Alex**, I want to select several recovered prompts, or find duplicates, and delete them together.
 - As **Alex**, I want to copy a prompt with Markdown headings instead of tags.
 
@@ -64,9 +70,9 @@
 ## Acceptance Criteria
 
 ### Story: Register and land in the library
-**Given** a new visitor
+**Given** registration is open, or no account exists yet
 **When** they submit a valid username, password and email
-**Then** they are signed in and see an empty library offering New prompt, Import text and starter templates
+**Then** they are signed in and see an empty library offering New prompt, Paste a prompt and starter templates
 
 ### Story: Write and save a new prompt
 **Given** a signed-in user on New prompt
@@ -76,16 +82,16 @@
 ### Story: Fill in and copy
 **Given** a saved prompt with variables
 **When** the user opens it, types values in the preview's Filled mode and clicks "Copy filled prompt"
-**Then** the clipboard holds the rendered text with the values substituted, and any variables left empty are named as placeholders
+**Then** the clipboard holds the rendered text with the values substituted; missing optional inputs are identified, while missing required inputs block normal filled copying and offer an explicit Copy with placeholders action
 
-### Story: Import text
+### Story: Paste a prompt
 **Given** a signed-in user with an AI connection (their own or the server default)
-**When** they paste text into Import text and submit
-**Then** the editor shows editable sections parsed from it; without a connection the dialog explains why and links to Settings
+**When** they paste text into Paste a prompt and choose Create template
+**Then** they review sections and extracted inputs before copying or applying to the editor with Undo; Save persists the template, and retaining example inputs is an explicit choice. Without a connection the dialog explains why and links to Settings
 
 ### Story: Compare and restore a version
 **Given** a prompt saved at least twice
-**When** the user opens History, selects an earlier version and restores it
+**When** the user opens Tools → History, selects an earlier version and restores it
 **Then** the diff showed what changed, the restored sections are live, and the replaced state is a new version
 
 ### Story: Recover after an edit conflict

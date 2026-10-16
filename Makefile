@@ -57,7 +57,7 @@ help:
 	@echo "test-frontend  - Run frontend unit tests"
 	@echo "setup-e2e      - Install locked frontend dependencies and Playwright Chromium"
 	@echo "test-e2e       - Run browser E2E tests against an isolated Compose stack"
-	@echo "screenshots    - Capture the README screenshots into docs/assets/"
+	@echo "screenshots    - Capture six standard documentation views into docs/assets/"
 	@echo "dev-backend    - Run backend locally (without Docker)"
 	@echo "dev-frontend   - Run frontend locally (without Docker)"
 	@echo "smoke-smtp     - Validate SMTP config/connectivity for password reset"
@@ -284,7 +284,7 @@ test-e2e:
 	docker compose $(E2E_COMPOSE) up -d --build --wait backend frontend; \
 	cd frontend && E2E_BASE_URL=http://localhost:$(E2E_FRONTEND_PORT) npm run test:e2e
 
-# Capture the README screenshots against a throwaway Compose stack.
+# Capture six standard documentation views against a throwaway Compose stack.
 # Deliberately separate from test-e2e: this writes PNGs into docs/assets/.
 screenshots:
 	@set -e; \

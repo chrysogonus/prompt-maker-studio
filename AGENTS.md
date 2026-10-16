@@ -10,7 +10,9 @@ Go to the source; don't re-derive or duplicate it here.
 
 | Need | Where |
 |---|---|
-| Architecture, API endpoints, tech stack | `README.md` |
+| Documentation map and current vs. historical records | `docs/README.md` |
+| Architecture and tech stack | `README.md` |
+| REST API routes and contracts | `docs/api.md` |
 | Contributor conventions (branches, commits, PRs, coding standards) | `CONTRIBUTING.md` |
 | Local dev setup | `docs/development.md` |
 | Deployment (VM, Docker, Caddy, backups) | `docs/deployment.md` |

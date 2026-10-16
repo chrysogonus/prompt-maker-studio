@@ -1,5 +1,6 @@
 /**
- * Captures the screenshots embedded in the root README.
+ * Captures six standard documentation views in docs/assets/.
+ * Curated README feature illustrations are maintained separately.
  *
  * Not part of the CI E2E suite — `playwright.config.ts` excludes this file via
  * `testIgnore`, because it writes into the repository rather than asserting

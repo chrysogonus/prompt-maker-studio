@@ -24,16 +24,21 @@ Explain {{topic}} in three short steps.
   digits, spaces, `_` and `-`.
 - Two sections that render to the same tag (`Role` and `role`, `a b` and `a_b`) are rejected.
 - Section text is kept verbatim — `<`, `>` and `&` are never escaped.
-- `{{variable}}` placeholders (letters, digits, `_`, `-`) become fields to fill in.
+- `{{variable}}` placeholders start with an ASCII letter or `_`, followed by
+  letters, digits, `_` or `-`; optional whitespace inside the braces is accepted.
+  Each distinct name becomes a field to fill in.
 
 The server is the only place text is rendered and stored (`generated_prompt`); clients send
 sections (`fields`) and are rejected with 422 if they send text. The frontend mirrors the same
-rendering for its live preview (`frontend/src/lib/sections.ts`, `backend/app/services/prompt_sections.py`).
+rendering for its live preview (`frontend/src/lib/sections.ts`,
+`backend/app/services/prompt_sections.py`). The shared
+[rendering fixtures](../contracts/README.md) check that both implementations agree.
 
 ## Writing and saving
 
 - **New prompt** opens the editor with one empty section. Starter templates and Paste a prompt sit
-  above it; conversion needs an AI connection and explains how to add one if there is none.
+  above it; conversion needs an effective AI connection (the user's own or the operator's
+  optional server default) and explains how to add one if neither exists.
   Paste a prompt stages XML-style sections and detected variables for review. Original values
   are filled in; names/values can be edited or an input kept fixed. Copy directly, or choose
   Use in editor to replace the draft with Undo. Save persists the template.
@@ -48,6 +53,17 @@ rendering for its live preview (`frontend/src/lib/sections.ts`, `backend/app/ser
 - If the prompt was saved somewhere else since it was opened (another tab, the ChatGPT plugin),
   the save is rejected with 409. The editor keeps the edits and offers "Load latest version";
   saving after that deliberately replaces the other version.
+
+## Refinement
+
+Choose **Refine** to work on the current sections, including a new or unsaved
+prompt. Explicitly request questions, answer them, then request a draft. Review
+section-level changes or the full draft, edit the proposal and apply locally
+with Undo; normal Save persists it. Closing the panel retains the session in
+memory, while navigation/reload discards the session. Changing the source
+sections requires restarting. Refinement replaces the desktop preview and uses
+a full-screen dialog on phones. Each AI request shows provider and charge
+context; opening the panel alone makes no AI call.
 
 ## Filling in and copying
 
@@ -66,9 +82,13 @@ never become section content. Ordinary filled inputs are temporary. Converted in
 browser-local drafts; Keep these inputs as examples is unchecked by default and only saves example
 metadata when opted into and followed by Save.
 
-Try once runs the filled prompt through the configured provider without saving it or creating a
-separate Playground history. Conversion, refinement, Try once and evaluation show provider/model
-and billing context before execution.
+In the preview, open **Test with AI** to reach **Try once**. It runs the filled prompt through the configured provider without saving it or creating a
+separate Playground history. Its result includes the output text, provider and model;
+token usage is recorded in the spend ledger. Conversion, refinement and Try once show provider/model
+and billing context before execution. Saved prompts open the evaluation workspace
+from Tools → Evaluate: edit test cases, import/export case CSV, review AI suggestions,
+run explicitly, inspect and compare historical outputs, and submit manual ratings.
+Saving a prompt never starts an evaluation.
 
 On phones the editor has Edit and Fill and copy tabs, and saved prompts open on Fill and copy.
 
@@ -78,11 +98,17 @@ On phones the editor has Edit and Fill and copy tabs, and saved prompts open on 
   entered on Save describes the resulting state, including the current version. Migration 025
   preserves original history notes as `legacy_note` while correcting their association; recovery
   notes stay with their original snapshots.
-- The History panel lists versions (newest first, the current one on top), shows a word-level
+- Open **Tools → History** on a saved prompt. The panel lists versions (newest first, the current one on top), shows a word-level
   diff of any version against the current text, and restores it. A restore snapshots the state it
   replaces, so it can be undone, and is unavailable while there are unsaved edits.
+- Renaming, filing or favoriting does not create a content version. REST updates
+  advance the edit timestamp even without a content snapshot; the editor avoids
+  sending an unchanged content save. REST accepts an optional concurrency token,
+  while the editor and MCP updates always send one.
 - Versions recorded before 0.3.0 can hold hand-edited text that disagrees with their sections.
   Restoring one recovers sections from its text, the same way migration 023 recovered live prompts.
+  Older snapshots without variable metadata retain the current variable settings;
+  newer snapshots restore the saved settings.
 
 ## The library
 
@@ -98,6 +124,9 @@ On phones the editor has Edit and Fill and copy tabs, and saved prompts open on 
   it. A folder view can rename the folder (`PATCH /api/prompts/folders?name=`, merging onto an
   existing name) or remove it (`DELETE /api/prompts/folders?name=`), which unfiles its prompts and
   deletes none. Neither changes the prompts' edit times.
+- **Duplicate** creates a unique name, copies sections, folder, variable settings,
+  legacy tags and evaluation cases, and starts without favorite status, version
+  history or run history.
 - **Recovered history** holds the unnamed prompts the old History tab listed, named by date by
   migration 024. Rename, move or delete them like any other prompt.
 
@@ -109,7 +138,7 @@ interface PromptHistoryResponse {
   name: string | null;           // set for every prompt since migration 024
   fields: PromptField[];         // the sections, in order
   generated_prompt: string;      // rendered by the server from `fields`
-  created_at: string;            // UTC, sent without a zone marker
+  created_at: string;            // ISO timestamp; SQLite values are normally naive UTC
   updated_at?: string | null;    // the optimistic-concurrency token
   folder?: string | null;
   is_favorite?: boolean;
