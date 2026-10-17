@@ -17,7 +17,7 @@ class PromptsConfigResponse(BaseModel):
     provider: str | None = None
     provider_label: str | None = None
     model: str | None = None
-    # Suggested models for the caller's provider, their configured one first.
+    # Curated hosted choices, or the configured model for a custom/local provider.
     # Empty when no connection is configured, so the frontend never advertises
     # a model it can't actually run.
     available_models: list[str] = Field(default_factory=list)
@@ -29,6 +29,15 @@ class PromptsConfigResponse(BaseModel):
     global_budget_remaining_usd: float | None = None
 
 
+class ModelPriceInfo(BaseModel):
+    """One provider model with estimated standard token pricing."""
+
+    id: str
+    label: str | None = None
+    input_price_per_1m: float | None = None
+    output_price_per_1m: float | None = None
+
+
 class LLMProviderOption(BaseModel):
     """One selectable provider, for the Settings connection form."""
 
@@ -37,6 +46,8 @@ class LLMProviderOption(BaseModel):
     default_base_url: str | None = None
     requires_api_key: bool
     suggested_models: list[str] = Field(default_factory=list)
+    # Nonempty for hosted providers: these are the only choices when saving.
+    models: list[ModelPriceInfo] = Field(default_factory=list)
     docs_url: str | None = None
 
 
@@ -93,14 +104,6 @@ class LLMConnectionTestResponse(BaseModel):
 
     ok: bool
     message: str
-
-
-class ModelPriceInfo(BaseModel):
-    """One provider model with estimated standard token pricing."""
-
-    id: str
-    input_price_per_1m: float | None = None
-    output_price_per_1m: float | None = None
 
 
 _MAX_PLAYGROUND_VARIABLES = 50

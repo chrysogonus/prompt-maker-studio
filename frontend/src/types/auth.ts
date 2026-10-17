@@ -64,6 +64,8 @@ export interface LLMProviderOption {
   default_base_url: string | null;
   requires_api_key: boolean;
   suggested_models: string[];
+  /** Curated hosted choices; empty for local and custom providers. */
+  models: LLMModelPriceInfo[];
   docs_url: string | null;
 }
 
@@ -99,6 +101,7 @@ export interface LLMConnectionTestResult {
 
 export interface LLMModelPriceInfo {
   id: string;
+  label?: string | null;
   input_price_per_1m: number | null;
   output_price_per_1m: number | null;
 }

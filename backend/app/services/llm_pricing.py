@@ -51,9 +51,23 @@ _LITELLM_PROVIDER_MAP = {
     "anthropic": "anthropic",
 }
 
-# Last checked 2026-07-26. These values are deliberately retained as the
+# Current catalogue checked 2026-10-17 against official provider pricing. These values are deliberately retained as the
 # fallback tier when LiteLLM is unavailable or lacks a provider/model pair.
 FALLBACK_PRICING: dict[tuple[str, str], Rates] = {
+    # https://developers.openai.com/api/docs/models
+    ("openai", "gpt-6-astra"): {"input": 10.00, "output": 50.00},
+    ("openai", "gpt-6.1-sol"): {"input": 2.00, "output": 10.00},
+    ("openai", "gpt-6-luna"): {"input": 0.10, "output": 0.50},
+    # https://platform.claude.com/docs/en/about-claude/pricing
+    ("anthropic", "claude-opus-5-5"): {"input": 4.00, "output": 20.00},
+    ("anthropic", "claude-sonnet-5-5"): {"input": 2.00, "output": 10.00},
+    # Haiku's base tier is for prompts up to 100k tokens.
+    ("anthropic", "claude-haiku-5-5"): {"input": 0.10, "output": 0.50},
+    # https://ai.google.dev/gemini-api/docs/pricing
+    # Standard (post-introductory) Flash rate, conservatively estimated.
+    ("gemini", "gemini-3.8-flash"): {"input": 1.50, "output": 7.50},
+    ("gemini", "gemini-3.1-pro-preview"): {"input": 2.00, "output": 12.00},
+    # Preserve historical model rates for existing connections and usage.
     ("openai", "gpt-4o-mini"): {"input": 0.15, "output": 0.60},
     ("openai", "gpt-4.1-mini-2025-04-14"): {"input": 0.40, "output": 1.60},
     ("openai", "gpt-4o"): {"input": 2.50, "output": 10.00},

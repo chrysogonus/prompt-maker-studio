@@ -160,19 +160,16 @@ def active_provider_and_model(user: User) -> tuple[Provider, str] | None:
 
 
 def available_models_for(user: User) -> list[str]:
-    """
-    Models to offer this user in a picker: their provider's suggested models,
-    with their own configured model first. Free-text models are supported, so
-    this is a convenience list rather than an allowlist — except that the
-    Playground validates against it to avoid advertising an unrunnable choice.
+    """Curated hosted choices, or the user's configured custom/local model.
+
+    Legacy hosted models remain runnable via client_for but are not advertised
+    as choices for new connections.
     """
     if not has_own_connection(user):
         default = server_default()
         return [default.model] if default else []
     provider = get_provider(user.llm_provider)
-    models = [user.llm_model]
-    models.extend(m for m in provider.models if m != user.llm_model)
-    return models
+    return list(provider.models) if provider.models else [user.llm_model]
 
 
 def timeout_seconds_for(provider: Provider) -> float:

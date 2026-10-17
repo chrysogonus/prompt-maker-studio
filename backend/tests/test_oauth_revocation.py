@@ -303,7 +303,7 @@ def test_consent_cannot_adopt_a_version_revoked_after_authentication(
 @pytest.mark.parametrize("kind", ["access", "refresh"])
 @pytest.mark.parametrize("replacement", ["reconnect", "account"])
 def test_delayed_revocation_cannot_disconnect_a_replacement_grant(
-    client, auth_headers, db_session, kind, replacement
+    client, auth_headers, db_session, test_db, kind, replacement
 ):
     from tests.conftest import _register_and_connect
 
@@ -327,7 +327,7 @@ def test_delayed_revocation_cannot_disconnect_a_replacement_grant(
             == 204
         )
         auth_headers = _register_and_connect(
-            client, "replacement", "testpass123!", "replacement@example.com"
+            client, test_db, "replacement", "testpass123!", "replacement@example.com"
         )
         assert db_session.query(User.id).filter(User.username == "replacement").scalar() == old_id
     else:
@@ -345,7 +345,7 @@ def test_delayed_revocation_cannot_disconnect_a_replacement_grant(
 
 @pytest.mark.parametrize("replacement", ["reconnect", "account"])
 def test_access_revocation_rechecks_identity_and_generation_atomically(
-    client, auth_headers, db_session, monkeypatch, replacement
+    client, auth_headers, db_session, test_db, monkeypatch, replacement
 ):
     from app.services import oauth_provider
     from tests.conftest import _register_and_connect
@@ -373,7 +373,7 @@ def test_access_revocation_rechecks_identity_and_generation_atomically(
                 )
                 assert response.status_code == 204
                 headers = _register_and_connect(
-                    client, "replacement", "testpass123!", "replacement@example.com"
+                    client, test_db, "replacement", "testpass123!", "replacement@example.com"
                 )
                 assert (
                     db_session.query(User.id).filter(User.username == "replacement").scalar()

@@ -17,7 +17,7 @@ optimisation on top.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import ipaddress
 import os
 import socket
@@ -40,9 +40,9 @@ class Provider:
     # Local inference servers accept any key (or none), so we don't demand one.
     requires_api_key: bool
     structured_output: str
-    # Suggested models for the picker. Free text is still accepted, because a
-    # self-hosted server can serve any model name at all.
-    models: tuple[str, ...] = ()
+    # Curated hosted model IDs and display labels. An empty catalogue permits
+    # manual names for self-hosted servers and custom gateways.
+    models: dict[str, str] = field(default_factory=dict)
     # Local servers are routinely far slower than a hosted API for the same
     # prompt, so they get a longer per-request ceiling.
     timeout_seconds: float = 30.0
@@ -60,7 +60,11 @@ PROVIDERS: dict[str, Provider] = {
         default_base_url="https://api.openai.com/v1",
         requires_api_key=True,
         structured_output=STRUCTURED_JSON_SCHEMA,
-        models=("gpt-4o-mini", "gpt-4.1-mini-2025-04-14", "gpt-4o"),
+        models={
+            "gpt-6-astra": "GPT-6 Astra",
+            "gpt-6.1-sol": "GPT-6.1 Sol",
+            "gpt-6-luna": "GPT-6 Luna",
+        },
         docs_url="https://platform.openai.com/api-keys",
     ),
     "anthropic": Provider(
@@ -72,7 +76,11 @@ PROVIDERS: dict[str, Provider] = {
         # as *ignored* — sending it produces prose, not an error, so the
         # schema has to travel in the prompt instead.
         structured_output=STRUCTURED_NONE,
-        models=("claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"),
+        models={
+            "claude-opus-5-5": "Claude Opus 5.5",
+            "claude-sonnet-5-5": "Claude Sonnet 5.5",
+            "claude-haiku-5-5": "Claude Haiku 5.5",
+        },
         docs_url="https://platform.claude.com/docs/en/api/openai-sdk",
     ),
     "gemini": Provider(
@@ -81,7 +89,11 @@ PROVIDERS: dict[str, Provider] = {
         default_base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
         requires_api_key=True,
         structured_output=STRUCTURED_JSON_SCHEMA,
-        models=("gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro"),
+        models={
+            "gemini-3.1-pro-preview": "Gemini 3.1 Pro (preview)",
+            "gemini-3.8-flash": "Gemini 3.8 Flash",
+            "gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite",
+        },
         docs_url="https://ai.google.dev/gemini-api/docs/openai",
     ),
     "ollama": Provider(
@@ -92,7 +104,6 @@ PROVIDERS: dict[str, Provider] = {
         # Ollama maps `json_object` onto its native `format: json`; its
         # `json_schema` handling is incomplete (ollama/ollama#10001).
         structured_output=STRUCTURED_JSON_OBJECT,
-        models=(),
         timeout_seconds=180.0,
         docs_url="https://docs.ollama.com/api/openai-compatibility",
     ),
@@ -102,7 +113,6 @@ PROVIDERS: dict[str, Provider] = {
         default_base_url="http://localhost:8000/v1",
         requires_api_key=False,
         structured_output=STRUCTURED_JSON_SCHEMA,
-        models=(),
         timeout_seconds=180.0,
         docs_url="https://docs.vllm.ai/en/latest/serving/online_serving/",
     ),
@@ -113,7 +123,6 @@ PROVIDERS: dict[str, Provider] = {
         requires_api_key=False,
         # Unknown gateway: assume the least and rely on prompt-only JSON.
         structured_output=STRUCTURED_NONE,
-        models=(),
         timeout_seconds=120.0,
     ),
 }
@@ -293,6 +302,10 @@ def resolve_connection(
         raise InvalidConnectionError(msg)
     if len(normalized_model) > MAX_MODEL_LENGTH:
         msg = f"Model name is too long (max {MAX_MODEL_LENGTH} characters)."
+        raise InvalidConnectionError(msg)
+
+    if provider.models and normalized_model not in provider.models:
+        msg = f"Choose a current model for {provider.label}: {', '.join(provider.models)}."
         raise InvalidConnectionError(msg)
 
     normalized_key = api_key.strip() if api_key is not None else None

@@ -24,7 +24,8 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_go_live_smoke.py` | Production readiness smoke coverage |
 | `test_limiter.py` | Rate-limiter key function: per-client isolation, loopback fallback, and rejection of a client-supplied spoofed forwarding header |
 | `test_llm_client.py` | The single provider-client construction seam: own-connection/server-default resolution, per-provider timeouts, the portable JSON-completion strategy (prompt-carried schema, capability-aware `response_format`, tolerant parsing, bounded retry, usage across attempts), and provider-neutral error mapping |
-| `test_llm_connection_models.py` | Authenticated live model catalogue: provider listing, pricing enrichment, static/empty fallbacks, Anthropic compatibility behavior, per-user TTL caching, and update/delete invalidation |
+| `test_llm_connection_models.py` | Local/custom discovery, pricing, empty fallbacks, per-user TTL caching, and update/delete invalidation |
+| `test_curated_models.py` | Hosted catalogue restrictions, choices before setup, rejection without credential changes, and legacy connection execution/update |
 | `test_llm_connection_routes.py` | `/api/auth/me/llm-connection` GET/PUT/DELETE and its probe: provider switching, key retention/clearing, base-URL validation, per-user isolation, and assertions that the stored key never appears in a response body or log line |
 | `test_llm_url_egress.py` | Egress policy for user-supplied provider base URLs: private, loopback, link-local, multicast, and cloud-metadata destinations are rejected after DNS resolution (every answer, not just the first), with the ALLOW_PRIVATE_LLM_URLS opt-in for self-hosted Ollama/vLLM |
 | `test_llm_pricing.py` | LiteLLM provider/model normalization, per-token to per-million conversion, live/static/free pricing precedence, unknown prices, and stale-on-refresh-error cache behavior |

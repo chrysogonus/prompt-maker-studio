@@ -26,13 +26,28 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 | `PATCH` | `/api/auth/me` | Yes | Update `email`, `new_username`, or library/evaluation preferences; changed email requires `current_password` |
 | `DELETE` | `/api/auth/me` | Yes | Delete user account and every row it owns. Requires the account password in the body |
 | `GET` | `/api/auth/me/llm-connection` | Yes | Read the caller's LLM provider connection and the selectable-provider catalogue (never returns the API key) |
-| `GET` | `/api/auth/me/llm-connection/models` | Yes | List models exposed by the caller's provider with estimated input/output pricing; Anthropic uses its static compatibility list |
-| `PUT` | `/api/auth/me/llm-connection` | Yes | Create or replace the provider, base URL, model, and API key |
+| `GET` | `/api/auth/me/llm-connection/models` | Yes | List curated OpenAI/Anthropic/Gemini models, or discover local/custom models, with estimated input/output pricing |
+| `PUT` | `/api/auth/me/llm-connection` | Yes | Create or replace the connection; hosted models must be in the curated catalogue |
 | `DELETE` | `/api/auth/me/llm-connection` | Yes | Disconnect the provider and erase the stored key |
 | `POST` | `/api/auth/me/llm-connection/test` | Yes | Send a tiny probe to verify the configured endpoint, key, and model |
 | `POST` | `/api/auth/change-password` | Yes | Change password after verifying current password; revokes all other sessions |
 | `POST` | `/api/auth/forgot-password` | No | Initiate password reset email flow |
 | `POST` | `/api/auth/reset-password` | No | Complete password reset using token; revokes every session |
+
+The connection response's `providers[].models` contains ordered model objects
+(`id`, human-readable `label`, `input_price_per_1m`, `output_price_per_1m`).
+OpenAI, Anthropic and Gemini return their curated choices even before a connection
+is saved. `suggested_models` remains an ID-only view of the same registry.
+Local/custom providers return an empty `models` array and allow manual model names;
+the `/models` endpoint discovers their advertised models, cached per user for
+15 minutes, and falls back to an empty array when discovery fails. Unknown prices
+are `null`, while Ollama/vLLM prices are zero. Prices are estimates, not quotes.
+
+Saving an unlisted hosted model returns HTTP 422. Existing connections using older
+models remain readable, testable and runnable until explicitly changed; they are
+not added to the selectable catalogue. Updating such a connection requires choosing
+a current model. Omit `api_key` to keep the saved credential. Server defaults and
+historical usage records are unaffected by the selection restriction.
 
 ## Prompt Endpoints
 

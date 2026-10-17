@@ -22,7 +22,7 @@ from app.services.llm_client import (
     server_default,
     text_completion,
 )
-from app.services.llm_model_catalog import invalidate_model_cache
+from app.services.llm_model_catalog import invalidate_model_cache, model_prices_for
 from app.services.llm_providers import PROVIDERS, InvalidConnectionError, resolve_connection
 from app.services.secret_store import (
     SecretDecryptionError,
@@ -43,6 +43,7 @@ def _provider_options() -> list[LLMProviderOption]:
             default_base_url=provider.default_base_url,
             requires_api_key=provider.requires_api_key,
             suggested_models=list(provider.models),
+            models=model_prices_for(provider, provider.models),
             docs_url=provider.docs_url,
         )
         for provider in PROVIDERS.values()

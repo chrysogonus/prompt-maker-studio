@@ -159,10 +159,9 @@ class TestServerDefault:
 
 
 class TestAvailableModels:
-    def test_users_own_model_leads_the_list(self):
+    def test_hosted_picker_only_offers_curated_models(self):
         models = available_models_for(_user(llm_model="gpt-4o"))
-        assert models[0] == "gpt-4o"
-        assert models.count("gpt-4o") == 1
+        assert models == ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna"]
 
     def test_free_text_model_still_appears(self):
         """A self-hosted server can serve any name at all."""

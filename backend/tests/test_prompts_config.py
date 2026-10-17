@@ -20,8 +20,8 @@ class TestPromptsConfigEndpoint:
         assert data["provider"] == "openai"
         assert data["provider_label"] == "OpenAI"
         assert data["model"] == TEST_LLM_MODEL
-        # The user's own model leads the picker.
-        assert data["available_models"][0] == TEST_LLM_MODEL
+        # Legacy saved models remain active but are not offered for new selections.
+        assert data["available_models"] == ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna"]
 
     def test_config_reports_disconnected_when_no_provider_is_set(self, client, auth_headers):
         """With no connection, no models are advertised — the frontend must not

@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
     else if (path === '/api/auth/me/llm-connection') body = {
       configured: true, provider: 'openai', provider_label: 'OpenAI',
       base_url: 'https://api.openai.com/v1', model: 'gpt-4.1-mini', has_api_key: true, api_key_hint: '…1234',
-      providers: [{ handle: 'openai', label: 'OpenAI', default_base_url: 'https://api.openai.com/v1', requires_api_key: true, suggested_models: ['gpt-4.1-mini'], docs_url: null }],
+      providers: [{ handle: 'openai', label: 'OpenAI', default_base_url: 'https://api.openai.com/v1', requires_api_key: true, suggested_models: ['gpt-6.1-sol'], models: [{ id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol', input_price_per_1m: 2, output_price_per_1m: 10 }], docs_url: null }],
     };
     else if (path.endsWith('/llm-connection/models')) body = [];
     else body = { detail: 'Unexpected test request' };
@@ -33,6 +33,8 @@ test('sidebar source link and settings controls remain accessible across sizes a
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Provider', exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Model', exact: true })).toBeVisible();
+  await expect(page.getByText(/Previously configured model: gpt-4.1-mini/)).toBeVisible();
   for (const theme of ['light', 'dark']) {
     await page.evaluate((value) => document.documentElement.setAttribute('data-theme', value), theme);
     for (const width of [1440, 900, 390, 320]) {

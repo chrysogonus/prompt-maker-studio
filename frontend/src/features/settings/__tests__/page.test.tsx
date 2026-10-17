@@ -67,7 +67,8 @@ function connection(overrides: Partial<Record<string, unknown>> = {}) {
         label: 'OpenAI',
         default_base_url: 'https://api.openai.com/v1',
         requires_api_key: true,
-        suggested_models: ['gpt-4o-mini', 'gpt-4o'],
+        suggested_models: ['gpt-6.1-sol'],
+        models: [{ id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol', input_price_per_1m: 2, output_price_per_1m: 10 }],
         docs_url: 'https://platform.openai.com/api-keys',
       },
       {
@@ -76,6 +77,7 @@ function connection(overrides: Partial<Record<string, unknown>> = {}) {
         default_base_url: 'http://localhost:11434/v1',
         requires_api_key: false,
         suggested_models: [],
+        models: [],
         docs_url: null,
       },
     ],
