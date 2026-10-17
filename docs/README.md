@@ -44,6 +44,8 @@ separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
+- [0.7.0 release candidate](releases/0.7.0.md): public Terms of Service route,
+  deployment requirements and validation.
 - [0.6.1 release record](releases/0.6.1.md): MCP annotation correction,
   verification, immutable image digests and publication results.
 - [0.6.0 release record](releases/0.6.0.md): publication, immutable image digests,

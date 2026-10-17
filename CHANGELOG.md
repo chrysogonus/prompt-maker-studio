@@ -14,6 +14,7 @@ any release. See [Project status](./README.md#project-status).
 
 - Serve operator-supplied Terms of Service at `/terms` and show its legal link
   when `nutzungsbedingungen.html` is available in the mounted legal directory.
+  Prepared for 0.7.0; see the [release candidate](./docs/releases/0.7.0.md).
 
 ## [0.6.1] - 2026-10-17
 
