@@ -8,6 +8,8 @@ import threading
 import time
 from unittest.mock import MagicMock, patch
 
+import httpx
+from openai import APITimeoutError, BadRequestError
 import pytest
 
 from app.models.billed_call import BilledCall
@@ -379,7 +381,7 @@ class TestRunEvaluation:
 
         with patch("app.services.eval_service.PlaygroundService.run") as mock_run:
             mock_run.side_effect = [
-                PlaygroundRunError("boom"),
+                PlaygroundRunError("secret-provider-key request={sensitive}"),
                 PlaygroundResult(
                     output_text="y here",
                     latency_ms=1,
@@ -399,8 +401,48 @@ class TestRunEvaluation:
         failed = [r for r in run.results if r.score is None]
         assert len(failed) == 1
         assert "Model run failed" in failed[0].rationale
+        assert "secret-provider-key" not in failed[0].rationale
         # The failed case is excluded from the aggregate; the successful one scores 100.
         assert run.score == 100.0
+
+    @pytest.mark.parametrize("failure_kind", ["workspace", "timeout"])
+    def test_wrapped_provider_failure_preserves_safe_actionable_reason(
+        self, db_session, failure_kind
+    ):
+        prompt, user = self._make_prompt_with_cases(
+            db_session, [{"method": "rule", "criteria": "x", "variables": {}}]
+        )
+        request = httpx.Request("POST", "https://api.anthropic.com/v1/chat/completions")
+        if failure_kind == "workspace":
+            message = "Invalid workspace wrkspc_secret for API key sk-secret request=private"
+            error = BadRequestError(
+                message,
+                response=httpx.Response(400, request=request),
+                body={"error": {"message": message}},
+            )
+        else:
+            error = APITimeoutError(request=request)
+        with (
+            patch(
+                "app.services.eval_service.client_for",
+                return_value=make_connection(MagicMock(), "anthropic"),
+            ),
+            patch("app.services.playground_service.text_completion", side_effect=error),
+        ):
+            run = EvalService.run_evaluation(db_session, prompt, user)
+
+        rationale = run.results[0].rationale
+        assert "Model run failed" in rationale
+        if failure_kind == "workspace":
+            assert "workspace" in rationale.lower()
+            assert "Settings" in rationale
+        else:
+            assert "did not respond in time" in rationale.lower()
+        assert "sk-secret" not in rationale
+        assert "wrkspc_secret" not in rationale
+        assert "request=private" not in rationale
+        assert run.results[0].output_text is None
+        assert run.results[0].score is None
 
     def test_judge_parse_failure_captured_per_case(self, db_session):
         prompt, user = self._make_prompt_with_cases(
@@ -414,7 +456,9 @@ class TestRunEvaluation:
         with (
             patch("app.services.eval_service.PlaygroundService.run") as mock_run,
             patch.object(
-                EvalService, "_score_judge", side_effect=JudgeError("Unparseable judge response")
+                EvalService,
+                "_score_judge",
+                side_effect=JudgeError("secret-provider-key request={sensitive}"),
             ),
         ):
             mock_run.return_value = PlaygroundResult(
@@ -432,6 +476,7 @@ class TestRunEvaluation:
         judge_result = next(r for r in run.results if r.method == "judge")
         assert judge_result.score is None
         assert judge_result.rationale.startswith("Judge grading failed")
+        assert "secret-provider-key" not in judge_result.rationale
         # The run still commits and aggregates over the remaining scored case.
         assert run.score == 100.0
 

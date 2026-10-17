@@ -11,10 +11,10 @@
 
 ## Later — Quarterly Horizon
 - [ ] **Calibrate evaluation scores** — The evaluation workspace is restored; validate automated scores against human judgment
-- [ ] **Markdown output option** — Headings instead of XML-style tags for chat assistants that prefer them
+- [ ] **Markdown heading output option** — Plain-text copy is implemented; rendering named section headings remains open
 - [ ] **Version milestones** — Pin and label important versions (notes on save shipped in 0.3.0)
 - [ ] **Prompt trash and restore** — A 30-day recovery window for deleted prompts and their history
-- [ ] **Import prompts from file** — The reverse of the JSON export
+- [ ] **Full-fidelity backup restore through the UI** — Basic collection import is implemented; historical records and original dates remain out of scope
 
 ## Someday / Aspirational
 - [ ] **Prompt sharing** — Read-only links to publish a template
@@ -27,6 +27,7 @@ Dates below record original delivery. Notes identify later replacements; they
 are not a list of current controls. The current inventory is [FEATURES.md](FEATURES.md).
 | Item | Completed | Notes |
 |---|---|---|
+| UX audit improvements | 2026-10-17 (unreleased) | Responsive/focused editor, non-AI capture, retained filled inputs, collection import preview, batch filing, title/content-recency sorting, budget recovery and sidebar/system theme |
 | 0.5.1 release | 2026-10-16 | Published: shared light/dark layout, saved theme before first paint, Tools menu, Test with AI panel, responsive library cards, keyboard focus restoration and synchronized documentation; [release record](../docs/releases/0.5.1.md) |
 | 0.5.0 release | 2026-10-15 | Published: application observability, immutable auth/OAuth identities, account/session hardening, public guides, provider/billing/backup reliability and dependency updates; [release record](../docs/releases/0.5.0.md) |
 | 0.4.0 release | 2026-10-14 | Published: public landing page, request-time SEO metadata, packaged public assets and MCP Registry descriptor; [release record](../docs/releases/0.4.0.md) |

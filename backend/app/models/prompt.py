@@ -38,6 +38,8 @@ class Prompt(Base):
     name = Column(String(255), nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     updated_at = Column(DateTime, nullable=True)
+    # Separate content recency from the stamp used for optimistic concurrency.
+    content_updated_at = Column(DateTime, nullable=True)
     # Free-text organizational label, shown as a folder badge in the Library.
     folder = Column(String(255), nullable=True, index=True)
     is_favorite = Column(Boolean, nullable=False, default=False, server_default="0")

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiClient } from '@/lib/api';
 import AICallContext from '@/components/ui/AICallContext';
-import { fillVariables, renderSections, sectionTag, splitVariables } from '@/lib/sections';
+import { fillVariables, renderPlainSections, renderSections, sectionTag, splitVariables } from '@/lib/sections';
 import { PromptField, VariableMetadataItem, PromptsConfigResponse, TryPromptResponse } from '@/types/prompt';
 import styles from './PromptEditor.module.css';
 
@@ -14,7 +14,10 @@ const TRY_PROMPT_CHARS = 100_000;
 interface PreviewPaneProps {
   fields: PromptField[];
   aiConfig: PromptsConfigResponse | null;
+  aiConfigLoading?: boolean;
+  aiConfigError?: boolean;
   onLoadExamples: () => void;
+  onClearValues: () => void;
   variables: string[];
   metadata: Record<string, VariableMetadataItem>;
   values: Record<string, string>;
@@ -31,6 +34,9 @@ type CopyKind = 'template' | 'filled' | 'placeholders';
 export default function PreviewPane({
   fields,
   aiConfig,
+  aiConfigLoading = false,
+  aiConfigError = false,
+  onClearValues,
   onLoadExamples,
   variables,
   metadata,
@@ -43,6 +49,7 @@ export default function PreviewPane({
   onCopyFailed,
 }: PreviewPaneProps) {
   const [copied, setCopied] = useState<CopyKind | null>(null);
+  const [outputFormat, setOutputFormat] = useState<'sections' | 'plain'>('sections');
   const [trying, setTrying] = useState(false);
   const [result, setResult] = useState<{ text: string; response: TryPromptResponse } | null>(null);
   const [tryError, setTryError] = useState('');
@@ -68,7 +75,7 @@ export default function PreviewPane({
   }
 
   const filled = mode === 'filled' && variables.length > 0;
-  const template = renderSections(fields);
+  const template = outputFormat === 'plain' ? renderPlainSections(fields) : renderSections(fields);
   const unfilled = variables.filter((name) => metadata[name]?.required ? !values[name]?.trim() : !values[name]);
   const missingRequired = unfilled.filter((name) => metadata[name]?.required);
   const missingOptional = unfilled.filter((name) => !metadata[name]?.required);
@@ -161,8 +168,7 @@ export default function PreviewPane({
           fields.map((field, i) => (
             <span key={i}>
               {i > 0 && '\n\n'}
-              <span className={styles.previewTag}>&lt;{sectionTag(field.name)}&gt;</span>
-              {'\n'}
+              {outputFormat === 'sections' && <><span className={styles.previewTag}>&lt;{sectionTag(field.name)}&gt;</span>{'\n'}</>}
               {splitVariables(field.content).map((part, j) => {
                 if (part.kind === 'text') return part.text;
                 if (!filled) {
@@ -182,8 +188,7 @@ export default function PreviewPane({
                   </span>
                 );
               })}
-              {'\n'}
-              <span className={styles.previewTag}>&lt;/{sectionTag(field.name)}&gt;</span>
+              {outputFormat === 'sections' && <>{'\n'}<span className={styles.previewTag}>&lt;/{sectionTag(field.name)}&gt;</span></>}
             </span>
           ))
         ) : (
@@ -226,12 +231,23 @@ export default function PreviewPane({
             {copied === 'placeholders' ? 'Copied with placeholders' : 'Copy with placeholders'}
           </button>
         )}
+        {filled && <button type="button" className={styles.copyButton} data-secondary="true" disabled={!Object.values(values).some(Boolean)} onClick={onClearValues}>Clear inputs</button>}
         </div>
+        <details className={styles.outputOptions}>
+          <summary>Output options</summary>
+          <label className={styles.outputFormat}>
+            <span>Output format</span>
+            <select value={outputFormat} onChange={(event) => { setOutputFormat(event.target.value as 'sections' | 'plain'); setCopied(null); }}>
+              <option value="sections">Section tags</option>
+              <option value="plain">Plain text</option>
+            </select>
+          </label>
+        </details>
         {(filled || variables.length === 0) && (
           <details className={styles.tryPanel} open={tryOpen} onToggle={(event) => setTryOpen(event.currentTarget.open)}>
             <summary>Test with AI</summary>
             <div className={styles.tryControls}>
-              <AICallContext config={aiConfig} />
+              <>{aiConfigLoading ? <p role="status">Checking AI connection…</p> : aiConfigError ? <p role="status">Could not check the AI connection. Reload to retry.</p> : <AICallContext config={aiConfig} />}</>
               {filledText.length > TRY_PROMPT_CHARS && <p className={styles.previewWarning}>Try once accepts up to 100,000 characters. Shorten the prompt before running.</p>}
               <button type="button" className={styles.copyButton} data-secondary="true" onClick={tryOnce}
                 disabled={filledText.length > TRY_PROMPT_CHARS || trying || !hasContent || missingRequired.length > 0 || !aiConfig?.provider_connected || aiConfig.budget_exhausted}>

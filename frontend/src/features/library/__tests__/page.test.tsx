@@ -23,6 +23,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/api', () => ({
   ApiClient: {
     getSavedPrompts: vi.fn(),
+    createPrompt: vi.fn(),
     updatePrompt: vi.fn(),
     deletePrompt: vi.fn(),
     flushDeletePrompt: vi.fn(),
@@ -85,7 +86,7 @@ function rowNames() {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   currentParams = new URLSearchParams();
   vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue(LIBRARY);
   vi.mocked(AuthService.getCurrentUser).mockResolvedValue({
@@ -154,6 +155,152 @@ describe('LibraryPage', () => {
     expect(rowNames()).toHaveLength(4);
   });
 
+  it.each(['list', 'grid'])('shows matching context in %s and keeps the default excerpt without a query', async layout => {
+    const user = userEvent.setup();
+    vi.mocked(AuthService.getCurrentUser).mockResolvedValue({ id: 1, username: 'alex', created_at: '2026-01-01', default_library_view: layout as 'list' | 'grid' });
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ name: 'Café brief', folder: 'Résearch', fields: [
+      { name: 'Format', content: 'Return bullet points.' },
+      { name: 'Task', content: 'Long introduction. '.repeat(50) + 'Visit the cafe\u0301 tomorrow <script>alert(1)</script>.' },
+    ] })]);
+    const { container } = await renderLibrary();
+    expect(screen.getByText('Return bullet points.')).toBeInTheDocument();
+    const search = screen.getByLabelText('Search prompts');
+    await user.type(search, 'tomorrow');
+    expect(screen.getByText('Task:')).toBeInTheDocument();
+    expect(container.querySelector('mark')).toHaveTextContent('tomorrow');
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.querySelector('mark')?.parentElement?.textContent?.length).toBeLessThan(190);
+    await user.clear(search);
+    await user.type(search, 'CAFÉ');
+    expect(screen.getByText('Title:')).toBeInTheDocument();
+    expect(container.querySelector('mark')).toHaveTextContent('Café');
+    await user.clear(search);
+    await user.type(search, 'research');
+    expect(screen.getByText('Folder:')).toBeInTheDocument();
+    expect(container.querySelector('mark')).toHaveTextContent('Résearch');
+    await user.clear(search);
+    await user.type(search, 'visit the café');
+    expect(screen.getByText('Task:')).toBeInTheDocument();
+    expect(container.querySelector('mark')).toHaveTextContent('Visit the cafe\u0301');
+    await user.clear(search);
+    expect(screen.getByText('Return bullet points.')).toBeInTheDocument();
+    expect(container.querySelector('mark')).toBeNull();
+  });
+
+  it('previews a pasted note with an editable fallback title and preserves its content', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Import prompts' }));
+    await user.type(screen.getByLabelText('Paste Markdown or JSON'), 'A plain note\n## Existing heading\nKeep this.');
+    await user.type(screen.getByLabelText('Title for a single note'), 'My note');
+    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('My note');
+    await user.click(screen.getByText('1 section'));
+    expect(screen.getByText('A plain note\n## Existing heading\nKeep this.', { collapseWhitespace: false })).toBeInTheDocument();
+    expect(ApiClient.createPrompt).not.toHaveBeenCalled();
+  });
+
+  it('keeps content recency order when favorites change organizational timestamps', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue(LIBRARY.map(prompt => ({ ...prompt, content_updated_at: prompt.updated_at })));
+    vi.mocked(ApiClient.updatePrompt).mockResolvedValue(saved({ is_favorite: true, updated_at: '2026-10-17T12:00:00Z', content_updated_at: LIBRARY[0].updated_at }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add Weekly status update to favorites' }));
+    await screen.findByRole('button', { name: 'Remove Weekly status update from favorites' });
+    expect(rowNames()[0]).toBe('Reply to a tricky email');
+  });
+
+  it('keeps a pending deletion hidden while importing and allows undo', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.createPrompt).mockResolvedValue(saved({ id: 20, name: 'Greeting' }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'More actions for LinkedIn post' }));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Import prompts' }));
+    await user.type(screen.getByLabelText('Paste Markdown or JSON'), '# Greeting\nHello');
+    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    await user.click(screen.getByRole('button', { name: 'Import 1 prompt' }));
+    await screen.findByText(/Imported 1 of 1 prompts/);
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(rowNames()).not.toContain('LinkedIn post');
+    expect(rowNames()).toContain('Greeting');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(rowNames()).toContain('LinkedIn post');
+    expect(ApiClient.deletePrompt).not.toHaveBeenCalled();
+  });
+
+  it('keeps an empty-library import open after partial success so failures can be retried', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([]);
+    vi.mocked(ApiClient.createPrompt).mockResolvedValueOnce(saved({ id: 20, name: 'First' })).mockRejectedValueOnce(new Error('Offline')).mockResolvedValueOnce(saved({ id: 21, name: 'Second' }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Import prompts' }));
+    await user.type(screen.getByLabelText('Paste Markdown or JSON'), '# First\nHello\n# Second\nThanks');
+    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    await user.click(screen.getByRole('button', { name: 'Import 2 prompts' }));
+    await screen.findByText(/Imported 1 of 2 prompts/);
+    expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Second');
+    await user.click(screen.getByRole('button', { name: 'Import 1 prompt' }));
+    await screen.findByText(/Imported 1 of 1 prompts/);
+    expect(ApiClient.createPrompt).toHaveBeenCalledTimes(3);
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(rowNames()).toContain('First');
+    expect(rowNames()).toContain('Second');
+  });
+
+  it('rejects the whole invalid import before writes and validates edited titles', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Import prompts' }));
+    const input = screen.getByLabelText('Paste Markdown or JSON');
+    await user.type(input, '# Good\nOK\n# Bad\n## 123 invalid\nBad');
+    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('section names');
+    expect(ApiClient.createPrompt).not.toHaveBeenCalled();
+    await user.clear(input);
+    await user.type(input, '# Good\nOK');
+    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    await user.clear(screen.getByLabelText('Title for prompt 1'));
+    await user.click(screen.getByRole('button', { name: 'Import 1 prompt' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('title must contain');
+    expect(ApiClient.createPrompt).not.toHaveBeenCalled();
+  });
+
+  it('lets users sort by title', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.selectOptions(screen.getByLabelText('Sort prompts'), 'title');
+    expect(rowNames()).toEqual(['LinkedIn post', 'Reply to a tricky email', 'Untitled (14 Mar 2026, 09:12 UTC)', 'Weekly status update']);
+  });
+
+  it('files selected prompts and retains failures for retry', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.updatePrompt).mockResolvedValueOnce(saved({ folder: 'Team' })).mockRejectedValueOnce(new Error('Offline'));
+    await renderLibrary();
+    await user.click(screen.getByLabelText('Select Weekly status update'));
+    await user.click(screen.getByLabelText('Select LinkedIn post'));
+    await user.type(screen.getByLabelText('File selected in folder'), 'Team');
+    await user.click(screen.getByRole('button', { name: 'Move selected' }));
+    expect(await screen.findByText('Moved 1 of 2 prompts. 1 failed; still selected for retry.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Select LinkedIn post')).toBeChecked();
+    expect(screen.getByLabelText('Select Weekly status update')).not.toBeChecked();
+  });
+
+  it('previews and edits imports before creating, and never repeats successful imports', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.createPrompt).mockResolvedValueOnce(saved({ id: 20, name: 'Greeting' })).mockRejectedValueOnce(new Error('Offline'));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Import prompts' }));
+    await user.type(screen.getByLabelText('Paste Markdown or JSON'), '# Greeting\nHello\n# Reply\nThanks');
+    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    expect(ApiClient.createPrompt).not.toHaveBeenCalled();
+    await user.type(screen.getByLabelText('Folder for Greeting'), 'Team');
+    await user.click(screen.getByRole('button', { name: 'Import 2 prompts' }));
+    expect(await screen.findByText(/Imported 1 of 2 prompts/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Title for prompt 1')).toHaveValue('Reply');
+    expect(ApiClient.createPrompt).toHaveBeenCalledWith({ name: 'Greeting', folder: 'Team', fields: [{ name: 'Prompt', content: 'Hello' }] });
+  });
+
   it('stars a prompt', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.updatePrompt).mockResolvedValue(saved({ is_favorite: true }));
@@ -165,6 +312,18 @@ describe('LibraryPage', () => {
     expect(
       await screen.findByRole('button', { name: 'Remove Weekly status update from favorites' }),
     ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('copies section content as plain text without removing literal tags or placeholders', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [
+      { name: 'Task', content: 'Keep <TASK>literal</TASK> and {{name}}.' },
+      { name: 'Format', content: 'Two lines.\nKeep them.' },
+    ] })]);
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'More actions for Weekly status update' }));
+    await user.click(screen.getByRole('button', { name: 'Copy as plain text' }));
+    expect(await navigator.clipboard.readText()).toBe('Keep <TASK>literal</TASK> and {{name}}.\n\nTwo lines.\nKeep them.');
   });
 
   it('copies a template in one click', async () => {

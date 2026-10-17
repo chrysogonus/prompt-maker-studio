@@ -6,6 +6,7 @@ import * as accounts from './api/accounts';
 import * as refinement from './api/refinement';
 import * as evaluation from './api/evaluation';
 export { ApiError, PROMPT_NOT_FOUND_MESSAGE, isValidPromptId } from './api/errors';
+export type { BudgetErrorDetails } from './api/errors';
 
 export class ApiClient {
   static tryPrompt = prompts.tryPrompt;

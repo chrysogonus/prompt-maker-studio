@@ -50,6 +50,7 @@ def restore_prompt_version(prompt_id: int, version_id: int, db: Session, user_id
 
     PromptVersionService.restore(db, prompt, version, user_id)
     prompt.updated_at = next_write_stamp(prompt.updated_at or prompt.created_at)
+    prompt.content_updated_at = prompt.updated_at
 
     db.commit()
     db.refresh(prompt)

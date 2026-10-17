@@ -71,6 +71,7 @@ def _connection_response(user: User) -> LLMConnectionResponse:
         provider_label=provider.label if provider else None,
         base_url=user.llm_base_url or (provider.default_base_url if provider else None),
         model=user.llm_model,
+        workspace_id=user.llm_workspace_id if provider and provider.handle == "anthropic" else None,
         has_api_key=has_key,
         api_key_hint=hint,
         providers=_provider_options(),
@@ -105,6 +106,12 @@ def update_llm_connection(body: LLMConnectionUpdate, current_user: User, db: Ses
         )
     except InvalidConnectionError as exc:
         raise OperationError(status_code=422, detail=str(exc)) from exc
+    if resolved.provider.handle != "anthropic":
+        current_user.llm_workspace_id = None
+    elif "workspace_id" in body.model_fields_set:
+        current_user.llm_workspace_id = body.workspace_id
+    elif changing_provider:
+        current_user.llm_workspace_id = None
     current_user.llm_provider = resolved.provider.handle
     current_user.llm_base_url = resolved.base_url
     current_user.llm_model = resolved.model
@@ -125,6 +132,7 @@ def delete_llm_connection(current_user: User, db: Session):
     current_user.llm_provider = None
     current_user.llm_base_url = None
     current_user.llm_model = None
+    current_user.llm_workspace_id = None
     current_user.llm_api_key_encrypted = None
     db.commit()
     db.refresh(current_user)

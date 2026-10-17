@@ -28,11 +28,16 @@ Explain {{topic}} in three short steps.
   letters, digits, `_` or `-`; optional whitespace inside the braces is accepted.
   Each distinct name becomes a field to fill in.
 
-The server is the only place text is rendered and stored (`generated_prompt`); clients send
-sections (`fields`) and are rejected with 422 if they send text. The frontend mirrors the same
-rendering for its live preview (`frontend/src/lib/sections.ts`,
+The server renders stored text (`generated_prompt`); clients send sections
+(`fields`) and are rejected with 422 if they send generated text. The frontend mirrors
+that rendering for its default live preview (`frontend/src/lib/sections.ts`,
 `backend/app/services/prompt_sections.py`). The shared
 [rendering fixtures](../contracts/README.md) check that both implementations agree.
+
+Expand Output options and choose Plain text in the editor's Output format control to omit the app's section
+wrappers. Sections are joined with a blank line, while literal tags inside their
+content remain untouched. Preview, copying and Try once use the selected format;
+stored sections are unchanged. The library menu also offers Copy as plain text.
 
 ## Writing and saving
 
@@ -75,7 +80,10 @@ modes:
   prompt". Required inputs block ordinary filled copying until completed; Copy with placeholders
   explicitly allows unresolved inputs. Optional inputs retain the existing copying behavior.
 
-Hints are edited in the Variables panel under the sections. A hint whose variable no longer
+Hints are edited in the Variables panel under the sections. Each variable's Options
+disclosure contains its required flag and example. The panel links to the variables
+guide; Guides is also available in app navigation. Markup warnings are advisory and
+can be dismissed without altering the text. A hint whose variable no longer
 appears is kept, marked as unused, until removed. Variables are optional by default; required inputs
 and examples are editable settings persisted on Save. Load example inputs is explicit and examples
 never become section content. Ordinary filled inputs are temporary. Converted inputs recover in
@@ -90,7 +98,12 @@ from Tools → Evaluate: edit test cases, import/export case CSV, review AI sugg
 run explicitly, inspect and compare historical outputs, and submit manual ratings.
 Saving a prompt never starts an evaluation.
 
-On phones the editor has Edit and Fill and copy tabs, and saved prompts open on Fill and copy.
+At widths up to 1200px the editor has Edit and Fill and copy tabs, and saved
+prompts open on Fill and copy. Library Fill and copy links open a focused form
+on every screen size; Edit template returns to the section editor. Discarding
+template changes retains filled values for variables still in the saved prompt.
+Clear inputs resets those separately. Recovered drafts are identified
+above both panes as stored only in the current browser.
 
 ## Versions
 
@@ -102,7 +115,8 @@ On phones the editor has Edit and Fill and copy tabs, and saved prompts open on 
   diff of any version against the current text, and restores it. A restore snapshots the state it
   replaces, so it can be undone, and is unavailable while there are unsaved edits.
 - Renaming, filing or favoriting does not create a content version. REST updates
-  advance the edit timestamp even without a content snapshot; the editor avoids
+  advance the concurrency timestamp even without a content snapshot; content
+  recency advances only for section/variable changes and restores. The editor avoids
   sending an unchanged content save. REST accepts an optional concurrency token,
   while the editor and MCP updates always send one.
 - Versions recorded before 0.3.0 can hold hand-edited text that disagrees with their sections.
@@ -114,6 +128,19 @@ On phones the editor has Edit and Fill and copy tabs, and saved prompts open on 
 
 - `/library` lists every prompt by most recent edit, in a list or a grid (the default is a
   Settings preference), with search across names, folders and section text.
+- Choose Recently edited or Title A–Z sorting. Select prompts to file them together;
+  failed moves stay selected for retry. Grid metadata sits separately from actions.
+- Import prompts accepts a JSON export or Markdown (`# Title`, optional `## Section`
+  headings), up to 100 prompts and 5 MB per import. Review and edit names/folders
+  before creating new copies. Sections and variable settings are retained; history,
+  dates, notes and favorite status are not restored. Failed items remain for retry.
+- A single plain note needs no heading. Uploading suggests its filename as the title;
+  pasted notes have an editable title. Simple one-line YAML `title` values can supply
+  a title; complex YAML uses the fallback. All single-note text, including front
+  matter, is preserved. Metadata is not mapped into folders or other settings.
+- Paste a prompt offers Save as written without AI. The source becomes one Task
+  section, preserving its text; copied output includes the usual section wrappers.
+  Optional AI conversion still offers review before applying.
 - The sidebar narrows it to **Favorites**, a **folder**, or **Unfiled**.
 - Library cards expose Copy template and, for prompts with variables, Fill and copy, which opens
   the filling view directly on desktop and phones. Each prompt's menu: Copy template, Rename,

@@ -92,6 +92,7 @@ class PromptHistoryResponse(BaseModel):
     generated_prompt: str
     created_at: datetime
     updated_at: datetime | None = None
+    content_updated_at: datetime | None = None
     current_note: str | None = None
     folder: str | None = None
     is_favorite: bool = False
@@ -195,6 +196,7 @@ class ExportedPrompt(BaseModel):
     is_favorite: bool
     created_at: datetime
     updated_at: datetime | None
+    content_updated_at: datetime | None = None
     current_note: str | None = None
     variable_metadata: dict[str, VariableMetadataItem] | None = None
     versions: list[ExportedPromptVersion]

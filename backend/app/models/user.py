@@ -73,6 +73,7 @@ class User(Base):
     llm_base_url = Column(String(500), nullable=True)
     llm_api_key_encrypted = Column(Text, nullable=True)
     llm_model = Column(String(200), nullable=True)
+    llm_workspace_id = Column(String(100), nullable=True)
 
     # Every user-owned table cascades from here. Account deletion promises to
     # remove all of a user's data, so anything referencing users.id must be

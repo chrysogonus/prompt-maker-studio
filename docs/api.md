@@ -34,6 +34,14 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 | `POST` | `/api/auth/forgot-password` | No | Initiate password reset email flow |
 | `POST` | `/api/auth/reset-password` | No | Complete password reset using token; revokes every session |
 
+Anthropic connections accept optional `workspace_id` (`wrkspc_` followed by
+letters/digits). Omitting it preserves a same-provider value; null clears it.
+Changing provider or disconnecting clears it. Responses include this identifier,
+never the API key. The shared client sends `anthropic-workspace-id` only for an
+Anthropic connection targeting `api.anthropic.com` and does not follow redirects
+with that header. Single-workspace keys can leave it empty. Connection testing
+is explicit and may incur provider charges.
+
 The connection response's `providers[].models` contains ordered model objects
 (`id`, human-readable `label`, `input_price_per_1m`, `output_price_per_1m`).
 OpenAI, Anthropic and Gemini return their curated choices even before a connection
@@ -58,7 +66,7 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 | `POST` | `/api/prompts` | Yes | Save a new prompt from a name, sections, optional folder and variable metadata (hints, required inputs and examples) |
 | `POST` | `/api/prompts/parse-text` | Yes | Convert pasted text into sections; optional `extract_variables: true` also returns original input values and source phrases |
 | `POST` | `/api/prompts/try` | Yes | Run filled editor `text` once with the configured AI connection; records spend without saving a prompt |
-| `GET` | `/api/prompts/config` | Yes | The caller's effective AI connection (own or server default), suggested models, and global budget status |
+| `GET` | `/api/prompts/config` | Yes | The caller's effective AI connection (own or server default), suggested models, and shared/caller budget status |
 | `GET` | `/api/prompts/saved` | Yes | List the library (supports `folder` and `favorite_only` filters) |
 | `GET` | `/api/prompts/folders` | Yes | Distinct folder names |
 | `PATCH` | `/api/prompts/folders?name=` | Yes | Rename a folder for all its prompts (merges onto an existing name) |
@@ -79,8 +87,12 @@ and `variable_metadata: {}` to clear variable settings. `fields` replaces the
 whole section list. `last_updated_at` is optional in REST; when supplied, it
 must exactly match the last `updated_at` (or `created_at` if null), otherwise the
 request returns 409. The MCP update tool requires this token. REST library
-results are ordered by creation time; the frontend sorts by last edit and
-applies search locally.
+results are ordered by creation time; the frontend sorts by content edit time or
+title and applies search locally. `content_updated_at` records section/variable
+edits and restores; when null, creation time is the content recency. Rename,
+favorite and filing changes advance `updated_at` for concurrency without changing
+`content_updated_at`. Migration 028 backfills historical content recency from the
+last known update because earlier organization-only activity cannot be separated.
 
 `parse-text` defaults to the existing fields-only response. Extraction responses
 contain `fields` and `variables` with `name`, `value`, `description` and
@@ -125,6 +137,13 @@ Expected failures use HTTP `detail`: 401 for invalid sessions, 403 for CSRF or
 closed registration, 404 for missing/unowned prompt data, 409 for edit conflicts,
 and 422 for invalid input or unusable AI configuration. Metered paths can return
 402 for exhausted budgets/provider quota and 502 for provider failures. The
-connection probe returns 200 with an `ok` flag and message for probe failures.
+app's budget rejections also include a `budget` object with `scope` (`shared` or
+`user`), `resets_at` (UTC), `retry_after` seconds and `reason` (`exhausted` or
+`estimated_cost_exceeds_remaining`), plus a `Retry-After` header. Provider quota
+errors need not include this metadata. `/api/prompts/config` reports shared and
+caller exhaustion through `budget_exhausted`, `budget_scope`, `budget_resets_at`,
+`global_budget_remaining_usd` and `user_budget_remaining_usd`. An estimated batch
+can exceed the remaining budget before the balance is fully exhausted.
+The connection probe returns 200 with an `ok` flag and message for probe failures.
 Unexpected 500 responses contain a safe message and `request_id`; responses also
 carry `X-Request-ID` for log correlation.

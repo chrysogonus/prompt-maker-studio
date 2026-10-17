@@ -43,3 +43,13 @@ it('reports field validation errors in readable language', async () => {
     method: 'manual', name: 'x'.repeat(101), criteria: '', variables: {}, intentionally_empty: false,
   })).rejects.toThrow('String should have at most 100 characters');
 });
+
+it('retains budget scope and reset information for recovery without repeating the run', async () => {
+  const budget = { scope: 'user', resets_at: '2026-11-01T00:00:00+00:00', retry_after: 3600, reason: 'exhausted' };
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
+    JSON.stringify({ detail: 'Your monthly API budget has been reached.', budget }), { status: 402 },
+  ));
+  vi.spyOn(AuthService, 'ensureSessionValidity').mockResolvedValue();
+  await expect(ApiClient.runEvaluation(7)).rejects.toMatchObject({ status: 402, budget });
+  expect(fetch).toHaveBeenCalledTimes(1);
+});

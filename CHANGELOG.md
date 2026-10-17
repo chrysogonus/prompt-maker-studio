@@ -10,6 +10,46 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- Paste prompts without AI using Save as written, with an editable suggested title.
+- Preview JSON or Markdown collection imports, edit titles and folders, and retry failed items.
+- Sort the library by title or content recency and file selected prompts together.
+- Choose Light, Dark or System from the sidebar or Settings.
+- Configure an optional Anthropic workspace ID for multi-workspace keys; shared
+  AI requests send it only to Anthropic's endpoint (migration 029).
+- Choose plain-text output in the editor or copy plain templates from the library.
+- Import single notes using filename, editable or simple front-matter titles.
+- Build automatic evaluation checks with Contains, Does not contain and Valid JSON.
+- Open Guides from the app and view complete prompt names through Prompt details.
+
+### Fixed
+
+- Editor panes switch to tabs before they overlap on tablets and small laptops;
+  Fill and copy links open a focused reuse view on every screen size.
+- Discarding template edits preserves filled inputs for retained variables, and
+  recovered drafts are explained above both panes. Inputs have a separate clear action.
+- Library metadata has its own row, frequent icon controls have larger targets,
+  and favoriting or filing no longer changes content recency.
+- AI connection checks show a loading state. Budget rejections explain the limit's
+  scope and reset time, retain test cases, and offer an explicit availability recheck.
+- Evaluation distinguishes failed and partially failed runs from pending ratings,
+  hides legacy raw provider errors, and offers safe, actionable connection guidance.
+- Search results identify and highlight matching passages, including later sections.
+- Mobile mode controls no longer repeat Fill and copy; tabs and title controls
+  have larger targets. Advanced variable settings are collapsible and markup
+  advice can be dismissed without changing the prompt.
+- Export wording distinguishes a full data archive from importing prompt copies.
+
+### Upgrade notes
+
+- Migration 028 adds a content-edit timestamp. Historical rows retain their last
+  known update time; earlier organization-only activity cannot be reconstructed.
+- Prompt responses add `content_updated_at`. AI capability responses include caller
+  budget status; budget errors retain `detail` and add recovery metadata.
+- Migration 029 adds optional per-user `llm_workspace_id`. Existing connections
+  remain unchanged; multi-workspace Anthropic keys can configure it in Settings.
+
 ## [0.5.1] - 2026-10-16
 
 0.5.1: dark-mode and editor polish, and fixes from the UI and UX

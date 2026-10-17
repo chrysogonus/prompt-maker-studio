@@ -1,6 +1,6 @@
 import type { EvalCase, EvalCaseInput, EvalProposal, EvalRun } from '@/types/evaluation';
 import { API_URL } from '../apiBase';
-import { ApiError, extractErrorMessage } from './errors';
+import { ApiError, extractBudgetDetails, extractErrorMessage } from './errors';
 import { authenticatedFetch } from './transport';
 
 async function request(promptId: number, path: string, init: RequestInit = {}, billed = false) {
@@ -10,7 +10,7 @@ async function request(promptId: number, path: string, init: RequestInit = {}, b
   if (!response.ok) {
     const error = await response.json().catch(() => null);
     const message = extractErrorMessage(error?.detail) || 'Evaluation request failed. Please try again.';
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, extractBudgetDetails(error?.budget));
   }
   return response;
 }

@@ -370,3 +370,43 @@ describe('LLMConnectionForm', () => {
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
   });
 });
+
+
+it('shows optional Anthropic workspace and resets it when switching providers', async () => {
+  const user = userEvent.setup();
+  vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({ provider: 'anthropic', base_url: 'https://api.anthropic.com/v1/', model: 'claude-sonnet-5-5', workspace_id: 'wrkspc_ABC123' }));
+  vi.mocked(AuthService.updateLLMConnection).mockResolvedValue(connection({ provider: 'anthropic', model: 'claude-sonnet-5-5', workspace_id: 'wrkspc_NEXT' }));
+  render(<LLMConnectionForm />);
+  const workspace = await screen.findByLabelText('Anthropic workspace ID (optional)');
+  expect(workspace).toHaveValue('wrkspc_ABC123');
+  await user.clear(workspace);
+  await user.type(workspace, 'wrkspc_NEXT');
+  expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: 'Save connection' }));
+  await waitFor(() => expect(AuthService.updateLLMConnection).toHaveBeenCalledWith(expect.objectContaining({ workspace_id: 'wrkspc_NEXT' })));
+  await user.selectOptions(screen.getByLabelText('Provider'), 'openai');
+  expect(screen.queryByLabelText('Anthropic workspace ID (optional)')).not.toBeInTheDocument();
+  await user.selectOptions(screen.getByLabelText('Provider'), 'anthropic');
+  expect(screen.getByLabelText('Anthropic workspace ID (optional)')).toHaveValue('');
+  expect(AuthService.testLLMConnection).not.toHaveBeenCalled();
+});
+
+
+it('rejects malformed workspace IDs and sends null to clear a saved workspace', async () => {
+  const user = userEvent.setup();
+  vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({ provider: 'anthropic', base_url: 'https://api.anthropic.com/v1/', model: 'claude-sonnet-5-5', workspace_id: 'wrkspc_ABC123' }));
+  vi.mocked(AuthService.updateLLMConnection).mockResolvedValue(connection({ provider: 'anthropic', base_url: 'https://api.anthropic.com/v1/', model: 'claude-sonnet-5-5', workspace_id: null }));
+  vi.mocked(AuthService.deleteLLMConnection).mockResolvedValue(connection({ provider: null, base_url: null, model: null, configured: false, workspace_id: null }));
+  render(<LLMConnectionForm />);
+  const workspace = await screen.findByLabelText('Anthropic workspace ID (optional)');
+  await user.clear(workspace);
+  await user.type(workspace, 'invalid');
+  await user.click(screen.getByRole('button', { name: 'Save connection' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('valid Anthropic workspace ID');
+  expect(AuthService.updateLLMConnection).not.toHaveBeenCalled();
+  await user.clear(workspace);
+  await user.click(screen.getByRole('button', { name: 'Save connection' }));
+  await waitFor(() => expect(AuthService.updateLLMConnection).toHaveBeenCalledWith(expect.objectContaining({ workspace_id: null })));
+  await user.click(screen.getByRole('button', { name: 'Disconnect' }));
+  await waitFor(() => expect(screen.queryByLabelText('Anthropic workspace ID (optional)')).not.toBeInTheDocument());
+});

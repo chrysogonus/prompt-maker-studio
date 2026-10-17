@@ -1,0 +1,79 @@
+import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+for (const width of [1440, 390, 320]) {
+  test(`library metadata, filing and import fit ${width}px`, async ({ page }, testInfo) => {
+    const height = width < 500 ? 740 : 900;
+    await page.setViewportSize({ width, height });
+    await page.addInitScript(() => localStorage.setItem('prompt-maker-studio:client-session-expiry', String(Date.now() + 3_600_000)));
+    let prompts = [{
+      id: 1, name: 'Customer support response', fields: [{ name: 'Format', content: 'Use bullet points.' }, { name: 'Task', content: 'Background. '.repeat(90) + 'Answer {{question}} at the café clearly.' }],
+      generated_prompt: '<TASK>Answer {{question}} clearly.</TASK>', folder: 'Customer support',
+      created_at: '2026-10-01T12:00:00Z', updated_at: '2026-10-01T12:00:00Z', content_updated_at: '2026-10-01T12:00:00Z', is_favorite: false,
+    }];
+    await page.route('**/api/**', async route => {
+      const path = new URL(route.request().url()).pathname;
+      let body: unknown = {};
+      if (path === '/api/auth/me') body = { id: 1, username: 'alex', email: 'alex@example.com', default_library_view: 'grid', created_at: '2026-10-01T00:00:00Z' };
+      else if (path === '/api/prompts/saved') body = prompts;
+      else if (path === '/api/prompts/1' && route.request().method() === 'PATCH') {
+        prompts = [{ ...prompts[0], ...route.request().postDataJSON() }];
+        body = prompts[0];
+      } else if (path === '/api/prompts' && route.request().method() === 'POST') {
+        const imported = { ...prompts[0], ...route.request().postDataJSON(), id: 2 };
+        prompts.push(imported);
+        body = imported;
+      }
+      await route.fulfill({ json: body });
+    });
+    await page.goto('/library');
+    await expect(page.getByRole('button', { name: 'Grid', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    const card = page.getByRole('listitem').filter({ has: page.getByRole('link', { name: 'Customer support response', exact: true }) });
+    const folder = card.getByText('Customer support', { exact: true });
+    await expect(folder).toBeVisible();
+    expect(await folder.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    const metadata = await folder.locator('..').boundingBox();
+    const actions = await card.getByRole('button', { name: 'Copy the Customer support response template' }).boundingBox();
+    expect(metadata!.y + metadata!.height).toBeLessThanOrEqual(actions!.y);
+    for (const button of [page.getByRole('button', { name: 'Grid', exact: true }), card.getByRole('button', { name: 'Add Customer support response to favorites' }), card.getByRole('button', { name: 'More actions for Customer support response' })]) {
+      const box = (await button.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    await page.getByLabel('Search prompts').fill('CAFÉ');
+    await expect(card.getByText('Task:', { exact: true })).toBeVisible();
+    await expect(card.locator('mark')).toHaveText('café');
+    await expect(card.locator('mark')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`search-${width}.png`), fullPage: true });
+    await page.getByRole('button', { name: 'List', exact: true }).click();
+    await expect(card.locator('mark')).toBeVisible();
+    await page.getByLabel('Search prompts').clear();
+    await expect(card.getByText('Use bullet points.', { exact: true })).toBeVisible();
+    await page.getByLabel('Select Customer support response').check();
+    await page.getByLabel('File selected in folder').fill('Team');
+    await page.getByRole('button', { name: 'Move selected' }).click();
+    await expect(page.getByText('Moved 1 of 1 prompts.')).toBeVisible();
+    await page.getByRole('button', { name: 'Import prompts', exact: true }).click();
+    const note = '---\ntitle: New prompt\ntags: [work]\n---\nGive a useful answer.';
+    await page.getByLabel('JSON or Markdown file').setInputFiles({ name: 'Daily note.md', mimeType: 'text/markdown', buffer: Buffer.from(note) });
+    await expect(page.getByLabel('Title for a single note')).toHaveValue('Daily note');
+    await page.getByRole('button', { name: 'Preview import' }).click();
+    await expect(page.getByLabel('Title for prompt 1')).toHaveValue('New prompt');
+    await page.getByText('1 section', { exact: true }).click();
+    await expect(page.locator('pre').filter({ hasText: 'tags: [work]' })).toHaveText(note);
+    await page.getByLabel('Folder for New prompt').fill('Team');
+    const dialogBox = (await page.getByRole('dialog', { name: 'Import prompts' }).boundingBox())!;
+    expect(dialogBox.y).toBeGreaterThanOrEqual(0);
+    expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(height);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`import-${width}.png`), fullPage: true });
+    await page.getByRole('button', { name: 'Import 1 prompt' }).click();
+    await expect(page.getByText(/Imported 1 of 1 prompts/)).toBeVisible();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(page.getByRole('main').getByRole('link', { name: 'New prompt', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+    expect(audit.violations.filter(item => item.impact === 'serious' || item.impact === 'critical')).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`library-${width}.png`), fullPage: true });
+  });
+}

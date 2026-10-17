@@ -79,6 +79,7 @@ export interface LLMConnection {
   provider_label: string | null;
   base_url: string | null;
   model: string | null;
+  workspace_id?: string | null;
   has_api_key: boolean;
   api_key_hint: string | null;
   providers: LLMProviderOption[];
@@ -87,6 +88,7 @@ export interface LLMConnection {
 }
 
 export interface LLMConnectionUpdate {
+  workspace_id?: string | null;
   provider: string;
   base_url?: string | null;
   model: string;

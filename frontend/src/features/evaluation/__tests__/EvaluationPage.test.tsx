@@ -115,7 +115,7 @@ it('creates a case with variable values and clear scoring instructions', async (
   await user.click(screen.getByRole('button', { name: 'Add test case' }));
   await user.type(screen.getByLabelText('Name (optional)'), 'Returns JSON');
   await user.type(screen.getByLabelText('topic'), 'Release notes');
-  fireEvent.change(screen.getByLabelText('Checks'), { target: { value: '{json}' } });
+  await user.selectOptions(screen.getByLabelText('Check 1'), 'json');
   await user.click(screen.getByRole('button', { name: 'Save test case' }));
   await screen.findByRole('heading', { name: 'Returns JSON' });
   expect(ApiClient.createEvalCase).toHaveBeenCalledWith(1, {
@@ -186,7 +186,7 @@ it('runs explicitly, blocks repeated clicks and opens the returned results', asy
   await screen.findByText('Clear release notes.');
   expect(screen.getByRole('radio', { name: 'Run history' })).toBeChecked();
   expect(ApiClient.runEvaluation).toHaveBeenCalledTimes(1);
-  expect(screen.getByText('Needs your rating')).toBeInTheDocument();
+  expect(screen.getAllByText('Awaiting your rating')[0]).toBeInTheDocument();
 });
 
 it('shows a failed run without making up results or retrying automatically', async () => {
@@ -209,9 +209,9 @@ it('rates a historical manual result and updates its score', async () => {
   await open();
   await user.click(screen.getByRole('radio', { name: 'Run history' }));
   await user.click(screen.getByRole('button', { name: 'Rate 4 out of 5' }));
-  await waitFor(() => expect(screen.queryByText('Needs your rating')).not.toBeInTheDocument());
+  await waitFor(() => expect(screen.queryByText('Awaiting your rating')).not.toBeInTheDocument());
   expect(ApiClient.rateEvalResult).toHaveBeenCalledWith(1, 12, 19, 4);
-  expect(screen.getAllByText('80/100').length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/80\/100/).length).toBeGreaterThan(0);
 });
 
 it('explains why an overall score waits for every manual rating', async () => {
@@ -224,7 +224,7 @@ it('explains why an overall score waits for every manual rating', async () => {
   await user.click(screen.getByRole('radio', { name: 'Run history' }));
   await user.click(within(screen.getByRole('group', { name: 'Rate Review tone' })).getByRole('button', { name: 'Rate 4 out of 5' }));
   await screen.findByText('1 result needs your rating. The overall score appears after all ratings are saved.');
-  expect(screen.getByRole('heading', { name: 'Not scored yet' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Awaiting your rating' })).toBeInTheDocument();
 });
 
 it('reviews AI suggestions without saving them until the user accepts an edited case', async () => {
@@ -325,8 +325,8 @@ it('renders structured judge feedback and keeps a failed case unscored', async (
   await user.click(screen.getByRole('radio', { name: 'Run history' }));
   expect(screen.getByText('Clear wording')).toBeInTheDocument();
   expect(screen.getByText('Missing date')).toBeInTheDocument();
-  expect(screen.getByText('Not scored')).toBeInTheDocument();
-  expect(screen.getAllByText('0/100').length).toBeGreaterThan(0);
+  expect(screen.getByText('Failed')).toBeInTheDocument();
+  expect(screen.getAllByText(/0\/100/).length).toBeGreaterThan(0);
 });
 
 it('compares runs by case identity and warns when scoring has changed', async () => {
@@ -344,4 +344,127 @@ it('compares runs by case identity and warns when scoring has changed', async ()
   expect(screen.getByText('Earlier release notes.')).toBeInTheDocument();
   expect(screen.getByText(/inputs or scoring changed/i)).toBeInTheDocument();
   expect(screen.getByText('Not included in this run.')).toBeInTheDocument();
+});
+
+
+it('blocks billed attempts after budget rejection until availability is rechecked', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.runEvaluation).mockRejectedValueOnce(new ApiError('Estimated request exceeds remaining budget.', 402, {
+    scope: 'user', resets_at: '2026-11-01T00:00:00+00:00', retry_after: 100,
+    reason: 'estimated_cost_exceeds_remaining',
+  }));
+  await open([example]);
+  await user.click(screen.getByRole('button', { name: 'Run evaluation' }));
+  await screen.findByRole('alert');
+  expect(screen.getByRole('button', { name: 'Run evaluation' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Suggest test cases' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Add test case' })).toBeEnabled();
+  expect(screen.getByText(/estimated request cost exceeds your remaining monthly API budget/i)).toBeInTheDocument();
+  expect(screen.getByText(/resets/i)).toHaveTextContent('2026');
+  expect(screen.getByRole('link', { name: 'Review AI settings' })).toHaveAttribute('href', '/settings#s-api');
+  await user.click(screen.getByRole('button', { name: 'Recheck AI availability' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Run evaluation' })).toBeEnabled());
+  expect(ApiClient.runEvaluation).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('heading', { name: 'Returns JSON' })).toBeInTheDocument();
+});
+
+it.each([429, 502, 503])('allows an explicit retry after provider failure (%s)', async (status) => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.runEvaluation).mockRejectedValueOnce(new ApiError('Provider unavailable.', status));
+  await open([example]);
+  await user.click(screen.getByRole('button', { name: 'Run evaluation' }));
+  await screen.findByRole('alert');
+  expect(screen.getByRole('button', { name: 'Run evaluation' })).toBeEnabled();
+  expect(screen.queryByRole('button', { name: 'Recheck AI availability' })).not.toBeInTheDocument();
+});
+
+it('labels caller budget exhaustion correctly and offers rechecking', async () => {
+  vi.mocked(ApiClient.getPromptsConfig).mockResolvedValue({
+    provider_connected: true, provider: 'custom', provider_label: 'Custom', model: 'example-model',
+    available_models: [], budget_exhausted: true, global_budget_remaining_usd: null,
+    user_budget_remaining_usd: 0, budget_scope: 'user', budget_resets_at: '2026-11-01T00:00:00+00:00',
+  });
+  await open([example]);
+  expect(screen.getByText(/your monthly API budget has been reached/i)).toBeInTheDocument();
+  expect(screen.queryByText(/shared monthly API budget/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Recheck AI availability' })).toBeEnabled();
+});
+
+
+it('keeps billed actions blocked while a budget recheck is pending or fails', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.runEvaluation).mockRejectedValueOnce(new ApiError('Budget reached.', 402));
+  await open([example]);
+  await user.click(screen.getByRole('button', { name: 'Run evaluation' }));
+  await screen.findByRole('alert');
+  let reject!: (reason: Error) => void;
+  vi.mocked(ApiClient.getPromptsConfig).mockReturnValueOnce(new Promise((_, rejectPromise) => { reject = rejectPromise; }));
+  await user.click(screen.getByRole('button', { name: 'Recheck AI availability' }));
+  expect(screen.getByRole('button', { name: 'Run evaluation' })).toBeDisabled();
+  expect(screen.getByText('Checking AI availability…')).toBeInTheDocument();
+  reject(new Error('Offline'));
+  await screen.findByRole('button', { name: 'Retry AI availability' });
+  expect(screen.getByRole('button', { name: 'Run evaluation' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Add test case' })).toBeEnabled();
+});
+
+it('builds combined guided checks without requiring rule syntax', async () => {
+  const user = userEvent.setup();
+  await open();
+  await user.click(screen.getByRole('button', { name: 'Add test case' }));
+  await user.type(screen.getByLabelText('topic'), 'Release notes');
+  await user.type(screen.getByLabelText('Text for check 1'), 'summary');
+  await user.click(screen.getByRole('button', { name: 'Add check' }));
+  await user.selectOptions(screen.getByLabelText('Check 2'), 'excludes');
+  await user.type(screen.getByLabelText('Text for check 2'), 'sorry');
+  await user.click(screen.getByRole('button', { name: 'Save test case' }));
+  await waitFor(() => expect(ApiClient.createEvalCase).toHaveBeenCalledWith(1, expect.objectContaining({ criteria: 'summary, !sorry' })));
+});
+
+it('preserves advanced criteria exactly when an existing case is saved unchanged', async () => {
+  const user = userEvent.setup();
+  const criteria = '  ~\\d{2,3}, !sorry  ';
+  await open([{ ...example, criteria }]);
+  await user.click(screen.getByRole('button', { name: 'Edit Returns JSON' }));
+  expect(screen.getByLabelText('Checks')).toHaveValue(criteria);
+  await user.click(screen.getByRole('button', { name: 'Save test case' }));
+  await waitFor(() => expect(ApiClient.updateEvalCase).toHaveBeenCalledWith(1, 4, expect.objectContaining({ criteria })));
+});
+
+it('shows failed history and comparison without disclosing legacy provider exceptions', async () => {
+  const user = userEvent.setup();
+  const failed = { ...run, results: [{ ...run.results[0], is_pending: false, output_text: null, rationale: 'Model run failed: key=secret request={private}' }] };
+  vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([failed, { ...failed, id: 11 }]);
+  await open();
+  await user.click(screen.getByRole('radio', { name: 'Run history' }));
+  expect(screen.getByRole('heading', { name: 'Failed' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute('href', '/settings');
+  expect(document.body.textContent).not.toContain('key=secret');
+  expect(document.body.textContent).not.toContain('request={private}');
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Compare with' }), '11');
+  expect(screen.getAllByText('Failed').length).toBeGreaterThan(2);
+  expect(document.body.textContent).not.toContain('key=secret');
+});
+
+it('reports failed case runs honestly in the completion notice', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.runEvaluation).mockResolvedValue({ ...run, results: [{ ...run.results[0], is_pending: false, output_text: null, rationale: 'Model run failed: timeout' }] });
+  await open([example]);
+  await user.click(screen.getByRole('button', { name: 'Run evaluation' }));
+  expect(await screen.findByRole('status')).toHaveTextContent('Evaluation: Failed.');
+  expect(screen.getByRole('heading', { name: 'Failed' })).toBeInTheDocument();
+  expect(ApiClient.runEvaluation).toHaveBeenCalledTimes(1);
+});
+
+it('offers AI settings after an explicit run failure without linking case validation to settings', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.runEvaluation).mockRejectedValue(new ApiError('No AI provider is available.', 422));
+  await open([example]);
+  await user.click(screen.getByRole('button', { name: 'Run evaluation' }));
+  expect(await screen.findByRole('link', { name: 'Open Settings' })).toHaveAttribute('href', '/settings');
+  await user.click(screen.getByRole('button', { name: 'Edit Returns JSON' }));
+  vi.mocked(ApiClient.updateEvalCase).mockRejectedValue(new ApiError('Invalid criteria.', 422));
+  await user.click(screen.getByRole('button', { name: 'Save test case' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Invalid criteria.');
+  expect(screen.queryByRole('link', { name: 'Open Settings' })).not.toBeInTheDocument();
 });

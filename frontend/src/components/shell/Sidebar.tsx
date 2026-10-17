@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CodeXml } from 'lucide-react';
+import { BookOpen, CodeXml } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { PromptMakerTile } from '@/components/brand/PromptMakerMark';
@@ -24,6 +24,7 @@ import {
   type LibraryView,
 } from '@/lib/libraryViews';
 import styles from './Sidebar.module.css';
+import ThemeControl from './ThemeControl';
 
 interface SidebarProps {
   /** Phone only: whether the drawer is showing. */
@@ -59,7 +60,7 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
     if (!mobile || !open) return;
     const previousFocus = document.activeElement as HTMLElement | null;
     const sidebar = sidebarRef.current!;
-    const focusable = () => sidebar.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)');
+    const focusable = () => sidebar.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), select:not(:disabled)');
     focusable()[0]?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -164,6 +165,11 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
       </nav>
 
       <div className={styles.foot}>
+        <ThemeControl />
+        <Link href="/guides" className={styles.item} onClick={onNavigate}>
+          <BookOpen size={16} aria-hidden="true" />
+          <span className={styles.label}>Guides</span>
+        </Link>
         <Link
           href="/settings"
           className={styles.item}

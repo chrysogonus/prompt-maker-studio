@@ -1077,6 +1077,8 @@ def test_try_once_budget_failure_does_not_call_provider(
     monkeypatch.setenv("GLOBAL_MONTHLY_BUDGET_USD", "0")
     response = client.post("/api/prompts/try", headers=auth_headers, json={"text": "Hello"})
     assert response.status_code == 402
+    assert response.json()["budget"]["scope"] == "shared"
+    assert response.json()["budget"]["reason"] == "exhausted"
     mock_llm.return_value.chat.completions.create.assert_not_called()
 
 

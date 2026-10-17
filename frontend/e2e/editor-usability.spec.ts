@@ -23,6 +23,7 @@ for (const width of [1440, 390]) {
     await page.getByLabel('Role text').fill('Be precise.');
     await page.getByLabel('Task text').fill('Explain {{topic}}.');
     await page.getByLabel('Format text').fill('Use three bullets.');
+    await page.getByText('Options for topic', { exact: true }).click();
     await page.getByLabel('Required topic', { exact: true }).check();
     await page.getByLabel('Example input for topic').fill('Saturn');
 
@@ -72,12 +73,12 @@ for (const width of [1440, 390]) {
     await card.getByRole('link', { name: 'Fill and copy' }).click();
     await expect(page.getByLabel('topic Required')).toBeVisible();
     await expect(page).toHaveURL(/mode=filled/);
-    if (width < 760) await page.getByRole('tab', { name: 'Edit', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
 
     await page.getByLabel('Task text').fill('Explain {{topic}} briefly.');
     await page.getByLabel('Version note').fill('Make it brief');
     await page.reload();
-    if (width < 760) await page.getByRole('tab', { name: 'Edit', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
     await expect(page.getByText('Your unsaved changes were restored.')).toBeVisible();
     await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}} briefly.');
     await expect(page.getByLabel('Version note')).toHaveValue('Make it brief');

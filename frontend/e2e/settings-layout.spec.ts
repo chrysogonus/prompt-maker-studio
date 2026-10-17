@@ -58,7 +58,7 @@ test('sidebar source link and settings controls remain accessible across sizes a
           page.getByRole('combobox', { name: 'Provider', exact: true }).boundingBox(),
           page.getByRole('textbox', { name: 'Base URL', exact: true }).boundingBox(),
           page.getByRole('button', { name: 'Save connection' }).boundingBox(),
-          page.getByRole('button', { name: 'Export all prompts' }).boundingBox(),
+          page.getByRole('button', { name: 'Export data archive' }).boundingBox(),
           page.getByRole('button', { name: 'Delete account…' }).boundingBox(),
         ]);
         const positions = controls.map((box) => box!.x);

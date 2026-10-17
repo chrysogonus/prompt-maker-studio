@@ -12,7 +12,7 @@ import {
 import { API_URL } from '../apiBase';
 import { AuthService } from '../auth';
 import { authenticatedFetch, sessionFetch } from './transport';
-import { ApiError, extractErrorMessage, PROMPT_NOT_FOUND_MESSAGE } from './errors';
+import { ApiError, extractBudgetDetails, extractErrorMessage, PROMPT_NOT_FOUND_MESSAGE } from './errors';
 
 const LONG_OPERATION_SESSION_VALIDITY_MS = 2 * 60 * 1000;
 
@@ -171,7 +171,7 @@ export async function parsePromptText(data: ParseTextRequest): Promise<ParseText
       throw new Error('Session expired. Please login again.');
     }
     const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new ApiError(extractErrorMessage(errorData.detail) || `Failed to parse text: ${response.status}`, response.status);
+    throw new ApiError(extractErrorMessage(errorData.detail) || `Failed to parse text: ${response.status}`, response.status, extractBudgetDetails(errorData.budget));
   }
 
   return response.json();
@@ -263,7 +263,7 @@ export async function tryPrompt(text: string): Promise<TryPromptResponse> {
   }, LONG_OPERATION_SESSION_VALIDITY_MS);
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new ApiError(extractErrorMessage(error.detail) || 'Could not run the prompt. Try once accepts up to 100,000 characters.', response.status);
+    throw new ApiError(extractErrorMessage(error.detail) || 'Could not run the prompt. Try once accepts up to 100,000 characters.', response.status, extractBudgetDetails(error.budget));
   }
   return response.json();
 }

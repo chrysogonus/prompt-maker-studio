@@ -106,7 +106,7 @@
   border-top: 1px solid var(--color-border);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1200px) {
   :global(html):has(.panel[open][aria-modal='true']) {
     scrollbar-gutter: auto;
   }

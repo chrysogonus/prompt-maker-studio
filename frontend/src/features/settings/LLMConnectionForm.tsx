@@ -41,6 +41,7 @@ export default function LLMConnectionForm() {
   const [baseUrl, setBaseUrl] = useState('');
   const [model, setModel] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [workspaceId, setWorkspaceId] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -58,6 +59,7 @@ export default function LLMConnectionForm() {
     setProviderHandle(next.provider ?? '');
     setBaseUrl(next.base_url ?? '');
     setModel(next.model ?? '');
+    setWorkspaceId(next.provider === 'anthropic' ? next.workspace_id ?? '' : '');
     setApiKey('');
     setShowApiKey(false);
   }, []);
@@ -103,19 +105,20 @@ export default function LLMConnectionForm() {
     selected?.requires_api_key && (providerChanged || !connection?.has_api_key),
   );
 
-  const unsaved = providerHandle !== (connection?.provider ?? '') || baseUrl !== (connection?.base_url ?? '') || model !== (connection?.model ?? '') || Boolean(apiKey.trim());
+  const unsaved = providerHandle !== (connection?.provider ?? '') || baseUrl !== (connection?.base_url ?? '') || model !== (connection?.model ?? '') || Boolean(apiKey.trim()) || workspaceId !== (connection?.workspace_id ?? '');
   const curatedModels = selected?.models ?? [];
   const isCurated = curatedModels.length > 0;
   const unlistedModel = isCurated && !curatedModels.some((item) => item.id === model);
   const legacyModel = isCurated && connection?.provider === providerHandle && connection.model
     && !curatedModels.some((item) => item.id === connection.model);
   const compatibility = modelCompatibility(model);
-  const selectionTested = testedSelection === `${providerHandle}|${baseUrl}|${model}`;
+  const selectionTested = testedSelection === `${providerHandle}|${baseUrl}|${model}|${workspaceId}`;
 
   const handleProviderChange = (handle: string) => {
     catalogueRequest.current += 1;
     setModelCatalogue([]);
     setProviderHandle(handle);
+    setWorkspaceId('');
     setStatus('');
     setError('');
     const next = providers.find((p) => p.handle === handle);
@@ -130,6 +133,10 @@ export default function LLMConnectionForm() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (unlistedModel) return;
+    if (providerHandle === 'anthropic' && workspaceId && !/^wrkspc_[A-Za-z0-9]+$/.test(workspaceId)) {
+      setError('Enter a valid Anthropic workspace ID starting with wrkspc_.');
+      return;
+    }
     setError('');
     setStatus('');
     setIsSaving(true);
@@ -138,6 +145,7 @@ export default function LLMConnectionForm() {
         provider: providerHandle,
         base_url: baseUrl.trim() || null,
         model: model.trim(),
+        ...(providerHandle === 'anthropic' ? { workspace_id: workspaceId || null } : {}),
         // Blank means "leave the stored key alone" — only send a real value.
         ...(apiKey.trim() ? { api_key: apiKey.trim() } : {}),
       });
@@ -159,7 +167,7 @@ export default function LLMConnectionForm() {
     try {
       const result = await AuthService.testLLMConnection();
       if (result.ok) {
-        setTestedSelection(`${connection?.provider ?? ''}|${connection?.base_url ?? ''}|${connection?.model ?? ''}`);
+        setTestedSelection(`${connection?.provider ?? ''}|${connection?.base_url ?? ''}|${connection?.model ?? ''}|${connection?.workspace_id ?? ''}`);
         setStatus(`Text-generation test passed for ${connection?.model ?? connection?.server_default?.model}. ${result.message}`);
         if (connection) void refreshModelCatalogue(connection);
       } else {
@@ -343,6 +351,21 @@ export default function LLMConnectionForm() {
           </button>
         </span>
       </div>
+
+      {providerHandle === 'anthropic' && (
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Anthropic workspace ID (optional)</span>
+          <Input
+            value={workspaceId}
+            onChange={(e) => setWorkspaceId(e.target.value)}
+            aria-label="Anthropic workspace ID (optional)"
+            placeholder="wrkspc_…"
+            maxLength={100}
+            spellCheck={false}
+          />
+          <span className={styles.hint}>Required only for API keys with access to multiple workspaces. Find the workspace ID in the Claude Console workspace settings.</span>
+        </label>
+      )}
 
       {keyRequired && (
         <div className={styles.hint}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useState, useEffect, useRef, useSyncExternalStore, FormEvent } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { AuthService } from '@/lib/auth';
 import { ApiClient } from '@/lib/api';
@@ -8,12 +8,13 @@ import { downloadBlob } from '@/lib/download';
 import { User, UserUpdate } from '@/types/auth';
 
 import { APP_SLUG, pageTitle } from '@/lib/branding';
-import { Theme, PreferenceSaveStatus, readStoredTheme } from './settingsState';
+import { PreferenceSaveStatus } from './settingsState';
+import { readStoredTheme, setTheme, subscribeTheme, type Theme } from '@/lib/theme';
 
 export function useSettings() {
   const { currentUser, logout, setCurrentUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
-  const [theme, setTheme] = useState<Theme>(readStoredTheme);
+  const theme = useSyncExternalStore(subscribeTheme, readStoredTheme, () => 'light' as Theme);
   const [viewSave, setViewSave] = useState<PreferenceSaveStatus | null>(null);
   const [showUsernameEdit, setShowUsernameEdit] = useState(false);
   const [newUsernameValue, setNewUsernameValue] = useState('');
@@ -55,11 +56,7 @@ export function useSettings() {
     [],
   );
 
-  const toggleTheme = (next: Theme) => {
-    setTheme(next);
-    localStorage.setItem('theme', next);
-    document.documentElement.setAttribute('data-theme', next);
-  };
+  const toggleTheme = setTheme;
 
   // Both profile forms are noValidate: the native browser tooltip is invisible
   // to some tooling/screen readers and inconsistent with the inline error

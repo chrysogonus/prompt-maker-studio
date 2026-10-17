@@ -7,10 +7,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ApiClient } from '@/lib/api';
 import { AuthService } from '@/lib/auth';
 import { pageTitle } from '@/lib/branding';
+import { renderPlainSections } from '@/lib/sections';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { libraryHref, viewFromParams, viewTitle } from '@/lib/libraryViews';
 
-import { UNDO_MS, Prompt, Toast, editedAt } from './libraryState';
+import { UNDO_MS, Prompt, Toast, editedAt, searchMatch } from './libraryState';
 import { useLibraryData } from './LibraryData';
 
 export function useLibrary() {
@@ -23,6 +24,11 @@ export function useLibrary() {
   const [prompts, setPrompts] = useState<Prompt[] | null>(null);
   const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<'recent' | 'title'>('recent');
+  const [selected, setSelected] = useState<number[]>([]);
+  const [batchFolder, setBatchFolder] = useState('');
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchResult, setBatchResult] = useState('');
   const [layout, setLayout] = useState<'list' | 'grid'>('list');
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
@@ -42,7 +48,8 @@ export function useLibrary() {
 
   const load = useCallback(async (fresh = false) => {
     try {
-      setPrompts(await (fresh ? refreshLibrary() : loadLibrary()));
+      const data = await (fresh ? refreshLibrary() : loadLibrary());
+      setPrompts(data.filter(prompt => prompt.id !== pendingDelete.current?.prompt.id));
       setLoadError('');
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Failed to load your prompts.');
@@ -50,7 +57,6 @@ export function useLibrary() {
   }, [loadLibrary, refreshLibrary]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- load updates state after awaiting the library request.
     void load();
     AuthService.getCurrentUser()
       .then((user) => user.default_library_view && setLayout(user.default_library_view))
@@ -120,18 +126,36 @@ export function useLibrary() {
   }, [prompts, view.type, view.type === 'folder' ? view.folder : null]);
 
   const visible = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = search.trim();
     return inView
       .filter(
         (p) =>
           !query ||
-          [p.name ?? '', p.folder ?? '', ...p.fields.flatMap((f) => [f.name, f.content])]
-            .join(' ')
-            .toLowerCase()
-            .includes(query),
+          searchMatch(p, query) !== null,
       )
-      .sort((a, b) => editedAt(b).localeCompare(editedAt(a)));
-  }, [inView, search]);
+      .sort((a, b) => sort === 'title' ? (a.name ?? '').localeCompare(b.name ?? '') || a.id - b.id : editedAt(b).localeCompare(editedAt(a)) || b.id - a.id);
+  }, [inView, search, sort]);
+
+  const selectedPrompts = (prompts ?? []).filter(prompt => selected.includes(prompt.id));
+  const toggleSelected = (id: number) => setSelected(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
+  const addImported = (created: Prompt[]) => setPrompts(current => [...created, ...(current ?? [])]);
+  const moveSelected = async (event: FormEvent) => {
+    event.preventDefault();
+    if (batchBusy || !selectedPrompts.length) return;
+    setBatchBusy(true);
+    setBatchResult('');
+    const targets = selectedPrompts;
+    const failed: number[] = [];
+    for (const prompt of targets) {
+      try { replace(await ApiClient.updatePrompt(prompt.id, { folder: batchFolder.trim() })); }
+      catch { failed.push(prompt.id); }
+    }
+    setSelected(failed);
+    const moved = targets.length - failed.length;
+    if (moved) notifyLibraryChanged();
+    setBatchResult(`Moved ${moved} of ${targets.length} prompts.${failed.length ? ` ${failed.length} failed; still selected for retry.` : ''}`);
+    setBatchBusy(false);
+  };
 
   const toggleFavorite = async (prompt: Prompt) => {
     replace({ ...prompt, is_favorite: !prompt.is_favorite });
@@ -144,11 +168,11 @@ export function useLibrary() {
     }
   };
 
-  const copyTemplate = async (prompt: Prompt) => {
+  const copyTemplate = async (prompt: Prompt, plain = false) => {
     setMenuId(null);
     try {
-      await navigator.clipboard.writeText(prompt.generated_prompt);
-      showToast({ text: `Copied the “${prompt.name}” template` });
+      await navigator.clipboard.writeText(plain ? renderPlainSections(prompt.fields) : prompt.generated_prompt);
+      showToast({ text: `Copied the “${prompt.name}” template${plain ? ' as plain text' : ''}` });
     } catch {
       showToast({ text: 'Copying failed. Open the prompt and copy it from the preview.' });
     }
@@ -160,6 +184,7 @@ export function useLibrary() {
     if (!name || name === prompt.name) return;
     try {
       replace(await ApiClient.updatePrompt(prompt.id, { name }));
+      notifyLibraryChanged();
       if (prompts?.some((p) => p.id !== prompt.id && p.name === name)) {
         showToast({ text: `Another prompt is also called “${name}”.` });
       }
@@ -276,6 +301,8 @@ export function useLibrary() {
     [prompts],
   );
   return {
+    sort, setSort, selected, toggleSelected, selectedPrompts, setSelected,
+    batchFolder, setBatchFolder, batchBusy, batchResult, moveSelected, addImported,
     router,
     view,
     title,

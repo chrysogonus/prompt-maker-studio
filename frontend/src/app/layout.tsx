@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
 import { pageTitle } from '@/lib/branding';
 import './globals.css';
+import { THEME_SCRIPT } from '@/lib/theme';
+import ThemeSync from '@/components/ui/ThemeSync';
 
 // Self-hosted at build time, so no request leaves for a font CDN at runtime.
 const hanken = Hanken_Grotesk({ subsets: ['latin'], variable: '--font-hanken', display: 'swap' });
@@ -16,10 +18,6 @@ export const metadata: Metadata = {
   description: 'A prompt library and template editor for reusable AI prompts.',
 };
 
-// Light unless the user chose dark; Settings owns the toggle control.
-const THEME_SCRIPT =
-  "try{if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}";
-
 export default function RootLayout({
   children,
 }: {
@@ -31,7 +29,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body><ThemeSync />{children}</body>
     </html>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import Button from '@/components/ui/Button';
+import Link from 'next/link';
 import { VariableMetadataItem } from '@/types/prompt';
 import styles from './PromptEditor.module.css';
 
@@ -28,6 +29,7 @@ export default function VariablesPanel({
   return (
     <section className={styles.variables} aria-labelledby="variables-heading">
       <h2 id="variables-heading">Variables</h2>
+      <p className={styles.variablesIntro}>Change “Lisbon” to <code>{'{{destination}}'}</code> to fill in a different place each time. <Link href="/guides/prompt-template-variables">Learn about variables</Link></p>
       {variables.length === 0 && stale.length === 0 ? (
         <p className={styles.variablesIntro}>
           Put the parts that change in double braces, like <code>{'{{audience}}'}</code>. They
@@ -48,7 +50,9 @@ export default function VariablesPanel({
             aria-label={`Hint for ${name}`}
             maxLength={500}
           />
-          <div className={styles.variableOptions}>
+          <details className={styles.variableAdvanced}>
+            <summary>Options for {name}</summary>
+            <div className={styles.variableOptions}>
             <label><input type="checkbox" checked={metadata[name]?.required ?? false}
               onChange={(event) => onChangeMetadata(name, { required: event.target.checked })} />
               Required {name}
@@ -56,7 +60,8 @@ export default function VariablesPanel({
             <input type="text" value={metadata[name]?.example ?? ''} maxLength={10_000}
               aria-label={`Example input for ${name}`} placeholder="Example input (loaded only when requested)"
               onChange={(event) => onChangeMetadata(name, { example: event.target.value || null })} />
-          </div>
+            </div>
+          </details>
         </div>
       ))}
       {stale.map((name) => (

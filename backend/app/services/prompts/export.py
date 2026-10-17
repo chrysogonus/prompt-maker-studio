@@ -44,6 +44,7 @@ def export_prompts(db: Session, user_id: int):
             is_favorite=prompt.is_favorite,
             created_at=prompt.created_at,
             updated_at=prompt.updated_at,
+            content_updated_at=prompt.content_updated_at,
             current_note=prompt.current_note,
             variable_metadata=prompt.variable_metadata,
             versions=[

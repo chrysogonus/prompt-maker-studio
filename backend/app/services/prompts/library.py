@@ -82,14 +82,15 @@ def update_prompt(prompt_id: int, body: PromptUpdateRequest, db: Session, user_i
         if body.variable_metadata is not None
         else None
     )
-    if (next_fields is not None and next_fields != prompt.fields) or (
+    content_changed = (next_fields is not None and next_fields != prompt.fields) or (
         next_metadata is not None
         and next_metadata
         != {
             name: VariableMetadataItem.model_validate(item).model_dump()
             for name, item in (prompt.variable_metadata or {}).items()
         }
-    ):
+    )
+    if content_changed:
         PromptVersionService.snapshot(db, prompt, user_id, note=body.note)
 
     if body.name is not None:
@@ -105,6 +106,8 @@ def update_prompt(prompt_id: int, body: PromptUpdateRequest, db: Session, user_i
         prompt.variable_metadata = next_metadata
 
     prompt.updated_at = next_write_stamp(prompt.updated_at or prompt.created_at)
+    if content_changed:
+        prompt.content_updated_at = prompt.updated_at
 
     db.commit()
     db.refresh(prompt)

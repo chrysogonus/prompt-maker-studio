@@ -22,10 +22,13 @@ import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
 import styles from './LibraryPage.module.css';
 import type { Toast } from './libraryState';
 import { useLibrary } from './useLibrary';
-import { Prompt, excerpt, editedAt } from './libraryState';
+import ImportPrompts from './ImportPrompts';
+import { Prompt, excerpt, editedAt, searchMatch } from './libraryState';
 
 function LibraryContent() {
   const {
+    sort, setSort, selected, toggleSelected, selectedPrompts, setSelected,
+    batchFolder, setBatchFolder, batchBusy, batchResult, moveSelected, addImported,
     router,
     view,
     title,
@@ -63,6 +66,17 @@ function LibraryContent() {
     folders,
   } = useLibrary();
 
+  const preview = (prompt: Prompt) => {
+    const match = searchMatch(prompt, search);
+    return match ? <><strong>{match.label}:</strong> {match.before}<mark>{match.match}</mark>{match.after}</> : excerpt(prompt);
+  };
+
+  const selection = (prompt: Prompt) => (
+    <label className={styles.selection}>
+      <input type="checkbox" aria-label={`Select ${prompt.name}`} checked={selected.includes(prompt.id)} disabled={batchBusy} onChange={() => toggleSelected(prompt.id)} />
+    </label>
+  );
+
   const promptMenu = (prompt: Prompt) => (
     <div className={styles.menuWrap} data-menu>
       <button
@@ -82,6 +96,7 @@ function LibraryContent() {
           <button type="button" onClick={() => copyTemplate(prompt)}>
             Copy template
           </button>
+          <button type="button" onClick={() => copyTemplate(prompt, true)}>Copy as plain text</button>
           <button
             type="button"
             onClick={() => {
@@ -149,7 +164,7 @@ function LibraryContent() {
 
   // Clicking anywhere on a row opens it; buttons and the name link handle their own clicks.
   const openOnClick = (prompt: Prompt) => (event: React.MouseEvent) => {
-    if ((event.target as Element).closest('button, a, input')) return;
+    if ((event.target as Element).closest('button, a, input, label')) return;
     router.push(`/editor/${prompt.id}`);
   };
 
@@ -199,15 +214,16 @@ function LibraryContent() {
         {visible.map((prompt) => (
           <li key={prompt.id} className={styles.card} onClick={openOnClick(prompt)}>
             <div className={styles.cardTop}>
+              {selection(prompt)}
               {name(prompt)}
               {star(prompt)}
             </div>
-            <p className={styles.cardExcerpt}>{excerpt(prompt)}</p>
+            <p className={search.trim() ? styles.searchExcerpt : styles.cardExcerpt}>{preview(prompt)}</p>
+            <div className={styles.cardMeta}>
+              {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
+              <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
+            </div>
             <div className={styles.cardFoot}>
-              <span>
-                {view.type !== 'folder' && <>{prompt.folder ?? 'Unfiled'}, </>}
-                {relativeTime(editedAt(prompt))}
-              </span>
               {variablesIn(prompt.fields).length > 0 && (
                 <Link className={styles.copyButton} href={`/editor/${prompt.id}?mode=filled`}>Fill and copy</Link>
               )}
@@ -233,10 +249,10 @@ function LibraryContent() {
           const variables = variablesIn(prompt.fields).length;
           return (
             <li key={prompt.id} className={styles.row} onClick={openOnClick(prompt)}>
-              {star(prompt)}
+              <div className={styles.rowControls}>{selection(prompt)}{star(prompt)}</div>
               <div className={styles.rowMain}>
                 {name(prompt)}
-                <p className={styles.excerpt}>{excerpt(prompt)}</p>
+                <p className={search.trim() ? styles.searchExcerpt : styles.excerpt}>{preview(prompt)}</p>
                 <div className={styles.meta}>
                   {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
                   <span>{variables ? `${variables} variable${variables === 1 ? '' : 's'}` : 'No variables'}</span>
@@ -282,6 +298,7 @@ function LibraryContent() {
               Paste a prompt
             </Link>
           </div>
+          <div className={styles.heroActions}><ImportPrompts onCreated={addImported} folders={folders} /></div>
           <h2>Or start from a template</h2>
           <ul className={styles.starters}>
             {STARTER_TEMPLATES.map((template) => (
@@ -304,6 +321,7 @@ function LibraryContent() {
       <header className={styles.head}>
         <h1>{title}</h1>
         <Link href="/editor/new?import=1" className={styles.secondaryLink}>Paste a prompt</Link>
+        <ImportPrompts onCreated={addImported} folders={folders} />
         {view.type === 'folder' && (
           <div className={styles.menuWrap} data-menu>
             <button
@@ -360,6 +378,10 @@ function LibraryContent() {
             aria-label="Search prompts"
           />
         </label>
+        <select aria-label="Sort prompts" className={styles.sort} value={sort} onChange={event => setSort(event.target.value as 'recent' | 'title')}>
+          <option value="recent">Recently edited</option>
+          <option value="title">Title A–Z</option>
+        </select>
         <span className={styles.count}>
           {search.trim()
             ? `${visible.length} of ${inView.length}`
@@ -375,6 +397,23 @@ function LibraryContent() {
         </div>
       </div>
 
+      {visible.length > 0 && <div className={styles.selectionBar}>
+        <label className={styles.selectVisible}>
+          <input type="checkbox" disabled={batchBusy} checked={visible.every(prompt => selected.includes(prompt.id))} onChange={event => setSelected(event.target.checked ? [...new Set([...selected, ...visible.map(prompt => prompt.id)])] : selected.filter(id => !visible.some(prompt => prompt.id === id)))} />
+          Select visible prompts
+        </label>
+        {selectedPrompts.length > 0 && <Button variant="ghost" disabled={batchBusy} onClick={() => setSelected([])}>Clear selection</Button>}
+      </div>}
+      {selectedPrompts.length > 0 && <form className={styles.batchForm} onSubmit={moveSelected}>
+        <span>{selectedPrompts.length} selected across your library</span>
+        <label className={styles.field}>
+          <span>File selected in folder</span>
+          <input aria-label="File selected in folder" value={batchFolder} onChange={event => setBatchFolder(event.target.value)} list="library-folders" maxLength={255} placeholder="Unfiled" disabled={batchBusy} />
+        </label>
+        <Button variant="secondary" type="submit" disabled={batchBusy}>{batchBusy ? 'Moving…' : 'Move selected'}</Button>
+        <small>Leave empty to move to Unfiled.</small>
+      </form>}
+      {batchResult && <p className={styles.note} role="status">{batchResult}</p>}
       {body}
 
       <Dialog isOpen={moving !== null} title="Move to folder" onClose={() => setMoving(null)}>

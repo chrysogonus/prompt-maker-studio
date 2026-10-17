@@ -1,5 +1,23 @@
+export interface BudgetErrorDetails {
+  scope: 'shared' | 'user';
+  resets_at: string;
+  retry_after: number;
+  reason: 'exhausted' | 'estimated_cost_exceeds_remaining';
+}
+
+export function extractBudgetDetails(value: unknown): BudgetErrorDetails | undefined {
+  if (!value || typeof value !== 'object') return;
+  const budget = value as Partial<BudgetErrorDetails>;
+  if ((budget.scope === 'shared' || budget.scope === 'user')
+    && typeof budget.resets_at === 'string' && Number.isFinite(Date.parse(budget.resets_at))
+    && typeof budget.retry_after === 'number' && Number.isFinite(budget.retry_after) && budget.retry_after >= 0
+    && (budget.reason === 'exhausted' || budget.reason === 'estimated_cost_exceeds_remaining')) {
+    return budget as BudgetErrorDetails;
+  }
+}
+
 export class ApiError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly budget?: BudgetErrorDetails) {
     super(message);
     this.name = 'ApiError';
   }

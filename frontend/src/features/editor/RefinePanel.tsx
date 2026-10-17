@@ -15,6 +15,8 @@ interface RefinePanelProps {
   fields: PromptField[];
   aiAvailable: boolean;
   aiConfig: PromptsConfigResponse | null;
+  aiConfigLoading?: boolean;
+  aiConfigError?: boolean;
   onClose: () => void;
   onApply: (fields: PromptField[]) => void;
 }
@@ -24,7 +26,7 @@ const REVIEW_OPTIONS = [
   { value: 'full', label: 'Full draft' },
 ] as const;
 
-export default function RefinePanel({ open, fields, aiAvailable, aiConfig, onClose, onApply }: RefinePanelProps) {
+export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiConfigLoading = false, aiConfigError = false, onClose, onApply }: RefinePanelProps) {
   const [source, setSource] = useState<PromptField[] | null>(null);
   const [questions, setQuestions] = useState<string[] | null>(null);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -49,7 +51,7 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, onClo
     if (!dialog || !open) return;
     const opener = document.activeElement as HTMLElement | null;
     const show = () => {
-      const mobile = window.innerWidth <= 760;
+      const mobile = window.innerWidth <= 1200;
       if (dialog.open && (dialog.getAttribute('aria-modal') === 'true') === mobile) return;
       // Native modal dialogs make the rest of the page inert on phones.
       dialog.close();
@@ -148,8 +150,8 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, onClo
       </div>
 
       <div className={styles.body} aria-busy={busy !== null}>
-        <AICallContext config={aiConfig} />
-        {!aiAvailable ? (
+        <>{aiConfigLoading ? <p role="status">Checking AI connection…</p> : aiConfigError ? <p role="status">Could not check the AI connection. Reload to retry.</p> : <AICallContext config={aiConfig} />}</>
+        {aiConfigLoading || aiConfigError ? null : !aiAvailable ? (
           <>
             <p>{aiConfig?.budget_exhausted ? 'The API budget has been reached.' : 'Refinement needs an AI connection.'}</p>
             <p className={styles.hint}>Connect a provider in Settings to find questions and create a revised draft.</p>

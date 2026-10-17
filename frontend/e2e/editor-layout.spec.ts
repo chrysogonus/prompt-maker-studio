@@ -80,7 +80,7 @@ for (const theme of ['light', 'dark']) {
 }
 
 for (const theme of ['light', 'dark']) {
-  for (const viewport of [{ width: 1280, height: 720 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 1024, height: 900 }, { width: 768, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
     test(`keeps the prompt and copy action in view at ${viewport.width}px in ${theme}`, async ({ page }, testInfo) => {
       await page.setViewportSize(viewport);
       await page.addInitScript(value => localStorage.setItem('theme', value), theme);
@@ -106,4 +106,81 @@ for (const theme of ['light', 'dark']) {
       await page.screenshot({ path: testInfo.outputPath(`editor-${theme}-${viewport.width}.png`) });
     });
   }
+}
+
+for (const theme of ['light', 'dark']) {
+  for (const width of [320, 768, 1024, 1280]) {
+    test(`keeps editor sections and preview separate at ${width}px in ${theme}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript(value => localStorage.setItem('theme', value), theme);
+      await page.goto('/editor/1');
+      const edit = page.getByRole('tab', { name: 'Edit', exact: true });
+      if (width <= 1200) await edit.click();
+      await expect(page.getByLabel('Context text')).toBeVisible();
+      const preview = page.getByRole('complementary', { name: 'Preview', exact: true });
+      if (width <= 1200) {
+        await expect(preview).not.toBeVisible();
+        await page.getByRole('tab', { name: 'Fill and copy' }).click();
+        await expect(page.getByLabel('Context text')).not.toBeVisible();
+        await expect(preview).toBeVisible();
+      } else {
+        const section = (await page.getByLabel('Context text').boundingBox())!;
+        const pane = (await preview.boundingBox())!;
+        expect(section.x + section.width).toBeLessThanOrEqual(pane.x);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    });
+  }
+}
+
+for (const width of [390, 1440]) {
+  test(`saves pasted words without an AI call at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const text = '  Write a weekly update.\nKeep these spaces.  ';
+    let saved: { name: string; fields: { name: string; content: string }[] } | undefined;
+    let aiCalls = 0;
+    await page.route('**/api/prompts/parse-text', route => { aiCalls++; return route.abort(); });
+    await page.route('**/api/prompts', async route => {
+      saved = route.request().postDataJSON();
+      await route.fulfill({ json: { id: 1, ...saved, created_at: '2026-10-01T10:00:00Z' } });
+    });
+    await page.goto('/editor/new?import=1');
+    const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
+    await expect(paste).toContainText('copied output includes <TASK> section wrappers');
+    await paste.getByLabel('Prompt to convert').fill(text);
+    await paste.getByRole('button', { name: 'Save as written' }).click();
+    const save = page.getByRole('dialog', { name: 'Save prompt', exact: true });
+    await expect(save.getByLabel('Name', { exact: true })).toHaveValue('Write a weekly update.');
+    await save.getByLabel('Name', { exact: true }).fill('My weekly update');
+    await save.getByRole('button', { name: 'Save prompt', exact: true }).click();
+    await expect(page).toHaveURL(/\/editor\/1$/);
+    expect(saved).toMatchObject({ name: 'My weekly update', fields: [{ name: 'Task', content: text }] });
+    expect(aiCalls).toBe(0);
+  });
+}
+
+for (const width of [320, 390, 768, 1440]) {
+  test(`keeps mode controls, plain output and prompt details usable at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/editor/1');
+    const useButton = page.getByRole('button', { name: 'Fill and copy', exact: true });
+    const useTab = page.getByRole('tab', { name: 'Fill and copy', exact: true });
+    if (width <= 1200) {
+      await expect(useButton).not.toBeVisible();
+      await expect(useTab).toBeVisible();
+      expect((await useTab.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await useTab.click();
+    } else await useButton.click();
+    await page.getByText('Output options', { exact: true }).click();
+    await page.getByRole('combobox', { name: 'Output format' }).selectOption('plain');
+    await expect(page.getByLabel('Prompt text')).toHaveText('Write clear updates for busy stakeholders.\n\nTeam: {{team}}\nWeek: {{week}}\nNotes: {{notes}}\n\nLead with what shipped, then risks and next steps.');
+    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'Prompt details' }).click();
+    const details = page.getByRole('dialog', { name: 'Prompt details' });
+    await expect(details).toContainText('Weekly status update');
+    await expect(details).toContainText('Work');
+    expect(await details.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
 }

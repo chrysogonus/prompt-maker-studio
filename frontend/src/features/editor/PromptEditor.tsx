@@ -68,6 +68,8 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
     setImportSession,
     aiAvailable,
     aiConfig,
+    aiConfigLoading,
+    aiConfigError,
     importSections,
     showNotice,
     fields,
@@ -92,6 +94,8 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
   const toolsRef = useRef<HTMLDivElement>(null);
   const toolsButtonRef = useRef<HTMLButtonElement>(null);
   const pasteButtonRef = useRef<HTMLButtonElement>(null);
+  const [focusedUse, setFocusedUse] = useState(initialMode === 'filled');
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   useEffect(() => {
     if (!toolsOpen) return;
@@ -139,7 +143,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
   const hasContent = fields.some((field) => field.content.trim());
 
   return (
-    <div ref={editorRef} className={styles.editor} data-tab={mobileTab}>
+    <div ref={editorRef} className={styles.editor} data-tab={mobileTab} data-focused={focusedUse ? "true" : "false"}>
       <header className={styles.head}>
         <div className={styles.crumbs}>
           {prompt && (
@@ -185,6 +189,8 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
           {dirty && <span className={styles.edited}>Edited</span>}
         </div>
         <div className={styles.headActions}>
+          {focusedUse && <Button variant="secondary" onClick={() => { setFocusedUse(false); setMobileTab('edit'); }}>Edit template</Button>}
+          {!focusedUse && prompt && <Button className={styles.useButton} variant="secondary" onClick={() => { setFocusedUse(true); setMobileTab('use'); setPreviewOpen(true); }}>Fill and copy</Button>}
           {prompt && dirty && (
             <input
               className={styles.noteInput}
@@ -200,14 +206,14 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               Discard
             </Button>
           )}
-          <Button
+          {!focusedUse && <Button
             variant="ghost"
             aria-pressed={refineOpen}
             disabled={saving || !hasContent || nameErrors.some(Boolean)}
-            onClick={() => { setHistoryOpen(false); setRefineOpen((open) => !open); }}
+            onClick={() => { setFocusedUse(false); setMobileTab('edit'); setHistoryOpen(false); setRefineOpen((open) => !open); }}
           >
             Refine
-          </Button>
+          </Button>}
           {prompt && <div className={styles.tools} ref={toolsRef} onBlur={(event) => {
             // Safari doesn't focus clicked buttons, so a null relatedTarget is a
             // click inside the menu; outside clicks are handled on pointerdown.
@@ -217,6 +223,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               Tools <ChevronDown size={14} aria-hidden="true" />
             </Button>
             {toolsOpen && <div id="editor-tools" className={styles.toolsMenu}>
+              <Button variant="ghost" onClick={() => { setToolsOpen(false); setDetailsOpen(true); }}>Prompt details</Button>
               {!dirty && !saving ? (
                 <ButtonLink variant="ghost" href={`/editor/${prompt.id}/evaluate`} onClick={() => setToolsOpen(false)}>Evaluate</ButtonLink>
               ) : (
@@ -231,9 +238,9 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               }} aria-pressed={historyOpen}>History</Button>
             </div>}
           </div>}
-          <Button variant="primary" onClick={save} disabled={saving || refineOpen || (!!prompt && !dirty)}>
+          {(!focusedUse || dirty) && <Button variant="primary" onClick={save} disabled={saving || refineOpen || (!!prompt && !dirty)}>
             {saving ? 'Saving…' : prompt && !dirty ? 'Saved' : 'Save'}
-          </Button>
+          </Button>}
         </div>
       </header>
 
@@ -275,8 +282,16 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
         </div>
       )}
 
+      {restoredDraft && (
+        <div className={styles.banner} role="status">
+          <span>Your unsaved changes were restored.</span>
+          <span>This draft is stored only in this browser.</span>
+          <button type="button" className={styles.link} onClick={discardEdits}>Discard changes</button>
+        </div>
+      )}
+
       <div className={styles.body} data-preview={previewOpen || refineOpen ? 'open' : 'closed'}>
-        <fieldset className={styles.write} disabled={refineOpen}>
+        <fieldset className={styles.write} hidden={focusedUse} disabled={refineOpen}>
           {isNew && (
             <div className={styles.startRow}>
               <div
@@ -319,15 +334,6 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               <Button ref={pasteButtonRef} variant="ghost" onClick={() => setImportOpen(true)}>
                 Paste a prompt
               </Button>
-            </div>
-          )}
-
-          {restoredDraft && (
-            <div className={styles.banner}>
-              <span>Your unsaved changes were restored.</span>
-              <button type="button" className={styles.link} onClick={discardEdits}>
-                Discard changes
-              </button>
             </div>
           )}
 
@@ -392,9 +398,12 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
         <PreviewPane
           fields={fields}
           aiConfig={aiConfig}
+          aiConfigLoading={aiConfigLoading}
+          aiConfigError={aiConfigError}
           variables={variables}
           metadata={metadata}
           values={values}
+          onClearValues={() => setValues({})}
           onLoadExamples={() => setValues((current) => ({
             ...current, ...Object.fromEntries(variables.filter((name) => metadata[name]?.example).map((name) => [name, metadata[name].example!])),
           }))}
@@ -414,6 +423,8 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
           fields={fields}
           aiAvailable={aiAvailable}
           aiConfig={aiConfig}
+          aiConfigLoading={aiConfigLoading}
+          aiConfigError={aiConfigError}
           onClose={() => setRefineOpen(false)}
           onApply={applyRefinement}
         />
@@ -532,10 +543,20 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
         </div>
       )}
 
+      <Dialog isOpen={detailsOpen} title="Prompt details" onClose={() => setDetailsOpen(false)}>
+        <dl className={styles.promptDetails}>
+          <dt>Name</dt><dd>{prompt?.name}</dd>
+          <dt>Folder</dt><dd>{prompt?.folder || 'Unfiled'}</dd>
+        </dl>
+        <Button onClick={() => setDetailsOpen(false)}>Close</Button>
+      </Dialog>
+
       <ImportDialog
         isOpen={importOpen}
         aiAvailable={aiAvailable}
         aiConfig={aiConfig}
+        aiConfigLoading={aiConfigLoading}
+        aiConfigError={aiConfigError}
         replacesContent={hasContent}
         onClose={() => { setImportOpen(false); (prompt ? toolsButtonRef : pasteButtonRef).current?.focus(); }}
         session={importSession}

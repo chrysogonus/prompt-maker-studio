@@ -58,7 +58,7 @@
 ### Scalable Library Search, Sort & Folder Filtering
 
 - **Value**: Find prompts without downloading the complete library.
-- **Current gap**: The saved-prompts API returns all named prompts with optional folder/favorite filters. The browser already has folder/favorite views, name/folder/section-text search and recently-edited ordering; it lacks server-side search, pagination and alternative sort controls. Tags were retired.
+- **Current gap**: The saved-prompts API returns all named prompts with optional folder/favorite filters. The browser already has folder/favorite views, name/folder/section-text search and content-recency/title sorting; it lacks server-side search and pagination. Tags were retired.
 - **Suggested approach**: Add server-side search, validated sort and pagination with a count, then connect the existing library controls.
 - **Source**: `backend/app/services/prompts/library.py`, `frontend/src/features/library/useLibrary.ts`.
 - **Effort**: Medium.
@@ -145,7 +145,7 @@ workflows, rather than rebuild prerequisites.
 ## Priority: Low / Future
 
 - **Prompt branching**: Duplication has no lineage; add parent/branch context if non-linear versioning becomes valuable. High effort.
-- **Prompt import from file**: Settings exports JSON including version history, but cannot import it. Define naming conflicts and duplicate handling before adding restore/import. Medium effort.
+- **Full-fidelity backup restore through the UI**: Library JSON/Markdown import now creates new copies with title/folder preview and retries. It does not restore history, dates, notes or favorites. A complete restore would need explicit conflict and duplicate handling. Medium effort.
 - **Shareable prompt links**: No public per-prompt sharing endpoint exists; copied text is the current sharing path. Medium effort.
 - **Rate-limit retry countdown**: Rate-limited routes return 429; the UI has no dedicated retry timer. Use the actual response headers and current route limits, rather than the removed generate endpoint. Low effort.
 - **Operator diagnostics administration UI**: `POST /api/admin/smtp/check` exists, but no admin page. Keep diagnostics credentials separate from normal account authorization. Medium effort.

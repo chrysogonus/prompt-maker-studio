@@ -386,19 +386,22 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
   await tabB.close();
 });
 
-test('explains Paste a prompt when no AI connection exists', async ({ page }) => {
+test('offers capture and connection settings when no AI connection exists', async ({ page }) => {
   await register(page, uniqueUser('aiunavailable'));
 
   await sidebarLink(page, 'New prompt').click();
   await expect(page).toHaveURL(/\/editor\/new$/);
   await page.getByRole('button', { name: 'Paste a prompt' }).click();
 
-  const dialog = page.getByRole('dialog', { name: 'Paste a prompt needs an AI connection' });
+  const dialog = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
     'href',
     '/settings#s-api',
   );
+  await dialog.getByLabel('Prompt to convert').fill('Keep my existing prompt.');
+  await expect(dialog.getByRole('button', { name: 'Save as written' })).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: 'Create template', exact: true })).toBeDisabled();
 });
 
 test('files prompts into folders from the library and keeps Settings preferences', async ({

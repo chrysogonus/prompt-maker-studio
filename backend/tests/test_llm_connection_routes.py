@@ -399,3 +399,68 @@ class TestKeyNeverLeaks:
                 client.post("/api/prompts/parse-text", headers=auth_headers, json={"text": "hello"})
 
         assert TEST_LLM_API_KEY not in caplog.text
+
+
+def test_workspace_persists_and_clears_on_provider_switch_and_disconnect(
+    client, auth_headers, db_session
+):
+    payload = {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "api_key": "sk-ant-test",
+        "workspace_id": "wrkspc_ABC123",
+    }
+    response = client.put("/api/auth/me/llm-connection", headers=auth_headers, json=payload)
+    assert response.status_code == 200
+    assert response.json()["workspace_id"] == "wrkspc_ABC123"
+    assert (
+        client.get("/api/auth/me/llm-connection", headers=auth_headers).json()["workspace_id"]
+        == "wrkspc_ABC123"
+    )
+    payload.pop("workspace_id")
+    assert (
+        client.put("/api/auth/me/llm-connection", headers=auth_headers, json=payload).json()[
+            "workspace_id"
+        ]
+        == "wrkspc_ABC123"
+    )
+    payload.update(provider="openai", model="gpt-6.1-sol")
+    assert (
+        client.put("/api/auth/me/llm-connection", headers=auth_headers, json=payload).json()[
+            "workspace_id"
+        ]
+        is None
+    )
+    payload.update(provider="anthropic", model="claude-sonnet-5-5", workspace_id="wrkspc_ABC123")
+    client.put("/api/auth/me/llm-connection", headers=auth_headers, json=payload)
+    assert (
+        client.delete("/api/auth/me/llm-connection", headers=auth_headers).json()["workspace_id"]
+        is None
+    )
+    assert db_session.query(User).filter_by(username="testuser").one().llm_workspace_id is None
+
+
+def test_workspace_validation_and_explicit_clear(client, auth_headers):
+    payload = {"provider": "anthropic", "model": "claude-sonnet-5-5", "api_key": "sk-ant-test"}
+    for invalid in ["bad", "wrkspc_a\r\nInjected: yes", "wrkspc_", "wrkspc_a-b"]:
+        assert (
+            client.put(
+                "/api/auth/me/llm-connection",
+                headers=auth_headers,
+                json={**payload, "workspace_id": invalid},
+            ).status_code
+            == 422
+        )
+    client.put(
+        "/api/auth/me/llm-connection",
+        headers=auth_headers,
+        json={**payload, "workspace_id": "wrkspc_ABC123"},
+    )
+    assert (
+        client.put(
+            "/api/auth/me/llm-connection",
+            headers=auth_headers,
+            json={**payload, "workspace_id": None},
+        ).json()["workspace_id"]
+        is None
+    )
