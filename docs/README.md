@@ -1,6 +1,6 @@
 # Documentation
 
-Reviewed against the codebase on 2026-10-16. **0.5.1** is the latest published
+Reviewed against the codebase on 2026-10-17. **0.6.0** is the latest published
 release. Publication, MCP Registry updates and production deployment are
 separate operations.
 
@@ -44,11 +44,9 @@ separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
-- [0.5.1 release record](releases/0.5.1.md): publication, immutable image digests
-  and verification.
-- [0.6.0 release preparation](releases/0.6.0.md): unpublished candidate, upgrade
-  requirements and publication checklist.
-- Earlier release records: [0.5.0](releases/0.5.0.md),
+- [0.6.0 release record](releases/0.6.0.md): publication, immutable image digests,
+  verification and upgrade requirements.
+- Earlier release records: [0.5.1](releases/0.5.1.md), [0.5.0](releases/0.5.0.md),
   [0.4.0](releases/0.4.0.md), [0.3.0](releases/0.3.0.md).
 
 ## Historical implementation records

@@ -98,10 +98,11 @@ REST and MCP share the same prompt services. AI calls are optional.
 
 Early-stage, `0.x`. APIs and database schemas may change between releases.
 Back up before upgrading; see the [changelog](./CHANGELOG.md). The
-[0.5.1 release record](./docs/releases/0.5.1.md) records publication, immutable
-image digests and verification for the latest release: dark-mode/editor polish
-and accessibility fixes. This release introduces no database migrations or
-REST/MCP contract changes. Upgrades from before 0.5.0 must follow the
+[0.6.0 release record](./docs/releases/0.6.0.md) records publication, immutable
+image digests and verification for the latest release: collection imports,
+prompt reuse, curated AI connections and UX fixes. It includes migrations 028/029
+and a restriction on saving hosted model selections; follow its upgrade notes.
+Upgrades from before 0.5.0 must also follow the
 [0.5.0 upgrade checks](./docs/releases/0.5.0.md#upgrade-and-compatibility),
 including rehearsing migrations on an isolated production-backup copy.
 
