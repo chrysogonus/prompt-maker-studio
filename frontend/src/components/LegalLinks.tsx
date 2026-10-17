@@ -29,8 +29,8 @@ export default function LegalLinks({ className }: { className?: string }) {
 
   return (
     <span className={className}>
-      {links.map(({ slug, label }) => (
-        <a key={slug} href={`/${slug}`}>
+      {links.map(({ slug, label, href }) => (
+        <a key={slug} href={href}>
           {label}
         </a>
       ))}

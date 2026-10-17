@@ -9,7 +9,7 @@ afterEach(() => {
 describe('LegalLinks', () => {
   it('links each page the deployment provides', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      Response.json({ pages: ['impressum', 'datenschutz'] }),
+      Response.json({ pages: ['impressum', 'datenschutz', 'nutzungsbedingungen'] }),
     );
     render(<LegalLinks />);
 
@@ -21,6 +21,15 @@ describe('LegalLinks', () => {
       'href',
       '/datenschutz',
     );
+    expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+  });
+
+  it('omits terms when its deployment file is absent', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ pages: ['impressum'] }));
+    render(<LegalLinks />);
+
+    expect(await screen.findByRole('link', { name: 'Impressum' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Terms of Service' })).not.toBeInTheDocument();
   });
 
   it('renders nothing when the deployment provides no pages', async () => {

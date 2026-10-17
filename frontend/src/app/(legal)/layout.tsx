@@ -3,7 +3,7 @@ import LegalLinks from '@/components/LegalLinks';
 import Wordmark from '@/components/ui/Wordmark';
 import styles from './legal.module.css';
 
-// Impressum and Datenschutzerklärung must be reachable without signing in,
+// Legal pages must be reachable without signing in,
 // so they live outside the (app) group and its auth gate.
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
