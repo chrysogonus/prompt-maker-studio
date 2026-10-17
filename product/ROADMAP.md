@@ -1,6 +1,6 @@
 # Product Roadmap
 
-> Reviewed against the codebase: 2026-10-16. Latest published release: 0.5.1.
+> Reviewed against the codebase: 2026-10-17. Latest published release: 0.6.0.
 
 ## Now — Current Sprint / Active Development
 - [ ] **Deployment rehearsal and approval** — Release publication does not establish production deployment. Rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations; approve deployment separately. See [deployment](../docs/deployment.md).
@@ -27,7 +27,7 @@ Dates below record original delivery. Notes identify later replacements; they
 are not a list of current controls. The current inventory is [FEATURES.md](FEATURES.md).
 | Item | Completed | Notes |
 |---|---|---|
-| UX audit improvements | 2026-10-17 (unreleased) | Responsive/focused editor, non-AI capture, retained filled inputs, collection import preview, batch filing, title/content-recency sorting, budget recovery and sidebar/system theme |
+| 0.6.0 release | 2026-10-17 | Published: curated AI models, optional Anthropic workspace; Responsive/focused editor, non-AI capture, retained filled inputs, collection import preview, batch filing, title/content-recency sorting, budget recovery and sidebar/system theme |
 | 0.5.1 release | 2026-10-16 | Published: shared light/dark layout, saved theme before first paint, Tools menu, Test with AI panel, responsive library cards, keyboard focus restoration and synchronized documentation; [release record](../docs/releases/0.5.1.md) |
 | 0.5.0 release | 2026-10-15 | Published: application observability, immutable auth/OAuth identities, account/session hardening, public guides, provider/billing/backup reliability and dependency updates; [release record](../docs/releases/0.5.0.md) |
 | 0.4.0 release | 2026-10-14 | Published: public landing page, request-time SEO metadata, packaged public assets and MCP Registry descriptor; [release record](../docs/releases/0.4.0.md) |
