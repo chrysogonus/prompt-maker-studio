@@ -3,7 +3,7 @@ import path from 'path';
 import { LEGAL_PAGES, type LegalSlug } from '@/lib/legal-pages';
 
 /**
- * Operator-supplied legal pages (Impressum, privacy policy).
+ * Operator-supplied legal pages (Impressum, privacy policy, terms).
  *
  * Their content identifies whoever runs a deployment, so it cannot ship in the
  * published image. Each operator mounts their own HTML fragments into the

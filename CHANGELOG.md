@@ -10,6 +10,11 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- Serve operator-supplied Terms of Service at `/terms` and show its legal link
+  when `nutzungsbedingungen.html` is available in the mounted legal directory.
+
 ## [0.6.1] - 2026-10-17
 
 ### Fixed

@@ -239,14 +239,18 @@ in the folder named by `LEGAL_PAGES_PATH` (default `./legal`, git-ignored):
 |---|---|
 | `impressum.html` | `/impressum` |
 | `datenschutz.html` | `/datenschutz` |
+| `nutzungsbedingungen.html` | `/terms` |
 
 The folder is mounted read-only into the frontend container and read on every
-request, so edits go live without a restart. A page — and its link in the app
-footer and on the sign-in screen — appears only when its file exists, so a
+request, so edits go live without a restart. A page — and its link on the homepage,
+in the app footer and on the sign-in screen — appears only when its file exists, so a
 deployment without these files shows neither. The files must be readable by
 the container's non-root user (`chmod 644`). Their HTML is rendered as-is and
 treated as trusted, like the `Caddyfile`; the site's Content-Security-Policy
 still blocks external scripts, styles and images in it.
+
+Serving terms does not add an agreement checkbox or record acceptance during
+registration. Those require separate application changes.
 
 To keep the files versioned without forking this repository, keep them in a
 separate private repository and set `LEGAL_PAGES_PATH` to its checkout, e.g.

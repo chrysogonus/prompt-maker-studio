@@ -5,6 +5,7 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ImpressumPage from '../impressum/page';
 import DatenschutzPage from '../datenschutz/page';
+import TermsPage from '../terms/page';
 import { GET } from '../../legal.json/route';
 
 vi.mock('next/navigation', () => ({
@@ -38,5 +39,46 @@ describe('Legal pages', () => {
   it('/legal.json reports which pages exist', async () => {
     const response = await GET();
     expect(await response.json()).toEqual({ pages: ['impressum'] });
+  });
+
+  it('renders terms from the deployment file without a session', async () => {
+    writeFileSync(path.join(process.env.LEGAL_PAGES_DIR!, 'nutzungsbedingungen.html'),
+      '<h1>Terms of Service</h1><p>Deployment terms</p>');
+
+    render(await TermsPage());
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+    expect(screen.getByText('Deployment terms')).toBeInTheDocument();
+  });
+
+  it('reads updated terms on the next request', async () => {
+    const file = path.join(process.env.LEGAL_PAGES_DIR!, 'nutzungsbedingungen.html');
+    writeFileSync(file, '<p>Original terms</p>');
+    const { rerender } = render(await TermsPage());
+    expect(screen.getByText('Original terms')).toBeInTheDocument();
+
+    writeFileSync(file, '<p>Revised terms</p>');
+    rerender(await TermsPage());
+
+    expect(screen.getByText('Revised terms')).toBeInTheDocument();
+    expect(screen.queryByText('Original terms')).not.toBeInTheDocument();
+  });
+
+  it('returns not found when the terms file is absent', async () => {
+    await expect(TermsPage()).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('returns not found when no legal directory is configured', async () => {
+    vi.stubEnv('LEGAL_PAGES_DIR', '');
+
+    await expect(TermsPage()).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('/legal.json includes terms when its deployment file exists', async () => {
+    writeFileSync(path.join(process.env.LEGAL_PAGES_DIR!, 'nutzungsbedingungen.html'), '<p>Terms</p>');
+
+    const response = await GET();
+
+    expect(await response.json()).toEqual({ pages: ['impressum', 'nutzungsbedingungen'] });
   });
 });
