@@ -64,8 +64,11 @@ class TestMCPAuthentication:
             "update_prompt",
             "list_prompt_versions",
         }
-        assert tools["get_prompt"]["annotations"]["readOnlyHint"] is True
-        assert tools["update_prompt"]["annotations"]["destructiveHint"] is False
+        for name, tool in tools.items():
+            annotations = tool["annotations"]
+            assert annotations["readOnlyHint"] is (name not in {"save_prompt", "update_prompt"})
+            assert annotations["destructiveHint"] is (name == "update_prompt")
+            assert annotations["openWorldHint"] is False
 
 
 class TestMCPPromptTools:

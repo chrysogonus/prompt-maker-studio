@@ -10,6 +10,14 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Fixed
+
+- MCP tools explicitly declare all three safety annotations. Updating an existing
+  prompt is marked as destructive because it replaces current content, even
+  though previous content remains in version history. New prompt saves remain
+  additive. Prepared for the 0.6.1 patch release; see the
+  [release candidate](./docs/releases/0.6.1.md).
+
 ## [0.6.0] - 2026-10-17
 
 Library imports, prompt reuse, curated AI connections and UX fixes. See the

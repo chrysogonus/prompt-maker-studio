@@ -137,8 +137,9 @@ mcp_server = MCPServer(
     ),
 )
 
-_READ_ONLY = ToolAnnotations(readOnlyHint=True, openWorldHint=False)
+_READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
 _WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False)
+_UPDATE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False)
 
 
 @mcp_server.tool(annotations=_READ_ONLY)
@@ -182,7 +183,7 @@ def save_prompt(name: str, fields: list[PromptField]) -> PromptHistoryResponse:
         return PromptHistoryResponse.model_validate(prompt)
 
 
-@mcp_server.tool(annotations=_WRITE)
+@mcp_server.tool(annotations=_UPDATE)
 def update_prompt(
     prompt_id: int,
     last_updated_at: datetime,
