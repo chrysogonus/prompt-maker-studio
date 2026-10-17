@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Planned for **0.6.0**; unpublished. See the [release preparation](./docs/releases/0.6.0.md).
+
 ### Added
 
 - Paste prompts without AI using Save as written, with an editable suggested title.
@@ -22,6 +24,11 @@ any release. See [Project status](./README.md#project-status).
 - Import single notes using filename, editable or simple front-matter titles.
 - Build automatic evaluation checks with Contains, Does not contain and Valid JSON.
 - Open Guides from the app and view complete prompt names through Prompt details.
+
+### Changed
+
+- Hosted AI connections use curated model choices with display names and estimated
+  prices. Local and custom providers retain discovery and manual model entry.
 
 ### Fixed
 
@@ -43,6 +50,10 @@ any release. See [Project status](./README.md#project-status).
 
 ### Upgrade notes
 
+- Saving an OpenAI, Anthropic or Gemini connection now requires a model from the
+  curated catalogue (HTTP 422 otherwise). Existing older models remain readable,
+  testable and runnable until the connection is changed; updating it requires a
+  current choice. Saved API keys can be retained, and server defaults are unaffected.
 - Migration 028 adds a content-edit timestamp. Historical rows retain their last
   known update time; earlier organization-only activity cannot be reconstructed.
 - Prompt responses add `content_updated_at`. AI capability responses include caller

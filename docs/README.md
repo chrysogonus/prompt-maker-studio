@@ -46,6 +46,8 @@ separate operations.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
 - [0.5.1 release record](releases/0.5.1.md): publication, immutable image digests
   and verification.
+- [0.6.0 release preparation](releases/0.6.0.md): unpublished candidate, upgrade
+  requirements and publication checklist.
 - Earlier release records: [0.5.0](releases/0.5.0.md),
   [0.4.0](releases/0.4.0.md), [0.3.0](releases/0.3.0.md).
 
