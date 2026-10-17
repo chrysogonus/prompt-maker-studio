@@ -533,6 +533,10 @@ class TestCreateEvalRun:
 
         assert resp.status_code == 402
         assert "budget" in resp.json()["detail"].lower()
+        assert resp.json()["budget"]["scope"] == "shared"
+        assert resp.json()["budget"]["reason"] == "exhausted"
+        assert resp.json()["budget"]["resets_at"].endswith("+00:00")
+        assert int(resp.headers["Retry-After"]) > 0
         mock_run.assert_not_called()
 
 
@@ -643,3 +647,33 @@ class TestRateEvalResult:
             json={"stars": 3},
         )
         assert resp.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("setting", "scope"),
+    [("USER_MONTHLY_BUDGET_USD", "user"), ("GLOBAL_MONTHLY_BUDGET_USD", "shared")],
+)
+def test_eval_estimate_rejection_preserves_remaining_budget_and_cases(
+    client, auth_headers, monkeypatch, setting, scope
+):
+    prompt_id = _create_saved_prompt(client, auth_headers)
+    client.post(
+        f"/api/prompts/{prompt_id}/eval/cases",
+        headers=auth_headers,
+        json={"method": "rule", "criteria": "hello", "variables": {}},
+    )
+    monkeypatch.setenv(setting, "0.000001")
+    with patch("app.services.eval_service.PlaygroundService.run") as provider:
+        response = client.post(f"/api/prompts/{prompt_id}/eval/runs", headers=auth_headers)
+    assert response.status_code == 402
+    details = response.json()
+    assert "estimated" in details["detail"].lower()
+    assert details["budget"]["scope"] == scope
+    assert details["budget"]["reason"] == "estimated_cost_exceeds_remaining"
+    assert details["budget"]["retry_after"] == int(response.headers["Retry-After"])
+    assert (
+        client.get("/api/prompts/config", headers=auth_headers).json()["budget_exhausted"] is False
+    )
+    assert len(client.get(f"/api/prompts/{prompt_id}/eval/cases", headers=auth_headers).json()) == 1
+    assert client.get(f"/api/prompts/{prompt_id}/eval/runs", headers=auth_headers).json() == []
+    provider.assert_not_called()

@@ -143,3 +143,13 @@ it('preserves whitespace values in the review just as the optional editor inputs
   await user.click(screen.getByRole('button', { name: 'Copy filled prompt' }));
   expect(clipboard).toHaveBeenCalledWith('<TASK>\nPlan a 3-day trip to   .\n</TASK>');
 });
+
+it('keeps pasted content exactly without AI when disconnected', async () => {
+  const user = userEvent.setup();
+  const text = '  Write an update.\nKeep these spaces.  ';
+  render(<ImportDialog isOpen aiAvailable={false} aiConfig={null} replacesContent={false}
+    session={{ text }} onSessionChange={vi.fn()} onClose={vi.fn()} onImport={apply} />);
+  await user.click(screen.getByRole('button', { name: 'Save as written' }));
+  expect(apply).toHaveBeenCalledWith({ fields: [{ name: 'Task', content: text }], metadata: {}, values: {}, saveAsWritten: true });
+  expect(ApiClient.parsePromptText).not.toHaveBeenCalled();
+});

@@ -26,6 +26,7 @@ export interface PromptHistoryResponse {
   generated_prompt: string;
   created_at: string;
   updated_at?: string | null;
+  content_updated_at?: string | null;
   current_note?: string | null;
   folder?: string | null;
   is_favorite?: boolean;
@@ -68,9 +69,12 @@ export interface PromptsConfigResponse {
   provider_label: string | null;
   model: string | null;
   available_models: string[];
-  // Global-only budget snapshot — see backend BudgetService.global_status.
+  // Calling user's and shared monthly budget snapshot.
   budget_exhausted: boolean;
   global_budget_remaining_usd: number | null;
+  user_budget_remaining_usd?: number | null;
+  budget_scope?: 'shared' | 'user' | null;
+  budget_resets_at?: string | null;
 }
 
 export interface PromptVersionResponse {

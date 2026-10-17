@@ -39,7 +39,7 @@ def get_llm_connection(current_user: User = Depends(get_current_user)):
 
 @router.get("/me/llm-connection/models", response_model=list[ModelPriceInfo])
 def get_llm_connection_models(current_user: User = Depends(get_current_user)):
-    """List models exposed by the caller's provider, enriched with pricing."""
+    """Curated hosted choices or discovered local/custom models, with pricing."""
     connection = deps.get_llm_connection(current_user)
     return model_catalog_for(current_user, connection)
 

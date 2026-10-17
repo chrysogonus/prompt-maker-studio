@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ApiClient, ApiError, isValidPromptId, PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
+import { runStatus } from '@/lib/evaluationStatus';
 import { downloadBlob } from '@/lib/download';
 import { pageTitle } from '@/lib/branding';
 import type { PromptHistoryResponse, PromptsConfigResponse } from '@/types/prompt';
@@ -18,6 +19,8 @@ export function useEvaluation(promptId: number) {
   const [currentVersion, setCurrentVersion] = useState(1);
   const [config, setConfig] = useState<PromptsConfigResponse | null>(null);
   const [configError, setConfigError] = useState('');
+  const [configChecking, setConfigChecking] = useState(true);
+  const [budgetRejection, setBudgetRejection] = useState<ApiError | null>(null);
   const [configAttempt, setConfigAttempt] = useState(0);
   const [cases, setCases] = useState<EvalCase[]>([]);
   const [runs, setRuns] = useState<EvalRun[]>([]);
@@ -27,6 +30,7 @@ export function useEvaluation(promptId: number) {
   const [loadError, setLoadError] = useState('');
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [error, setError] = useState('');
+  const [aiError, setAiError] = useState(false);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState('');
   const actionPending = useRef(false);
@@ -72,11 +76,12 @@ export function useEvaluation(promptId: number) {
       if (!active) return;
       setConfig(capability);
       setConfigError('');
+      setBudgetRejection(null);
     }).catch(() => {
       if (!active) return;
       setConfig(null);
       setConfigError('AI availability could not be checked. You can still manage cases and read past results.');
-    });
+    }).finally(() => { if (active) setConfigChecking(false); });
     return () => { active = false; };
   }, [promptId, configAttempt]);
 
@@ -90,10 +95,13 @@ export function useEvaluation(promptId: number) {
     actionPending.current = true;
     setBusy(action);
     setError('');
+    setAiError(false);
     setNotice('');
     try {
       await work();
     } catch (failure) {
+      if (failure instanceof ApiError && failure.status === 402) setBudgetRejection(failure);
+      else if (action === 'run' || action === 'generate') setAiError(true);
       setError(failure instanceof Error ? failure.message : 'The request failed. Please try again.');
     } finally {
       actionPending.current = false;
@@ -144,7 +152,7 @@ export function useEvaluation(promptId: number) {
   }
 
   async function generate(goal: string) {
-    if (!config?.provider_connected || config.budget_exhausted) return;
+    if (!config?.provider_connected || config.budget_exhausted || budgetRejection) return;
     await perform('generate', async () => {
       const { proposals: suggestions } = await ApiClient.generateEvalCases(promptId, goal);
       setProposals(suggestions);
@@ -154,14 +162,14 @@ export function useEvaluation(promptId: number) {
   }
 
   async function run() {
-    if (!config?.provider_connected || config.budget_exhausted) return;
+    if (!config?.provider_connected || config.budget_exhausted || budgetRejection) return;
     await perform('run', async () => {
       const result = await ApiClient.runEvaluation(promptId);
       setRuns((current) => [result, ...current]);
       setSelectedRunId(result.id);
       setView('runs');
       setCurrentVersion(result.prompt_version_number);
-      setNotice('Evaluation finished.');
+      setNotice(`Evaluation: ${runStatus(result)}.`);
       try {
         const [latest, versions] = await Promise.all([ApiClient.getPromptById(promptId), ApiClient.getPromptVersions(promptId)]);
         setPrompt(latest);
@@ -197,9 +205,16 @@ export function useEvaluation(promptId: number) {
   }
 
   return {
-    prompt, currentVersion, config, configError, retryConfig: () => setConfigAttempt((n) => n + 1),
+    prompt, currentVersion, config, configError, configChecking, budgetRejection,
+    retryConfig: () => {
+      setConfig(null);
+      setConfigChecking(true);
+      setConfigError('');
+      setError('');
+      setConfigAttempt((n) => n + 1);
+    },
     cases, runs, hasMoreRuns, loadOlderRuns, loading, loadError, retry: () => setLoadAttempt((n) => n + 1),
-    error, setError, notice, busy, view, setView, editing, setEditing, deleting, setDeleting,
+    error, setError, aiError, notice, busy, view, setView, editing, setEditing, deleting, setDeleting,
     suggesting, setSuggesting, proposals, setProposals, selectedRunId, setSelectedRunId,
     saveCase, deleteCase, generate, run, rate, importCsv, exportCsv,
   };

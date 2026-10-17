@@ -27,10 +27,11 @@ function formatPrice(price: number): string {
 }
 
 function modelOptionLabel(model: LLMModelPriceInfo): string {
+  const label = model.label ?? model.id;
   if (model.input_price_per_1m === null || model.output_price_per_1m === null) {
-    return `${model.id} — pricing unknown`;
+    return `${label} — pricing unknown`;
   }
-  return `${model.id} — $${formatPrice(model.input_price_per_1m)}/$${formatPrice(model.output_price_per_1m)} per 1M tokens`;
+  return `${label} — $${formatPrice(model.input_price_per_1m)}/$${formatPrice(model.output_price_per_1m)} per 1M tokens`;
 }
 
 export default function LLMConnectionForm() {
@@ -40,6 +41,7 @@ export default function LLMConnectionForm() {
   const [baseUrl, setBaseUrl] = useState('');
   const [model, setModel] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [workspaceId, setWorkspaceId] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -57,12 +59,14 @@ export default function LLMConnectionForm() {
     setProviderHandle(next.provider ?? '');
     setBaseUrl(next.base_url ?? '');
     setModel(next.model ?? '');
+    setWorkspaceId(next.provider === 'anthropic' ? next.workspace_id ?? '' : '');
     setApiKey('');
     setShowApiKey(false);
   }, []);
 
-  const refreshModelCatalogue = useCallback(async () => {
+  const refreshModelCatalogue = useCallback(async (next: LLMConnection) => {
     const requestId = ++catalogueRequest.current;
+    if (next.providers.find((p) => p.handle === next.provider)?.models.length) return;
     try {
       const models = await AuthService.getLLMModels();
       if (catalogueRequest.current === requestId) setModelCatalogue(models);
@@ -77,7 +81,7 @@ export default function LLMConnectionForm() {
     AuthService.getLLMConnection()
       .then((next) => {
         applyConnection(next);
-        if (next.configured) void refreshModelCatalogue();
+        if (next.configured) void refreshModelCatalogue(next);
       })
       .catch((err) =>
         setError(err instanceof Error ? err.message : 'Failed to load the provider connection.'),
@@ -101,27 +105,38 @@ export default function LLMConnectionForm() {
     selected?.requires_api_key && (providerChanged || !connection?.has_api_key),
   );
 
-  const unsaved = providerHandle !== (connection?.provider ?? '') || baseUrl !== (connection?.base_url ?? '') || model !== (connection?.model ?? '') || Boolean(apiKey.trim());
+  const unsaved = providerHandle !== (connection?.provider ?? '') || baseUrl !== (connection?.base_url ?? '') || model !== (connection?.model ?? '') || Boolean(apiKey.trim()) || workspaceId !== (connection?.workspace_id ?? '');
+  const curatedModels = selected?.models ?? [];
+  const isCurated = curatedModels.length > 0;
+  const unlistedModel = isCurated && !curatedModels.some((item) => item.id === model);
+  const legacyModel = isCurated && connection?.provider === providerHandle && connection.model
+    && !curatedModels.some((item) => item.id === connection.model);
   const compatibility = modelCompatibility(model);
-  const selectionTested = testedSelection === `${providerHandle}|${baseUrl}|${model}`;
+  const selectionTested = testedSelection === `${providerHandle}|${baseUrl}|${model}|${workspaceId}`;
 
   const handleProviderChange = (handle: string) => {
     catalogueRequest.current += 1;
     setModelCatalogue([]);
     setProviderHandle(handle);
+    setWorkspaceId('');
     setStatus('');
     setError('');
     const next = providers.find((p) => p.handle === handle);
     setBaseUrl(next?.default_base_url ?? '');
     // Suggested models are provider-specific, so a carried-over model name
     // would almost always be wrong for the new vendor.
-    setModel(next?.suggested_models[0] ?? '');
+    setModel(next?.models[0]?.id ?? '');
     setApiKey('');
     setShowApiKey(false);
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (unlistedModel) return;
+    if (providerHandle === 'anthropic' && workspaceId && !/^wrkspc_[A-Za-z0-9]+$/.test(workspaceId)) {
+      setError('Enter a valid Anthropic workspace ID starting with wrkspc_.');
+      return;
+    }
     setError('');
     setStatus('');
     setIsSaving(true);
@@ -130,11 +145,12 @@ export default function LLMConnectionForm() {
         provider: providerHandle,
         base_url: baseUrl.trim() || null,
         model: model.trim(),
+        ...(providerHandle === 'anthropic' ? { workspace_id: workspaceId || null } : {}),
         // Blank means "leave the stored key alone" — only send a real value.
         ...(apiKey.trim() ? { api_key: apiKey.trim() } : {}),
       });
       applyConnection(updated);
-      void refreshModelCatalogue();
+      void refreshModelCatalogue(updated);
       setStatus('Connection saved.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save the provider connection.');
@@ -151,9 +167,9 @@ export default function LLMConnectionForm() {
     try {
       const result = await AuthService.testLLMConnection();
       if (result.ok) {
-        setTestedSelection(`${connection?.provider ?? ''}|${connection?.base_url ?? ''}|${connection?.model ?? ''}`);
+        setTestedSelection(`${connection?.provider ?? ''}|${connection?.base_url ?? ''}|${connection?.model ?? ''}|${connection?.workspace_id ?? ''}`);
         setStatus(`Text-generation test passed for ${connection?.model ?? connection?.server_default?.model}. ${result.message}`);
-        void refreshModelCatalogue();
+        if (connection) void refreshModelCatalogue(connection);
       } else {
         setError(result.message);
       }
@@ -235,7 +251,25 @@ export default function LLMConnectionForm() {
 
       <div className={styles.field}>
         <span className={styles.fieldLabel}>Model</span>
-        {modelCatalogue.length > 0 ? (
+        {isCurated ? (
+          <div className={styles.modelPicker}>
+            <Select
+              value={unlistedModel ? '' : model}
+              onChange={(e) => setModel(e.target.value)}
+              aria-label="Model"
+            >
+              <option value="">Choose a current model…</option>
+              {curatedModels.map((item) => (
+                <option key={item.id} value={item.id}>{modelOptionLabel(item)}</option>
+              ))}
+            </Select>
+            {legacyModel && (
+              <p className={styles.hint}>
+                Previously configured model: {connection.model}. Choose a current model to update this connection.
+              </p>
+            )}
+          </div>
+        ) : modelCatalogue.length > 0 ? (
           <div className={styles.modelPicker}>
             <Select
               value={modelCatalogue.some((item) => item.id === model) ? model : ''}
@@ -266,24 +300,18 @@ export default function LLMConnectionForm() {
               onChange={(e) => setModel(e.target.value)}
               placeholder="Model name your provider serves"
               aria-label="Model"
-              list={selected?.suggested_models.length ? 'llm-model-suggestions' : undefined}
               spellCheck={false}
             />
-            {selected && selected.suggested_models.length > 0 && (
-              <datalist id="llm-model-suggestions">
-                {selected.suggested_models.map((m) => (
-                  <option key={m} value={m} />
-                ))}
-              </datalist>
-            )}
           </div>
         )}
       </div>
 
       <p className={styles.hint}>
-        {compatibility === 'other' ? 'This model name indicates an operation other than text generation. Choose a chat/text model for Import, Refine, Evaluate and Try once.'
+        {isCurated
+          ? selectionTested ? 'Text-generation test passed for the saved model.' : 'Save your selection, then test the connection to verify access.'
+          : compatibility === 'other' ? 'This model name indicates an operation other than text generation. Choose a chat/text model for Import, Refine, Evaluate and Try once.'
           : selectionTested ? 'The saved provider and selected model passed a text-generation test. Structured operations still depend on provider support.' : 'Model discovery and saved credentials do not verify compatibility. Model compatibility has not been tested for this selection; use Test connection after saving.'}
-        {' '}Model-name grouping is guidance only. Custom models remain available for self-hosted providers.
+        {!isCurated && ' Model-name grouping is guidance only. Custom models remain available for self-hosted providers.'}
       </p>
       {unsaved && <p className={styles.hint}>Save changes before testing. Test connection uses the saved provider and model.</p>}
       <p className={styles.hint}>Test connection sends a text-generation request using {connection?.provider_label ?? connection?.server_default?.provider_label ?? 'the saved provider'} / {connection?.model ?? connection?.server_default?.model ?? 'saved model'} and may incur provider charges.</p>
@@ -324,6 +352,21 @@ export default function LLMConnectionForm() {
         </span>
       </div>
 
+      {providerHandle === 'anthropic' && (
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Anthropic workspace ID (optional)</span>
+          <Input
+            value={workspaceId}
+            onChange={(e) => setWorkspaceId(e.target.value)}
+            aria-label="Anthropic workspace ID (optional)"
+            placeholder="wrkspc_…"
+            maxLength={100}
+            spellCheck={false}
+          />
+          <span className={styles.hint}>Required only for API keys with access to multiple workspaces. Find the workspace ID in the Claude Console workspace settings.</span>
+        </label>
+      )}
+
       {keyRequired && (
         <div className={styles.hint}>
           {providerChanged
@@ -348,7 +391,7 @@ export default function LLMConnectionForm() {
       {status && <div className={styles.success} role="status">{status}</div>}
 
       <div className={styles.actions}>
-        <Button type="submit" disabled={isSaving || !providerHandle || !model.trim()}>
+        <Button type="submit" disabled={isSaving || !providerHandle || !model.trim() || unlistedModel}>
           {isSaving ? 'Saving…' : 'Save connection'}
         </Button>
         <Button

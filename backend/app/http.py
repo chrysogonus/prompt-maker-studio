@@ -7,6 +7,7 @@ from time import perf_counter
 import uuid
 
 from fastapi import Depends, FastAPI, Request, status
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -21,12 +22,14 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
+from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.auth.cookies import CSRF_HEADER_NAME
 from app.database.connection import get_db
 from app.limiter import limiter
 from app.metrics import channel_context, refresh_snapshot, request_id_context
+from app.services.budget_service import BudgetExceededError
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +190,20 @@ def metrics_endpoint(request: Request, db: Session = Depends(get_db)) -> Respons
     return Response(content=content, headers=headers)
 
 
+async def budget_exception_handler(request: Request, exc: HTTPException):
+    """Keep the legacy message while adding recovery data to budget rejections."""
+    cause = exc.__cause__
+    while cause is not None:
+        if isinstance(cause, BudgetExceededError) and cause.budget is not None:
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail, "budget": cause.budget},
+                headers={**(exc.headers or {}), "Retry-After": str(cause.budget["retry_after"])},
+            )
+        cause = cause.__cause__
+    return await http_exception_handler(request, exc)
+
+
 def configure_http(app: FastAPI) -> None:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -196,6 +213,7 @@ def configure_http(app: FastAPI) -> None:
     app.get("/metrics", include_in_schema=False)(metrics_endpoint)
     app.add_middleware(RequestIdMiddleware)
     app.add_exception_handler(Exception, unhandled_exception_handler)
+    app.add_exception_handler(HTTPException, budget_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_middleware(
         CORSMiddleware,

@@ -100,6 +100,40 @@ async function renderSaved() {
   await screen.findByRole('button', { name: 'Weekly status update' });
 }
 
+it('copies plain text exactly as previewed while keeping placeholders and literal tags', async () => {
+  const user = userEvent.setup();
+  const clipboard = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ fields: [{ name: 'Task', content: '  Visit {{team}}. Literal <example>.  ' }] }));
+  await renderSaved();
+  await user.click(screen.getByText('Output options', { exact: true }));
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Output format' }), 'plain');
+  fireEvent.change(screen.getByLabelText('team', { exact: true }), { target: { value: 'café' } });
+  expect(screen.getByLabelText('Prompt text').textContent).toBe('  Visit café. Literal <example>.  ');
+  await user.click(screen.getByRole('button', { name: 'Copy filled prompt' }));
+  expect(clipboard).toHaveBeenCalledWith('  Visit café. Literal <example>.  ');
+});
+
+it('dismisses advisory markup warnings without editing the prompt', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ fields: [{ name: 'Task', content: 'Keep literal <example>.' }] }));
+  await renderSaved();
+  await user.click(screen.getByRole('button', { name: 'Dismiss markup warning for Task' }));
+  expect(screen.queryByText(/Possible unmatched tag/)).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Task text')).toHaveValue('Keep literal <example>.');
+  expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
+});
+
+it('opens full prompt details without beginning a rename', async () => {
+  const user = userEvent.setup();
+  await renderSaved();
+  await user.click(screen.getByRole('button', { name: 'Tools' }));
+  await user.click(screen.getByRole('button', { name: 'Prompt details' }));
+  const details = screen.getByRole('dialog', { name: 'Prompt details' });
+  expect(details).toHaveTextContent('Weekly status update');
+  expect(details).toHaveTextContent('Work');
+  expect(screen.queryByRole('textbox', { name: 'Prompt name' })).not.toBeInTheDocument();
+});
+
 it('closes secondary tools on Escape, outside input and opening history', async () => {
   const user = userEvent.setup();
   await renderSaved();
@@ -652,7 +686,7 @@ describe('PromptEditor with a saved prompt', () => {
     const role = screen.getByLabelText('Role text');
     await user.clear(role);
     await user.type(role, 'Use <b>bold');
-    expect(screen.getByText(/<b> opens and closes an uneven number of times/)).toBeInTheDocument();
+    expect(screen.getByText(/Possible unmatched tag: <b>/)).toBeInTheDocument();
 
     await user.clear(role);
     expect(screen.getByText(/This section is empty/)).toBeInTheDocument();
@@ -800,7 +834,7 @@ describe('PromptEditor with a new prompt', () => {
     expect(screen.getByText(/Imported 2 sections/)).toBeInTheDocument();
   });
 
-  it('explains Paste a prompt and links to Settings when no AI connection exists', async () => {
+  it('offers saving as written when no AI connection exists', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.getPromptsConfig).mockResolvedValue({
       provider_connected: false,
@@ -816,11 +850,9 @@ describe('PromptEditor with a new prompt', () => {
 
     await openTool(user, 'Paste a prompt');
 
-    const dialog = await screen.findByRole('dialog', { name: 'Paste a prompt needs an AI connection' });
-    expect(within(dialog).getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
-      'href',
-      '/settings#s-api',
-    );
+    const dialog = await screen.findByRole('dialog', { name: 'Paste a prompt' });
+    expect(within(dialog).getByRole('button', { name: 'Save as written' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Create template' })).toBeDisabled();
     expect(ApiClient.parsePromptText).not.toHaveBeenCalled();
   });
 });
@@ -1000,4 +1032,65 @@ it('keeps import Undo available when loading unchanged example inputs', async ()
   await user.click(screen.getByRole('button', { name: 'Undo' }));
   expect(screen.getByLabelText('Context text')).toHaveValue(prompt().fields[1].content);
   expect(screen.getByLabelText('team', { exact: true })).toHaveValue('Payments');
+});
+
+it('discards template edits while preserving matching filled inputs and forgetting removed variables', async () => {
+  const user = userEvent.setup();
+  await renderSaved();
+  fireEvent.change(screen.getByLabelText('team', { exact: true }), { target: { value: 'Payments' } });
+  fireEvent.change(screen.getByLabelText('Context text'), { target: { value: 'Team: {{team}} New: {{temporary}}' } });
+  fireEvent.change(screen.getByLabelText('temporary', { exact: true }), { target: { value: 'Temporary value' } });
+  await user.click(screen.getByRole('button', { name: 'Discard' }));
+  expect(screen.getByLabelText('team', { exact: true })).toHaveValue('Payments');
+  fireEvent.change(screen.getByLabelText('Context text'), { target: { value: 'Team: {{team}} New: {{temporary}}' } });
+  expect(screen.getByLabelText('temporary', { exact: true })).toHaveValue('');
+});
+
+it('opens library filled links in a focused pane with an explicit edit action', async () => {
+  const user = userEvent.setup();
+  render(<PromptEditor promptId={1} initialMode="filled" />);
+  await screen.findByRole('button', { name: 'Weekly status update' });
+  expect(screen.getByRole('button', { name: 'Edit template' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Context text').closest('fieldset')).toHaveAttribute('hidden');
+  await user.click(screen.getByRole('button', { name: 'Edit template' }));
+  expect(screen.getByLabelText('Context text').closest('fieldset')).not.toHaveAttribute('hidden');
+});
+
+
+it('checks the connection before showing a disconnected warning and distinguishes failures', async () => {
+  const user = userEvent.setup();
+  let reject!: (reason: Error) => void;
+  vi.mocked(ApiClient.getPromptsConfig).mockReturnValue(new Promise((_, fail) => { reject = fail; }));
+  render(<PromptEditor openImport />);
+  expect(within(screen.getByRole('dialog', { name: 'Paste a prompt' })).getByText('Checking AI connection…')).toBeInTheDocument();
+  expect(screen.queryByText(/Connect an AI provider in Settings/)).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: '  Write a weekly update.\nKeep formatting.  ' } });
+  reject(new Error('Offline'));
+  expect(await within(screen.getByRole('dialog', { name: 'Paste a prompt' })).findByText(/Could not check the AI connection/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Save as written' }));
+  const save = screen.getByRole('dialog', { name: 'Save prompt' });
+  expect(within(save).getByLabelText('Name')).toHaveValue('Write a weekly update.');
+  expect(screen.getByLabelText('Task text')).toHaveValue('  Write a weekly update.\nKeep formatting.  ');
+  await user.clear(within(save).getByLabelText('Name'));
+  await user.type(within(save).getByLabelText('Name'), 'My weekly update');
+  expect(within(save).getByLabelText('Name')).toHaveValue('My weekly update');
+  expect(ApiClient.parsePromptText).not.toHaveBeenCalled();
+});
+
+it('keeps recovered filled inputs after discard until explicitly cleared', async () => {
+  const user = userEvent.setup();
+  const saved = prompt();
+  localStorage.setItem(draftKey(1), JSON.stringify({
+    base: JSON.stringify({ fields: saved.fields, metadata: [['team', saved.variable_metadata!.team]] }),
+    sections: [{ name: 'Context', content: '{{team}} {{temporary}}' }], metadata: {},
+    values: { team: 'Payments', temporary: 'Private temporary value' },
+  }));
+  await renderSaved();
+  await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+  await waitFor(() => expect(JSON.parse(localStorage.getItem(draftKey(1))!).values).toEqual({ team: 'Payments' }));
+  expect(screen.getByLabelText('team', { exact: true })).toHaveValue('Payments');
+  await user.click(screen.getByRole('button', { name: 'Clear inputs' }));
+  expect(screen.getByLabelText('team', { exact: true })).toHaveValue('');
+  await waitFor(() => expect(localStorage.getItem(draftKey(1))).toBeNull());
+  expect(screen.getByRole('button', { name: 'Saved' })).toBeDisabled();
 });

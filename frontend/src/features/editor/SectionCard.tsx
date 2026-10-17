@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { sectionTag, unbalancedTags } from '@/lib/sections';
 import type { EditorSection } from './PromptEditor';
 import styles from './PromptEditor.module.css';
@@ -28,6 +28,8 @@ export default function SectionCard({
   const label = section.name.trim() || 'Untitled section';
   const tag = sectionTag(section.name) || 'SECTION';
   const unclosed = unbalancedTags(section.content);
+  const [dismissedTags, setDismissedTags] = useState<string | null>(null);
+  const warningTags = unclosed.join(', ');
   // A blank name only matters once the section has been left or saved; a
   // name typed wrong is worth flagging straight away.
   const showNameError = Boolean(nameError && (section.touched || section.name.trim()));
@@ -106,10 +108,11 @@ export default function SectionCard({
           {nameError}
         </p>
       )}
-      {unclosed.length > 0 && (
+      {unclosed.length > 0 && dismissedTags !== warningTags && (
         <p className={styles.sectionWarning}>
-          {unclosed.map((name) => `<${name}>`).join(', ')} opens and closes an uneven number of
-          times in this section. Check for a missing or extra tag.
+          Possible unmatched tag: {unclosed.map((name) => `<${name}>`).join(', ')}.
+          {' '}Literal text is fine; saving and copying still work.
+          {' '}<button type="button" className={styles.link} aria-label={`Dismiss markup warning for ${label}`} onClick={() => setDismissedTags(warningTags)}>Dismiss</button>
         </p>
       )}
       {section.touched && !section.content.trim() && (

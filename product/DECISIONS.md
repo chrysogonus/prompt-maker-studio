@@ -965,3 +965,35 @@ quietly outliving its reason.
 **Rationale**: Switching theme should never move content or change what fits on screen.
 
 **Source**: `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/shell/Sidebar.module.css`, `frontend/src/components/shell/AppShell.module.css`, `frontend/src/components/ui/SegmentedControl.module.css`, `frontend/src/features/editor/PromptEditor.module.css`, `frontend/src/features/auth/AuthForm.module.css`
+
+
+## Curated Hosted Model Choices with Legacy Connection Preservation
+
+**Status**: Accepted (2026-10-17)
+
+**Context**: Live hosted catalogues and free-text entry exposed older generations,
+dated snapshots and models for unrelated operations in the AI connection form.
+
+**Decision**: The provider registry owns ordered IDs and labels for OpenAI
+(GPT-6 Astra, GPT-6.1 Sol, GPT-6 Luna), Anthropic (Opus, Sonnet and Haiku 5.5),
+and Gemini (3.1 Pro preview, 3.8 Flash, 3.5 Flash-Lite). The connection response
+includes these choices and estimated prices before credentials are saved. Hosted
+catalogue endpoints and capability model lists reuse the registry without live
+model discovery. Saving requires a listed ID. Local/custom providers keep manual
+names and cached discovery. This supersedes the free-text hosted-model policy
+in the bring-your-own connection decision; its transport choice still applies.
+
+**Consequences**: Existing older connections and operator defaults still execute
+with their configured model; there is no automatic migration or silent model
+substitution. Settings identifies a legacy model and requires a current choice
+before saving an update. The user can retain their encrypted key. Model updates
+are deliberate registry edits, checked against official provider documentation;
+preview choices are labelled. Pricing remains an estimate with unknown-price
+support and the existing limitations for caching, long context and discounts.
+Gemini Flash's fallback uses its post-introductory standard rate conservatively.
+
+**Sources**: [OpenAI models](https://developers.openai.com/api/docs/models),
+[Claude models](https://platform.claude.com/docs/en/models/overview),
+[Gemini models](https://ai.google.dev/gemini-api/docs/models);
+`backend/app/services/llm_providers.py`, `backend/app/services/llm_model_catalog.py`,
+`frontend/src/features/settings/LLMConnectionForm.tsx`.

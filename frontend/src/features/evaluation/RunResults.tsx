@@ -1,5 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import { resultFailure, resultStatus, runScoreLabel } from '@/lib/evaluationStatus';
+import type { EvalResult } from '@/types/evaluation';
 import Button from '@/components/ui/Button';
 import type { EvalRun } from '@/types/evaluation';
 import { METHOD_LABELS } from './useEvaluation';
@@ -20,6 +23,27 @@ export function JudgeFeedback({ rationale }: { rationale: string }) {
   </div>;
 }
 
+export function ResultFeedback({ result }: { result: EvalResult }) {
+  const failure = resultFailure(result);
+  if (!failure) return result.rationale ? <JudgeFeedback rationale={result.rationale} /> : null;
+  // Old history can contain raw provider exceptions. Never display that payload.
+  let message = 'Check your AI connection in Settings, then run the evaluation again.';
+  const prefix = failure === 'generation' ? 'Model run failed: ' : 'Judge grading failed: ';
+  if (result.rationale?.startsWith(prefix)) {
+    try {
+      const parsed = JSON.parse(result.rationale.slice(prefix.length));
+      if (typeof parsed.message === 'string') message = parsed.message;
+    } catch { /* Legacy exception text is deliberately hidden. */ }
+  }
+  return <div className={styles.feedback}>
+    <p className={styles.error}>{failure === 'generation' ? 'The model could not generate output.' : 'The output was generated, but AI scoring failed.'}</p>
+    <p>{message} <Link href="/settings">Open Settings</Link></p>
+    <details className={styles.runDetails}><summary>Technical diagnostics</summary>
+      <p>Failed stage: {failure === 'generation' ? 'output generation' : 'AI scoring'}. Provider request data and raw exception details are hidden.</p>
+    </details>
+  </div>;
+}
+
 export default function RunResults({ run, busy, onRate }: {
   run: EvalRun;
   busy: string;
@@ -30,8 +54,8 @@ export default function RunResults({ run, busy, onRate }: {
     <section className={styles.results} aria-label="Evaluation results">
       <div className={styles.runSummary}>
         <div>
-          <h2>{run.score === null ? 'Not scored yet' : `${Math.round(run.score)}/100`}</h2>
-          <p className={styles.hint}>{pending ? `${pending} ${pending === 1 ? 'result needs' : 'results need'} your rating. The overall score appears after all ratings are saved.` : 'Average of scored results. Unscored results are excluded.'}</p>
+          <h2>{runScoreLabel(run)}</h2>
+          <p className={styles.hint}>{pending ? `${pending} ${pending === 1 ? 'result needs' : 'results need'} your rating. The overall score appears after all ratings are saved.` : 'Average of scored results. Failed and unscored results are excluded.'}</p>
         </div>
         <span className={styles.hint}>Saved prompt version {run.prompt_version_number}</span>
       </div>
@@ -49,12 +73,12 @@ export default function RunResults({ run, busy, onRate }: {
           <header className={styles.resultHead}>
             <div><h3>{result.label || `Test case ${index + 1}`}</h3><p className={styles.hint}>{METHOD_LABELS[result.method]}</p></div>
             <span className={styles.resultScore}>
-              {result.is_pending ? 'Needs your rating' : result.score === null ? 'Not scored' : `${Math.round(result.score)}/100`}
+              {`${resultStatus(result)}${result.score === null ? '' : ` · ${Math.round(result.score)}/100`}`}
             </span>
           </header>
           {result.output_text !== null ? <div className={styles.output}><h4>Model output</h4><pre>{result.output_text || '(Empty output)'}</pre></div>
             : <p className={styles.error}>No model output was recorded for this case.</p>}
-          {result.rationale && <JudgeFeedback rationale={result.rationale} />}
+          <ResultFeedback result={result} />
           {result.is_pending && (
             <div className={styles.rating}>
               <p>How well did this output meet your expectations?</p>

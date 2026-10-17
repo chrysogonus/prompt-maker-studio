@@ -63,6 +63,9 @@ It currently handles:
 
 Migration 020 preserves the pre-025 note schema during its rebuild, so an upgrade that crosses both steps still runs the 025 backfill. This does not guess at repairs for note history already edited after an earlier skipped backfill; recover those records from a verified backup before changing them.
 
+- `028_prompt_content_updated_at` — separates library content recency from the optimistic-concurrency update stamp. Existing rows keep their last known update (or creation) time; past organization-only activity cannot be reconstructed. New favorites, renames and folder changes leave content recency alone; section/variable edits and restores advance it.
+- `029_user_llm_workspace` — adds nullable `users.llm_workspace_id` for optional Anthropic workspace selection. Existing connections retain their key and need no workspace unless the key grants access to multiple workspaces.
+
 ## Production Migration Checklist
 
 For an explicitly approved production deployment with database changes:

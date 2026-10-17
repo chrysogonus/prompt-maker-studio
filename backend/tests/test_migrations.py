@@ -33,6 +33,34 @@ def _table_exists(connection, table_name: str) -> bool:
     return row is not None
 
 
+def test_content_recency_migration_backfills_once_and_preserves_concurrency(tmp_path):
+    from app.database.migrations.v028_prompt_content_updated_at import (
+        _migration_028_prompt_content_updated_at,
+    )
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'content-recency.db'}")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE TABLE prompts (id INTEGER PRIMARY KEY, created_at DATETIME, updated_at DATETIME)"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO prompts VALUES (1, '2026-10-01', '2026-10-02'), (2, '2026-10-03', NULL)"
+            )
+        )
+        _migration_028_prompt_content_updated_at(connection)
+        assert connection.execute(
+            text("SELECT content_updated_at FROM prompts ORDER BY id")
+        ).scalars().all() == ["2026-10-02", "2026-10-03"]
+        connection.execute(text("UPDATE prompts SET updated_at = '2026-10-04' WHERE id = 1"))
+        _migration_028_prompt_content_updated_at(connection)
+        assert connection.execute(
+            text("SELECT content_updated_at, updated_at FROM prompts WHERE id = 1")
+        ).one() == ("2026-10-02", "2026-10-04")
+
+
 def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
     """Legacy SQLite databases get current columns, indexes, and migration records."""
     db_path = tmp_path / "legacy.db"
@@ -149,6 +177,8 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
             "025_version_notes",
             "026_user_auth_subject",
             "027_oauth_grants",
+            "028_prompt_content_updated_at",
+            "029_user_llm_workspace",
         }
         assert "updated_at" in _columns(connection, "prompts")
         assert _table_exists(connection, "prompt_versions")
@@ -304,7 +334,7 @@ def test_run_migrations_is_idempotent_on_current_database(tmp_path):
 
     with engine.connect() as connection:
         versions = connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
-        assert len(versions) == 27
+        assert len(versions) == 29
         assert {
             "fields",
             "user_id",
@@ -754,3 +784,21 @@ def test_oauth_revocation_migration_invalidates_legacy_credentials_and_is_idempo
             == "new-refresh"
         )
     engine.dispose()
+
+
+def test_workspace_migration_is_idempotent_and_preserves_users():
+    from app.database.migrations.v029_user_llm_workspace import _migration_029_user_llm_workspace
+
+    engine = create_engine("sqlite://")
+    with engine.begin() as connection:
+        _migration_029_user_llm_workspace(connection)
+        connection.execute(text("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT)"))
+        connection.execute(text("INSERT INTO users VALUES (1, 'existing')"))
+        _migration_029_user_llm_workspace(connection)
+        assert connection.execute(text("SELECT llm_workspace_id FROM users")).scalar() is None
+        connection.execute(text("UPDATE users SET llm_workspace_id = 'wrkspc_ABC123'"))
+        _migration_029_user_llm_workspace(connection)
+        assert (
+            connection.execute(text("SELECT llm_workspace_id FROM users")).scalar()
+            == "wrkspc_ABC123"
+        )

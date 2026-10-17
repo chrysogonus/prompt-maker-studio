@@ -20,8 +20,8 @@ class TestPromptsConfigEndpoint:
         assert data["provider"] == "openai"
         assert data["provider_label"] == "OpenAI"
         assert data["model"] == TEST_LLM_MODEL
-        # The user's own model leads the picker.
-        assert data["available_models"][0] == TEST_LLM_MODEL
+        # Legacy saved models remain active but are not offered for new selections.
+        assert data["available_models"] == ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna"]
 
     def test_config_reports_disconnected_when_no_provider_is_set(self, client, auth_headers):
         """With no connection, no models are advertised — the frontend must not
@@ -39,6 +39,9 @@ class TestPromptsConfigEndpoint:
             "available_models": [],
             "budget_exhausted": False,
             "global_budget_remaining_usd": None,
+            "user_budget_remaining_usd": None,
+            "budget_scope": None,
+            "budget_resets_at": None,
         }
 
     @pytest.mark.usefixtures("server_default_llm")
@@ -104,3 +107,11 @@ class TestPromptsConfigEndpoint:
         data = response.json()
         assert data["budget_exhausted"] is True
         assert data["global_budget_remaining_usd"] == 0.0
+
+    @patch.dict("os.environ", {"USER_MONTHLY_BUDGET_USD": "0"}, clear=False)
+    def test_config_reports_callers_user_budget(self, client, auth_headers):
+        data = client.get("/api/prompts/config", headers=auth_headers).json()
+        assert data["budget_exhausted"] is True
+        assert data["budget_scope"] == "user"
+        assert data["user_budget_remaining_usd"] == 0.0
+        assert data["budget_resets_at"].endswith("+00:00")

@@ -159,10 +159,9 @@ class TestServerDefault:
 
 
 class TestAvailableModels:
-    def test_users_own_model_leads_the_list(self):
+    def test_hosted_picker_only_offers_curated_models(self):
         models = available_models_for(_user(llm_model="gpt-4o"))
-        assert models[0] == "gpt-4o"
-        assert models.count("gpt-4o") == 1
+        assert models == ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna"]
 
     def test_free_text_model_still_appears(self):
         """A self-hosted server can serve any name at all."""
@@ -421,3 +420,71 @@ class TestDescribeLLMError:
         status, detail = describe_llm_error(NoProviderConfiguredError("connect one"), None)
         assert status == 422
         assert detail == "connect one"
+
+
+@pytest.mark.parametrize(
+    ("provider", "base_url", "workspace", "expected"),
+    [
+        ("anthropic", None, "wrkspc_ABC123", "wrkspc_ABC123"),
+        ("anthropic", None, None, None),
+        ("openai", None, "wrkspc_ABC123", None),
+        ("anthropic", "https://gateway.example/v1", "wrkspc_ABC123", None),
+    ],
+)
+def test_workspace_header_is_scoped_to_anthropic(provider, base_url, workspace, expected):
+    user = _user(llm_provider=provider, llm_base_url=base_url)
+    user.llm_workspace_id = workspace
+    with patch("app.services.llm_client.OpenAI") as factory:
+        client_for(user, model="override")
+    headers = factory.call_args.kwargs.get("default_headers", {})
+    assert headers.get("anthropic-workspace-id") == expected
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "anthropic-workspace-id header is required",
+        "Invalid workspace ID wrkspc_secret with API key sk-secret",
+    ],
+)
+def test_workspace_errors_are_actionable_and_sanitized(message):
+    exc = BadRequestError(
+        message,
+        response=HttpxResponse(400, request=HttpxRequest("POST", "https://api.anthropic.com")),
+        body={"error": {"message": message}},
+    )
+    status, detail = describe_llm_error(exc, make_connection(MagicMock(), "anthropic"))
+    assert status == 422
+    assert "workspace" in detail.lower()
+    assert "Settings" in detail
+    assert "sk-secret" not in detail
+    assert "wrkspc_secret" not in detail
+
+
+def test_workspace_header_reaches_requests_including_model_overrides():
+    import httpx
+
+    requests = []
+
+    def respond(request):
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "id": "test",
+                "choices": [],
+                "model": "override",
+                "object": "chat.completion",
+                "created": 0,
+            },
+        )
+
+    http_client = httpx.Client(transport=httpx.MockTransport(respond))
+    with patch("app.services.llm_client.DefaultHttpx2Client", return_value=http_client):
+        connection = client_for(
+            _user(llm_provider="anthropic", llm_workspace_id="wrkspc_ABC123"), model="override"
+        )
+        connection.client.chat.completions.create(model=connection.model, messages=[])
+    assert requests[0].headers["anthropic-workspace-id"] == "wrkspc_ABC123"
+    assert json.loads(requests[0].content)["model"] == "override"
+    http_client.close()

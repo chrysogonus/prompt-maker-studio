@@ -14,7 +14,9 @@ providers price at 0.0 (see services/llm_pricing.py), so ceilings simply never
 bind for an Ollama or vLLM connection. See product/DECISIONS.md.
 """
 
-from datetime import UTC, datetime
+from calendar import monthrange
+from datetime import UTC, datetime, timedelta
+import math
 import os
 
 from sqlalchemy import func
@@ -27,9 +29,27 @@ from app.services.llm_pricing import ASSUMED_TOKENS_WHEN_USAGE_MISSING, cost_usd
 class BudgetExceededError(Exception):
     """Raised when a spend ceiling has been reached; message is safe to show the user."""
 
+    def __init__(self, message: str, *, scope: str | None = None, exhausted: bool = True):
+        super().__init__(message)
+        self.budget = None
+        if scope is not None:
+            now = datetime.now(UTC)
+            reset = _next_month(now)
+            self.budget = {
+                "scope": scope,
+                "resets_at": reset.isoformat(),
+                "retry_after": math.ceil((reset - now).total_seconds()),
+                "reason": "exhausted" if exhausted else "estimated_cost_exceeds_remaining",
+            }
+
 
 def _month_start(now: datetime) -> datetime:
     return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def _next_month(now: datetime) -> datetime:
+    start = _month_start(now)
+    return start + timedelta(days=monthrange(start.year, start.month)[1])
 
 
 def _limit_from_env(name: str) -> float | None:
@@ -107,7 +127,10 @@ class BudgetService:
                     "The shared monthly API budget has been reached. "
                     "Please try again after the budget resets next month."
                 )
-                raise BudgetExceededError(msg)
+                exhausted = global_spent >= global_limit
+                if not exhausted:
+                    msg = "The estimated request cost exceeds the remaining shared monthly API budget. Please try a smaller request or wait until the budget resets next month."
+                raise BudgetExceededError(msg, scope="shared", exhausted=exhausted)
 
         user_limit = BudgetService.user_limit_usd()
         if user_limit is not None:
@@ -117,7 +140,10 @@ class BudgetService:
                     "Your monthly API budget has been reached. "
                     "Please try again after the budget resets next month."
                 )
-                raise BudgetExceededError(msg)
+                exhausted = user_spent >= user_limit
+                if not exhausted:
+                    msg = "The estimated request cost exceeds your remaining monthly API budget. Please try a smaller request or wait until the budget resets next month."
+                raise BudgetExceededError(msg, scope="user", exhausted=exhausted)
 
     @staticmethod
     def estimated_batch_cost_usd(provider: str, model: str, calls: int) -> float:
@@ -158,3 +184,28 @@ class BudgetService:
         spent = BudgetService._spent_since(db, window_start, user_id=None)
         remaining = round(max(0.0, global_limit - spent), 6)
         return {"budget_exhausted": spent >= global_limit, "global_budget_remaining_usd": remaining}
+
+    @staticmethod
+    def status(db: Session, user_id: int) -> dict:
+        """Capability snapshot for the authenticated caller and the shared ceiling."""
+        status = BudgetService.global_status(db)
+        user_limit = BudgetService.user_limit_usd()
+        now = datetime.now(UTC)
+        user_spent = (
+            BudgetService._spent_since(db, _month_start(now), user_id)
+            if user_limit is not None
+            else 0.0
+        )
+        user_exhausted = user_limit is not None and user_spent >= user_limit
+        scope = "shared" if status["budget_exhausted"] else "user" if user_exhausted else None
+        return {
+            **status,
+            "budget_exhausted": status["budget_exhausted"] or user_exhausted,
+            "budget_scope": scope,
+            "budget_resets_at": _next_month(now).isoformat()
+            if BudgetService.any_limit_configured()
+            else None,
+            "user_budget_remaining_usd": round(max(0.0, user_limit - user_spent), 6)
+            if user_limit is not None
+            else None,
+        }

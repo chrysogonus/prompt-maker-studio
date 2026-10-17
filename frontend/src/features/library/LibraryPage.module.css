@@ -39,12 +39,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex-wrap: wrap;
   margin-bottom: var(--space-3);
 }
 
 .search {
   position: relative;
-  flex: 1;
+  flex: 1 1 180px;
   max-width: 420px;
   color: var(--text-muted);
 }
@@ -86,8 +87,8 @@
 .layoutSwitch button {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 5px;
   background: none;
@@ -110,7 +111,7 @@
 
 .row {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-1) var(--space-3) 0;
@@ -192,8 +193,7 @@
   font-size: var(--text-sm-size);
   font-weight: var(--weight-semibold);
   cursor: pointer;
-  /* Shown on hover or focus, so twelve identical buttons don't line the page. */
-  opacity: 0;
+  opacity: 1;
 }
 
 .row:hover .copyButton,
@@ -222,8 +222,9 @@
 .iconButton {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
@@ -299,14 +300,6 @@
   gap: var(--space-1);
   font-size: var(--text-xs-size);
   color: var(--text-muted);
-}
-
-.cardFoot > span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Menus */
@@ -547,7 +540,7 @@
   }
 
   .row {
-    grid-template-columns: 30px minmax(0, 1fr) auto;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
     gap: var(--space-2);
   }
 
@@ -580,12 +573,58 @@
 .copyButton { min-height: 44px; text-decoration: none; }
 .copyButton { display: inline-flex; opacity: 1; }
 .actions { flex-wrap: wrap; }
-@media (hover: hover) and (min-width: 761px) {
-  .row .copyButton { opacity: 0; }
-  .row:hover .copyButton,
-  .row:focus-within .copyButton { opacity: 1; }
-}
 @media (max-width: 760px) {
   .rowMain { grid-column: 2 / -1; }
   .row > .actions { grid-column: 2 / -1; }
+}
+
+.cardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs-size);
+  color: var(--text-muted);
+}
+.cardMeta .folder { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+.cardMeta .when { white-space: nowrap; }
+.cardFoot .menuWrap { margin-left: auto; }
+.sort {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm-size);
+}
+.selection { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; cursor: pointer; }
+.selection input, .selectVisible input { width: 18px; height: 18px; accent-color: var(--color-plum); }
+.rowControls { display: grid; justify-items: center; }
+.selectionBar, .batchForm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.selectVisible { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; font-size: var(--text-sm-size); cursor: pointer; }
+.batchForm { padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.batchForm small { color: var(--text-muted); }
+.importPreview { display: grid; gap: var(--space-4); max-height: 45vh; overflow-y: auto; }
+.importItem { display: grid; gap: var(--space-2); padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); }
+.importItem summary { cursor: pointer; color: var(--text-secondary); }
+.importText { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow-y: auto; font: inherit; color: var(--text-secondary); }
+.field textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-panel); color: var(--text-primary); font: inherit; resize: vertical; }
+
+.importDialog { width: min(640px, 100%); max-height: calc(100dvh - 2 * var(--space-4)); overflow-y: auto; }
+
+.searchExcerpt {
+  font-size: var(--text-base-size);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.searchExcerpt mark {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
 }

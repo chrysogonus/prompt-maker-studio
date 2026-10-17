@@ -67,7 +67,8 @@ function connection(overrides: Partial<Record<string, unknown>> = {}) {
         label: 'OpenAI',
         default_base_url: 'https://api.openai.com/v1',
         requires_api_key: true,
-        suggested_models: ['gpt-4o-mini', 'gpt-4o'],
+        suggested_models: ['gpt-6.1-sol'],
+        models: [{ id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol', input_price_per_1m: 2, output_price_per_1m: 10 }],
         docs_url: 'https://platform.openai.com/api-keys',
       },
       {
@@ -76,6 +77,7 @@ function connection(overrides: Partial<Record<string, unknown>> = {}) {
         default_base_url: 'http://localhost:11434/v1',
         requires_api_key: false,
         suggested_models: [],
+        models: [],
         docs_url: null,
       },
     ],
@@ -84,6 +86,8 @@ function connection(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 beforeEach(() => {
+  localStorage.removeItem('theme');
+  vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   logout.mockClear();
   setCurrentUser.mockClear();
   vi.mocked(AuthService.getCurrentUser).mockResolvedValue(user());
@@ -97,6 +101,23 @@ beforeEach(() => {
     budget_exhausted: false,
     global_budget_remaining_usd: null,
   });
+});
+
+it('follows system theme changes only when System is explicitly selected', async () => {
+  let change: () => void = () => {};
+  const media = { matches: true, addEventListener: vi.fn((_event, listener) => { change = listener; }), removeEventListener: vi.fn() };
+  vi.stubGlobal('matchMedia', vi.fn().mockReturnValue(media));
+  renderSettings();
+  await userEvent.click(await screen.findByRole('radio', { name: 'System' }));
+  expect(localStorage.getItem('theme')).toBe('system');
+  expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+  media.matches = false;
+  change();
+  expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+  await userEvent.click(screen.getByRole('radio', { name: 'Dark' }));
+  expect(localStorage.getItem('theme')).toBe('dark');
+  change();
+  expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
 });
 
 describe('SettingsPage', () => {
@@ -239,7 +260,7 @@ describe('SettingsPage', () => {
     vi.mocked(ApiClient.exportPrompts).mockResolvedValue(blob);
 
     renderSettings();
-    const exportButton = await screen.findByRole('button', { name: 'Export all prompts' });
+    const exportButton = await screen.findByRole('button', { name: 'Export data archive' });
     expect(exportButton.querySelector('svg')).toHaveClass('lucide-download');
     expect(exportButton.querySelector('svg')).toHaveAttribute('width', '16');
     await userEvent.click(exportButton);

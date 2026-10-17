@@ -17,16 +17,28 @@ class PromptsConfigResponse(BaseModel):
     provider: str | None = None
     provider_label: str | None = None
     model: str | None = None
-    # Suggested models for the caller's provider, their configured one first.
+    # Curated hosted choices, or the configured model for a custom/local provider.
     # Empty when no connection is configured, so the frontend never advertises
     # a model it can't actually run.
     available_models: list[str] = Field(default_factory=list)
-    # Global-only budget snapshot (see BudgetService.global_status).
+    # Authenticated caller and shared budget snapshot (see BudgetService.status).
     # `global_budget_remaining_usd` is None when no GLOBAL_MONTHLY_BUDGET_USD
     # ceiling is configured, mirroring `available_models`'s empty-list-when-
     # unconfigured convention.
     budget_exhausted: bool = False
     global_budget_remaining_usd: float | None = None
+    user_budget_remaining_usd: float | None = None
+    budget_scope: str | None = None
+    budget_resets_at: str | None = None
+
+
+class ModelPriceInfo(BaseModel):
+    """One provider model with estimated standard token pricing."""
+
+    id: str
+    label: str | None = None
+    input_price_per_1m: float | None = None
+    output_price_per_1m: float | None = None
 
 
 class LLMProviderOption(BaseModel):
@@ -37,6 +49,8 @@ class LLMProviderOption(BaseModel):
     default_base_url: str | None = None
     requires_api_key: bool
     suggested_models: list[str] = Field(default_factory=list)
+    # Nonempty for hosted providers: these are the only choices when saving.
+    models: list[ModelPriceInfo] = Field(default_factory=list)
     docs_url: str | None = None
 
 
@@ -60,6 +74,7 @@ class LLMConnectionResponse(BaseModel):
     provider_label: str | None = None
     base_url: str | None = None
     model: str | None = None
+    workspace_id: str | None = None
     has_api_key: bool = False
     api_key_hint: str | None = None
     providers: list[LLMProviderOption] = Field(default_factory=list)
@@ -70,6 +85,7 @@ class LLMConnectionResponse(BaseModel):
 class LLMConnectionUpdate(BaseModel):
     """Schema for PUT /api/auth/me/llm-connection."""
 
+    workspace_id: str | None = Field(None, max_length=100, pattern=r"^wrkspc_[A-Za-z0-9]+$")
     provider: str = Field(..., max_length=30, description="A provider handle from `providers`")
     base_url: str | None = Field(
         None,
@@ -93,14 +109,6 @@ class LLMConnectionTestResponse(BaseModel):
 
     ok: bool
     message: str
-
-
-class ModelPriceInfo(BaseModel):
-    """One provider model with estimated standard token pricing."""
-
-    id: str
-    input_price_per_1m: float | None = None
-    output_price_per_1m: float | None = None
 
 
 _MAX_PLAYGROUND_VARIABLES = 50

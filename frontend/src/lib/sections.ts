@@ -26,6 +26,11 @@ export function renderSections(sections: PromptField[]): string {
     .join('\n\n');
 }
 
+/** Plain output removes only the app's wrappers, preserving each section's text. */
+export function renderPlainSections(sections: PromptField[]): string {
+  return sections.map((section) => section.content).join('\n\n');
+}
+
 /** Why a section name can't be saved, or null when it can. */
 export function sectionNameError(name: string, others: string[]): string | null {
   const normalized = normalizeSectionName(name);

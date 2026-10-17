@@ -1,6 +1,6 @@
 import type { PromptField, RefineQAPair } from '@/types/prompt';
 import { API_URL } from '../apiBase';
-import { ApiError, extractErrorMessage } from './errors';
+import { ApiError, extractBudgetDetails, extractErrorMessage } from './errors';
 import { authenticatedFetch } from './transport';
 
 async function refine<T>(step: 'questions' | 'draft', body: object): Promise<T> {
@@ -13,6 +13,7 @@ async function refine<T>(step: 'questions' | 'draft', body: object): Promise<T> 
     throw new ApiError(
       extractErrorMessage(error?.detail) || 'Refinement failed. Please try again.',
       response.status,
+      extractBudgetDetails(error?.budget),
     );
   }
   return response.json();

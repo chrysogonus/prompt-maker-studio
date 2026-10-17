@@ -20,7 +20,12 @@ const PROVIDERS = [
     label: 'OpenAI',
     default_base_url: 'https://api.openai.com/v1',
     requires_api_key: true,
-    suggested_models: ['gpt-4o-mini', 'gpt-4o'],
+    suggested_models: ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-luna'],
+    models: [
+      { id: 'gpt-6-astra', label: 'GPT-6 Astra', input_price_per_1m: 10, output_price_per_1m: 50 },
+      { id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol', input_price_per_1m: 2, output_price_per_1m: 10 },
+      { id: 'gpt-6-luna', label: 'GPT-6 Luna', input_price_per_1m: null, output_price_per_1m: null },
+    ],
     docs_url: 'https://platform.openai.com/api-keys',
   },
   {
@@ -28,7 +33,8 @@ const PROVIDERS = [
     label: 'Anthropic',
     default_base_url: 'https://api.anthropic.com/v1/',
     requires_api_key: true,
-    suggested_models: ['claude-sonnet-5'],
+    suggested_models: ['claude-sonnet-5-5'],
+    models: [{ id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', input_price_per_1m: 2, output_price_per_1m: 10 }],
     docs_url: null,
   },
   {
@@ -37,6 +43,7 @@ const PROVIDERS = [
     default_base_url: 'http://localhost:11434/v1',
     requires_api_key: false,
     suggested_models: [],
+    models: [],
     docs_url: null,
   },
 ];
@@ -47,7 +54,7 @@ function connection(overrides: Partial<Record<string, unknown>> = {}) {
     provider: 'openai',
     provider_label: 'OpenAI',
     base_url: 'https://api.openai.com/v1',
-    model: 'gpt-4o-mini',
+    model: 'gpt-6.1-sol',
     has_api_key: true,
     api_key_hint: 'sk-…0000',
     providers: PROVIDERS,
@@ -71,6 +78,7 @@ describe('LLMConnectionForm', () => {
 
   it('groups non-text models separately and distinguishes configuration from a successful test', async () => {
     const user = userEvent.setup();
+    vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({ provider: 'ollama', model: 'gpt-4o-mini', base_url: 'http://localhost:11434/v1' }));
     vi.mocked(AuthService.getLLMModels).mockResolvedValue(['gpt-4o-mini', 'text-embedding-3-small', 'whisper-1', 'custom-local'].map((id) => ({
       id, input_price_per_1m: null, output_price_per_1m: null,
     })));
@@ -89,50 +97,62 @@ describe('LLMConnectionForm', () => {
 
     expect(await screen.findByLabelText('Provider')).toHaveValue('openai');
     expect(screen.getByLabelText('Base URL')).toHaveValue('https://api.openai.com/v1');
-    expect(screen.getByLabelText('Model')).toHaveValue('gpt-4o-mini');
+    expect(screen.getByLabelText('Model')).toHaveValue('gpt-6.1-sol');
     expect(screen.getByText(/Configured for OpenAI/)).toBeInTheDocument();
   });
 
-  it('shows live models with pricing while keeping free-text entry available', async () => {
-    vi.mocked(AuthService.getLLMModels).mockResolvedValue([
-      {
-        id: 'gpt-4o-mini',
-        input_price_per_1m: 0.15,
-        output_price_per_1m: 0.6,
-      },
-      {
-        id: 'gpt-future',
-        input_price_per_1m: null,
-        output_price_per_1m: null,
-      },
-    ]);
-    render(<LLMConnectionForm />);
-
-    const catalogue = await screen.findByLabelText('Available models');
-    expect(catalogue).toHaveValue('gpt-4o-mini');
-    expect(
-      screen.getByRole('option', {
-        name: 'gpt-4o-mini — $0.15/$0.60 per 1M tokens',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('option', { name: 'gpt-future — pricing unknown' }),
-    ).toBeInTheDocument();
-
-    await userEvent.clear(screen.getByLabelText('Model'));
-    await userEvent.type(screen.getByLabelText('Model'), 'my-custom-model');
-    expect(screen.getByLabelText('Model')).toHaveValue('my-custom-model');
-    expect(catalogue).toHaveValue('');
-  });
-
-  it('keeps the original input and datalist when the live catalogue fails', async () => {
+  it('offers only curated choices with labels and prices, even when discovery fails', async () => {
     vi.mocked(AuthService.getLLMModels).mockRejectedValue(new Error('models unavailable'));
     render(<LLMConnectionForm />);
 
-    const modelInput = await screen.findByLabelText('Model');
-    await waitFor(() => expect(AuthService.getLLMModels).toHaveBeenCalled());
+    const picker = await screen.findByRole('combobox', { name: 'Model' });
+    expect(picker).toHaveValue('gpt-6.1-sol');
+    expect(screen.getByRole('option', { name: 'GPT-6.1 Sol — $2.00/$10.00 per 1M tokens' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'GPT-6 Luna — pricing unknown' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Model' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Available models')).not.toBeInTheDocument();
-    expect(modelInput).toHaveAttribute('list', 'llm-model-suggestions');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('offers hosted choices before credentials are saved and resets choices on provider switch', async () => {
+    vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({
+      configured: false, provider: null, model: null, base_url: null, has_api_key: false,
+    }));
+    render(<LLMConnectionForm />);
+    await userEvent.selectOptions(await screen.findByLabelText('Provider'), 'anthropic');
+    expect(screen.getByRole('combobox', { name: 'Model' })).toHaveValue('claude-sonnet-5-5');
+    expect(screen.getByRole('option', { name: /Claude Sonnet 5.5/ })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /GPT-6/ })).not.toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText('Provider'), 'openai');
+    expect(screen.getByRole('combobox', { name: 'Model' })).toHaveValue('gpt-6-astra');
+    expect(screen.queryByRole('option', { name: /Claude Sonnet/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps a legacy connection testable but requires a current choice before saving', async () => {
+    vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({ model: 'gpt-4o-mini' }));
+    vi.mocked(AuthService.updateLLMConnection).mockResolvedValue(connection());
+    render(<LLMConnectionForm />);
+    expect(await screen.findByText(/Previously configured model/)).toHaveTextContent('gpt-4o-mini');
+    expect(screen.getByRole('combobox', { name: 'Model' })).toHaveValue('');
+    expect(screen.queryByRole('option', { name: /gpt-4o-mini/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Save connection' })).toBeDisabled();
+    await userEvent.selectOptions(screen.getByLabelText('Model'), 'gpt-6.1-sol');
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+    await waitFor(() => expect(AuthService.updateLLMConnection).toHaveBeenCalledWith({
+      provider: 'openai', base_url: 'https://api.openai.com/v1', model: 'gpt-6.1-sol',
+    }));
+  });
+
+  it('keeps manual model entry when local discovery fails', async () => {
+    vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({ provider: 'ollama', model: 'local-model', base_url: 'http://localhost:11434/v1' }));
+    vi.mocked(AuthService.getLLMModels).mockRejectedValue(new Error('models unavailable'));
+    render(<LLMConnectionForm />);
+    const input = await screen.findByRole('textbox', { name: 'Model' });
+    await userEvent.clear(input);
+    await userEvent.type(input, 'my-custom-model');
+    expect(input).toHaveValue('my-custom-model');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -174,31 +194,23 @@ describe('LLMConnectionForm', () => {
       expect(AuthService.updateLLMConnection).toHaveBeenCalledWith({
         provider: 'openai',
         base_url: 'https://api.openai.com/v1',
-        model: 'gpt-4o-mini',
+        model: 'gpt-6.1-sol',
       });
     });
   });
 
-  it('refreshes the live catalogue after a successful save', async () => {
-    vi.mocked(AuthService.updateLLMConnection).mockResolvedValue(connection());
+  it('refreshes local discovery after a successful save', async () => {
+    const local = connection({ provider: 'ollama', model: 'local-model', base_url: 'http://localhost:11434/v1' });
+    vi.mocked(AuthService.getLLMConnection).mockResolvedValue(local);
+    vi.mocked(AuthService.updateLLMConnection).mockResolvedValue(local);
     render(<LLMConnectionForm />);
     await waitFor(() => expect(AuthService.getLLMModels).toHaveBeenCalledTimes(1));
     vi.mocked(AuthService.getLLMModels).mockResolvedValue([
-      {
-        id: 'gpt-after-save',
-        input_price_per_1m: 1,
-        output_price_per_1m: 2,
-      },
+      { id: 'local-after-save', input_price_per_1m: 0, output_price_per_1m: 0 },
     ]);
-
     await userEvent.click(screen.getByRole('button', { name: 'Save connection' }));
-
-    expect(await screen.findByLabelText('Available models')).toHaveValue('');
-    expect(
-      screen.getByRole('option', {
-        name: 'gpt-after-save — $1.00/$2.00 per 1M tokens',
-      }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'local-after-save — $0.00/$0.00 per 1M tokens' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Model')).toHaveValue('local-model');
   });
 
   it('fills in the default base URL and clears the key when the provider changes', async () => {
@@ -290,7 +302,7 @@ describe('LLMConnectionForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Test connection' }));
 
     expect(await screen.findByText(/Connected to OpenAI using/)).toBeInTheDocument();
-    await waitFor(() => expect(AuthService.getLLMModels).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole('status')).toHaveTextContent('Text-generation test passed');
   });
 
   it('disconnects and reports that the key was erased', async () => {
@@ -357,4 +369,44 @@ describe('LLMConnectionForm', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
   });
+});
+
+
+it('shows optional Anthropic workspace and resets it when switching providers', async () => {
+  const user = userEvent.setup();
+  vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({ provider: 'anthropic', base_url: 'https://api.anthropic.com/v1/', model: 'claude-sonnet-5-5', workspace_id: 'wrkspc_ABC123' }));
+  vi.mocked(AuthService.updateLLMConnection).mockResolvedValue(connection({ provider: 'anthropic', model: 'claude-sonnet-5-5', workspace_id: 'wrkspc_NEXT' }));
+  render(<LLMConnectionForm />);
+  const workspace = await screen.findByLabelText('Anthropic workspace ID (optional)');
+  expect(workspace).toHaveValue('wrkspc_ABC123');
+  await user.clear(workspace);
+  await user.type(workspace, 'wrkspc_NEXT');
+  expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: 'Save connection' }));
+  await waitFor(() => expect(AuthService.updateLLMConnection).toHaveBeenCalledWith(expect.objectContaining({ workspace_id: 'wrkspc_NEXT' })));
+  await user.selectOptions(screen.getByLabelText('Provider'), 'openai');
+  expect(screen.queryByLabelText('Anthropic workspace ID (optional)')).not.toBeInTheDocument();
+  await user.selectOptions(screen.getByLabelText('Provider'), 'anthropic');
+  expect(screen.getByLabelText('Anthropic workspace ID (optional)')).toHaveValue('');
+  expect(AuthService.testLLMConnection).not.toHaveBeenCalled();
+});
+
+
+it('rejects malformed workspace IDs and sends null to clear a saved workspace', async () => {
+  const user = userEvent.setup();
+  vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({ provider: 'anthropic', base_url: 'https://api.anthropic.com/v1/', model: 'claude-sonnet-5-5', workspace_id: 'wrkspc_ABC123' }));
+  vi.mocked(AuthService.updateLLMConnection).mockResolvedValue(connection({ provider: 'anthropic', base_url: 'https://api.anthropic.com/v1/', model: 'claude-sonnet-5-5', workspace_id: null }));
+  vi.mocked(AuthService.deleteLLMConnection).mockResolvedValue(connection({ provider: null, base_url: null, model: null, configured: false, workspace_id: null }));
+  render(<LLMConnectionForm />);
+  const workspace = await screen.findByLabelText('Anthropic workspace ID (optional)');
+  await user.clear(workspace);
+  await user.type(workspace, 'invalid');
+  await user.click(screen.getByRole('button', { name: 'Save connection' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('valid Anthropic workspace ID');
+  expect(AuthService.updateLLMConnection).not.toHaveBeenCalled();
+  await user.clear(workspace);
+  await user.click(screen.getByRole('button', { name: 'Save connection' }));
+  await waitFor(() => expect(AuthService.updateLLMConnection).toHaveBeenCalledWith(expect.objectContaining({ workspace_id: null })));
+  await user.click(screen.getByRole('button', { name: 'Disconnect' }));
+  await waitFor(() => expect(screen.queryByLabelText('Anthropic workspace ID (optional)')).not.toBeInTheDocument());
 });

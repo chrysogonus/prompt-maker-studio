@@ -93,10 +93,10 @@ test('cases, suggestions, explicit runs and manual ratings form one workflow', a
   await expect(page.getByRole('heading', { name: 'Very short notes' })).toBeVisible();
   await page.getByRole('button', { name: 'Run evaluation', exact: true }).click();
   await expect(page.getByRole('radio', { name: 'Run history' })).toHaveAttribute('aria-checked', 'true');
-  await expect(page.getByText('Needs your rating', { exact: true })).toBeVisible();
+  await expect(page.getByText('Awaiting your rating', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Rate 4 out of 5' }).click();
-  await expect(page.getByText('Needs your rating', { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: '91/100' })).toBeVisible();
+  await expect(page.getByText('Awaiting your rating', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Scored · 91/100' })).toBeVisible();
 });
 
 test('desktop and phone layouts stay accessible in both themes', async ({ page }, testInfo) => {

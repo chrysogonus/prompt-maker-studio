@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { budgetStatusText } from '@/components/ui/AICallContext';
 import Button, { ButtonLink } from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import { PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
+import { runScoreLabel } from '@/lib/evaluationStatus';
 import { parseServerDate } from '@/lib/relativeTime';
 import { variablesIn } from '@/lib/sections';
 import CaseForm from './CaseForm';
@@ -22,7 +24,7 @@ const runDate = (date: string) => parseServerDate(date).toLocaleString(undefined
 export default function EvaluationPage({ promptId }: { promptId: number }) {
   const evaluation = useEvaluation(promptId);
   const {
-    prompt, currentVersion, config, configError, retryConfig, cases, runs, hasMoreRuns, loadOlderRuns, loading, loadError, retry, error, setError, notice, busy,
+    prompt, currentVersion, config, configError, configChecking, budgetRejection, retryConfig, cases, runs, hasMoreRuns, loadOlderRuns, loading, loadError, retry, error, setError, aiError, notice, busy,
     view, setView, editing, setEditing, deleting, setDeleting, suggesting, setSuggesting,
     proposals, setProposals, selectedRunId, setSelectedRunId,
     saveCase, deleteCase, generate, run, rate, importCsv, exportCsv,
@@ -47,7 +49,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
   );
 
   const atLimit = cases.length >= CASE_LIMIT;
-  const canUseAI = Boolean(config?.provider_connected && !config.budget_exhausted);
+  const canUseAI = Boolean(config?.provider_connected && !config.budget_exhausted && !budgetRejection);
   const variables = variablesIn(prompt.fields);
   const incomplete = cases.filter((item) => !item.intentionally_empty && variables.some((name) => typeof item.variables[name] !== 'string' || !item.variables[name].trim()));
   const selectedRun = runs.find((item) => item.id === selectedRunId) ?? runs[0];
@@ -70,18 +72,27 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
         </div>
       </header>
 
-      {configError ? (
+      {configChecking ? (
+        <p className={styles.banner} role="status">Checking AI availability…</p>
+      ) : configError ? (
         <div className={styles.banner} role="alert">{configError} <Button onClick={retryConfig}>Retry AI availability</Button></div>
-      ) : config?.provider_connected ? config.budget_exhausted ? (
-        <p className={styles.banner}>The shared monthly API budget has been reached. You can still manage cases and review past results.</p>
-      ) : (
+      ) : config?.budget_exhausted || budgetRejection ? (
+        <div className={styles.banner}>
+          <p>{budgetRejection?.budget
+            ? budgetStatusText(budgetRejection.budget.scope, budgetRejection.budget.resets_at, budgetRejection.budget.reason === 'estimated_cost_exceeds_remaining')
+            : config?.budget_exhausted ? budgetStatusText(config.budget_scope, config.budget_resets_at)
+              : 'This request was blocked by the monthly API budget.'} You can still manage cases and review past results.</p>
+          <Link href="/settings#s-api">Review AI settings</Link>{' '}
+          <Button onClick={retryConfig}>Recheck AI availability</Button>
+        </div>
+      ) : config?.provider_connected ? (
         <p className={styles.connection}>Uses {config.provider_label ?? 'your AI connection'}{config.model ? ` / ${config.model}` : ''}. Runs and suggestions may incur provider charges.</p>
       ) : (
         <p className={styles.banner}><Link href="/settings#s-api">Connect an AI provider</Link> to run evaluations or suggest cases. You can create cases and read past results now.</p>
       )}
       {busy === 'run' && <p className={styles.banner} role="status">Running your saved prompt against each case. Keep this page open until the results arrive.</p>}
       {notice && <p className={styles.notice} role="status">{notice}</p>}
-      {error && !editing && !importOpen && !deleting && <p className={styles.error} role="alert">{error}</p>}
+      {error && !editing && !importOpen && !deleting && <p className={styles.error} role="alert">{error}{aiError && <> <Link href="/settings">Open Settings</Link></>}</p>}
 
       <fieldset disabled={!!editing || !!busy || suggesting} className={styles.viewSwitch}>
         <SegmentedControl aria-label="Evaluation view" options={VIEWS} value={view} onChange={setView} />
@@ -113,7 +124,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
               </label>
               <div className={styles.actions}>
                 <Button disabled={!!busy} onClick={() => setSuggesting(false)}>Cancel</Button>
-                <Button variant="primary" type="submit" disabled={!!busy}>{busy === 'generate' ? 'Generating suggestions…' : 'Generate suggestions'}</Button>
+                <Button variant="primary" type="submit" disabled={!!busy || !canUseAI}>{busy === 'generate' ? 'Generating suggestions…' : 'Generate suggestions'}</Button>
               </div>
             </form>
           )}
@@ -170,7 +181,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
               onClick={() => { setSelectedRunId(item.id); setComparisonId(''); }}>
               <time dateTime={parseServerDate(item.created_at).toISOString()}>{runDate(item.created_at)}</time>
               <span>Version {item.prompt_version_number}</span>
-              <strong>{item.score === null ? 'Not scored yet' : `${Math.round(item.score)}/100`}</strong>
+              <strong>{runScoreLabel(item)}</strong>
             </button>)}
             {hasMoreRuns && <Button variant="secondary" disabled={!!busy} onClick={() => void loadOlderRuns()}>
               {busy === 'history' ? 'Loading older evaluations…' : 'Load older evaluations'}

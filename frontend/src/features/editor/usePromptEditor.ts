@@ -64,6 +64,8 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
   const [renaming, setRenaming] = useState(false);
   const [starterOpen, setStarterOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(Boolean(openImport));
+  const [aiConfigLoading, setAiConfigLoading] = useState(true);
+  const [aiConfigError, setAiConfigError] = useState(false);
   const [aiConfig, setAiConfig] = useState<PromptsConfigResponse | null>(null);
   const aiAvailable = Boolean(aiConfig?.provider_connected && !aiConfig.budget_exhausted);
   const mutationChain = useRef<Promise<unknown>>(Promise.resolve());
@@ -186,7 +188,8 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
   useEffect(() => {
     ApiClient.getPromptsConfig()
       .then(setAiConfig)
-      .catch(() => setAiConfig(null));
+      .catch(() => setAiConfigError(true))
+      .finally(() => setAiConfigLoading(false));
     ApiClient.getFolders()
       .then(setFolders)
       .catch(() => setFolders([]));
@@ -336,8 +339,8 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     if (draftKey) localStorage.removeItem(draftKey);
     setNote('');
     setImportSession({ text: '' });
-    setRememberValues(false);
-    setValues({});
+    const retained = new Set(variablesIn(prompt?.fields ?? []));
+    setValues((current) => Object.fromEntries(Object.entries(current).filter(([name]) => retained.has(name))));
     setNotice(null);
     setDraftAction(null);
     setRestoredDraft(false);
@@ -474,6 +477,10 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     setPreviewOpen(true);
     setImportSession({ text: '' });
     setImportOpen(false);
+    if (next.saveAsWritten && isNew) {
+      const title = next.fields[0].content.trim().split(/\r?\n/)[0].replace(/\s+/g, ' ').slice(0, 100);
+      setSaveDialog({ name: title, folder: '', error: '' });
+    }
     if (isNew && openImport) {
       const params = new URLSearchParams(window.location.search);
       params.delete('import');
@@ -546,6 +553,8 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     setImportSession,
     aiAvailable,
     aiConfig,
+    aiConfigLoading,
+    aiConfigError,
     importSections,
     showNotice,
     fields,

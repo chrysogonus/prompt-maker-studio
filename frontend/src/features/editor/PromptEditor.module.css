@@ -973,9 +973,9 @@ button.version:hover {
   gap: var(--space-2);
 }
 
-/* Phone: one pane at a time, switched by the Edit / Fill and copy tabs. */
+/* Narrow screens: one pane at a time, switched by the Edit / Fill and copy tabs. */
 
-@media (max-width: 760px) {
+@media (max-width: 1200px) {
   .head {
     gap: var(--space-1);
     padding-bottom: var(--space-2);
@@ -1108,7 +1108,7 @@ button.version:hover {
 .tryResult { padding: var(--space-4); border-top: 1px solid var(--pv-border); overflow-wrap: anywhere; }
 .tryResult pre { white-space: pre-wrap; font: inherit; }
 
-@media (max-width: 760px) {
+@media (max-width: 1200px) {
   .sectionHead { flex-wrap: wrap; }
   .sectionTools { flex-shrink: 0; margin-left: auto; }
   .sectionName { flex-basis: 50%; }
@@ -1135,3 +1135,61 @@ button.version:hover {
 :global([data-theme='dark']) .previewFilled { background: color-mix(in srgb, var(--pv-var) 8%, transparent); }
 :global([data-theme='dark']) .copyButton[data-secondary='true'] { border-color: var(--color-border-strong); box-shadow: none; }
 :global([data-theme='dark']) .toolsMenu { background: var(--surface-panel); }
+
+/* A library use link keeps attention on inputs and copied output at every size. */
+.editor[data-focused='true'] .body { grid-template-columns: minmax(0, 1fr); }
+.editor[data-focused='true'] .write,
+.editor[data-focused='true'] .tabs,
+.editor[data-focused='true'] .previewToggle { display: none; }
+.editor[data-focused='true'] .preview,
+.editor[data-focused='true'] .previewClosed { grid-column: 1; width: 100%; max-width: 960px; justify-self: center; }
+.write[hidden] { display: none; }
+.preview, .previewClosed, .history { min-width: 0; }
+.previewHead, .startRow, .dialogActions { flex-wrap: wrap; }
+.crumbFolder { max-width: 40%; overflow: hidden; text-overflow: ellipsis; }
+.copyButton { max-width: 100%; height: auto; min-height: 36px; padding-block: 8px; white-space: normal; }
+.banner { margin-top: var(--space-3); }
+@media (max-width: 1200px) {
+  .write { max-width: none; }
+  .previewFoot { padding: 8px 14px 12px; }
+  .noteInput { min-width: 0; }
+}
+
+@media (min-width: 1201px) {
+  .editor[data-focused='true'] .history { grid-column: 1; width: 100%; max-width: 960px; justify-self: center; }
+}
+
+.outputFormat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 6px 0;
+  font-size: var(--text-sm-size);
+  color: var(--pv-muted);
+}
+.outputFormat select {
+  min-height: 44px;
+  max-width: 60%;
+  padding: 0 8px;
+  border: 1px solid var(--pv-border);
+  border-radius: var(--radius-sm);
+  background: var(--pv-input);
+  color: var(--pv-text);
+  font: inherit;
+}
+.variableAdvanced { grid-column: 1 / -1; }
+.outputOptions { grid-column: 1 / -1; }
+.outputOptions summary { min-height: 44px; padding-block: 10px; color: var(--pv-muted); cursor: pointer; font-size: var(--text-sm-size); }
+.variableAdvanced summary { display: list-item; min-height: 44px; padding-block: 10px; color: var(--text-secondary); cursor: pointer; }
+.promptDetails { overflow-wrap: anywhere; margin-bottom: var(--space-4); }
+.promptDetails dt { font-weight: var(--weight-semibold); }
+.promptDetails dd { margin: 0 0 var(--space-3); white-space: pre-wrap; }
+@media (max-width: 1200px) {
+  .headActions .useButton { display: none; }
+  .tabs button { height: 44px; }
+  button.title, .crumbFolder { min-height: 44px; }
+}
+@media (min-width: 761px) and (max-width: 1200px) {
+  .headActions { width: auto; }
+}

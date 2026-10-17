@@ -4,12 +4,14 @@ evaluated against the unified billed_calls spend ledger — and for the
 spend_ledger recording helpers.
 """
 
+from datetime import UTC, datetime
+
 import pytest
 
 from app.models.billed_call import BilledCall
 from app.models.prompt import Prompt
 from app.models.user import User
-from app.services.budget_service import BudgetExceededError, BudgetService
+from app.services.budget_service import BudgetExceededError, BudgetService, _next_month
 from app.services.llm_pricing import cost_usd_for
 from app.services.spend_ledger import LLMUsage, record_billed_call
 
@@ -296,3 +298,39 @@ class TestUnknownCostAccounting:
         db_session.commit()
 
         assert billed.cost_usd == 0.0
+
+
+class TestBudgetRecovery:
+    def test_estimate_rejection_carries_scope_and_reset(self, db_session, monkeypatch):
+        monkeypatch.delenv("GLOBAL_MONTHLY_BUDGET_USD", raising=False)
+        monkeypatch.setenv("USER_MONTHLY_BUDGET_USD", "1")
+        user, prompt = _make_user_and_prompt(db_session, "recovery")
+        _add_run(db_session, prompt, user, cost_usd=0.9)
+        with pytest.raises(BudgetExceededError) as caught:
+            BudgetService.check(db_session, user.id, estimated_cost_usd=0.2)
+        details = caught.value.budget
+        assert details["scope"] == "user"
+        assert details["reason"] == "estimated_cost_exceeds_remaining"
+        assert details["resets_at"].endswith("+00:00")
+        assert details["retry_after"] > 0
+        assert "estimated" in str(caught.value).lower()
+
+    def test_status_excludes_other_users_spend(self, db_session, monkeypatch):
+        monkeypatch.delenv("GLOBAL_MONTHLY_BUDGET_USD", raising=False)
+        monkeypatch.setenv("USER_MONTHLY_BUDGET_USD", "1")
+        spender, prompt = _make_user_and_prompt(db_session, "status-spender")
+        other, _ = _make_user_and_prompt(db_session, "status-other")
+        _add_run(db_session, prompt, spender, cost_usd=2)
+        assert BudgetService.status(db_session, spender.id)["budget_scope"] == "user"
+        assert BudgetService.status(db_session, other.id)["budget_exhausted"] is False
+
+
+@pytest.mark.parametrize(
+    ("now", "expected"),
+    [
+        (datetime(2026, 12, 31, 23, tzinfo=UTC), datetime(2027, 1, 1, tzinfo=UTC)),
+        (datetime(2028, 2, 29, 10, tzinfo=UTC), datetime(2028, 3, 1, tzinfo=UTC)),
+    ],
+)
+def test_budget_reset_uses_start_of_next_utc_month(now, expected):
+    assert _next_month(now) == expected

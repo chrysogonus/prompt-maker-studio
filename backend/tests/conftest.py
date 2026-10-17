@@ -145,7 +145,9 @@ def client(test_db):
     app.dependency_overrides.clear()
 
 
-def _register_and_connect(client, username: str, password: str, email: str) -> dict[str, str]:
+def _register_and_connect(
+    client, test_db, username: str, password: str, email: str
+) -> dict[str, str]:
     """Register a user, log in, and connect them to a test LLM provider.
 
     Logging in sets an httpOnly session cookie, but these fixtures return bearer
@@ -168,28 +170,33 @@ def _register_and_connect(client, username: str, password: str, email: str) -> d
     headers = {"Authorization": f"Bearer {client.cookies['access_token']}"}
     client.cookies.clear()
 
-    client.put(
-        "/api/auth/me/llm-connection",
-        json={
-            "provider": TEST_LLM_PROVIDER,
-            "model": TEST_LLM_MODEL,
-            "api_key": TEST_LLM_API_KEY,
-        },
-        headers=headers,
-    )
+    # Model existing users, including legacy connections that remain runnable.
+    from app.models.user import User
+    from app.services.secret_store import encrypt_secret
+
+    with test_db() as session:
+        user = session.query(User).filter_by(username=username).one()
+        user.llm_provider = TEST_LLM_PROVIDER
+        user.llm_model = TEST_LLM_MODEL
+        user.llm_api_key_encrypted = encrypt_secret(TEST_LLM_API_KEY)
+        session.commit()
     return headers
 
 
 @pytest.fixture
-def auth_headers(client):
+def auth_headers(client, test_db):
     """Get authentication headers for the primary test user."""
-    return _register_and_connect(client, "testuser", "testpass123!", "testuser@example.com")
+    return _register_and_connect(
+        client, test_db, "testuser", "testpass123!", "testuser@example.com"
+    )
 
 
 @pytest.fixture
-def second_auth_headers(client):
+def second_auth_headers(client, test_db):
     """Get authentication headers for a second, distinct test user."""
-    return _register_and_connect(client, "otheruser", "otherpass123!", "otheruser@example.com")
+    return _register_and_connect(
+        client, test_db, "otheruser", "otherpass123!", "otheruser@example.com"
+    )
 
 
 def make_connection(create, provider_handle: str = TEST_LLM_PROVIDER, model: str = TEST_LLM_MODEL):

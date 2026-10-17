@@ -24,11 +24,13 @@ from app.services.llm_client import (
     LLMConnection,
     LLMResponseFormatError,
     client_for,
+    describe_llm_error,
     json_completion,
 )
 from app.services.llm_pricing import cost_usd_for
 from app.services.playground_service import (
     PlaygroundResult,
+    PlaygroundRunError,
     PlaygroundService,
 )
 from app.services.prompt_compiler import compile_prompt
@@ -320,8 +322,12 @@ class EvalService:
             try:
                 result = PlaygroundService.run(compiled, connection)
             except Exception as exc:
+                error = exc.__cause__ if isinstance(exc, PlaygroundRunError) else exc
                 return _CaseOutcome(
-                    run_error=str(exc), failed_calls=[("eval_case", usage) for usage in run_usage]
+                    run_error=json.dumps(
+                        {"message": describe_llm_error(error or exc, connection)[1]}
+                    ),
+                    failed_calls=[("eval_case", usage) for usage in run_usage],
                 )
 
         if method != "judge":
@@ -335,7 +341,7 @@ class EvalService:
             except Exception as exc:
                 return _CaseOutcome(
                     result=result,
-                    judge_error=str(exc),
+                    judge_error=json.dumps({"message": describe_llm_error(exc, connection)[1]}),
                     failed_calls=[("eval_judge", usage) for usage in judge_usage],
                 )
         return _CaseOutcome(result=result, judge_result=judge_result)

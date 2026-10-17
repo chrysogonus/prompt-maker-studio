@@ -69,7 +69,7 @@ class TestUpdateConnection:
             headers=auth_headers,
             json={
                 "provider": "anthropic",
-                "model": "claude-sonnet-5",
+                "model": "claude-sonnet-5-5",
                 "api_key": "sk-ant-a-real-looking-key",
             },
         )
@@ -78,7 +78,7 @@ class TestUpdateConnection:
         data = resp.json()
         assert data["provider"] == "anthropic"
         assert data["base_url"] == "https://api.anthropic.com/v1/"
-        assert data["model"] == "claude-sonnet-5"
+        assert data["model"] == "claude-sonnet-5-5"
         # Stored encrypted, never in the clear.
         user = db_session.query(User).filter_by(username="testuser").one()
         assert "sk-ant-a-real-looking-key" not in (user.llm_api_key_encrypted or "")
@@ -88,7 +88,7 @@ class TestUpdateConnection:
         resp = client.put(
             "/api/auth/me/llm-connection",
             headers=auth_headers,
-            json={"provider": "anthropic", "model": "claude-sonnet-5"},
+            json={"provider": "anthropic", "model": "claude-sonnet-5-5"},
         )
 
         assert resp.status_code == 422
@@ -98,12 +98,12 @@ class TestUpdateConnection:
         resp = client.put(
             "/api/auth/me/llm-connection",
             headers=auth_headers,
-            json={"provider": "openai", "model": "gpt-4o"},
+            json={"provider": "openai", "model": "gpt-6.1-sol"},
         )
 
         assert resp.status_code == 200
         assert resp.json()["has_api_key"] is True
-        assert resp.json()["model"] == "gpt-4o"
+        assert resp.json()["model"] == "gpt-6.1-sol"
 
     def test_clearing_a_required_key_is_rejected(self, client, auth_headers, db_session):
         """Blanking the key of a provider that needs one would leave a
@@ -111,7 +111,7 @@ class TestUpdateConnection:
         resp = client.put(
             "/api/auth/me/llm-connection",
             headers=auth_headers,
-            json={"provider": "openai", "model": "gpt-4o", "api_key": ""},
+            json={"provider": "openai", "model": "gpt-6.1-sol", "api_key": ""},
         )
 
         assert resp.status_code == 422
@@ -223,7 +223,7 @@ class TestUpdateConnection:
             headers=second_auth_headers,
             json={
                 "provider": "gemini",
-                "model": "gemini-3.6-flash",
+                "model": "gemini-3.8-flash",
                 "api_key": "AIza-second-user-key",
             },
         )
@@ -344,7 +344,7 @@ class TestPerUserProviderIsolation:
             headers=second_auth_headers,
             json={
                 "provider": "anthropic",
-                "model": "claude-sonnet-5",
+                "model": "claude-sonnet-5-5",
                 "api_key": "sk-ant-second-user-key",
             },
         )
@@ -399,3 +399,68 @@ class TestKeyNeverLeaks:
                 client.post("/api/prompts/parse-text", headers=auth_headers, json={"text": "hello"})
 
         assert TEST_LLM_API_KEY not in caplog.text
+
+
+def test_workspace_persists_and_clears_on_provider_switch_and_disconnect(
+    client, auth_headers, db_session
+):
+    payload = {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "api_key": "sk-ant-test",
+        "workspace_id": "wrkspc_ABC123",
+    }
+    response = client.put("/api/auth/me/llm-connection", headers=auth_headers, json=payload)
+    assert response.status_code == 200
+    assert response.json()["workspace_id"] == "wrkspc_ABC123"
+    assert (
+        client.get("/api/auth/me/llm-connection", headers=auth_headers).json()["workspace_id"]
+        == "wrkspc_ABC123"
+    )
+    payload.pop("workspace_id")
+    assert (
+        client.put("/api/auth/me/llm-connection", headers=auth_headers, json=payload).json()[
+            "workspace_id"
+        ]
+        == "wrkspc_ABC123"
+    )
+    payload.update(provider="openai", model="gpt-6.1-sol")
+    assert (
+        client.put("/api/auth/me/llm-connection", headers=auth_headers, json=payload).json()[
+            "workspace_id"
+        ]
+        is None
+    )
+    payload.update(provider="anthropic", model="claude-sonnet-5-5", workspace_id="wrkspc_ABC123")
+    client.put("/api/auth/me/llm-connection", headers=auth_headers, json=payload)
+    assert (
+        client.delete("/api/auth/me/llm-connection", headers=auth_headers).json()["workspace_id"]
+        is None
+    )
+    assert db_session.query(User).filter_by(username="testuser").one().llm_workspace_id is None
+
+
+def test_workspace_validation_and_explicit_clear(client, auth_headers):
+    payload = {"provider": "anthropic", "model": "claude-sonnet-5-5", "api_key": "sk-ant-test"}
+    for invalid in ["bad", "wrkspc_a\r\nInjected: yes", "wrkspc_", "wrkspc_a-b"]:
+        assert (
+            client.put(
+                "/api/auth/me/llm-connection",
+                headers=auth_headers,
+                json={**payload, "workspace_id": invalid},
+            ).status_code
+            == 422
+        )
+    client.put(
+        "/api/auth/me/llm-connection",
+        headers=auth_headers,
+        json={**payload, "workspace_id": "wrkspc_ABC123"},
+    )
+    assert (
+        client.put(
+            "/api/auth/me/llm-connection",
+            headers=auth_headers,
+            json={**payload, "workspace_id": None},
+        ).json()["workspace_id"]
+        is None
+    )

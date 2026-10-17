@@ -24,6 +24,7 @@ from dataclasses import dataclass
 import json
 import logging
 import os
+from urllib.parse import urlsplit
 
 from openai import (
     APIConnectionError,
@@ -160,19 +161,16 @@ def active_provider_and_model(user: User) -> tuple[Provider, str] | None:
 
 
 def available_models_for(user: User) -> list[str]:
-    """
-    Models to offer this user in a picker: their provider's suggested models,
-    with their own configured model first. Free-text models are supported, so
-    this is a convenience list rather than an allowlist — except that the
-    Playground validates against it to avoid advertising an unrunnable choice.
+    """Curated hosted choices, or the user's configured custom/local model.
+
+    Legacy hosted models remain runnable via client_for but are not advertised
+    as choices for new connections.
     """
     if not has_own_connection(user):
         default = server_default()
         return [default.model] if default else []
     provider = get_provider(user.llm_provider)
-    models = [user.llm_model]
-    models.extend(m for m in provider.models if m != user.llm_model)
-    return models
+    return list(provider.models) if provider.models else [user.llm_model]
 
 
 def timeout_seconds_for(provider: Provider) -> float:
@@ -261,15 +259,31 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
     else:
         api_key = _LOCAL_API_KEY_PLACEHOLDER
 
-    return _build_connection(provider, resolved_model, base_url, api_key)
+    return _build_connection(
+        provider, resolved_model, base_url, api_key, workspace_id=user.llm_workspace_id
+    )
 
 
 def _build_connection(
-    provider: Provider, model: str, base_url: str, api_key: str, *, trusted: bool = False
+    provider: Provider,
+    model: str,
+    base_url: str,
+    api_key: str,
+    *,
+    trusted: bool = False,
+    workspace_id: str | None = None,
 ) -> LLMConnection:
+    headers = {}
+    if (
+        provider.handle == "anthropic"
+        and urlsplit(base_url).hostname == "api.anthropic.com"
+        and workspace_id
+    ):
+        headers["anthropic-workspace-id"] = workspace_id
     public_only = not trusted and not private_llm_urls_allowed()
     http_client = DefaultHttpx2Client(
-        follow_redirects=not public_only,
+        # A redirect must not forward the workspace selector to another origin.
+        follow_redirects=not public_only and not headers,
         trust_env=not public_only,
         **({"transport": PublicLLMTransport(trust_env=False)} if public_only else {}),
     )
@@ -278,6 +292,7 @@ def _build_connection(
         model=model,
         client=OpenAI(
             api_key=api_key,
+            default_headers=headers,
             base_url=base_url,
             timeout=timeout_seconds_for(provider),
             # One retry only: the caller is inside a synchronous HTTP request
@@ -567,6 +582,19 @@ def describe_llm_error(exc: Exception, connection: LLMConnection | None) -> tupl
         )
         return status_code, str(exc)
 
+    if (
+        connection is not None
+        and connection.provider_handle == "anthropic"
+        and isinstance(exc, APIStatusError)
+        and exc.status_code in (400, 401, 403, 404, 422)
+        and "workspace" in str(exc).lower()
+    ):
+        return _HTTP_UNPROCESSABLE, (
+            "Anthropic requires a valid workspace for this API key. "
+            "Add or check the Anthropic workspace ID in Settings → API access, "
+            "and confirm the key has access to that workspace."
+        )
+
     for error_type, status_code, template in _ERROR_RULES:
         if isinstance(exc, error_type):
             return status_code, template.format(who=who)
@@ -577,6 +605,9 @@ def describe_llm_error(exc: Exception, connection: LLMConnection | None) -> tupl
             return rule[0], rule[1].format(who=who)
         return _HTTP_BAD_GATEWAY, f"{who} returned an error ({exc.status_code})."
 
-    if isinstance(exc, OpenAIError):
-        return _HTTP_BAD_GATEWAY, f"{who} returned an unexpected error."
-    return _HTTP_BAD_GATEWAY, f"The request to {who} failed. Please try again."
+    detail = (
+        f"{who} returned an unexpected error."
+        if isinstance(exc, OpenAIError)
+        else f"The request to {who} failed. Please try again."
+    )
+    return _HTTP_BAD_GATEWAY, detail

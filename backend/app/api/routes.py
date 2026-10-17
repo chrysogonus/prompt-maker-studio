@@ -277,10 +277,10 @@ def get_prompts_config(
         Whether the caller has a usable connection, which provider/model it
         points at, the model choices to offer (empty when unconfigured, so the
         frontend never advertises a model it can't run), and whether the
-        operator's global monthly spend ceiling is exhausted (BudgetService).
+        caller's or shared monthly spend ceiling is exhausted (BudgetService).
     """
     provider, model = active_provider_and_model(current_user) or (None, None)
-    budget_status = BudgetService.global_status(db)
+    budget_status = BudgetService.status(db, current_user.id)
     return PromptsConfigResponse(
         provider_connected=provider is not None,
         provider=provider.handle if provider else None,

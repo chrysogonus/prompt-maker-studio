@@ -12,6 +12,7 @@ import type { useSettings } from './useSettings';
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light', icon: <LightThemeIcon size={14} tone="inherit" /> },
   { value: 'dark', label: 'Dark', icon: <DarkThemeIcon size={14} tone="inherit" /> },
+  { value: 'system', label: 'System' },
 ] as const;
 
 const LIBRARY_VIEW_OPTIONS = [

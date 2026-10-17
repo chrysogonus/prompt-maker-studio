@@ -108,6 +108,7 @@ export interface ImportSession {
 }
 
 export interface ImportedPrompt {
+  saveAsWritten?: boolean;
   fields: PromptField[];
   metadata: Metadata;
   values: Record<string, string>;

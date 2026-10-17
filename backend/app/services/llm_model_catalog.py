@@ -1,7 +1,8 @@
-"""Live, per-user model catalogues enriched with estimated token pricing."""
+"""Curated hosted and discovered local model catalogues with estimated pricing."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 import logging
 from threading import Lock
 import time
@@ -9,10 +10,10 @@ import time
 from app.models.user import User
 from app.services.llm_client import LLMConnection
 from app.services.llm_pricing import rates_for
+from app.services.llm_providers import Provider
 
 logger = logging.getLogger(__name__)
 
-_LIVE_LISTING_PROVIDERS = frozenset({"openai", "gemini", "ollama", "vllm"})
 _MODEL_CACHE_TTL_SECONDS = 15 * 60
 
 _model_cache: dict[int, tuple[float, tuple[str, ...]]] = {}
@@ -51,9 +52,6 @@ def _list_model_ids(connection: LLMConnection) -> list[str]:
 
 def _uncached_model_ids(user: User, connection: LLMConnection) -> list[str]:
     provider = connection.provider
-    if provider.handle not in _LIVE_LISTING_PROVIDERS:
-        return list(provider.models)
-
     try:
         return _list_model_ids(connection)
     except Exception as exc:
@@ -83,13 +81,24 @@ def _cached_model_ids(user: User, connection: LLMConnection) -> list[str]:
 
 
 def model_catalog_for(user: User, connection: LLMConnection) -> list[dict[str, object]]:
-    """Return the caller's cached model list with current estimated pricing."""
+    """Hosted choices come from the registry; other providers use cached discovery."""
+    model_ids = (
+        list(connection.provider.models)
+        if connection.provider.models
+        else _cached_model_ids(user, connection)
+    )
+    return model_prices_for(connection.provider, model_ids)
+
+
+def model_prices_for(provider: Provider, model_ids: Iterable[str]) -> list[dict[str, object]]:
+    """Enrich model IDs with registry labels and current estimated pricing."""
     catalogue: list[dict[str, object]] = []
-    for model_id in _cached_model_ids(user, connection):
-        rates = rates_for(connection.provider_handle, model_id)
+    for model_id in model_ids:
+        rates = rates_for(provider.handle, model_id)
         catalogue.append(
             {
                 "id": model_id,
+                "label": provider.models.get(model_id),
                 "input_price_per_1m": rates["input"] if rates else None,
                 "output_price_per_1m": rates["output"] if rates else None,
             }
