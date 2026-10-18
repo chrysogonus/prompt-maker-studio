@@ -63,7 +63,8 @@ for (const width of [1440, 390]) {
     await page.getByText('Test with AI', { exact: true }).click();
     await page.getByRole('button', { name: 'Try once' }).click();
     await expect(page.getByRole('region', { name: 'Try once output' })).toContainText('Saturn has rings.');
-    await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit template', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
 
     await page.goto('/library');
     await expect(page.getByRole('link', { name: 'Fill and copy' })).toBeVisible();
@@ -118,6 +119,11 @@ for (const width of [1440, 390]) {
     expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`editor-${width}.png`), fullPage: true });
     await page.goto(editorUrl);
+    await expect(page.getByLabel('topic Required')).toHaveValue('Saturn');
+    await expect(page.getByText('Inputs stay on this device until you clear them.')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Review your template' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Clear inputs', exact: true }).click();
+    await page.reload();
     await expect(page.getByLabel('topic Required')).toHaveValue('');
   });
 }

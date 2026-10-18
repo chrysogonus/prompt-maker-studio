@@ -21,6 +21,14 @@ any release. See [Project status](./README.md#project-status).
 - AI actions say whether they use your own connection, billed by your provider, or
   this server's shared connection, paid for by the operator. `/api/prompts/config`
   adds `uses_server_default`.
+- Saved prompts with variables open ready to fill from anywhere, with Edit template
+  for wording changes. Filled inputs are kept on this device for every saved prompt
+  until cleared, and the preview says so.
+
+### Fixed
+
+- Undoing a pasted conversion no longer reopens its review dialog when you return
+  to the prompt; only a Paste dialog left open is recovered.
 
 ## [0.7.0] - 2026-10-18
 

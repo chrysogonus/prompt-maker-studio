@@ -16,15 +16,17 @@ interface DraftState {
   values: Record<string, string>;
   rememberValues: boolean;
   importSession: ImportSession;
+  importOpen: boolean;
 }
 
 /** Keep existing account-scoped drafts synchronized with the unsaved editor. */
 export function useDraftPersistence({
-  dirty, draftKey, fields, loadError, loading, metadata, note, savedSnapshot, values, rememberValues, importSession,
+  dirty, draftKey, fields, loadError, loading, metadata, note, savedSnapshot, values, rememberValues, importSession, importOpen,
 }: DraftState) {
   useEffect(() => {
     if (!draftKey || loading || loadError) return;
-    const pendingImport = !!importSession.text;
+    // Only an open Paste dialog is recovered; a closed or undone session stays in memory.
+    const pendingImport = importOpen && !!importSession.text;
     if (!dirty && !(rememberValues && Object.keys(values).length) && !pendingImport) {
       localStorage.removeItem(draftKey);
       return;
@@ -34,5 +36,5 @@ export function useDraftPersistence({
       ...(pendingImport ? { importSession } : {}),
     };
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [dirty, draftKey, fields, loadError, loading, metadata, note, savedSnapshot, values, rememberValues, importSession]);
+  }, [dirty, draftKey, fields, loadError, loading, metadata, note, savedSnapshot, values, rememberValues, importSession, importOpen]);
 }

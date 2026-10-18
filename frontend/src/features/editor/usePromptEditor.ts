@@ -41,7 +41,8 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
   const [sections, setSections] = useState<EditorSection[]>(blankSections);
   const [metadata, setMetadata] = useState<Metadata>({});
   const [values, setValues] = useState<Record<string, string>>({});
-  const [rememberValues, setRememberValues] = useState(false);
+  // Saved prompts keep filled inputs on this device; new ones only after a paste.
+  const [rememberValues, setRememberValues] = useState(!isNew);
   const [importSession, setImportSession] = useState<ImportSession>({ text: '' });
   const [mode, setMode] = useState<'template' | 'filled'>(initialMode ?? 'template');
   const [mobileTab, setMobileTab] = useState<'edit' | 'use'>(isNew ? 'edit' : 'use');
@@ -49,6 +50,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
   const [historyOpen, setHistoryOpen] = useState(false);
   const [refineOpen, setRefineOpen] = useState(false);
   const [restoredDraft, setRestoredDraft] = useState(false);
+  const [openFocused, setOpenFocused] = useState(false);
   const [loading, setLoading] = useState(!isNew);
   const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -111,7 +113,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
 
   const restoreInputs = useCallback((draft: Draft) => {
     setValues(draft.values ?? {});
-    setRememberValues(draft.values !== undefined);
+    setRememberValues((remember) => remember || draft.values !== undefined);
     setImportSession(draft.importSession ?? { text: '' });
     if (draft.importSession?.text) setImportOpen(true);
     if (draft.values !== undefined) {
@@ -141,17 +143,23 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
         setVersions(history);
         const base = snapshot(loaded.fields, loaded.variable_metadata);
         const draft = readDraft(draftKey);
-        if (draft && draft.base === base) {
-          setSections(toEditorSections(draft.sections, true));
-          setMetadata(draft.metadata);
-          setNote(draft.note ?? '');
-          restoreInputs(draft);
-          setRestoredDraft(snapshot(draft.sections, draft.metadata) !== base || !!draft.importSession?.text);
+        const current = draft?.base === base ? draft : null;
+        const restored = !!current && (snapshot(current.sections, current.metadata) !== base || !!current.importSession?.text);
+        if (current) {
+          setSections(toEditorSections(current.sections, true));
+          setMetadata(current.metadata);
+          setNote(current.note ?? '');
+          restoreInputs(current);
+          setRestoredDraft(restored);
         } else {
           setSections(toEditorSections(loaded.fields, true));
           setMetadata(loaded.variable_metadata ?? {});
         }
-        if (variablesIn(draft?.base === base ? draft.sections : loaded.fields).length > 0) setMode('filled');
+        if (variablesIn(current ? current.sections : loaded.fields).length > 0) {
+          setMode('filled');
+          // Unsaved template edits stay in view; otherwise open ready to fill.
+          setOpenFocused(!restored);
+        }
       } catch (err) {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load prompt.');
       } finally {
@@ -183,7 +191,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     }
   }, [draftKey, initialStarter, isNew, restoreInputs]);
 
-  useDraftPersistence({ dirty, draftKey, fields, loadError, loading, metadata, note, savedSnapshot, values, rememberValues, importSession });
+  useDraftPersistence({ dirty, draftKey, fields, loadError, loading, metadata, note, savedSnapshot, values, rememberValues, importSession, importOpen });
 
   useEffect(() => {
     ApiClient.getPromptsConfig()
@@ -527,6 +535,8 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     refineOpen,
     setRefineOpen,
     restoredDraft,
+    openFocused,
+    rememberValues,
     loading,
     loadError,
     saving,

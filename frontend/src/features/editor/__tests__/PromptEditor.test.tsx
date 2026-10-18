@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import PromptEditor from '../PromptEditor';
 import { ApiClient, ApiError } from '@/lib/api';
 import { storageKey } from '@/lib/branding';
+import { snapshot } from '../editorState';
 import type { PromptHistoryResponse, PromptVersionResponse } from '@/types/prompt';
 
 vi.mock('@/lib/api', async () => ({
@@ -95,9 +96,12 @@ beforeEach(() => {
   });
 });
 
+/** Opens the saved prompt for template editing; prompts with inputs open ready to fill. */
 async function renderSaved() {
   render(<PromptEditor promptId={1} />);
   await screen.findByRole('button', { name: 'Weekly status update' });
+  const edit = screen.queryByRole('button', { name: 'Edit template' });
+  if (edit) fireEvent.click(edit);
 }
 
 it('copies plain text exactly as previewed while keeping placeholders and literal tags', async () => {
@@ -953,7 +957,8 @@ describe('paste a prompt recovery and save handoff', () => {
     vi.mocked(ApiClient.getPromptById).mockResolvedValue(created);
     render(<PromptEditor promptId={2} />);
     expect(await screen.findByLabelText('destination', { exact: true })).toHaveValue('Lisbon');
-    expect(screen.getByRole('button', { name: 'Saved' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Edit template' })).toBeInTheDocument();
+    expect(screen.getByText('Inputs stay on this device until you clear them.')).toBeInTheDocument();
     expect(screen.queryByText('Your unsaved changes were restored.')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Prompt text')).toHaveTextContent('Plan a trip to Lisbon.');
   });
@@ -980,6 +985,23 @@ describe('paste a prompt recovery and save handoff', () => {
     await waitFor(() => expect(ApiClient.updatePrompt).toHaveBeenCalledWith(1, expect.objectContaining({
       fields: conversion.fields, variable_metadata: { destination: { type: 'text', description: 'Destination', example: 'Lisbon' } },
     })));
+  });
+
+  it('does not reopen an undone paste session after leaving the prompt', async () => {
+    const user = userEvent.setup();
+    const rendered = render(<PromptEditor promptId={1} />);
+    await screen.findByRole('button', { name: 'Weekly status update' });
+    await user.click(screen.getByRole('button', { name: 'Edit template' }));
+    await review(user);
+    await user.click(screen.getByRole('button', { name: 'Use in editor' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(localStorage.getItem(draftKey(1)) ?? '').not.toContain('importSession'));
+    rendered.unmount();
+
+    render(<PromptEditor promptId={1} />);
+    await screen.findByRole('button', { name: 'Weekly status update' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('Your unsaved changes were restored.')).not.toBeInTheDocument();
   });
 
   it('does not overwrite subsequent input edits with import Undo and discards recovered conversion data', async () => {
@@ -1044,6 +1066,44 @@ it('discards template edits while preserving matching filled inputs and forgetti
   expect(screen.getByLabelText('team', { exact: true })).toHaveValue('Payments');
   fireEvent.change(screen.getByLabelText('Context text'), { target: { value: 'Team: {{team}} New: {{temporary}}' } });
   expect(screen.getByLabelText('temporary', { exact: true })).toHaveValue('');
+});
+
+it('opens saved prompts with inputs ready to fill and remembers inputs on this device', async () => {
+  const user = userEvent.setup();
+  const first = render(<PromptEditor promptId={1} />);
+  await screen.findByRole('button', { name: 'Weekly status update' });
+  expect(screen.getByLabelText('Context text').closest('fieldset')).toHaveAttribute('hidden');
+  await user.type(screen.getByPlaceholderText('Team or project name'), 'Platform');
+  expect(screen.getByText('Inputs stay on this device until you clear them.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Edit template' }));
+  expect(screen.getByLabelText('Context text').closest('fieldset')).not.toHaveAttribute('hidden');
+  expect(screen.getByPlaceholderText('Team or project name')).toHaveValue('Platform');
+  first.unmount();
+
+  render(<PromptEditor promptId={1} />);
+  expect(await screen.findByPlaceholderText('Team or project name')).toHaveValue('Platform');
+  await user.click(screen.getByRole('button', { name: 'Clear inputs' }));
+  expect(localStorage.getItem(draftKey(1))).toBeNull();
+});
+
+it('keeps restored template edits and prompts without inputs in the editor', async () => {
+  const saved = prompt();
+  localStorage.setItem(draftKey(1), JSON.stringify({
+    base: snapshot(saved.fields, saved.variable_metadata),
+    sections: [{ name: 'Role', content: 'Edited role' }, saved.fields[1]],
+    metadata: saved.variable_metadata, note: '',
+  }));
+  const first = render(<PromptEditor promptId={1} />);
+  await screen.findByText('Your unsaved changes were restored.');
+  expect(screen.getByLabelText('Role text').closest('fieldset')).not.toHaveAttribute('hidden');
+  first.unmount();
+
+  localStorage.clear();
+  vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ fields: [{ name: 'Task', content: 'No inputs here.' }] }));
+  render(<PromptEditor promptId={1} />);
+  await screen.findByRole('button', { name: 'Weekly status update' });
+  expect(screen.getByLabelText('Task text').closest('fieldset')).not.toHaveAttribute('hidden');
+  expect(screen.queryByRole('button', { name: 'Edit template' })).not.toBeInTheDocument();
 });
 
 it('opens library filled links in a focused pane with an explicit edit action', async () => {

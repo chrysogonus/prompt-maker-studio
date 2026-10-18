@@ -172,7 +172,7 @@ all model calls require an explicit action, and saving a prompt never starts an 
 | Feature | Status | Implementation |
 |---|---|---|
 | Mobile section controls | Implemented | Visible, labeled 44px reorder/remove controls in `frontend/src/features/editor/SectionCard.tsx` and its CSS |
-| Fill and copy | Implemented | Library links open a focused reuse view at every width with Edit template; narrower editors use tabs before columns stop fitting; template copying stays available in `frontend/src/features/library/LibraryPage.tsx` |
+| Fill and copy | Implemented | Saved prompts with variables open in a focused reuse view at every width with Edit template, unless restored template edits need the editor; filled inputs stay on this device until cleared; narrower editors use tabs before columns stop fitting; template copying stays available in `frontend/src/features/library/LibraryPage.tsx` |
 | Draft import and refinement Undo | Implemented | Explicit apply/save distinction and in-session Undo in `frontend/src/features/editor/usePromptEditor.ts` |
 | Version notes and variable settings | Implemented | Resulting-version notes, preserved legacy notes, metadata snapshots and migration 025 in `backend/app/services/prompt_version_service.py` |
 | Required inputs and examples | Implemented | Optional by default; explicit example loading and placeholder copying in `frontend/src/features/editor/PreviewPane.tsx` |

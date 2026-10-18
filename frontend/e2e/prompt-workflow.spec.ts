@@ -107,7 +107,7 @@ for (const theme of ['light', 'dark'] as const) {
     await save.getByRole('button', { name: 'Save prompt' }).click();
     await expect(page).toHaveURL(/\/editor\/\d+$/);
     await page.reload();
-    await page.getByRole('tab', { name: 'Edit', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
     await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}} to beginners in three short paragraphs.');
     await page.getByLabel('Task text').fill('Explain {{topic}} to beginners briefly.');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -347,7 +347,8 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
     'Handle {{alpha}} for {{beta}} and mention {{alpha}} again.',
   );
 
-  // A hint is saved with the prompt and shown while filling it in.
+  // A saved prompt with inputs opens ready to fill; editing its hints is deliberate.
+  await page.getByRole('button', { name: 'Edit template', exact: true }).click();
   await page.getByLabel('Hint for alpha').fill('The thing to handle');
   const hintSave = promptPatch(page, promptId);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -362,8 +363,10 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
   // A genuine cross-session conflict still returns 409, and keeps the edit.
   const tabB = await context.newPage();
   await tabB.goto(`/editor/${promptId}`);
+  await tabB.getByRole('button', { name: 'Edit template', exact: true }).click();
   await expect(tabB.getByLabel('Task text')).toHaveValue(/alpha/);
 
+  await page.getByRole('button', { name: 'Edit template', exact: true }).click();
   await page.getByLabel('Task text').fill('tab A wins {{alpha}}');
   const tabASave = promptPatch(page, promptId);
   await page.getByRole('button', { name: 'Save', exact: true }).click();

@@ -997,3 +997,28 @@ Gemini Flash's fallback uses its post-introductory standard rate conservatively.
 [Gemini models](https://ai.google.dev/gemini-api/docs/models);
 `backend/app/services/llm_providers.py`, `backend/app/services/llm_model_catalog.py`,
 `frontend/src/features/settings/LLMConnectionForm.tsx`.
+
+---
+
+## Saved Prompts Open Ready to Fill and Remember Inputs Locally
+
+**Status**: Accepted (2026-10-18)
+
+**Context**: An external UX review (18 Oct 2026) found returning users had to tell
+template editing apart from filling a prompt once. The focused reuse view existed
+but opened only from the library's Fill and copy link, and filled inputs were
+remembered only after Paste a prompt, so whether inputs persisted was unpredictable.
+
+**Decision**: A saved prompt with variables opens in the focused reuse view from any
+entry point, including after its first save, unless restored unsaved template edits
+need to stay visible. Prompts without variables open in the editor. Edit template
+remains the deliberate way to change wording. Filled inputs for every saved prompt
+are kept in the account-scoped local draft, never on the server; the preview says
+so, and Clear inputs removes them. New unsaved prompts keep their previous behavior.
+
+**Consequences**: Opening a prompt to change its wording takes one extra click.
+Inputs can hold sensitive text in browser storage until cleared, the saved prompt
+changes, or the user signs out (explicit sign-out already removes drafts).
+
+**Sources**: `frontend/src/features/editor/usePromptEditor.ts`,
+`frontend/src/features/editor/PromptEditor.tsx`, `frontend/src/features/editor/PreviewPane.tsx`.

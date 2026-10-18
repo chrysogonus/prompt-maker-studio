@@ -18,6 +18,8 @@ interface PreviewPaneProps {
   aiConfigError?: boolean;
   onLoadExamples: () => void;
   onClearValues: () => void;
+  /** Filled inputs are kept in this browser for the next visit. */
+  inputsRemembered?: boolean;
   variables: string[];
   metadata: Record<string, VariableMetadataItem>;
   values: Record<string, string>;
@@ -37,6 +39,7 @@ export default function PreviewPane({
   aiConfigLoading = false,
   aiConfigError = false,
   onClearValues,
+  inputsRemembered = false,
   onLoadExamples,
   variables,
   metadata,
@@ -233,6 +236,9 @@ export default function PreviewPane({
         )}
         {filled && <button type="button" className={styles.copyButton} data-secondary="true" disabled={!Object.values(values).some(Boolean)} onClick={onClearValues}>Clear inputs</button>}
         </div>
+        {filled && inputsRemembered && Object.values(values).some(Boolean) && (
+          <p className={styles.previewLong}>Inputs stay on this device until you clear them.</p>
+        )}
         <details className={styles.outputOptions}>
           <summary>Output options</summary>
           <label className={styles.outputFormat}>

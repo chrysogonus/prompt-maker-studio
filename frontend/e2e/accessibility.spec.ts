@@ -158,6 +158,8 @@ test.describe('accessibility audit', () => {
     await auditPage(page, 'library (light)');
 
     await page.goto(`/editor/${promptId}`);
+    await auditPage(page, 'editor focused reuse (light)');
+    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
     await expect(page.getByLabel('Task text')).toBeVisible();
     await auditPage(page, 'editor saved prompt (light)');
 

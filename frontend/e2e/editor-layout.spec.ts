@@ -114,6 +114,7 @@ for (const theme of ['light', 'dark']) {
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(value => localStorage.setItem('theme', value), theme);
       await page.goto('/editor/1');
+      await page.getByRole('button', { name: 'Edit template', exact: true }).click();
       const edit = page.getByRole('tab', { name: 'Edit', exact: true });
       if (width <= 1200) await edit.click();
       await expect(page.getByLabel('Context text')).toBeVisible();
@@ -163,6 +164,7 @@ for (const width of [320, 390, 768, 1440]) {
   test(`keeps mode controls, plain output and prompt details usable at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/editor/1');
+    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
     const useButton = page.getByRole('button', { name: 'Fill and copy', exact: true });
     const useTab = page.getByRole('tab', { name: 'Fill and copy', exact: true });
     if (width <= 1200) {

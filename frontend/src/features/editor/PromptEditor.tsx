@@ -44,6 +44,8 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
     refineOpen,
     setRefineOpen,
     restoredDraft,
+    openFocused,
+    rememberValues,
     loading,
     loadError,
     saving,
@@ -95,7 +97,9 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
   const toolsRef = useRef<HTMLDivElement>(null);
   const toolsButtonRef = useRef<HTMLButtonElement>(null);
   const pasteButtonRef = useRef<HTMLButtonElement>(null);
-  const [focusedUse, setFocusedUse] = useState(initialMode === 'filled');
+  // Until the user picks a view, saved prompts with inputs open ready to fill.
+  const [focusChoice, setFocusedUse] = useState<boolean | null>(initialMode === 'filled' ? true : null);
+  const focusedUse = focusChoice ?? openFocused;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   useEffect(() => {
@@ -407,6 +411,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
           metadata={metadata}
           values={values}
           onClearValues={() => setValues({})}
+          inputsRemembered={rememberValues}
           onLoadExamples={() => setValues((current) => ({
             ...current, ...Object.fromEntries(variables.filter((name) => metadata[name]?.example).map((name) => [name, metadata[name].example!])),
           }))}
