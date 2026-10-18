@@ -461,7 +461,7 @@ it('offers AI settings after an explicit run failure without linking case valida
   vi.mocked(ApiClient.runEvaluation).mockRejectedValue(new ApiError('No AI provider is available.', 422));
   await open([example]);
   await user.click(screen.getByRole('button', { name: 'Run evaluation' }));
-  expect(await screen.findByRole('link', { name: 'Open Settings' })).toHaveAttribute('href', '/settings');
+  expect(await screen.findByRole('link', { name: 'Open Settings' })).toHaveAttribute('href', '/settings#s-api');
   await user.click(screen.getByRole('button', { name: 'Edit Returns JSON' }));
   vi.mocked(ApiClient.updateEvalCase).mockRejectedValue(new ApiError('Invalid criteria.', 422));
   await user.click(screen.getByRole('button', { name: 'Save test case' }));

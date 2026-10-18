@@ -11,9 +11,10 @@ export function ConnectionSettings() {
       </div>
       <div className={styles.body}>
         <p className={styles.text}>
-          The AI connection powers <strong>Paste a prompt</strong>, which turns a pasted prompt or
-          rough notes into sections you can edit. Connect your own OpenAI-compatible provider, or
-          use this server&apos;s default connection when it offers one.
+          The AI connection powers <strong>Paste a prompt</strong> (turning a pasted prompt or rough
+          notes into sections you can edit), <strong>Refine</strong>, <strong>Try once</strong> and{' '}
+          <strong>Evaluate</strong>. Connect your own provider, or use this server&apos;s default
+          connection when it offers one.
         </p>
         <LLMConnectionForm />
       </div>

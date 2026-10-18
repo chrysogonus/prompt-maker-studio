@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { ApiClient } from '@/lib/api';
 import AICallContext from '@/components/ui/AICallContext';
 import { fillVariables, renderPlainSections, renderSections, sectionTag, splitVariables } from '@/lib/sections';
@@ -218,7 +219,7 @@ export default function PreviewPane({
             ) : (
               `${missingOptional.length} optional variables are not filled in.`
             )}{' '}
-            They’ll be copied as placeholders.
+            {missingOptional.length === 1 ? 'It’ll be copied as a placeholder.' : 'They’ll be copied as placeholders.'}
           </p>
         )}
         <div className={styles.previewActions}>
@@ -262,7 +263,7 @@ export default function PreviewPane({
               </button>
             </div>
             {trying && <p className={styles.tryResult} role="status">Running the filled prompt…</p>}
-            {tryError && <p className={styles.tryResult} role="alert">{tryError}</p>}
+            {tryError && <p className={styles.tryResult} role="alert">{tryError}{tryError.includes('Settings →') && <> <Link href="/settings#s-api">Open Settings</Link></>}</p>}
             {result && <section className={styles.tryResult} aria-label="Try once output">
               <h3>Output</h3>
               <p>{result.response.provider} / {result.response.model}</p>

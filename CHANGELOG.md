@@ -46,6 +46,14 @@ any release. See [Project status](./README.md#project-status).
   sidebar scroll.
 - A Try once output no longer squeezes the fill-in fields out of the preview, and
   it has its own Copy output button.
+- Disconnecting an AI provider asks first, says the API key will be erased and what
+  AI features fall back to. While your own connection is used, Settings names the
+  server's shared connection that would replace it.
+- Provider errors point to Settings → AI connection (the section's real name) and
+  link to it. Refine no longer claims a shared connection is your own, Settings
+  lists every AI feature, and its data note says imports keep favorites.
+- A single unfilled input reads "It'll be copied as a placeholder", and Evaluate
+  says "Runs 1 case" instead of "Runs all 1 case".
 
 ## [0.7.0] - 2026-10-18
 

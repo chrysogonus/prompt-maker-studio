@@ -190,7 +190,7 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
         ) : questions === null ? (
           <>
             <p>Answer a few questions, then review a revised version of your prompt.</p>
-            <p className={styles.hint}>Uses your AI connection. Nothing is applied or saved automatically.</p>
+            <p className={styles.hint}>Nothing is applied or saved automatically.</p>
           </>
         ) : questions.length === 0 ? (
           <>
@@ -214,7 +214,7 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
             ))}
           </>
         )}
-        {error && <p className={styles.error} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}{error.includes('Settings →') && <> <Link href="/settings#s-api" className={styles.link}>Open Settings</Link></>}</p>}
         {busy && <p className={styles.hint} role="status">{busy === 'questions' ? 'Finding questions…' : 'Creating draft…'}</p>}
       </div>
 

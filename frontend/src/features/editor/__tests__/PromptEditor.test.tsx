@@ -615,7 +615,7 @@ describe('PromptEditor with a saved prompt', () => {
     await renderSaved();
 
     await user.type(screen.getByPlaceholderText('Team or project name'), 'Payments');
-    expect(screen.getByText(/is not filled in/)).toHaveTextContent('notes is not filled in');
+    expect(screen.getByText(/is not filled in/)).toHaveTextContent('notes is not filled in. It’ll be copied as a placeholder.');
     // Optional gaps already copy as placeholders, so no second copy button.
     expect(screen.queryByRole('button', { name: 'Copy with placeholders' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Copy filled prompt' }));
@@ -904,7 +904,12 @@ it('tries filled draft once without saving and preserves output across errors', 
   expect(output).toHaveTextContent('Output is from earlier inputs');
   await user.click(screen.getByRole('button', { name: 'Try once' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Provider unavailable');
+  expect(screen.queryByRole('link', { name: 'Open Settings' })).not.toBeInTheDocument();
   expect(output).toHaveTextContent('One output');
+  vi.mocked(ApiClient.tryPrompt).mockRejectedValueOnce(new Error('OpenAI rejected your API key. Check or replace it in Settings → AI connection.'));
+  await user.click(screen.getByRole('button', { name: 'Try once' }));
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('rejected your API key'));
+  expect(within(screen.getByRole('alert')).getByRole('link', { name: 'Open Settings' })).toHaveAttribute('href', '/settings#s-api');
 });
 
 describe('paste a prompt recovery and save handoff', () => {

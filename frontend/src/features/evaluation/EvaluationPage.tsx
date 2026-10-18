@@ -68,7 +68,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
           <Button variant="primary" onClick={() => void run()} disabled={!!busy || !!editing || suggesting || !canUseAI || !cases.length || incomplete.length > 0}>
             {busy === 'run' ? 'Running evaluation…' : 'Run evaluation'}
           </Button>
-          <p className={styles.hint}>Runs {cases.length ? `all ${cases.length} ${cases.length === 1 ? 'case' : 'cases'}` : 'your cases'} on the latest saved prompt.</p>
+          <p className={styles.hint}>Runs {cases.length ? cases.length === 1 ? '1 case' : `all ${cases.length} cases` : 'your cases'} on the latest saved prompt.</p>
         </div>
       </header>
 
@@ -92,7 +92,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
       )}
       {busy === 'run' && <p className={styles.banner} role="status">Running your saved prompt against each case. Keep this page open until the results arrive.</p>}
       {notice && <p className={styles.notice} role="status">{notice}</p>}
-      {error && !editing && !importOpen && !deleting && <p className={styles.error} role="alert">{error}{aiError && <> <Link href="/settings">Open Settings</Link></>}</p>}
+      {error && !editing && !importOpen && !deleting && <p className={styles.error} role="alert">{error}{aiError && <> <Link href="/settings#s-api">Open Settings</Link></>}</p>}
 
       <fieldset disabled={!!editing || !!busy || suggesting} className={styles.viewSwitch}>
         <SegmentedControl aria-label="Evaluation view" options={VIEWS} value={view} onChange={setView} />

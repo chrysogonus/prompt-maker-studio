@@ -106,7 +106,7 @@ def parse_prompt_text(
             # Validation errors can include the user's source text; keep it out of logs.
             failure = LLMResponseFormatError(
                 f"{connection.provider_label} returned an invalid template or extracted inputs. "
-                "Try again or choose a more capable model in Settings → API access."
+                "Try again or choose a more capable model in Settings → AI connection."
             )
             raise llm_http_error(failure, connection, "parse-text conversion validation") from exc
     return ParseTextResponse(fields=fields)

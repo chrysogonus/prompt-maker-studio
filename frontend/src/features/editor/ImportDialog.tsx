@@ -71,7 +71,7 @@ export default function ImportDialog({
         placeholder="For example: Plan a 3-day trip to Lisbon for 2 adults with a budget of €900. Give me a daily itinerary."
         aria-label="Prompt to convert" maxLength={10_000} disabled={busy} autoFocus />
       {replacesContent && <small className={styles.dialogHint}>Conversion starts a review. Your current draft stays as it is until you choose Use in editor.</small>}
-      {error && <p className={styles.formError} role="alert">{error}</p>}
+      {error && <p className={styles.formError} role="alert">{error}{error.includes('Settings →') && <> <Link href="/settings#s-api">Open Settings</Link></>}</p>}
       {busy && <p role="status">Creating sections and identifying reusable inputs…</p>}
       <div className={styles.dialogActions}>
         <Button variant="ghost" onClick={onClose} disabled={busy}>Close</Button>
