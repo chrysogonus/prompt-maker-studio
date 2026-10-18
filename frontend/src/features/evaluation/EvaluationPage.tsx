@@ -19,7 +19,7 @@ import { CASE_LIMIT, METHOD_LABELS, useEvaluation } from './useEvaluation';
 import styles from './Evaluation.module.css';
 
 const VIEWS = [{ value: 'cases', label: 'Test cases' }, { value: 'runs', label: 'Run history' }] as const;
-const runDate = (date: string) => parseServerDate(date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+const runDate = (date: string) => parseServerDate(date).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
 
 export default function EvaluationPage({ promptId }: { promptId: number }) {
   const evaluation = useEvaluation(promptId);

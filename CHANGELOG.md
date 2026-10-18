@@ -10,6 +10,15 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Changed
+
+- Library grid cards show the variable count like the list, and card snippets
+  prefer the Task section over a shared role line.
+- Save as written suggests a short title from the first line, without `{{variables}}`.
+- History and evaluation run times show the time zone. Example inputs are multiline,
+  full folder names appear on hover in the sidebar, and the editor title shows a
+  rename icon. The Variables panel drops its unrelated travel example.
+
 ## [0.7.0] - 2026-10-18
 
 ### Added

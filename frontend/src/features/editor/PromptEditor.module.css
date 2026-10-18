@@ -86,6 +86,20 @@
 
 button.title {
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.titleText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crumbIcon {
+  margin-right: var(--space-1);
+  vertical-align: -2px;
 }
 
 button.title:hover {
@@ -493,7 +507,8 @@ button.title:hover {
   padding: 6px 0;
 }
 
-.variableRow input {
+.variableRow input,
+.variableRow textarea {
   grid-column: 2 / -1;
   font: inherit;
   padding: 7px 10px;
@@ -1099,7 +1114,7 @@ button.version:hover {
 
 .variableOptions input[type='checkbox'] { width: 20px; height: 20px; accent-color: var(--color-accent-tag); }
 
-.variableOptions input[type='text'] { flex: 1; min-width: 0; }
+.variableOptions textarea { flex: 1; min-width: 0; resize: vertical; }
 
 .valueField textarea[aria-invalid='true'] { border: 2px solid var(--pv-var); }
 

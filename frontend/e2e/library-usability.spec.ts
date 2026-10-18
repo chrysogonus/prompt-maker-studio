@@ -48,7 +48,7 @@ for (const width of [1440, 390, 320]) {
     await page.getByRole('button', { name: 'List', exact: true }).click();
     await expect(card.locator('mark')).toBeVisible();
     await page.getByLabel('Search prompts').clear();
-    await expect(card.getByText('Use bullet points.', { exact: true })).toBeVisible();
+    await expect(card.getByText(/^Background\./)).toBeVisible();
     await page.getByLabel('Select Customer support response').check();
     await page.getByLabel('File selected in folder').fill('Team');
     await page.getByRole('button', { name: 'Move selected' }).click();

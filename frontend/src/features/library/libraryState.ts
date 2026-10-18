@@ -9,10 +9,11 @@ export interface Toast {
   action?: { label: string; run: () => void };
 }
 
+/** The task says what a prompt does better than a shared role line, so prefer it. */
 export function excerpt(prompt: Prompt): string {
+  const readable = prompt.fields.filter((f) => f.content.trim() && !/^\s*\{\{[^}]+\}\}\s*$/.test(f.content));
   const section =
-    prompt.fields.find((f) => f.content.trim() && !/^\s*\{\{[^}]+\}\}\s*$/.test(f.content)) ??
-    prompt.fields[0];
+    readable.find((f) => f.name.trim().toLowerCase() === 'task') ?? readable[0] ?? prompt.fields[0];
   return section ? section.content.replace(/\s+/g, ' ').trim() : '';
 }
 

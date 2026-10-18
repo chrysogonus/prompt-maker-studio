@@ -124,7 +124,7 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
       onClick={onNavigate}
     >
       {icon}
-      <span className={styles.label}>{label}</span>
+      <span className={styles.label} title={label}>{label}</span>
       {count ? <span className={styles.count}>{count}</span> : null}
     </Link>
   );

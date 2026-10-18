@@ -163,7 +163,7 @@ describe('LibraryPage', () => {
       { name: 'Task', content: 'Long introduction. '.repeat(50) + 'Visit the cafe\u0301 tomorrow <script>alert(1)</script>.' },
     ] })]);
     const { container } = await renderLibrary();
-    expect(screen.getByText('Return bullet points.')).toBeInTheDocument();
+    expect(screen.getByText(/^Long introduction\./)).toBeInTheDocument();
     const search = screen.getByLabelText('Search prompts');
     await user.type(search, 'tomorrow');
     expect(screen.getByText('Task:')).toBeInTheDocument();
@@ -183,8 +183,22 @@ describe('LibraryPage', () => {
     expect(screen.getByText('Task:')).toBeInTheDocument();
     expect(container.querySelector('mark')).toHaveTextContent('Visit the cafe\u0301');
     await user.clear(search);
-    expect(screen.getByText('Return bullet points.')).toBeInTheDocument();
+    expect(screen.getByText(/^Long introduction\./)).toBeInTheDocument();
     expect(container.querySelector('mark')).toBeNull();
+  });
+
+  it('shows the variable count and the task rather than the role on grid cards', async () => {
+    vi.mocked(AuthService.getCurrentUser).mockResolvedValue({ id: 1, username: 'alex', created_at: '2026-01-01', default_library_view: 'grid' });
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [
+      { name: 'Role', content: 'You are a helpful editor.' },
+      { name: 'Task', content: 'Rewrite {{draft}} in a {{tone}} voice.' },
+    ] })]);
+    await renderLibrary();
+
+    const card = screen.getByRole('listitem');
+    expect(within(card).getByText('2 variables')).toBeInTheDocument();
+    expect(within(card).getByText('Rewrite {{draft}} in a {{tone}} voice.')).toBeInTheDocument();
+    expect(within(card).queryByText('You are a helpful editor.')).not.toBeInTheDocument();
   });
 
   it('previews a pasted note with an editable fallback title and preserves its content', async () => {

@@ -7,6 +7,7 @@ import {
   sectionNameError,
   sectionTag,
   splitVariables,
+  suggestTitle,
   unbalancedTags,
   variablesIn,
 } from '../sections';
@@ -76,5 +77,21 @@ describe('unbalancedTags', () => {
     expect(unbalancedTags('<b>bold</b> and <i>open')).toEqual(['i']);
     expect(unbalancedTags('</note> stray')).toEqual(['note']);
     expect(unbalancedTags('no tags, {{var}} only')).toEqual([]);
+  });
+});
+
+describe('suggestTitle', () => {
+  it('uses the first line without variables or Markdown markers', () => {
+    expect(suggestTitle('  # Review this {{code}} for security.\nMore text')).toBe('Review this for security.');
+  });
+
+  it('cuts long lines at a word boundary', () => {
+    const title = suggestTitle('Write a detailed weekly status update for the platform team covering risks and blockers');
+    expect(title).toBe('Write a detailed weekly status update for the platform team');
+    expect(title.length).toBeLessThanOrEqual(60);
+  });
+
+  it('leaves the name empty when the first line is only a variable', () => {
+    expect(suggestTitle('{{draft}}\nPolish this.')).toBe('');
   });
 });

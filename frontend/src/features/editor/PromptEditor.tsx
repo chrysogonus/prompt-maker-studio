@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react';
 
 import Button, { ButtonLink } from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
+import { EditIcon, FolderIcon } from '@/components/ui/icon';
 import { PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
 
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
@@ -154,6 +155,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
                 onClick={() => setMoveDialog(prompt.folder ?? '')}
                 title="Move to folder"
               >
+                <FolderIcon size={14} tone="inherit" className={styles.crumbIcon} />
                 {prompt.folder || 'Unfiled'}
               </button>
               <span className={styles.crumbSep} aria-hidden="true">
@@ -181,7 +183,8 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               onClick={() => setRenaming(true)}
               title="Rename"
             >
-              {prompt.name}
+              <span className={styles.titleText}>{prompt.name}</span>
+              <EditIcon size={14} className={styles.titleIcon} />
             </button>
           ) : (
             <h1 className={styles.title}>New prompt</h1>

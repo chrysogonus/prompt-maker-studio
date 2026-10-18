@@ -7,7 +7,7 @@ import { ApiClient, ApiError, PROMPT_NOT_FOUND_MESSAGE, isValidPromptId } from '
 import { useAuth } from '@/lib/auth-context';
 import { pageTitle, storageKey } from '@/lib/branding';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
-import { sectionNameError, variablesIn } from '@/lib/sections';
+import { sectionNameError, suggestTitle, variablesIn } from '@/lib/sections';
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
 import { PromptField, PromptHistoryResponse, PromptUpdateRequest, PromptVersionResponse, PromptsConfigResponse } from '@/types/prompt';
 
@@ -478,8 +478,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     setImportSession({ text: '' });
     setImportOpen(false);
     if (next.saveAsWritten && isNew) {
-      const title = next.fields[0].content.trim().split(/\r?\n/)[0].replace(/\s+/g, ' ').slice(0, 100);
-      setSaveDialog({ name: title, folder: '', error: '' });
+      setSaveDialog({ name: suggestTitle(next.fields[0].content), folder: '', error: '' });
     }
     if (isNew && openImport) {
       const params = new URLSearchParams(window.location.search);

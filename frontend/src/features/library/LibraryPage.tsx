@@ -25,6 +25,8 @@ import { useLibrary } from './useLibrary';
 import ImportPrompts from './ImportPrompts';
 import { Prompt, excerpt, editedAt, searchMatch } from './libraryState';
 
+const variableLabel = (count: number) => (count ? `${count} variable${count === 1 ? '' : 's'}` : 'No variables');
+
 function LibraryContent() {
   const {
     sort, setSort, selected, toggleSelected, selectedPrompts, setSelected,
@@ -221,6 +223,7 @@ function LibraryContent() {
             <p className={search.trim() ? styles.searchExcerpt : styles.cardExcerpt}>{preview(prompt)}</p>
             <div className={styles.cardMeta}>
               {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
+              <span>{variableLabel(variablesIn(prompt.fields).length)}</span>
               <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
             </div>
             <div className={styles.cardFoot}>
@@ -255,7 +258,7 @@ function LibraryContent() {
                 <p className={search.trim() ? styles.searchExcerpt : styles.excerpt}>{preview(prompt)}</p>
                 <div className={styles.meta}>
                   {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
-                  <span>{variables ? `${variables} variable${variables === 1 ? '' : 's'}` : 'No variables'}</span>
+                  <span>{variableLabel(variables)}</span>
                   <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
                 </div>
               </div>
