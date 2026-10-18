@@ -127,7 +127,8 @@ above both panes as stored only in the current browser.
 ## The library
 
 - `/library` lists every prompt by most recent edit, in a list or a grid (the default is a
-  Settings preference), with search across names, folders and section text.
+  Settings preference), with search across names, folders and section text; every word
+  must match, in any order.
 - Choose Recently edited or Title A–Z sorting. Select prompts to file them together;
   failed moves stay selected for retry. Grid metadata sits separately from actions.
 - **Add existing prompts** is the library's one entry point for bringing prompts in. It

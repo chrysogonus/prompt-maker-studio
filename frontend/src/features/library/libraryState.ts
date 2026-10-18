@@ -25,9 +25,13 @@ export function editedAt(prompt: Prompt): string {
 
 const foldSearch = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
-/** Shared matching keeps filtering and the visible explanation in agreement. */
+/**
+ * Shared matching keeps filtering and the visible explanation in agreement.
+ * Every word must appear somewhere in the prompt, in any order; the excerpt
+ * shows the whole phrase where it appears as typed, otherwise the first word.
+ */
 export function searchMatch(prompt: Prompt, search: string) {
-  const query = foldSearch(search.trim());
+  const query = foldSearch(search).split(/\s+/).filter(Boolean).join(' ');
   if (!query) return null;
   const candidates = [
     { label: 'Title', text: prompt.name ?? '' },
@@ -36,26 +40,32 @@ export function searchMatch(prompt: Prompt, search: string) {
       { label: `${field.name} (section name)`, text: field.name },
       { label: field.name, text: field.content },
     ]),
-  ];
-  for (const candidate of candidates) {
-    const text = candidate.text.replace(/\s+/g, ' ').trim();
-    const index = foldSearch(text).indexOf(query);
-    if (index < 0) continue;
-    // Map folded offsets back to original text, including combining accents.
-    let folded = 0;
-    let start = 0;
-    let end = text.length;
-    let offset = 0;
-    for (const character of text) {
-      const length = foldSearch(character).length;
-      if (folded <= index && length) start = offset;
-      if (folded >= index + query.length && length) { end = offset; break; }
-      folded += length;
-      offset += character.length;
-    }
-    const from = Math.max(0, start - 24);
-    const to = Math.min(text.length, end + 80);
-    return { label: candidate.label, before: `${from ? '…' : ''}${text.slice(from, start)}`, match: text.slice(start, end), after: `${text.slice(end, to)}${to < text.length ? '…' : ''}` };
+  ].map(candidate => ({ ...candidate, text: candidate.text.replace(/\s+/g, ' ').trim() }));
+  const folded = candidates.map(candidate => foldSearch(candidate.text));
+  const words = query.split(' ');
+  if (!words.every(word => folded.some(text => text.includes(word)))) return null;
+  for (const term of [query, ...words]) {
+    const at = folded.findIndex(text => text.includes(term));
+    if (at >= 0) return excerptAround(candidates[at], folded[at].indexOf(term), term.length);
   }
   return null;
+}
+
+function excerptAround(candidate: { label: string; text: string }, index: number, length: number) {
+  const { text } = candidate;
+  // Map folded offsets back to original text, including combining accents.
+  let folded = 0;
+  let start = 0;
+  let end = text.length;
+  let offset = 0;
+  for (const character of text) {
+    const size = foldSearch(character).length;
+    if (folded <= index && size) start = offset;
+    if (folded >= index + length && size) { end = offset; break; }
+    folded += size;
+    offset += character.length;
+  }
+  const from = Math.max(0, start - 24);
+  const to = Math.min(text.length, end + 80);
+  return { label: candidate.label, before: `${from ? '…' : ''}${text.slice(from, start)}`, match: text.slice(start, end), after: `${text.slice(end, to)}${to < text.length ? '…' : ''}` };
 }

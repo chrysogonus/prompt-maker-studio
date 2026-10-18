@@ -156,6 +156,29 @@ describe('LibraryPage', () => {
     expect(rowNames()).toHaveLength(4);
   });
 
+  it('matches every search word in any order, across title, folder and sections', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([
+      saved({ id: 1, name: 'Refund Request Template', folder: 'Support', fields: [{ name: 'Task', content: 'Draft a refund confirmation email.' }] }),
+      saved({ id: 2, name: 'Escalation Notice', folder: 'Support', fields: [{ name: 'Task', content: 'Escalate the ticket.' }] }),
+    ]);
+    const { container } = await renderLibrary();
+    const search = screen.getByLabelText('Search prompts');
+    await user.type(search, 'email refund');
+    expect(rowNames()).toEqual(['Refund Request Template']);
+    expect(container.querySelector('mark')).toHaveTextContent('email');
+    await user.clear(search);
+    await user.type(search, '  escalation   notice ');
+    expect(rowNames()).toEqual(['Escalation Notice']);
+    expect(container.querySelector('mark')).toHaveTextContent('Escalation Notice');
+    await user.clear(search);
+    await user.type(search, 'support ticket');
+    expect(rowNames()).toEqual(['Escalation Notice']);
+    await user.clear(search);
+    await user.type(search, 'refund ticket');
+    expect(screen.getByText('No prompts match “refund ticket”')).toBeInTheDocument();
+  });
+
   it.each(['list', 'grid'])('shows matching context in %s and keeps the default excerpt without a query', async layout => {
     const user = userEvent.setup();
     vi.mocked(AuthService.getCurrentUser).mockResolvedValue({ id: 1, username: 'alex', created_at: '2026-01-01', default_library_view: layout as 'list' | 'grid' });
