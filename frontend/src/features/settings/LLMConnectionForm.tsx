@@ -2,7 +2,8 @@
  * Settings, AI connection: the user's bring-your-own LLM provider connection.
  *
  * Every AI feature runs against the provider configured here, billed to the
- * user's own account — there is no operator-wide key. The stored API key is
+ * user's own account; without one, the operator's server default (if any) is
+ * used at the operator's expense. The stored API key is
  * never returned by the backend, so an existing key shows only as a masked
  * hint and the field stays blank; submitting it blank keeps the stored key.
  */
@@ -217,7 +218,9 @@ export default function LLMConnectionForm() {
                 : 'Not connected'}
           </span>
           <p className={styles.hint}>
-            Your own OpenAI-compatible account. Calls are billed by your provider.
+            {!connection?.configured && connection?.server_default
+              ? 'The site operator pays for the shared connection. Save your own OpenAI-compatible account to use it instead; your provider then bills you.'
+              : 'Your own OpenAI-compatible account. Calls are billed by your provider.'}
           </p>
         </div>
       </div>

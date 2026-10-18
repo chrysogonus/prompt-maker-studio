@@ -31,6 +31,7 @@ from app.services.llm_client import (
     LLMResponseFormatError,
     active_provider_and_model,
     available_models_for,
+    has_own_connection,
 )
 from app.services.playground_service import try_once
 from app.services.prompt_parser import PromptParserService as TextParserService
@@ -268,14 +269,13 @@ def get_prompts_config(
     proactively disable AI features and point at Settings instead of letting
     them fail at call time.
 
-    Authenticated — unlike the operator-wide env check this replaced, "is AI
-    available" is now a per-user question about that user's own bring-your-own
-    provider connection. No credential is included: only the provider handle,
-    label, and model.
+    Authenticated — "is AI available" is a per-user question: the caller's own
+    connection wins, otherwise the operator's server default applies. No
+    credential is included: only the provider handle, label, and model.
 
     Returns:
         Whether the caller has a usable connection, which provider/model it
-        points at, the model choices to offer (empty when unconfigured, so the
+        points at, whether that is the operator-funded server default, the model choices to offer (empty when unconfigured, so the
         frontend never advertises a model it can't run), and whether the
         caller's or shared monthly spend ceiling is exhausted (BudgetService).
     """
@@ -286,6 +286,7 @@ def get_prompts_config(
         provider=provider.handle if provider else None,
         provider_label=provider.label if provider else None,
         model=model,
+        uses_server_default=provider is not None and not has_own_connection(current_user),
         available_models=available_models_for(current_user),
         **budget_status,
     )

@@ -18,6 +18,9 @@ any release. See [Project status](./README.md#project-status).
 - History and evaluation run times show the time zone. Example inputs are multiline,
   full folder names appear on hover in the sidebar, and the editor title shows a
   rename icon. The Variables panel drops its unrelated travel example.
+- AI actions say whether they use your own connection, billed by your provider, or
+  this server's shared connection, paid for by the operator. `/api/prompts/config`
+  adds `uses_server_default`.
 
 ## [0.7.0] - 2026-10-18
 

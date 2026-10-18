@@ -188,7 +188,7 @@ it('opens AI testing explicitly without running or saving the prompt', async () 
   expect(screen.getByRole('button', { name: 'Try once' })).not.toBeVisible();
   await user.click(screen.getByText('Test with AI'));
   expect(screen.getByRole('button', { name: 'Try once' })).toBeEnabled();
-  expect(within(screen.getByRole('complementary', { name: 'Preview' })).getByText(/May incur provider charges/)).toBeVisible();
+  expect(within(screen.getByRole('complementary', { name: 'Preview' })).getByText(/Your provider may charge for these calls/)).toBeVisible();
   expect(ApiClient.tryPrompt).not.toHaveBeenCalled();
   expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
 });
@@ -279,7 +279,7 @@ describe('variable inputs and reversible import', () => {
     vi.mocked(ApiClient.parsePromptText).mockResolvedValue({ fields: [{ name: 'Imported', content: 'New text' }] });
     await openTool(user, 'Paste a prompt');
     expect(screen.getByText(/current draft stays as it is/)).toBeInTheDocument();
-    expect(within(screen.getByRole('dialog', { name: 'Paste a prompt' })).getByText(/Uses OpenAI \/ gpt-4.1-mini/)).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog', { name: 'Paste a prompt' })).getByText(/Uses your connection \(OpenAI \/ gpt-4.1-mini\)/)).toBeInTheDocument();
     await user.type(screen.getByLabelText('Prompt to convert'), 'New text');
     await user.click(screen.getByRole('button', { name: 'Create template' }));
     await user.click(await screen.findByRole('button', { name: 'Use in editor' }));

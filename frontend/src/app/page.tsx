@@ -167,8 +167,9 @@ export default async function LandingPage() {
           <h2 id="open-source-title">Open source, and yours to host</h2>
           <p>
             {APP_NAME} is licensed under Apache-2.0. Use it here, or run your own copy with Docker.
-            Saving and filling in prompts needs no AI connection. Paste a prompt uses your own OpenAI,
-            Anthropic, Gemini, Ollama or other OpenAI-compatible provider.
+            Saving and filling in prompts needs no AI connection. Optional AI features use your own
+            OpenAI, Anthropic, Gemini, Ollama or other OpenAI-compatible provider, or a shared
+            connection when the server offers one.
           </p>
           <ButtonLink href="/library" variant="primary" className={styles.cta}>
             Open the app

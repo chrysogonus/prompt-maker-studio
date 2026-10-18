@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { budgetStatusText } from '@/components/ui/AICallContext';
+import { budgetStatusText, connectionText } from '@/components/ui/AICallContext';
 import Button, { ButtonLink } from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
 import Input from '@/components/ui/Input';
@@ -86,7 +86,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
           <Button onClick={retryConfig}>Recheck AI availability</Button>
         </div>
       ) : config?.provider_connected ? (
-        <p className={styles.connection}>Uses {config.provider_label ?? 'your AI connection'}{config.model ? ` / ${config.model}` : ''}. Runs and suggestions may incur provider charges.</p>
+        <p className={styles.connection}>{connectionText(config)}</p>
       ) : (
         <p className={styles.banner}><Link href="/settings#s-api">Connect an AI provider</Link> to run evaluations or suggest cases. You can create cases and read past results now.</p>
       )}

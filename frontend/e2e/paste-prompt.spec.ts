@@ -46,7 +46,7 @@ for (const width of [1440, 390]) {
       await page.getByRole('link', { name: 'Paste a prompt', exact: true }).click();
       const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
       await expect(paste).toContainText('Ollama / local');
-      await expect(paste).toContainText('May incur provider charges');
+      await expect(paste).toContainText('Your provider may charge for these calls');
       await paste.getByLabel('Prompt to convert').fill(source);
       await page.reload();
       await expect(paste.getByLabel('Prompt to convert')).toHaveValue(source);

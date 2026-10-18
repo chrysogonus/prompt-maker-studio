@@ -20,6 +20,7 @@ class TestPromptsConfigEndpoint:
         assert data["provider"] == "openai"
         assert data["provider_label"] == "OpenAI"
         assert data["model"] == TEST_LLM_MODEL
+        assert data["uses_server_default"] is False
         # Legacy saved models remain active but are not offered for new selections.
         assert data["available_models"] == ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna"]
 
@@ -36,6 +37,7 @@ class TestPromptsConfigEndpoint:
             "provider": None,
             "provider_label": None,
             "model": None,
+            "uses_server_default": False,
             "available_models": [],
             "budget_exhausted": False,
             "global_budget_remaining_usd": None,
@@ -52,10 +54,18 @@ class TestPromptsConfigEndpoint:
 
         assert data["provider_connected"] is True
         assert data["provider"] == "vllm"
+        assert data["uses_server_default"] is True
         assert data["model"] == SERVER_DEFAULT_ENV["LLM_MODEL"]
         assert data["available_models"] == [SERVER_DEFAULT_ENV["LLM_MODEL"]]
         assert SERVER_DEFAULT_ENV["LLM_API_KEY"] not in str(data)
         assert SERVER_DEFAULT_ENV["LLM_BASE_URL"] not in str(data)
+
+    @pytest.mark.usefixtures("server_default_llm")
+    def test_own_connection_wins_over_the_server_default(self, client, auth_headers):
+        data = client.get("/api/prompts/config", headers=auth_headers).json()
+
+        assert data["provider"] == "openai"
+        assert data["uses_server_default"] is False
 
     def test_config_never_leaks_the_api_key(self, client, auth_headers):
         """The stored credential must not appear anywhere in the response."""

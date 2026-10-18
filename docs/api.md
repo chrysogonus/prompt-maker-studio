@@ -66,7 +66,7 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 | `POST` | `/api/prompts` | Yes | Save a new prompt from a name, sections, optional folder and variable metadata (hints, required inputs and examples) |
 | `POST` | `/api/prompts/parse-text` | Yes | Convert pasted text into sections; optional `extract_variables: true` also returns original input values and source phrases |
 | `POST` | `/api/prompts/try` | Yes | Run filled editor `text` once with the configured AI connection; records spend without saving a prompt |
-| `GET` | `/api/prompts/config` | Yes | The caller's effective AI connection (own or server default), suggested models, and shared/caller budget status |
+| `GET` | `/api/prompts/config` | Yes | The caller's effective AI connection (own or server default, flagged by `uses_server_default`), suggested models, and shared/caller budget status |
 | `GET` | `/api/prompts/saved` | Yes | List the library (supports `folder` and `favorite_only` filters) |
 | `GET` | `/api/prompts/folders` | Yes | Distinct folder names |
 | `PATCH` | `/api/prompts/folders?name=` | Yes | Rename a folder for all its prompts (merges onto an existing name) |
