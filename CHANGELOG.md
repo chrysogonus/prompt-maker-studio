@@ -24,6 +24,11 @@ any release. See [Project status](./README.md#project-status).
 - Saved prompts with variables open ready to fill from anywhere, with Edit template
   for wording changes. Filled inputs are kept on this device for every saved prompt
   until cleared, and the preview says so.
+- The library has one **Add existing prompts** entry point for pasted text and files,
+  replacing the separate Paste a prompt link and Import prompts button. The dialog
+  folds format details away, shows section text for small imports, offers Make
+  reusable with AI for a single note, and ends with Open imported prompts or Import
+  more. Favorites in a JSON export carry over.
 
 ### Fixed
 

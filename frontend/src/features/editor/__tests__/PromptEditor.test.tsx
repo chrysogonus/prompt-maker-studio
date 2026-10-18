@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import PromptEditor from '../PromptEditor';
 import { ApiClient, ApiError } from '@/lib/api';
 import { storageKey } from '@/lib/branding';
+import { pasteHandoffKey } from '@/lib/promptImport';
 import { snapshot } from '../editorState';
 import type { PromptHistoryResponse, PromptVersionResponse } from '@/types/prompt';
 
@@ -1017,6 +1018,13 @@ describe('paste a prompt recovery and save handoff', () => {
     await waitFor(() => expect(localStorage.getItem(draftKey(1))).toBeNull());
     expect(screen.getByLabelText('Context text')).toHaveValue(prompt().fields[1].content);
   });
+});
+
+it('opens Paste a prompt with a note handed over from the library, once', async () => {
+  sessionStorage.setItem(pasteHandoffKey(), 'Plan a trip to Lisbon.');
+  render(<PromptEditor openImport />);
+  expect(await screen.findByLabelText('Prompt to convert')).toHaveValue('Plan a trip to Lisbon.');
+  expect(sessionStorage.getItem(pasteHandoffKey())).toBeNull();
 });
 
 it('consumes the library import URL when applying so reload opens the recovered filled prompt', async () => {

@@ -29,6 +29,14 @@ async function register(page: Page) {
   } }));
 }
 
+/** The library's single entry point hands a pasted note to the editor's AI conversion. */
+async function openPaste(page: Page) {
+  await page.getByRole('button', { name: 'Add existing prompts', exact: true }).click();
+  await page.getByLabel('Paste text').fill(source);
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await page.getByRole('button', { name: 'Make reusable with AI', exact: true }).click();
+}
+
 for (const width of [1440, 390]) {
   for (const theme of ['light', 'dark']) {
     test(`converts, reviews, recovers and saves at ${width}px (${theme})`, async ({ page }, testInfo) => {
@@ -43,8 +51,9 @@ for (const width of [1440, 390]) {
         expect(route.request().postDataJSON()).toEqual({ text: source, extract_variables: true });
         return route.fulfill({ json: conversion });
       });
-      await page.getByRole('link', { name: 'Paste a prompt', exact: true }).click();
+      await openPaste(page);
       const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
+      await expect(paste.getByLabel('Prompt to convert')).toHaveValue(source);
       await expect(paste).toContainText('Ollama / local');
       await expect(paste).toContainText('Your provider may charge for these calls');
       await paste.getByLabel('Prompt to convert').fill(source);
@@ -117,7 +126,7 @@ for (const width of [1440, 390]) {
       await page.getByRole('button', { name: 'Copy filled prompt' }).click();
       expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(filled);
       await page.goto('/library');
-      await expect(page.getByRole('link', { name: 'Paste a prompt', exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Add existing prompts', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Copy the Converted travel prompt template' }).click();
       expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('{{city}}');
       await page.getByRole('link', { name: 'Fill and copy', exact: true }).click();
@@ -140,9 +149,8 @@ test('shows pending conversion and errors without losing the source or double ch
       await route.fulfill({ status: 502, json: { detail: 'Provider unavailable. Try again.' } });
     } else await route.fulfill({ json: conversion });
   });
-  await page.getByRole('link', { name: 'Paste a prompt', exact: true }).click();
+  await openPaste(page);
   const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
-  await paste.getByLabel('Prompt to convert').fill(source);
   await paste.getByRole('button', { name: 'Create template' }).click();
   await expect(paste.getByRole('button', { name: 'Creating template…' })).toBeDisabled();
   await expect(paste.getByRole('button', { name: 'Close', exact: true })).toBeDisabled();

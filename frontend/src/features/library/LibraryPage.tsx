@@ -297,11 +297,8 @@ function LibraryContent() {
             <Link href="/editor/new" className={styles.primaryLink}>
               New prompt
             </Link>
-            <Link href="/editor/new?import=1" className={styles.secondaryLink}>
-              Paste a prompt
-            </Link>
+            <ImportPrompts onCreated={addImported} folders={folders} />
           </div>
-          <div className={styles.heroActions}><ImportPrompts onCreated={addImported} folders={folders} /></div>
           <h2>Or start from a template</h2>
           <ul className={styles.starters}>
             {STARTER_TEMPLATES.map((template) => (
@@ -323,7 +320,6 @@ function LibraryContent() {
     <div className={styles.page}>
       <header className={styles.head}>
         <h1>{title}</h1>
-        <Link href="/editor/new?import=1" className={styles.secondaryLink}>Paste a prompt</Link>
         <ImportPrompts onCreated={addImported} folders={folders} />
         {view.type === 'folder' && (
           <div className={styles.menuWrap} data-menu>

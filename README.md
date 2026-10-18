@@ -18,7 +18,8 @@ versions let you compare edits and restore an earlier approach.
 
 ## Turn a working prompt into a reusable template
 
-Choose **Paste a prompt** in the library or editor. AI turns unstructured text
+Choose **Add existing prompts** in the library and then **Make reusable with AI**, or
+**Paste a prompt** in the editor. AI turns unstructured text
 into XML-style sections and identifies variables with their original values
 filled in. Review and edit the variables, keep an input fixed, and copy either
 the template or filled prompt. Apply to the draft with Undo; Save keeps it.

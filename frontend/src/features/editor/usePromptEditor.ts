@@ -7,6 +7,7 @@ import { ApiClient, ApiError, PROMPT_NOT_FOUND_MESSAGE, isValidPromptId } from '
 import { useAuth } from '@/lib/auth-context';
 import { pageTitle, storageKey } from '@/lib/branding';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
+import { pasteHandoffKey } from '@/lib/promptImport';
 import { sectionNameError, suggestTitle, variablesIn } from '@/lib/sections';
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
 import { PromptField, PromptHistoryResponse, PromptUpdateRequest, PromptVersionResponse, PromptsConfigResponse } from '@/types/prompt';
@@ -189,7 +190,13 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     } else if (starter) {
       setSections(toEditorSections(starter.sections, false));
     }
-  }, [draftKey, initialStarter, isNew, restoreInputs]);
+    // A note sent from the library's Add existing prompts preview, read once.
+    if (openImport) {
+      let handoff: string | null = null;
+      try { handoff = sessionStorage.getItem(pasteHandoffKey()); sessionStorage.removeItem(pasteHandoffKey()); } catch { /* Storage unavailable. */ }
+      if (handoff) setImportSession({ text: handoff });
+    }
+  }, [draftKey, initialStarter, isNew, openImport, restoreInputs]);
 
   useDraftPersistence({ dirty, draftKey, fields, loadError, loading, metadata, note, savedSnapshot, values, rememberValues, importSession, importOpen });
 

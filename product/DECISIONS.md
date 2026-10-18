@@ -1022,3 +1022,28 @@ changes, or the user signs out (explicit sign-out already removes drafts).
 
 **Sources**: `frontend/src/features/editor/usePromptEditor.ts`,
 `frontend/src/features/editor/PromptEditor.tsx`, `frontend/src/features/editor/PreviewPane.tsx`.
+
+---
+
+## One Library Entry Point for Existing Prompts
+
+**Status**: Accepted (2026-10-18)
+
+**Context**: The library offered New prompt, a Paste a prompt link and an Import prompts
+button. The external UX review (18 Oct 2026) found that someone bringing one existing
+prompt had to pick an implementation path before seeing it in the product, and that the
+import dialog led with format rules.
+
+**Decision**: The library shows New prompt and **Add existing prompts**. The latter opens
+the import dialog, which accepts pasted text and files, keeps format rules in a disclosure,
+and previews section text. A single pasted note offers Keep as written (no AI) or Make
+reusable with AI, which hands the text once through session storage to the editor's
+existing Paste a prompt flow rather than overwriting the user's new-prompt draft. The
+editor keeps Paste a prompt for new and saved prompts. JSON favorites are applied after
+creation because the create endpoint rejects extra fields.
+
+**Consequences**: AI conversion from the library takes one more step (Preview), and the
+no-AI path is the default. Full archive restore remains deferred (ROADMAP Later).
+
+**Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`,
+`frontend/src/features/editor/usePromptEditor.ts`.

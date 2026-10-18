@@ -130,10 +130,16 @@ above both panes as stored only in the current browser.
   Settings preference), with search across names, folders and section text.
 - Choose Recently edited or Title A–Z sorting. Select prompts to file them together;
   failed moves stay selected for retry. Grid metadata sits separately from actions.
-- Import prompts accepts a JSON export or Markdown (`# Title`, optional `## Section`
-  headings), up to 100 prompts and 5 MB per import. Review and edit names/folders
-  before creating new copies. Sections and variable settings are retained; history,
-  dates, notes and favorite status are not restored. Failed items remain for retry.
+- **Add existing prompts** is the library's one entry point for bringing prompts in. It
+  accepts pasted text, a JSON export or Markdown (`# Title`, optional `## Section`
+  headings), up to 100 prompts and 5 MB per import; format details are folded away.
+  Review and edit names/folders, with section text shown for up to five prompts, before
+  creating new copies. Sections, variable settings and favorites are retained; history,
+  dates and notes are not restored. Failed items remain for retry. After success it
+  offers Open imported prompts (the prompt, its folder, or the library) or Import more.
+- A single pasted note can be kept as written or sent to **Make reusable with AI**, which
+  opens the editor's Paste a prompt with the text filled in (handed over once through
+  session storage).
 - A single plain note needs no heading. Uploading suggests its filename as the title;
   pasted notes have an editable title. Simple one-line YAML `title` values can supply
   a title; complex YAML uses the fallback. All single-note text, including front

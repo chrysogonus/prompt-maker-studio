@@ -1,11 +1,17 @@
+import { storageKey } from '@/lib/branding';
 import type { PromptCreateRequest, VariableMetadataItem } from '@/types/prompt';
 
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
+/** Hands a pasted note from the library to the editor's AI conversion, once. */
+export const pasteHandoffKey = () => storageKey('paste-handoff');
+
+/** A favorite flag can't be sent on create, so it is applied after. */
+export type ImportPrompt = PromptCreateRequest & { is_favorite?: true };
 const fail = (message: string): never => { throw new Error(message); };
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 
 /** Validate the entire preview before making any writes. Export-only history is intentionally ignored. */
-export function validateImportPrompts(value: unknown): PromptCreateRequest[] {
+export function validateImportPrompts(value: unknown): ImportPrompt[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > 100) return fail('Import between 1 and 100 prompts at a time.');
   return value.map((item: unknown, index: number) => {
     const invalid = (detail: string): never => fail(`Prompt ${index + 1}: ${detail}`);
@@ -24,7 +30,8 @@ export function validateImportPrompts(value: unknown): PromptCreateRequest[] {
       if (field.content.length > 10000) return invalid('section text exceeds 10,000 characters.');
       return { name, content: field.content };
     });
-    const prompt: PromptCreateRequest = { name: item.name.trim(), folder: typeof item.folder === 'string' ? item.folder.trim() : null, fields };
+    const prompt: ImportPrompt = { name: item.name.trim(), folder: typeof item.folder === 'string' ? item.folder.trim() : null, fields,
+      ...(item.is_favorite === true && { is_favorite: true as const }) };
     if (item.variable_metadata != null) {
       if (!object(item.variable_metadata)) return invalid('invalid variable metadata.');
       const entries = Object.entries(item.variable_metadata).map(([key, metadata]) => {
@@ -41,7 +48,7 @@ export function validateImportPrompts(value: unknown): PromptCreateRequest[] {
   });
 }
 
-export function parsePromptImport(source: string, suggestedTitle = 'Imported note'): PromptCreateRequest[] {
+export function parsePromptImport(source: string, suggestedTitle = 'Imported note'): ImportPrompt[] {
   if (new Blob([source]).size > MAX_IMPORT_BYTES) fail('Import files must be 5 MB or smaller.');
   const text = source.trim();
   if (/^[{[]/.test(text)) {
