@@ -191,10 +191,9 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   await register(page, user);
   await createSavedPrompt(page, promptName, 'Verify saved prompt persistence');
 
-  // The preview shows the text exactly as it will be copied.
+  // The preview shows the text exactly as it will be copied; one section copies without tags.
   const preview = page.getByLabel('Prompt text');
-  await expect(preview).toContainText('<TASK>');
-  await expect(preview).toContainText('Verify saved prompt persistence');
+  await expect(preview).toHaveText('Verify saved prompt persistence');
 
   await sidebarLink(page, /All prompts/).click();
   await expect(page).toHaveURL(/\/library$/);

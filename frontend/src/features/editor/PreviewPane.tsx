@@ -53,7 +53,7 @@ export default function PreviewPane({
   onCopyFailed,
 }: PreviewPaneProps) {
   const [copied, setCopied] = useState<CopyKind | null>(null);
-  const [outputFormat, setOutputFormat] = useState<'sections' | 'plain'>('sections');
+  const [formatChoice, setOutputFormat] = useState<'sections' | 'plain' | null>(null);
   const [trying, setTrying] = useState(false);
   const [result, setResult] = useState<{ text: string; response: TryPromptResponse } | null>(null);
   const [tryError, setTryError] = useState('');
@@ -79,6 +79,8 @@ export default function PreviewPane({
   }
 
   const filled = mode === 'filled' && variables.length > 0;
+  // A single section has nothing to separate, so its tags are noise unless chosen.
+  const outputFormat = formatChoice ?? (fields.length === 1 ? 'plain' : 'sections');
   const template = outputFormat === 'plain' ? renderPlainSections(fields) : renderSections(fields);
   const unfilled = variables.filter((name) => metadata[name]?.required ? !values[name]?.trim() : !values[name]);
   const missingRequired = unfilled.filter((name) => metadata[name]?.required);

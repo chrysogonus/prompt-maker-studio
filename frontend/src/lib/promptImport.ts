@@ -48,7 +48,29 @@ export function validateImportPrompts(value: unknown): ImportPrompt[] {
   });
 }
 
-export function parsePromptImport(source: string, suggestedTitle = 'Imported note'): ImportPrompt[] {
+const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+
+/** Whether a note starts with YAML frontmatter (Obsidian, Notion exports and similar). */
+export const hasFrontmatter = (source: string) => FRONTMATTER.test(source.trim());
+
+function frontmatterTitle(frontmatter: string): string | undefined {
+  const scalar = frontmatter.match(/^title:[ \t]*(.+)$/m)?.[1].trim();
+  // ponytail: support simple one-line scalar titles; preserve complex YAML as text.
+  let title: string | undefined;
+  if (scalar?.startsWith('"')) {
+    try { const parsed: unknown = JSON.parse(scalar); if (typeof parsed === 'string') title = parsed; } catch { /* Unsupported YAML is ignored. */ }
+  } else if (scalar?.startsWith("'")) {
+    if (/^'(?:[^']|'')*'$/.test(scalar)) title = scalar.slice(1, -1).replace(/''/g, "'");
+  } else if (scalar && !/^[|>!&*[{]/.test(scalar)) title = scalar.replace(/\s+#.*$/, '');
+  return title?.trim() || undefined;
+}
+
+/**
+ * Frontmatter is note metadata, not prompt text, so it is removed unless
+ * `keepOriginal` is set; the rest of the note is then read like any Markdown
+ * prompt, so a leading `# Title` becomes the title instead of prompt text.
+ */
+export function parsePromptImport(source: string, suggestedTitle = 'Imported note', keepOriginal = false): ImportPrompt[] {
   if (new Blob([source]).size > MAX_IMPORT_BYTES) fail('Import files must be 5 MB or smaller.');
   const text = source.trim();
   if (/^[{[]/.test(text)) {
@@ -58,18 +80,13 @@ export function parsePromptImport(source: string, suggestedTitle = 'Imported not
     return validateImportPrompts(data.prompts.map((prompt: unknown, index: number) => object(prompt) && prompt.name == null ? { ...prompt, name: `Imported prompt ${index + 1}` } : prompt));
   }
   if (!text) return fail('Include some note text or a JSON export.');
-  // Single notes retain every character, including frontmatter and headings.
+  const frontmatter = text.match(FRONTMATTER);
+  const title = frontmatter ? frontmatterTitle(frontmatter[1]) : undefined;
+  const body = frontmatter ? text.slice(frontmatter[0].length).trim() : '';
+  if (!keepOriginal && body) return parsePromptImport(body, title || suggestedTitle, true);
+  // Otherwise a single note retains every character, including frontmatter and headings.
   if (!/^# .+/.test(text)) {
-    const frontmatter = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1];
-    const scalar = frontmatter?.match(/^title:[ \t]*(.+)$/m)?.[1].trim();
-    // ponytail: support simple one-line scalar titles; preserve complex YAML as text.
-    let title: string | undefined;
-    if (scalar?.startsWith('"')) {
-      try { const parsed: unknown = JSON.parse(scalar); if (typeof parsed === 'string') title = parsed; } catch { /* Preserve unsupported YAML below. */ }
-    } else if (scalar?.startsWith("'")) {
-      if (/^'(?:[^']|'')*'$/.test(scalar)) title = scalar.slice(1, -1).replace(/''/g, "'");
-    } else if (scalar && !/^[|>!&*[{]/.test(scalar)) title = scalar.replace(/\s+#.*$/, '');
-    return validateImportPrompts([{ name: title?.trim() || suggestedTitle.trim() || 'Imported note', folder: null, fields: [{ name: 'Prompt', content: source }] }]);
+    return validateImportPrompts([{ name: title || suggestedTitle.trim() || 'Imported note', folder: null, fields: [{ name: 'Prompt', content: source }] }]);
   }
   const prompts: PromptCreateRequest[] = [];
   let current: PromptCreateRequest | undefined;
@@ -99,4 +116,38 @@ export function parsePromptImport(source: string, suggestedTitle = 'Imported not
   // Whitespace before the first explicit section is not its own section.
   for (const prompt of prompts) prompt.fields = prompt.fields.filter(field => field.name !== 'Prompt' || field.content || prompt.fields.length === 1);
   return validateImportPrompts(prompts);
+}
+
+// [TOPIC] or [insert topic] (not a Markdown link or arr[i]), {topic} (not {{topic}}),
+// and <transcript> when no </transcript> closes it as a tag.
+// ponytail: heuristic; people see the list and choose before anything changes.
+const PLACEHOLDER = /(?<![\w\]])\[([A-Za-z][\w -]{1,40})\](?!\()|(?<![{\w])\{([A-Za-z][\w -]{0,40})\}(?!\})|<([a-z][a-z0-9_ -]{1,40})>/g;
+
+const placeholderName = (inner: string) => inner.trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/[^a-z0-9_]/g, '');
+
+function placeholdersIn(content: string): Map<string, string> {
+  const found = new Map<string, string>();
+  for (const match of content.matchAll(PLACEHOLDER)) {
+    const inner = match[1] ?? match[2] ?? match[3];
+    if (match[3] && content.includes(`</${match[3]}>`)) continue;
+    const name = placeholderName(inner);
+    if (/^[a-z_][a-z0-9_]*$/.test(name)) found.set(match[0], name);
+  }
+  return found;
+}
+
+/** Placeholder spellings that could become `{{inputs}}`, in order of appearance. */
+export function findPlaceholders(prompts: ImportPrompt[]): string[] {
+  return [...new Set(prompts.flatMap(prompt => prompt.fields.flatMap(field => [...placeholdersIn(field.content).keys()])))];
+}
+
+/** Rewrite every found placeholder as a `{{name}}` input. */
+export function convertPlaceholders(prompts: ImportPrompt[]): ImportPrompt[] {
+  return prompts.map(prompt => ({
+    ...prompt,
+    fields: prompt.fields.map(field => {
+      const found = placeholdersIn(field.content);
+      return { ...field, content: field.content.replace(PLACEHOLDER, token => found.has(token) ? `{{${found.get(token)}}}` : token) };
+    }),
+  }));
 }

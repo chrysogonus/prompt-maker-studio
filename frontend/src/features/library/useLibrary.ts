@@ -168,11 +168,12 @@ export function useLibrary() {
     }
   };
 
-  const copyTemplate = async (prompt: Prompt, plain = false) => {
+  // Like the editor preview, a single-section prompt copies without tags unless asked.
+  const copyTemplate = async (prompt: Prompt, plain = prompt.fields.length === 1) => {
     setMenuId(null);
     try {
       await navigator.clipboard.writeText(plain ? renderPlainSections(prompt.fields) : prompt.generated_prompt);
-      showToast({ text: `Copied the “${prompt.name}” template${plain ? ' as plain text' : ''}` });
+      showToast({ text: `Copied the “${prompt.name}” template${plain ? ' as plain text' : prompt.fields.length === 1 ? ' with section tags' : ''}` });
     } catch {
       showToast({ text: 'Copying failed. Open the prompt and copy it from the preview.' });
     }

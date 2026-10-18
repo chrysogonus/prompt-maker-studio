@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parsePromptImport } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, hasFrontmatter, parsePromptImport } from '@/lib/promptImport';
 
 describe('prompt import', () => {
   it('restores export sections, folder and variable metadata without server-only data', () => {
@@ -19,13 +19,33 @@ describe('prompt import', () => {
     const source = '  A note\n## Nested heading\n```md\n# Example\n```\n';
     expect(parsePromptImport(source, 'Daily note')).toEqual([{ name: 'Daily note', folder: null, fields: [{ name: 'Prompt', content: source }] }]);
   });
-  it('uses a simple frontmatter title while preserving all metadata as note content', () => {
-    const source = '---\ntitle: "Café notes"\ntags: [work, draft]\n---\n# Body heading\nA note';
-    expect(parsePromptImport(source, 'Filename')).toEqual([{ name: 'Café notes', folder: null, fields: [{ name: 'Prompt', content: source }] }]);
+  it('removes frontmatter and reads the rest as Markdown, using its # Title', () => {
+    const source = '---\ntitle: "Café notes"\ntags: [work, draft]\n---\n# Body heading\nA note\n## Output\nThree bullets';
+    expect(hasFrontmatter(source)).toBe(true);
+    expect(parsePromptImport(source, 'Filename')).toEqual([{ name: 'Body heading', folder: null, fields: [
+      { name: 'Prompt', content: 'A note' }, { name: 'Output', content: 'Three bullets' },
+    ] }]);
   });
-  it('uses the fallback for complex YAML titles without discarding frontmatter', () => {
-    const source = '---\ntitle: |\n  Multiline title\n---\nBody';
-    expect(parsePromptImport(source)[0]).toEqual({ name: 'Imported note', folder: null, fields: [{ name: 'Prompt', content: source }] });
+  it('titles a frontmatter note without a heading from its frontmatter, then the fallback', () => {
+    expect(parsePromptImport("---\ntitle: 'Daily'\n---\nBody", 'Filename')).toEqual([{ name: 'Daily', folder: null, fields: [{ name: 'Prompt', content: 'Body' }] }]);
+    expect(parsePromptImport('---\ntitle: |\n  Multiline title\n---\nBody')).toEqual([{ name: 'Imported note', folder: null, fields: [{ name: 'Prompt', content: 'Body' }] }]);
+  });
+  it('keeps the original note, frontmatter included, when asked', () => {
+    const source = '---\ntitle: "Café notes"\ntags: [work, draft]\n---\n# Body heading\nA note';
+    expect(parsePromptImport(source, 'Filename', true)).toEqual([{ name: 'Café notes', folder: null, fields: [{ name: 'Prompt', content: source }] }]);
+    const complex = '---\ntitle: |\n  Multiline title\n---\nBody';
+    expect(parsePromptImport(complex, undefined, true)[0]).toEqual({ name: 'Imported note', folder: null, fields: [{ name: 'Prompt', content: complex }] });
+  });
+  it('keeps a note that is only frontmatter as written', () => {
+    expect(parsePromptImport('---\ntitle: Empty\n---')[0].fields[0].content).toBe('---\ntitle: Empty\n---');
+  });
+  it('finds and converts common placeholder spellings into inputs', () => {
+    const prompts = [{ name: 'P', folder: null, fields: [{ name: 'Prompt', content:
+      'Outline [TOPIC] for [target audience] in a {tone} voice. Use <transcript>. Keep {{format}}, <ROLE>x</ROLE>, <example>e</example>, [a link](https://x.y), arr[i] and [ ].' }] }];
+    expect(findPlaceholders(prompts)).toEqual(['[TOPIC]', '[target audience]', '{tone}', '<transcript>']);
+    expect(convertPlaceholders(prompts)[0].fields[0].content).toBe(
+      'Outline {{topic}} for {{target_audience}} in a {{tone}} voice. Use {{transcript}}. Keep {{format}}, <ROLE>x</ROLE>, <example>e</example>, [a link](https://x.y), arr[i] and [ ].');
+    expect(findPlaceholders(convertPlaceholders(prompts))).toEqual([]);
   });
   it('keeps the 5 MB and 100 prompt limits', () => {
     expect(() => parsePromptImport('x'.repeat(5 * 1024 * 1024 + 1))).toThrow('5 MB');

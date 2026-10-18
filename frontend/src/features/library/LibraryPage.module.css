@@ -603,6 +603,23 @@
 .field textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--color-control-border); border-radius: var(--radius-sm); background: var(--color-panel); color: var(--text-primary); font: inherit; resize: vertical; }
 
 .importDialog { width: min(640px, 100%); max-height: calc(100dvh - 2 * var(--space-4)); overflow-y: auto; }
+.checkRow { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; font-size: var(--text-sm-size); cursor: pointer; }
+.checkRow input { accent-color: var(--color-accent-tag); }
+.placeholderOffer { display: grid; justify-items: start; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-size: var(--text-sm-size); }
+.placeholderOffer code { margin-inline: 2px; padding: 1px 5px; border-radius: 4px; background: var(--color-plum-wash); font-family: var(--font-mono); font-size: var(--text-xs-size); }
+.field input[type='file'] { padding: 6px; }
+.field input[type='file']::file-selector-button {
+  margin-right: var(--space-3);
+  padding: 6px 12px;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+.field input[type='file']::file-selector-button:hover { background: var(--bg-tertiary); }
 
 .searchExcerpt {
   font-size: var(--text-base-size);

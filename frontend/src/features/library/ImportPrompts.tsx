@@ -7,7 +7,7 @@ import Dialog from '@/components/ui/Dialog';
 import { ApiClient } from '@/lib/api';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { libraryHref } from '@/lib/libraryViews';
-import { ImportPrompt, MAX_IMPORT_BYTES, parsePromptImport, pasteHandoffKey, validateImportPrompts } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, hasFrontmatter, ImportPrompt, MAX_IMPORT_BYTES, parsePromptImport, pasteHandoffKey, validateImportPrompts } from '@/lib/promptImport';
 import type { PromptHistoryResponse } from '@/types/prompt';
 import styles from './LibraryPage.module.css';
 
@@ -40,9 +40,18 @@ export default function ImportPrompts({ onCreated, folders }: {
   const [result, setResult] = useState('');
   const [done, setDone] = useState<PromptHistoryResponse[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [keepOriginal, setKeepOriginal] = useState(false);
+  const [beforeConvert, setBeforeConvert] = useState<ImportPrompt[] | null>(null);
   const updateSource = (text: string) => { setSource(text); setPreview(null); setError(''); setResult(''); };
+  const showPreview = (keep: boolean) => {
+    try { setPreview(parsePromptImport(source, noteTitle, keep)); setBeforeConvert(null); setError(''); setResult(''); }
+    catch (error) { setError((error as Error).message); }
+  };
+  const fromNote = !!source.trim() && !/^[{[]/.test(source.trim());
   // A fresh single note may go to AI conversion instead; retries and JSON exports may not.
-  const singleNote = preview?.length === 1 && preview[0].fields.length === 1 && !!source.trim() && !/^[{[]/.test(source.trim());
+  const singleNote = preview?.length === 1 && fromNote;
+  const placeholders = preview ? findPlaceholders(preview) : [];
+  const sharedFolder = preview?.every(prompt => (prompt.folder ?? '') === (preview[0].folder ?? '')) ? preview[0].folder ?? '' : '';
   const importPrompts = async () => {
     let validated: ImportPrompt[];
     try { validated = validateImportPrompts(preview); } catch (error) { setError((error as Error).message); return; }
@@ -59,13 +68,16 @@ export default function ImportPrompts({ onCreated, folders }: {
     }
     if (created.length) { imported.current.push(...created); notifyLibraryChanged(); }
     setPreview(failed.length ? failed : null);
+    setBeforeConvert(null);
     setSource('');
     setDone(failed.length ? null : created);
     setResult(`Imported ${created.length} of ${validated.length} prompts.${failed.length ? ` ${failed.length} failed; only these remain below for retry.` : ''}`);
     setBusy(false);
   };
   const reuseWithAI = () => {
-    try { sessionStorage.setItem(pasteHandoffKey(), preview![0].fields[0].content); } catch { /* The editor still opens Paste a prompt empty. */ }
+    // The note's body, without frontmatter or its title line, keeping ## headings for the AI.
+    const text = preview![0].fields.map(field => field.name === 'Prompt' ? field.content : `## ${field.name}\n${field.content}`).join('\n\n');
+    try { sessionStorage.setItem(pasteHandoffKey(), text); } catch { /* The editor still opens Paste a prompt empty. */ }
     close();
     router.push('/editor/new?import=1');
   };
@@ -109,17 +121,32 @@ export default function ImportPrompts({ onCreated, folders }: {
           </div>
           <details className={styles.dialogText}>
             <summary>Format details</summary>
-            <p>A single note is kept as written in one Prompt section. A simple YAML frontmatter title supplies the title; all frontmatter stays in the text and other YAML metadata is not mapped.</p>
+            <p>A note without a # Title is kept as written in one Prompt section. YAML front matter is removed first, and its simple title becomes the prompt title; you can keep the original text in the preview. Other YAML metadata is not mapped.</p>
             <p>For several prompts, start each with # Title and optionally add ## Section name headings. Headings inside code fences remain text. Up to 100 prompts at a time.</p>
             <p>JSON files use the Prompt Maker Studio export format: titles, sections, folders, variable settings and favorites are copied. Version history, dates and notes are not imported; this is not a full archive restore.</p>
           </details>
-          <Button variant="primary" disabled={busy || !source.trim()} onClick={() => {
-            try { setPreview(parsePromptImport(source, noteTitle)); setError(''); setResult(''); }
-            catch (error) { setError((error as Error).message); }
-          }}>Preview</Button>
+          <Button variant="primary" disabled={busy || !source.trim()} onClick={() => showPreview(keepOriginal)}>Preview</Button>
         </>}
         {preview && <>
           <p className={styles.dialogText}>Review {preview.length} prompt{preview.length === 1 ? '' : 's'} before importing. Edit titles and folders below; leave a folder empty for Unfiled.</p>
+          {fromNote && hasFrontmatter(source) && <label className={styles.checkRow}>
+            <input type="checkbox" checked={keepOriginal} disabled={busy} onChange={event => { setKeepOriginal(event.target.checked); showPreview(event.target.checked); }} />
+            Keep the note&apos;s front matter and title line in the prompt text
+          </label>}
+          {preview.length > 1 && <div className={styles.field}>
+            <label htmlFor="import-folder-all">Folder for all prompts</label>
+            <input id="import-folder-all" value={sharedFolder} list="import-folders" maxLength={255} disabled={busy} placeholder="Unfiled"
+              onChange={event => setPreview(preview.map(item => ({ ...item, folder: event.target.value })))} />
+          </div>}
+          {placeholders.length > 0 && <div className={styles.placeholderOffer}>
+            <p>Found {placeholders.length === 1 ? 'a placeholder' : `${placeholders.length} placeholders`}: {placeholders.map(token => <code key={token}>{token}</code>)}</p>
+            <Button variant="secondary" disabled={busy} onClick={() => { setBeforeConvert(preview); setPreview(convertPlaceholders(preview)); }}>
+              {placeholders.length === 1 ? 'Turn it into an input' : 'Turn them into inputs'}
+            </Button>
+          </div>}
+          {beforeConvert && <p role="status" className={styles.dialogText}>Placeholders are now inputs you fill in before copying.{' '}
+            <Button variant="ghost" disabled={busy} onClick={() => { setPreview(preview.map((item, i) => ({ ...item, fields: beforeConvert[i].fields }))); setBeforeConvert(null); }}>Undo</Button>
+          </p>}
           <div className={styles.importPreview}>
             {preview.map((prompt, index) => <div className={styles.importItem} key={index}>
               <div className={styles.field}>
@@ -135,7 +162,7 @@ export default function ImportPrompts({ onCreated, folders }: {
           </div>
           {singleNote && <p className={styles.dialogText}>Keep it as written, or let AI split it into sections and suggest inputs (needs an AI connection).</p>}
           <div className={styles.formActions}>
-            <Button variant="ghost" disabled={busy} onClick={() => { setPreview(null); setError(''); }}>Back</Button>
+            <Button variant="ghost" disabled={busy} onClick={() => { setPreview(null); setBeforeConvert(null); setError(''); }}>Back</Button>
             {singleNote && <Button variant="secondary" disabled={busy} onClick={reuseWithAI}>Make reusable with AI</Button>}
             <Button variant="primary" disabled={busy} onClick={() => void importPrompts()}>{busy ? 'Importing…' : singleNote ? 'Keep as written' : `Import ${preview.length} prompt${preview.length === 1 ? '' : 's'}`}</Button>
           </div>

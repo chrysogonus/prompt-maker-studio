@@ -98,7 +98,9 @@ function LibraryContent() {
           <button type="button" onClick={() => copyTemplate(prompt)}>
             Copy template
           </button>
-          <button type="button" onClick={() => copyTemplate(prompt, true)}>Copy as plain text</button>
+          {prompt.fields.length === 1
+            ? <button type="button" onClick={() => copyTemplate(prompt, false)}>Copy with section tags</button>
+            : <button type="button" onClick={() => copyTemplate(prompt, true)}>Copy as plain text</button>}
           <button
             type="button"
             onClick={() => {

@@ -59,7 +59,11 @@ for (const width of [1440, 390, 320]) {
     await expect(page.getByLabel('Title for a single note')).toHaveValue('Daily note');
     await page.getByRole('button', { name: 'Preview', exact: true }).click();
     await expect(page.getByLabel('Title for prompt 1')).toHaveValue('New prompt');
+    // Front matter is note metadata: removed by default, kept on request.
+    await expect(page.locator('pre').filter({ hasText: 'Give a useful answer.' })).toHaveText('Give a useful answer.');
+    await page.getByLabel(/Keep the note's front matter/).check();
     await expect(page.locator('pre').filter({ hasText: 'tags: [work]' })).toHaveText(note);
+    await page.getByLabel(/Keep the note's front matter/).uncheck();
     await page.getByLabel('Folder for New prompt').fill('Team');
     const dialogBox = (await page.getByRole('dialog', { name: 'Add existing prompts' }).boundingBox())!;
     expect(dialogBox.y).toBeGreaterThanOrEqual(0);

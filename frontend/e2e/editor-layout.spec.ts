@@ -185,7 +185,7 @@ for (const width of [390, 1440]) {
     });
     await page.goto('/editor/new?import=1');
     const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
-    await expect(paste).toContainText('copied output includes <TASK> section wrappers');
+    await expect(paste).toContainText('one Task section, which copies as plain text');
     await paste.getByLabel('Prompt to convert').fill(text);
     await paste.getByRole('button', { name: 'Save as written' }).click();
     const save = page.getByRole('dialog', { name: 'Save prompt', exact: true });

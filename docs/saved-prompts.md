@@ -142,10 +142,16 @@ above both panes as stored only in the current browser.
   session storage).
 - A single plain note needs no heading. Uploading suggests its filename as the title;
   pasted notes have an editable title. Simple one-line YAML `title` values can supply
-  a title; complex YAML uses the fallback. All single-note text, including front
-  matter, is preserved. Metadata is not mapped into folders or other settings.
+  a title; complex YAML uses the fallback. Front matter is removed and the rest of the
+  note is read like Markdown, so a leading `# Title` becomes the title and `##` headings
+  become sections; the preview can keep the original text instead. Metadata is not
+  mapped into folders or other settings.
+- The preview offers to turn placeholders such as `[TOPIC]`, `{audience}` or
+  `<transcript>` into inputs, with Undo, and a **Folder for all prompts** field when
+  several prompts are imported.
 - Paste a prompt offers Save as written without AI. The source becomes one Task
-  section, preserving its text; copied output includes the usual section wrappers.
+  section, preserving its text. Prompts with a single section copy as plain text by
+  default; Output options can add the section tags.
   Optional AI conversion still offers review before applying.
 - The sidebar narrows it to **Favorites**, a **folder**, or **Unfiled**.
 - Library cards expose Copy template and, for prompts with variables, Fill and copy, which opens

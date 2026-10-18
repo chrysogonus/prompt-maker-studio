@@ -35,6 +35,15 @@ any release. See [Project status](./README.md#project-status).
   outlines the whole card in both themes. Decorative borders and dividers are unchanged.
 - Each section has an Insert input control: name an input to add it at the caret, or
   select text first to turn it into an input that keeps the text as its example.
+- Importing a note removes its YAML front matter and reads the rest as Markdown, so
+  a leading `# Title` becomes the title and `##` headings become sections. The
+  preview can keep the original text instead. Make reusable with AI receives the
+  note's body without front matter or its title line.
+- The import preview offers to turn placeholders such as `[TOPIC]`, `{audience}` or
+  `<transcript>` into inputs, with Undo, and adds a Folder for all prompts field when
+  several prompts are imported. The file picker matches the app's buttons.
+- Prompts with a single section copy as plain text by default, in the preview and from
+  the library; Output options or the library menu add the section tags.
 
 ### Fixed
 

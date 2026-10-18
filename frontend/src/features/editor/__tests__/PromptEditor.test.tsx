@@ -118,6 +118,17 @@ it('copies plain text exactly as previewed while keeping placeholders and litera
   expect(clipboard).toHaveBeenCalledWith('  Visit café. Literal <example>.  ');
 });
 
+it('previews a single-section prompt as plain text until section tags are chosen', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ fields: [{ name: 'Task', content: 'Visit {{team}}.' }] }));
+  await renderSaved();
+  expect(screen.getByLabelText('Prompt text').textContent).toBe('Visit {{team}}.');
+  await user.click(screen.getByText('Output options', { exact: true }));
+  expect(screen.getByRole('combobox', { name: 'Output format' })).toHaveValue('plain');
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Output format' }), 'sections');
+  expect(screen.getByLabelText('Prompt text').textContent).toBe('<TASK>\nVisit {{team}}.\n</TASK>');
+});
+
 it('dismisses advisory markup warnings without editing the prompt', async () => {
   const user = userEvent.setup();
   vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ fields: [{ name: 'Task', content: 'Keep literal <example>.' }] }));

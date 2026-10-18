@@ -364,6 +364,66 @@ describe('LibraryPage', () => {
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
   });
 
+  it('drops note frontmatter and its title line unless the original is kept, and hands the body to AI', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    fireEvent.change(screen.getByLabelText('Paste text'), { target: { value: '---\ntitle: Blog outline\ntags: [writing]\n---\n# Blog outline\nOutline a post.\n## Output\n- 5 headings' } });
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Blog outline');
+    expect(screen.queryByText(/tags: \[writing\]/)).not.toBeInTheDocument();
+    expect(screen.getByText('2 sections')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: /Keep the note's front matter/ }));
+    expect(screen.getByText(/tags: \[writing\]/)).toBeVisible();
+    await user.click(screen.getByRole('checkbox', { name: /Keep the note's front matter/ }));
+
+    await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
+    expect(sessionStorage.getItem(pasteHandoffKey())).toBe('Outline a post.\n\n## Output\n- 5 headings');
+  });
+
+  it('offers to turn found placeholders into inputs, with undo', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.createPrompt).mockResolvedValue(saved({ id: 20, name: 'Post' }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    fireEvent.change(screen.getByLabelText('Paste text'), { target: { value: '# Post\nWrite about [TOPIC] for {audience}.' } });
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByText(/Found 2 placeholders/)).toHaveTextContent('[TOPIC]{audience}');
+    await user.click(screen.getByRole('button', { name: 'Turn them into inputs' }));
+    expect(screen.getByText('Write about {{topic}} for {{audience}}.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByText('Write about [TOPIC] for {audience}.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Turn them into inputs' }));
+    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
+    await waitFor(() => expect(ApiClient.createPrompt).toHaveBeenCalledWith({ name: 'Post', folder: null, fields: [{ name: 'Prompt', content: 'Write about {{topic}} for {{audience}}.' }] }));
+  });
+
+  it('files every previewed prompt in one folder', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# First\nHello\n# Second\nThanks');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await user.type(screen.getByLabelText('Folder for all prompts'), 'Team');
+    expect(screen.getByLabelText('Folder for First')).toHaveValue('Team');
+    expect(screen.getByLabelText('Folder for Second')).toHaveValue('Team');
+    await user.clear(screen.getByLabelText('Folder for Second'));
+    expect(screen.getByLabelText('Folder for all prompts')).toHaveValue('');
+  });
+
+  it('copies a single-section prompt as plain text, with tags on request', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [{ name: 'Prompt', content: 'Just {{this}}.' }], generated_prompt: '<PROMPT>\nJust {{this}}.\n</PROMPT>' })]);
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Copy the Weekly status update template' }));
+    expect(await navigator.clipboard.readText()).toBe('Just {{this}}.');
+    await user.click(screen.getByRole('button', { name: 'More actions for Weekly status update' }));
+    expect(screen.queryByRole('button', { name: 'Copy as plain text' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Copy with section tags' }));
+    expect(await navigator.clipboard.readText()).toBe('<PROMPT>\nJust {{this}}.\n</PROMPT>');
+  });
+
   it('stars a prompt', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.updatePrompt).mockResolvedValue(saved({ is_favorite: true }));
