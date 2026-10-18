@@ -1114,6 +1114,30 @@ it('keeps restored template edits and prompts without inputs in the editor', asy
   expect(screen.queryByRole('button', { name: 'Edit template' })).not.toBeInTheDocument();
 });
 
+it('turns selected text into an input and keeps it as the example', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ fields: [{ name: 'Task', content: 'Plan a trip to Lisbon.' }], variable_metadata: null }));
+  await renderSaved();
+  const text = screen.getByLabelText('Task text') as HTMLTextAreaElement;
+  await user.click(text);
+  text.setSelectionRange(15, 21);
+  await user.click(screen.getByRole('button', { name: 'Insert input in Task' }));
+  const name = screen.getByLabelText('Input name for “Lisbon” (kept as its example)');
+  await user.type(name, 'two words');
+  await user.click(screen.getByRole('button', { name: 'Insert' }));
+  expect(screen.getByRole('alert')).toHaveTextContent('Start with a letter');
+  await user.clear(name);
+  await user.type(name, 'city{Enter}');
+  expect(text).toHaveValue('Plan a trip to {{city}}.');
+  expect(text).toHaveFocus();
+  expect(screen.getByLabelText('Example input for city')).toHaveValue('Lisbon');
+
+  await user.click(screen.getByRole('button', { name: 'Insert input in Task' }));
+  await user.keyboard('{Escape}');
+  expect(screen.queryByLabelText('New input name')).not.toBeInTheDocument();
+  expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
+});
+
 it('opens library filled links in a focused pane with an explicit edit action', async () => {
   const user = userEvent.setup();
   render(<PromptEditor promptId={1} initialMode="filled" />);

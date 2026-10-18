@@ -355,6 +355,9 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
                 onChange={(change) => updateSection(section.key, change)}
                 onMove={(offset) => moveSection(index, offset)}
                 onRemove={() => removeSection(index)}
+                onVariableInserted={(name, example) => setMetadata((current) => current[name]?.example ? current : ({
+                  ...current, [name]: { ...current[name], type: current[name]?.type ?? 'text', example },
+                }))}
               />
             ))}
           </div>

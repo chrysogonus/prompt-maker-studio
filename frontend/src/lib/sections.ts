@@ -68,6 +68,17 @@ export function suggestTitle(text: string, max = 60): string {
   return line.slice(0, space > 0 ? space : max).replace(/[\s,;:-]+$/, '');
 }
 
+/** Whether `name` can be written as `{{name}}`. */
+export function isVariableName(name: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_-]*$/.test(name);
+}
+
+/** Replace `text[start, end)` with `{{name}}`; the replaced text can become the input's example. */
+export function insertVariable(text: string, start: number, end: number, name: string) {
+  const token = `{{${name}}}`;
+  return { text: text.slice(0, start) + token + text.slice(end), replaced: text.slice(start, end), caret: start + token.length };
+}
+
 /** Replace each filled-in variable; unfilled ones stay as `{{name}}`. */
 export function fillVariables(text: string, values: Record<string, string>): string {
   return text.replace(VARIABLE, (token, name: string) => (values[name] ? values[name] : token));

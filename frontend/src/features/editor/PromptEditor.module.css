@@ -413,6 +413,34 @@ button.title:hover {
   cursor: pointer;
 }
 
+.sectionTools .insertTool {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs-size);
+}
+
+.insertForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--text-sm-size);
+}
+
+.insertForm label { flex-basis: 100%; color: var(--text-secondary); overflow-wrap: anywhere; }
+
+.insertForm input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+  color: var(--text-primary);
+  font: inherit;
+}
+
 .sectionTools button:hover:not(:disabled) {
   background: var(--color-panel-raised);
   color: var(--text-primary);
@@ -1128,7 +1156,7 @@ button.version:hover {
 @media (max-width: 1200px) {
   .sectionHead { flex-wrap: wrap; }
   .sectionTools { flex-shrink: 0; margin-left: auto; }
-  .sectionName { flex-basis: 50%; }
+  .sectionName { flex-basis: 8rem; }
   .sectionTag { display: none; }
 }
 .tryResult { max-height: 35vh; overflow-y: auto; }

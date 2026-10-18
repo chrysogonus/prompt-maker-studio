@@ -33,6 +33,8 @@ any release. See [Project status](./README.md#project-status).
   3:1 contrast on every surface in both themes, including the preview's fill-in
   fields. Editor section cards mark their text area with a 3:1 left rail, and focus
   outlines the whole card in both themes. Decorative borders and dividers are unchanged.
+- Each section has an Insert input control: name an input to add it at the caret, or
+  select text first to turn it into an input that keeps the text as its example.
 
 ### Fixed
 
