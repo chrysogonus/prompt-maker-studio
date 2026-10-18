@@ -63,6 +63,12 @@ any release. See [Project status](./README.md#project-status).
   lists every AI feature, and its data note says imports keep favorites.
 - A single unfilled input reads "It'll be copied as a placeholder", and Evaluate
   says "Runs 1 case" instead of "Runs all 1 case".
+- Make reusable with AI no longer fills inputs with placeholder text such as `[TOPIC]`;
+  they start empty. AI-created sections use readable names (`Output format`, not
+  `output_format`) and the title is no longer turned into a section.
+- The title and folder chosen in the library's import preview carry through Make
+  reusable with AI into the Save dialog, and applying the conversion no longer leaves
+  an outdated "Your unsaved changes were restored" notice next to the import notice.
 
 ## [0.7.0] - 2026-10-18
 

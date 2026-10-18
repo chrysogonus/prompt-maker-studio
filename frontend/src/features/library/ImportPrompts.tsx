@@ -77,7 +77,8 @@ export default function ImportPrompts({ onCreated, folders }: {
   const reuseWithAI = () => {
     // The note's body, without frontmatter or its title line, keeping ## headings for the AI.
     const text = preview![0].fields.map(field => field.name === 'Prompt' ? field.content : `## ${field.name}\n${field.content}`).join('\n\n');
-    try { sessionStorage.setItem(pasteHandoffKey(), text); } catch { /* The editor still opens Paste a prompt empty. */ }
+    const { name: title, folder } = preview![0];
+    try { sessionStorage.setItem(pasteHandoffKey(), JSON.stringify({ text, title, folder })); } catch { /* The editor still opens Paste a prompt empty. */ }
     close();
     router.push('/editor/new?import=1');
   };

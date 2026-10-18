@@ -359,7 +359,7 @@ describe('LibraryPage', () => {
     await user.type(screen.getByLabelText('Paste text'), 'Plan a trip to Lisbon.');
     await user.click(screen.getByRole('button', { name: 'Preview' }));
     await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
-    expect(sessionStorage.getItem(pasteHandoffKey())).toBe('Plan a trip to Lisbon.');
+    expect(JSON.parse(sessionStorage.getItem(pasteHandoffKey())!)).toEqual({ text: 'Plan a trip to Lisbon.', title: 'Imported note', folder: null });
     expect(push).toHaveBeenCalledWith('/editor/new?import=1');
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
   });
@@ -378,8 +378,9 @@ describe('LibraryPage', () => {
     expect(screen.getByText(/tags: \[writing\]/)).toBeVisible();
     await user.click(screen.getByRole('checkbox', { name: /Keep the note's front matter/ }));
 
+    await user.type(screen.getByLabelText('Folder for Blog outline'), 'Writing');
     await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
-    expect(sessionStorage.getItem(pasteHandoffKey())).toBe('Outline a post.\n\n## Output\n- 5 headings');
+    expect(JSON.parse(sessionStorage.getItem(pasteHandoffKey())!)).toEqual({ text: 'Outline a post.\n\n## Output\n- 5 headings', title: 'Blog outline', folder: 'Writing' });
   });
 
   it('offers to turn found placeholders into inputs, with undo', async () => {

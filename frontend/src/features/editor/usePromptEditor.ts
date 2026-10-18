@@ -62,6 +62,8 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
   const [notice, setNotice] = useState<Notice | null>(null);
   const noticeTimer = useRef<number | null>(null);
   const [saveDialog, setSaveDialog] = useState<{ name: string; folder: string; error: string } | null>(null);
+  const saveDefaults = useRef({ name: '', folder: '' });
+  const hydratedFor = useRef('');
   const [moveDialog, setMoveDialog] = useState<string | null>(null);
   const [folders, setFolders] = useState<string[]>([]);
   const [renaming, setRenaming] = useState(false);
@@ -178,6 +180,10 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
   // starts from the template it was opened with.
   useEffect(() => {
     if (!isNew) return;
+    // Applying an import drops ?import=1; that must not re-read the draft it just wrote.
+    const hydration = `${draftKey}|${initialStarter ?? ''}`;
+    if (!openImport && hydratedFor.current === hydration) return;
+    hydratedFor.current = hydration;
     const draft = readDraft(draftKey);
     const starter = STARTER_TEMPLATES.find((template) => template.id === initialStarter);
     if (draft) {
@@ -194,7 +200,14 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     if (openImport) {
       let handoff: string | null = null;
       try { handoff = sessionStorage.getItem(pasteHandoffKey()); sessionStorage.removeItem(pasteHandoffKey()); } catch { /* Storage unavailable. */ }
-      if (handoff) setImportSession({ text: handoff });
+      if (handoff) {
+        let session: ImportSession = { text: handoff };
+        try {
+          const parsed: unknown = JSON.parse(handoff);
+          if (parsed && typeof parsed === 'object' && typeof (parsed as ImportSession).text === 'string') session = parsed as ImportSession;
+        } catch { /* A plain-text handoff is the note itself. */ }
+        setImportSession(session);
+      }
     }
   }, [draftKey, initialStarter, isNew, openImport, restoreInputs]);
 
@@ -261,7 +274,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
       return;
     }
     if (!prompt) {
-      setSaveDialog({ name: '', folder: '', error: '' });
+      setSaveDialog({ ...saveDefaults.current, error: '' });
       return;
     }
     if (!dirty) return;
@@ -490,10 +503,13 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     setMode('filled');
     setMobileTab('use');
     setPreviewOpen(true);
+    if (isNew) saveDefaults.current = { name: importSession.title ?? '', folder: importSession.folder ?? '' };
+    // The imported sections replace any restored draft; Undo brings it back.
+    setRestoredDraft(false);
     setImportSession({ text: '' });
     setImportOpen(false);
     if (next.saveAsWritten && isNew) {
-      setSaveDialog({ name: suggestTitle(next.fields[0].content), folder: '', error: '' });
+      setSaveDialog({ name: importSession.title || suggestTitle(next.fields[0].content), folder: importSession.folder ?? '', error: '' });
     }
     if (isNew && openImport) {
       const params = new URLSearchParams(window.location.search);

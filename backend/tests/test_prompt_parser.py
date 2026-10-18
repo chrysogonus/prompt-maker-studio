@@ -493,6 +493,41 @@ class TestPromptConversion:
         with pytest.raises(ValueError, match="preserve existing placeholders"):
             PromptParserService.validate_conversion(self.source + " {{topic}}", self.payload)
 
+    def test_placeholder_text_becomes_an_input_without_a_value(self):
+        source = "Outline [TOPIC] for {audience} using <transcript> for Acme."
+        names = ["topic", "audience", "transcript", "company"]
+        phrases = ["[TOPIC]", "{audience}", "<transcript>", "Acme"]
+        payload = {
+            "fields": [
+                {
+                    "name": "Task",
+                    "content": "Outline {{topic}} for {{audience}} using {{transcript}} for {{company}}.",
+                }
+            ],
+            "variables": [
+                {"name": name, "value": phrase, "description": name, "source_text": phrase}
+                for name, phrase in zip(names, phrases, strict=True)
+            ],
+        }
+        result = PromptParserService.validate_conversion(source, payload)
+        assert [v.value for v in result.variables] == ["", "", "", "Acme"]
+        assert [v.source_text for v in result.variables] == phrases
+
+    def test_ai_section_identifiers_become_display_names(self):
+        fields = [
+            {"name": name, "content": "x"}
+            for name in ["role", "output_format", "OUTPUT_RULES", "Task", "URL", "Tone of voice"]
+        ]
+        result = PromptParserService.validate_conversion("x", {"fields": fields, "variables": []})
+        assert [f.name for f in result.fields] == [
+            "Role",
+            "Output format",
+            "Output rules",
+            "Task",
+            "URL",
+            "Tone of voice",
+        ]
+
     def test_no_variables_is_a_valid_conversion(self):
         result = PromptParserService.validate_conversion(
             "Be concise.", {"fields": [{"name": "Task", "content": "Be concise."}], "variables": []}

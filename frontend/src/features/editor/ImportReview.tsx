@@ -59,7 +59,7 @@ export default function ImportReview({ session, onChange, onImport, onClose }: {
       <section aria-label="Converted prompt" className={styles.preview}>
         <SegmentedControl aria-label="Conversion preview mode" options={VIEWS} value={view} onChange={setView} />
         <pre tabIndex={0} aria-label="Converted prompt preview">{view === 'filled' ? filled : template}</pre>
-        {unfilled && <p>Some existing placeholders have no supplied value. They remain placeholders when copied.</p>}
+        {unfilled && <p>Some inputs have no value yet. They stay as placeholders when copied.</p>}
       </section>
       <section aria-label="Detected variables" className={styles.variables}>
         <h3>Detected variables</h3>

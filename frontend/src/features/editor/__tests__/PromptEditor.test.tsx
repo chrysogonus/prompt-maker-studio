@@ -1057,6 +1057,30 @@ it('opens Paste a prompt with a note handed over from the library, once', async 
   expect(sessionStorage.getItem(pasteHandoffKey())).toBeNull();
 });
 
+it('offers the library title and folder on Save and drops a stale draft notice after import', async () => {
+  const user = userEvent.setup();
+  localStorage.setItem(draftKey('new'), JSON.stringify({ sections: [{ name: 'Task', content: 'Old unsaved idea' }], metadata: {}, values: {} }));
+  sessionStorage.setItem(pasteHandoffKey(), JSON.stringify({ text: 'Outline [TOPIC].', title: 'Blog outline', folder: 'Writing' }));
+  vi.mocked(ApiClient.parsePromptText).mockResolvedValue({
+    fields: [{ name: 'Task', content: 'Outline {{topic}}.' }],
+    variables: [{ name: 'topic', value: '', description: 'Topic', source_text: '[TOPIC]' }],
+  });
+  const { rerender } = render(<PromptEditor openImport />);
+  expect(await screen.findByLabelText('Prompt to convert')).toHaveValue('Outline [TOPIC].');
+  expect(screen.getByText('Your unsaved changes were restored.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Create template' }));
+  expect(await screen.findByText('Some inputs have no value yet. They stay as placeholders when copied.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Use in editor' }));
+  // Applying drops ?import=1 from the URL, which re-renders without openImport.
+  rerender(<PromptEditor />);
+  expect(screen.queryByText('Your unsaved changes were restored.')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('topic', { exact: true })).toHaveValue('');
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  const saveDialog = screen.getByRole('dialog', { name: 'Save prompt' });
+  expect(within(saveDialog).getByLabelText('Name')).toHaveValue('Blog outline');
+  expect(within(saveDialog).getByLabelText('Folder')).toHaveValue('Writing');
+});
+
 it('consumes the library import URL when applying so reload opens the recovered filled prompt', async () => {
   const user = userEvent.setup();
   vi.mocked(ApiClient.parsePromptText).mockResolvedValue({
