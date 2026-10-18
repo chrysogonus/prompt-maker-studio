@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useLayoutEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Button from '@/components/ui/Button';
 import { insertVariable, isVariableName, sectionTag, unbalancedTags } from '@/lib/sections';
 import type { EditorSection } from './PromptEditor';
@@ -16,6 +16,11 @@ interface SectionCardProps {
   onRemove: () => void;
   /** Selected text replaced by a new input becomes that input's example. */
   onVariableInserted: (name: string, example: string) => void;
+}
+
+function fitHeight(el: HTMLTextAreaElement) {
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
 }
 
 export default function SectionCard({
@@ -47,14 +52,28 @@ export default function SectionCard({
   useLayoutEffect(() => {
     const el = textRef.current;
     if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
+    fitHeight(el);
     if (caret.current !== null) {
       el.focus();
       el.setSelectionRange(caret.current, caret.current);
       caret.current = null;
     }
   }, [section.content]);
+
+  // A hidden editor (Fill and copy) measures 0, and a new width rewraps the
+  // text, so refit whenever the box's width changes.
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let width = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      fitHeight(el);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const startInsert = () => {
     const length = section.content.length;

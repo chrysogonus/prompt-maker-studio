@@ -16,6 +16,9 @@
   border-right: 1px solid var(--color-border);
 }
 
+/* The column scrolls; its items keep their size instead of squashing first. */
+.sidebar > * { flex-shrink: 0; }
+
 .brand {
   display: flex;
   align-items: center;

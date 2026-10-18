@@ -178,6 +178,20 @@ it('keeps AI testing open with its output across a Template and Filled switch', 
   expect(screen.getByRole('region', { name: 'Try once output' })).toBeVisible();
 });
 
+it('copies the Try once output on its own', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.tryPrompt).mockResolvedValueOnce({ output_text: 'One output', provider: 'openai', model: 'gpt-4.1-mini' });
+  await renderSaved();
+  await user.type(screen.getByPlaceholderText('Team or project name'), 'Platform');
+  await user.click(screen.getByText('Test with AI'));
+  await user.click(screen.getByRole('button', { name: 'Try once' }));
+  const output = await screen.findByRole('region', { name: 'Try once output' });
+  const clipboard = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await user.click(within(output).getByRole('button', { name: 'Copy output' }));
+  expect(clipboard).toHaveBeenCalledWith('One output');
+  expect(within(output).getByRole('button', { name: 'Copied' })).toBeVisible();
+});
+
 it('returns focus to Tools after dismissing the saved-prompt importer', async () => {
   const user = userEvent.setup();
   await renderSaved();

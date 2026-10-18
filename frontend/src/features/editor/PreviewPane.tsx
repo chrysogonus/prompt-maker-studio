@@ -31,7 +31,7 @@ interface PreviewPaneProps {
   onCopyFailed: () => void;
 }
 
-type CopyKind = 'template' | 'filled' | 'placeholders';
+type CopyKind = 'template' | 'filled' | 'placeholders' | 'output';
 
 export default function PreviewPane({
   fields,
@@ -90,7 +90,8 @@ export default function PreviewPane({
   const copy = async (kind: CopyKind) => {
     if (kind === 'filled' && missingRequired.length) return;
     try {
-      await navigator.clipboard.writeText(kind === 'template' ? template : filledText);
+      const text = kind === 'template' ? template : kind === 'output' ? result?.response.output_text ?? '' : filledText;
+      await navigator.clipboard.writeText(text);
       setCopied(kind);
       if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
       copiedTimer.current = window.setTimeout(() => setCopied(null), 1600);
@@ -267,6 +268,11 @@ export default function PreviewPane({
               <p>{result.response.provider} / {result.response.model}</p>
               {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier inputs. Run again to try the current prompt.</p>}
               <pre tabIndex={0}>{result.response.output_text || 'The model returned no text.'}</pre>
+              {result.response.output_text && (
+                <button type="button" className={styles.copyButton} data-secondary="true" onClick={() => copy('output')}>
+                  {copied === 'output' ? 'Copied' : 'Copy output'}
+                </button>
+              )}
             </section>}
           </details>
         )}

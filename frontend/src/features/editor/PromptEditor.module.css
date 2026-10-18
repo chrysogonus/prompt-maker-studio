@@ -662,9 +662,9 @@ button.title:hover {
   color: var(--pv-text);
 }
 
+/* Never shrinks: Try once output scrolls the panel rather than hiding the inputs. */
 .previewValues {
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: none;
   max-height: 42%;
   overflow-y: auto;
   display: grid;

@@ -40,6 +40,12 @@ any release. See [Project status](./README.md#project-status).
 
 - Undoing a pasted conversion no longer reopens its review dialog when you return
   to the prompt; only a Paste dialog left open is recovered.
+- Section text no longer shrinks to its first line after switching from Fill and
+  copy to Edit template; text areas also refit when their width changes.
+- The sidebar's New prompt button keeps its size when many folders make the
+  sidebar scroll.
+- A Try once output no longer squeezes the fill-in fields out of the preview, and
+  it has its own Copy output button.
 
 ## [0.7.0] - 2026-10-18
 
