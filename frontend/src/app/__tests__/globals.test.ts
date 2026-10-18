@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 const globalsCss = readFileSync(resolve(process.cwd(), 'src/app/globals.css'), 'utf8');
 
-function darkThemeColor(name: string): string {
-  const darkTheme = globalsCss.match(/\[data-theme="dark"\]\s*\{([\s\S]*?)\}/)?.[1];
-  const value = darkTheme?.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, 'i'))?.[1];
-  if (!value) throw new Error(`Missing dark-theme color token: --${name}`);
+function themeColor(theme: 'light' | 'dark', name: string): string {
+  const block = globalsCss.match(theme === 'light' ? /:root\s*\{([\s\S]*?)\}/ : /\[data-theme="dark"\]\s*\{([\s\S]*?)\}/)?.[1];
+  const value = block?.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, 'i'))?.[1];
+  if (!value) throw new Error(`Missing ${theme}-theme color token: --${name}`);
   return value;
 }
 
@@ -29,12 +29,24 @@ function contrastRatio(first: string, second: string): number {
   return (luminances[0] + 0.05) / (luminances[1] + 0.05);
 }
 
-describe('dark theme accessibility tokens', () => {
-  it('keeps muted text at WCAG AA contrast against canvas and panel backgrounds', () => {
-    const muted = darkThemeColor('color-text-muted');
+const SURFACES = ['color-canvas', 'color-panel', 'color-panel-raised', 'color-overlay', 'color-sidebar'];
 
-    expect(contrastRatio(muted, darkThemeColor('color-canvas'))).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(muted, darkThemeColor('color-panel'))).toBeGreaterThanOrEqual(4.5);
+describe.each(['light', 'dark'] as const)('%s theme contrast', (theme) => {
+  const color = (name: string) => themeColor(theme, name);
+
+  it.each(['color-text-primary', 'color-text-secondary', 'color-text-muted'])('keeps %s at 4.5:1 on every surface', (text) => {
+    for (const surface of SURFACES) {
+      expect(contrastRatio(color(text), color(surface)), `${text} on ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('keeps form control edges at 3:1 on every surface, including selection and the preview', () => {
+    for (const surface of [...SURFACES, 'color-plum-wash']) {
+      expect(contrastRatio(color('color-control-border'), color(surface)), `control border on ${surface}`).toBeGreaterThanOrEqual(3);
+    }
+    for (const surface of ['pv-bg', 'pv-input']) {
+      expect(contrastRatio(color('pv-control-border'), color(surface)), `preview control border on ${surface}`).toBeGreaterThanOrEqual(3);
+    }
   });
 });
 

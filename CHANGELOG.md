@@ -29,6 +29,10 @@ any release. See [Project status](./README.md#project-status).
   folds format details away, shows section text for small imports, offers Make
   reusable with AI for a single note, and ends with Open imported prompts or Import
   more. Favorites in a JSON export carry over.
+- Inputs, selects, text areas and secondary buttons use a control border that meets
+  3:1 contrast on every surface in both themes, including the preview's fill-in
+  fields. Editor section cards mark their text area with a 3:1 left rail, and focus
+  outlines the whole card in both themes. Decorative borders and dividers are unchanged.
 
 ### Fixed
 

@@ -111,7 +111,7 @@ button.title:hover {
   font-size: var(--text-lg-size);
   font-weight: var(--weight-semibold);
   padding: 2px 6px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
   background: var(--color-panel);
   color: var(--text-primary);
@@ -167,7 +167,7 @@ button.title:hover {
   font-size: var(--text-sm-size);
   width: 220px;
   padding: 7px 10px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
   background: var(--color-panel);
   color: var(--text-primary);
@@ -343,14 +343,16 @@ button.title:hover {
   background: var(--surface-panel);
   box-shadow: var(--shadow-surface);
   border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-plum-wash);
+  /* The text area has no border of its own; this rail marks the editable block at 3:1. */
+  border-left: 3px solid var(--color-control-border);
   border-radius: var(--radius-md);
   padding: 10px 12px 12px 16px;
   transition: border-color var(--motion-fast);
 }
 
+/* The rail and coral are similarly bright, so focus outlines the whole card. */
 .section:focus-within {
-  border-left-color: var(--color-accent-tag);
+  border-color: var(--color-accent-tag);
 }
 
 .section[data-invalid='true'] {
@@ -512,7 +514,7 @@ button.title:hover {
   grid-column: 2 / -1;
   font: inherit;
   padding: 7px 10px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
   background: var(--color-panel);
   color: var(--text-primary);
@@ -661,7 +663,7 @@ button.title:hover {
   field-sizing: content;
   resize: vertical;
   padding: 7px 9px;
-  border: 1px solid var(--pv-border);
+  border: 1px solid var(--pv-control-border);
   border-radius: var(--radius-sm);
   background: var(--pv-input);
   color: var(--pv-text);
@@ -1136,7 +1138,6 @@ button.version:hover {
 .copyButton[data-secondary='true'] { background: transparent; color: var(--pv-text); border: 1px solid var(--pv-muted); }
 .previewFoot > p { font-size: var(--text-sm-size); }
 
-:global([data-theme='dark']) .section:focus-within { border-color: var(--color-accent-tag); }
 :global([data-theme='dark']) .section[data-invalid='true'] { border-color: var(--color-danger); }
 
 /* An outline, not a border, so the preview keeps light's size. */
@@ -1187,7 +1188,7 @@ button.version:hover {
   min-height: 44px;
   max-width: 60%;
   padding: 0 8px;
-  border: 1px solid var(--pv-border);
+  border: 1px solid var(--pv-control-border);
   border-radius: var(--radius-sm);
   background: var(--pv-input);
   color: var(--pv-text);

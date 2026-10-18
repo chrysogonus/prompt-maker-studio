@@ -1047,3 +1047,31 @@ no-AI path is the default. Full archive restore remains deferred (ROADMAP Later)
 
 **Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`,
 `frontend/src/features/editor/usePromptEditor.ts`.
+
+---
+
+## Control Boundaries Meet 3:1 Non-Text Contrast
+
+**Status**: Accepted (2026-10-18)
+
+**Context**: Earlier entries (palette remap, dark-mode recheck) state that colour pairings
+clear WCAG AA; that check covered text only. Measured against WCAG 1.4.11, every border
+token failed 3:1 (light `--color-border` on panel 1.32:1, dark 1.37:1, best case 2.02:1),
+and inputs, selects and secondary buttons relied on those borders as their only edge.
+
+**Decision**: Add `--color-control-border` (light `#8f7787`, dark `#86708f`) and
+`--pv-control-border` for the preview's fill-in fields (light `#866b80`, dark `#76657f`).
+Form fields, selects and secondary buttons use them; `--color-border` and
+`--color-border-strong` stay for cards, dividers and other decoration, keeping the calm
+palette. `frontend/src/app/__tests__/globals.test.ts` asserts text at 4.5:1 and control
+edges at 3:1 on canvas, panel, raised, overlay and sidebar (plus plum-wash and the preview
+surfaces) in both themes. This amends the AA statements above to cover non-text contrast.
+
+**Consequences**: Controls look slightly more defined. Section cards keep their soft outline,
+but their existing left rail now uses the control border, marking each borderless text area
+at about 4:1 without boxing it in. Because that rail and the coral focus colour are similarly
+bright, focus now outlines the whole card in coral in both themes (previously light changed
+only the rail). Selected and error states keep their existing colours.
+
+**Sources**: `frontend/src/app/globals.css`, `frontend/src/components/ui/Input.module.css`,
+`frontend/src/components/ui/Select.module.css`, `frontend/src/components/ui/Button.module.css`.

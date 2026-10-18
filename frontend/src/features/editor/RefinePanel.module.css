@@ -67,7 +67,7 @@
   min-height: 88px;
   padding: var(--space-3);
   resize: vertical;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
   background: var(--color-canvas);
   color: var(--text-primary);

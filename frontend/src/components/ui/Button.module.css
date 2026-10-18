@@ -35,7 +35,7 @@
 
 .secondary {
   background: var(--color-panel);
-  border-color: var(--color-border-strong);
+  border-color: var(--color-control-border);
   color: var(--text-primary);
 }
 

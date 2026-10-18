@@ -132,7 +132,7 @@
 .theme select {
   min-height: 44px;
   max-width: 130px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
   background: var(--color-panel);
   color: var(--text-primary);
