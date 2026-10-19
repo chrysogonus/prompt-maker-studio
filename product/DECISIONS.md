@@ -1127,3 +1127,35 @@ only the default copy format in the web app changes.
 
 **Sources**: `frontend/src/features/editor/PreviewPane.tsx`, `frontend/src/features/library/useLibrary.ts`,
 `frontend/src/features/library/LibraryPage.tsx`.
+
+---
+
+## Vaults and Notion Exports Import as Downloaded
+
+**Status**: Accepted (2026-10-19)
+
+**Context**: A first-time-user test with a real Obsidian vault and Notion export found that
+import took about six interactions per note, one file at a time, and that Notion's own export
+formats (a `.zip`, or a database `.csv`) were read as one prompt of raw text.
+
+**Decision**: The import dialog takes several files, a folder (skipping hidden folders such as
+`.obsidian` and non-note files), dropped files and folders, a Notion `.zip`, and a `.csv`, and
+merges them into one preview. Zips are read with the browser's own `DecompressionStream`
+rather than a library; within an export, Markdown pages are preferred to the database CSV.
+Notion page properties are removed only when they name familiar metadata, and only those
+lines; a property holding the prompt text keeps its value. Tags (front matter, trailing
+`#tags`, Notion Tags) suggest the folder, ahead of the parent folder's name. Titles already in
+the library are skipped unless "Import a copy anyway" is ticked.
+
+**Rationale**: Bringing an existing collection over is the first thing most new users do; it
+should work with the files those tools produce, in one pass. Native decompression avoids a new
+dependency and its notices. Skipping duplicates by default makes re-importing a vault safe.
+
+**Consequences**: Amends "Imported Notes Drop Front Matter and Offer Placeholder Inputs": the
+clean-up also covers Notion properties, callouts and trailing tags, and placeholders are now
+chosen one by one with their wording kept as hints. ZIP64 archives (over 4 GB or 65,535
+entries) are refused with advice to unzip first. The empty library now leads with Add
+existing prompts.
+
+**Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`,
+`frontend/src/lib/importArchive.ts`, `frontend/src/features/library/LibraryPage.tsx`.
