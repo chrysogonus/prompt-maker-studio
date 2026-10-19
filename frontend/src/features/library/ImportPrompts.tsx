@@ -81,7 +81,8 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
   const [unchosen, setUnchosen] = useState<string[]>([]);
   // Duplicates the user chose to import anyway, by preview position.
   const [copies, setCopies] = useState<number[]>([]);
-  const existing = new Set(existingTitles.map(title => title.trim().toLowerCase()));
+  // The library only refreshes when the dialog closes, so count this session's imports too.
+  const existing = new Set([...existingTitles, ...imported.current.map(prompt => prompt.name ?? '')].map(title => title.trim().toLowerCase()));
   const isDuplicate = (prompt: ImportPrompt) => existing.has(prompt.name.trim().toLowerCase());
   const skips = (prompt: ImportPrompt, index: number) => isDuplicate(prompt) && !copies.includes(index);
   const updateSource = (text: string) => { setSource(text); setPreview(null); setError(''); setResult(''); };

@@ -540,6 +540,22 @@ describe('LibraryPage', () => {
     expect(screen.getByRole('button', { name: 'Keep as written' })).toBeEnabled();
   });
 
+  it('counts prompts imported earlier in the same session, starting from an empty library', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([]);
+    vi.mocked(ApiClient.createPrompt).mockImplementation(async (body) => saved({ id: 41, name: body.name }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# Cold email\nWrite');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
+    await user.click(await screen.findByRole('button', { name: 'Import more' }));
+    await user.type(screen.getByLabelText('Paste text'), '# Cold email\nWrite');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByRole('checkbox', { name: /Already in your library/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nothing new to import' })).toBeDisabled();
+  });
+
   it('deletes with an undo, and only tells the server once the undo window has passed', async () => {
     const user = userEvent.setup();
     const view = await renderLibrary();
