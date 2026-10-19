@@ -26,6 +26,7 @@ describe('Landing page', () => {
     render(await LandingPage());
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('reuse your best AI prompts');
+    expect(screen.getByText(/import Markdown notes, such as Notion or Obsidian exports/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/library');
     for (const link of screen.getAllByRole('link', { name: 'Open the app' })) {
       expect(link).toHaveAttribute('href', '/library');

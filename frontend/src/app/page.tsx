@@ -121,10 +121,11 @@ export default async function LandingPage() {
               </dd>
             </div>
             <div>
-              <dt>Paste a prompt</dt>
+              <dt>Bring your existing prompts</dt>
               <dd>
-                Already have a prompt that works? Paste it, and the AI provider you connect splits it
-                into sections and turns its details into variables for you to review.
+                Paste a prompt or import Markdown notes, such as Notion or Obsidian exports.
+                Placeholders like [topic] become inputs, and an AI provider you connect can split a
+                prompt into sections for you to review.
               </dd>
             </div>
             <div>

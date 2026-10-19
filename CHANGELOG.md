@@ -75,6 +75,17 @@ any release. See [Project status](./README.md#project-status).
   without new requirements; `POST /api/prompts/refine/draft` accepts no `qa_pairs`.
   Its questions no longer ask what a `{{variable}}` should be, and an applied draft
   stays in the panel so it can be applied again after Undo without another AI call.
+- Library cards are wider, so titles and all card actions fit on fewer lines, and
+  snippets mark `{{inputs}}`. The List/Grid toggle now saves the "Library opens as"
+  setting. The search field's clear button uses the app's colours.
+- Insert input turns a name with spaces into an input name (`Target audience` becomes
+  `target_audience`) instead of rejecting it.
+- Version history dates each version by when it was written rather than when a later
+  save replaced it.
+- Suggested evaluation cases favour realistic inputs and add an adversarial case only
+  for prompts that handle text from other people. The empty-state text hides while
+  suggestions are shown.
+- The landing page mentions importing Markdown notes from Notion or Obsidian.
 
 ## [0.7.0] - 2026-10-18
 
