@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.8.0; see the [release candidate](./docs/releases/0.8.0.md).
+
 ### Changed
 
 - Add existing prompts accepts several files at once, a whole folder (such as an
@@ -36,10 +38,8 @@ any release. See [Project status](./README.md#project-status).
   and the connected apps, each with Disconnect (`GET`/`DELETE /api/auth/me/connected-apps`).
 - Make reusable with AI leaves out notes meant for the prompt's owner, such as which
   AI tool to use, reminders, tags or links to other notes, instead of making them sections.
-
 - The empty library leads with Add existing prompts and says it takes Notion,
   Obsidian and Markdown notes; New prompt sits beside it.
-
 - Library grid cards show the variable count like the list, and card snippets
   prefer the Task section over a shared role line.
 - Save as written suggests a short title from the first line, without `{{variables}}`.
@@ -81,7 +81,6 @@ any release. See [Project status](./README.md#project-status).
 - Registration shows the password rules under the field while typing, Try once
   scrolls its output into view, and deleting an account ends on the sign-in screen
   with a confirmation.
-
 - Undoing a pasted conversion no longer reopens its review dialog when you return
   to the prompt; only a Paste dialog left open is recovered.
 - Section text no longer shrinks to its first line after switching from Fill and

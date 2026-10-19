@@ -44,6 +44,8 @@ separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
+- [0.8.0 release candidate](releases/0.8.0.md): Notion and Obsidian import,
+  ChatGPT connection settings, editor and library fixes, and validation.
 - [0.7.0 release record](releases/0.7.0.md): public Terms of Service route,
   immutable image digests, validation and deployment requirements.
 - [0.6.1 release record](releases/0.6.1.md): MCP annotation correction,
