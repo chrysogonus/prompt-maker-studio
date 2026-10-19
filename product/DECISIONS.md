@@ -1075,3 +1075,55 @@ only the rail). Selected and error states keep their existing colours.
 
 **Sources**: `frontend/src/app/globals.css`, `frontend/src/components/ui/Input.module.css`,
 `frontend/src/components/ui/Select.module.css`, `frontend/src/components/ui/Button.module.css`.
+
+---
+
+## Imported Notes Drop Front Matter and Offer Placeholder Inputs
+
+**Status**: Accepted (2026-10-19)
+
+**Context**: A persona test (someone moving prompts out of Notion and Obsidian) found that
+imported notes kept their YAML front matter and `# Title` line inside the prompt text, so both
+appeared in library snippets and were pasted into chat assistants. Placeholders people already
+write, such as `[TOPIC]`, `{audience}` or `<transcript>`, stayed plain text, and Make reusable
+with AI filled inputs with that placeholder text as if it were a value.
+
+**Decision**: Library import removes front matter and reads the rest of the note as Markdown, so
+a leading `# Title` becomes the title and `##` headings become sections; a preview checkbox keeps
+the original text instead. The preview lists placeholder spellings it recognises and converts
+them to `{{inputs}}` only when asked, with Undo. AI conversion keeps such text as an input's
+source phrase but leaves its value empty, names AI sections as display names, and receives the
+note body with its title and folder carried through to Save.
+
+**Rationale**: Front matter is note metadata, not instructions for a model. Placeholder detection
+is a heuristic, so it stays an explicit, reversible offer rather than an automatic rewrite.
+
+**Consequences**: Supersedes "all single-note text, including front matter, is preserved" from
+"One Library Entry Point for Existing Prompts". A note with front matter and `##` headings now
+imports as several sections, matching notes that already started with `# Title`.
+
+**Sources**: `frontend/src/lib/promptImport.ts`, `frontend/src/features/library/ImportPrompts.tsx`,
+`backend/app/services/prompt_parser.py`, `frontend/src/features/editor/usePromptEditor.ts`.
+
+---
+
+## Single-Section Prompts Copy as Plain Text by Default
+
+**Status**: Accepted (2026-10-19)
+
+**Context**: Notes imported or saved as written become one section, so every copy wrapped the
+user's own text in `<PROMPT>` or `<TASK>` tags they never wrote. Plain-text copying existed but
+sat behind Output options and the library menu.
+
+**Decision**: When a prompt has exactly one section, the editor preview and the library's Copy
+template default to plain text. Output options and the library menu (Copy with section tags) still
+add the tags. Prompts with two or more sections keep tags by default.
+
+**Rationale**: Tags separate sections; with a single section they separate nothing.
+
+**Consequences**: Amends the "Output stays XML-style only" consequence of "Sections Are the Only
+Thing Clients Write": stored `generated_prompt`, the API and the ChatGPT plugin still render tags;
+only the default copy format in the web app changes.
+
+**Sources**: `frontend/src/features/editor/PreviewPane.tsx`, `frontend/src/features/library/useLibrary.ts`,
+`frontend/src/features/library/LibraryPage.tsx`.

@@ -85,7 +85,8 @@ any release. See [Project status](./README.md#project-status).
 - Suggested evaluation cases favour realistic inputs and add an adversarial case only
   for prompts that handle text from other people. The empty-state text hides while
   suggestions are shown.
-- The landing page mentions importing Markdown notes from Notion or Obsidian.
+- The landing page mentions importing Markdown notes from Notion or Obsidian, and its screenshots and
+  the documentation screenshots show the current app.
 
 ## [0.7.0] - 2026-10-18
 
