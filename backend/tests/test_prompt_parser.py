@@ -417,6 +417,8 @@ class TestPromptConversion:
         assert db_session.query(BilledCall).count() == 1
         messages = mock_llm.return_value.chat.completions.create.call_args.kwargs["messages"]
         assert messages[-1]["content"] == self.source
+        # Notes to the prompt's owner (which tool to use, reminders) are not prompt sections.
+        assert "notes addressed to the person who keeps the prompt" in messages[0]["content"]
 
     @pytest.mark.parametrize(
         "bad",

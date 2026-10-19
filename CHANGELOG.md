@@ -31,6 +31,8 @@ any release. See [Project status](./README.md#project-status).
   only metadata lines are removed. Binary files are refused instead of imported as text.
 - Importing skips prompts whose title is already in the library unless "Import a copy
   anyway" is ticked, and selected library prompts can be deleted together with one Undo.
+- Make reusable with AI leaves out notes meant for the prompt's owner, such as which
+  AI tool to use, reminders, tags or links to other notes, instead of making them sections.
 
 - The empty library leads with Add existing prompts and says it takes Notion,
   Obsidian and Markdown notes; New prompt sits beside it.
