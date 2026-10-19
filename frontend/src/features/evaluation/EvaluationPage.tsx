@@ -144,7 +144,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
               ))}
             </section>
           )}
-          {!cases.length ? (
+          {!cases.length ? !suggesting && !proposals.length && (
             <div className={styles.empty}>
               <h2>Try your prompt with a few examples.</h2>
               <p>Add inputs you actually use, then choose what a good output should look like. Run them together after you change the prompt.</p>

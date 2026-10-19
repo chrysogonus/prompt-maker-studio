@@ -238,6 +238,7 @@ it('reviews AI suggestions without saving them until the user accepts an edited 
   await user.type(screen.getByLabelText('Testing focus (optional)'), 'Output format');
   await user.click(screen.getByRole('button', { name: 'Generate suggestions' }));
   await screen.findByText('Checks the output format.');
+  expect(screen.queryByText('Try your prompt with a few examples.')).not.toBeInTheDocument();
   expect(ApiClient.createEvalCase).not.toHaveBeenCalled();
   await user.click(screen.getByRole('button', { name: 'Review and add Returns JSON' }));
   expect(screen.getByLabelText('Checks')).toHaveValue('{json}');

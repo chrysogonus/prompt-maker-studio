@@ -151,6 +151,16 @@ class TestGenerateProposals:
         assert "name" in item_schema["required"]
         assert "short descriptive name" in mock_create.call_args.kwargs["messages"][0]["content"]
 
+    def test_keeps_adversarial_cases_for_prompts_that_handle_other_peoples_text(self):
+        mock_response = _make_openai_response({"cases": []})
+        connection, mock_create = _connection_for(mock_response)
+        EvalGeneratorService.generate_proposals("template", None, None, 5, connection)
+
+        system_message = mock_create.call_args.kwargs["messages"][0]["content"]
+        assert "at most one adversarial case" in system_message
+        assert "text that may come from other people" in system_message
+        assert "at least one adversarial" not in system_message
+
     def test_builds_schema_with_declared_variable_names(self):
         mock_response = _make_openai_response({"cases": []})
         connection, mock_create = _connection_for(mock_response)
