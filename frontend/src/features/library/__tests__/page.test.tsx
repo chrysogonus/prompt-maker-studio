@@ -291,16 +291,17 @@ describe('LibraryPage', () => {
     await renderLibrary();
     await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
     const input = screen.getByLabelText('Paste text');
-    await user.type(input, `# Good\nOK\n# ${'Bad '.repeat(26)}\nBad`);
+    await user.type(input, '{{"prompts": [[');
     await user.click(screen.getByRole('button', { name: 'Preview' }));
-    expect(screen.getByRole('alert')).toHaveTextContent('title must contain');
+    expect(screen.getByRole('alert')).toHaveTextContent('Invalid JSON');
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
     await user.clear(input);
     await user.type(input, '# Good\nOK');
     await user.click(screen.getByRole('button', { name: 'Preview' }));
     await user.clear(screen.getByLabelText('Title for prompt 1'));
-    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
-    expect(screen.getByRole('alert')).toHaveTextContent('title must contain');
+    expect(screen.getByText('Add a title.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Title for prompt 1')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('button', { name: 'Nothing selected to import' })).toBeDisabled();
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
   });
 
@@ -720,7 +721,8 @@ describe('LibraryPage', () => {
         note('# Meeting summary\nSummarise it.', 'meeting.md'),
       ]);
       expect(await screen.findByText(/2 files ready: Cold email 8b7e/)).toBeInTheDocument();
-      expect(screen.getByLabelText('Paste text')).toHaveValue('');
+      expect(screen.queryByLabelText('Paste text')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Title for a single note')).not.toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Preview' }));
       expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Cold email');
       expect(screen.getByLabelText('Title for prompt 2')).toHaveValue('Meeting summary');
@@ -744,7 +746,36 @@ describe('LibraryPage', () => {
       await user.click(screen.getByRole('button', { name: 'Preview' }));
       expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Blog');
       expect(screen.getByLabelText('Folder for Blog')).toHaveValue('Prompts');
-      expect(screen.getByText(/Skipped: Empty.md: Include some note text/)).toBeInTheDocument();
+      expect(screen.getByText('Skipped 1 file:')).toBeInTheDocument();
+      expect(screen.getByText('Empty.md: Include some note text or a JSON export.')).toBeInTheDocument();
+    });
+
+    it('imports only the ticked prompts, and a flagged one once it is fixed', async () => {
+      const user = userEvent.setup();
+      vi.mocked(ApiClient.createPrompt).mockImplementation(async (body) => saved({ id: 31, name: body.name }));
+      await renderLibrary();
+      await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+      await user.upload(screen.getByLabelText(/Or choose files/), [
+        note('Daily template.', 'Template.md'),
+        note(`# ${'Long '.repeat(25)}\nText`, 'long.md'),
+        note(`# Guide\n## Reference\n${'word '.repeat(2100)}`, 'guide.md'),
+        note('# Brief\nWrite about [TOPIC].', 'a.md'),
+        note('# Brief\nWrite for [AUDIENCE].', 'b.md'),
+      ]);
+      await user.click(await screen.findByRole('button', { name: 'Preview' }));
+      expect(screen.getByText('2 prompts need a change below before they can be imported.')).toBeInTheDocument();
+      expect(screen.getByText('Same title as prompt 1 in this import.')).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: '[TOPIC] (1 prompt)' })).toBeChecked();
+      await user.click(screen.getByLabelText('Import prompt 5'));
+      expect(screen.getByRole('button', { name: 'Import 2 prompts' })).toBeEnabled();
+      await user.click(screen.getByRole('button', { name: 'Split section' }));
+      const longTitle = screen.getByLabelText('Title for prompt 4');
+      await user.clear(longTitle);
+      await user.type(longTitle, 'Long');
+      await user.click(screen.getByRole('button', { name: 'Import 4 prompts' }));
+      await screen.findByText('Imported 4 of 4 prompts. Left out 1 not selected or needing changes.');
+      expect(vi.mocked(ApiClient.createPrompt).mock.calls.map(([body]) => body.name)).toEqual(['Brief', 'Brief', 'Guide', 'Long']);
+      expect(vi.mocked(ApiClient.createPrompt).mock.calls[2][0].fields.map(field => field.name)).toEqual(['Reference', 'Reference 2']);
     });
 
     it('lists a database CSV as one prompt per row', async () => {

@@ -3,6 +3,9 @@ import { suggestTitle } from '@/lib/sections';
 import type { PromptCreateRequest, VariableMetadataItem } from '@/types/prompt';
 
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
+export const MAX_IMPORT_PROMPTS = 1000;
+const MAX_TITLE = 100;
+const MAX_SECTION = 10_000;
 /** Hands a pasted note from the library to the editor's AI conversion, once. */
 export const pasteHandoffKey = () => storageKey('paste-handoff');
 
@@ -11,13 +14,16 @@ export type ImportPrompt = PromptCreateRequest & { is_favorite?: true };
 const fail = (message: string): never => { throw new Error(message); };
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 
-/** Validate the entire preview before making any writes. Export-only history is intentionally ignored. */
-export function validateImportPrompts(value: unknown): ImportPrompt[] {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 100) return fail('Import between 1 and 100 prompts at a time.');
+/**
+ * Validate the entire preview before making any writes. Export-only history is intentionally ignored.
+ * Notes are read `lenient`ly: a long title or section is shown in the preview to fix (see importProblem).
+ */
+export function validateImportPrompts(value: unknown, lenient = false): ImportPrompt[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_IMPORT_PROMPTS) return fail('Import between 1 and 1,000 prompts at a time.');
   return value.map((item: unknown, index: number) => {
     const invalid = (detail: string): never => fail(`Prompt ${index + 1}: ${detail}`);
     if (!object(item)) return invalid('expected a prompt object.');
-    if (typeof item.name !== 'string' || !item.name.trim() || item.name.trim().length > 100) return invalid('title must contain 1–100 characters.');
+    if (typeof item.name !== 'string' || !item.name.trim() || (!lenient && item.name.trim().length > MAX_TITLE)) return invalid('title must contain 1–100 characters.');
     if (item.folder != null && (typeof item.folder !== 'string' || item.folder.length > 255)) return invalid('folder must contain at most 255 characters.');
     if (!Array.isArray(item.fields) || item.fields.length === 0 || item.fields.length > 100) return invalid('include 1–100 sections.');
     const tags = new Set<string>();
@@ -28,7 +34,7 @@ export function validateImportPrompts(value: unknown): ImportPrompt[] {
       const tag = name.replace(/ /g, '_').toUpperCase();
       if (tags.has(tag)) return invalid('section names must be unique.');
       tags.add(tag);
-      if (field.content.length > 10000) return invalid('section text exceeds 10,000 characters.');
+      if (!lenient && field.content.length > MAX_SECTION) return invalid('section text exceeds 10,000 characters.');
       return { name, content: field.content };
     });
     const prompt: ImportPrompt = { name: item.name.trim(), folder: typeof item.folder === 'string' ? item.folder.trim() : null, fields,
@@ -195,11 +201,11 @@ export function parsePromptImport(original: string, suggestedTitle = 'Imported n
   if (!keepOriginal && (body || !frontmatter)) {
     const tags = frontmatter ? frontmatterTags(frontmatter[1]) : [];
     const note = promoteHeadings(frontmatter ? body : source);
-    return validateImportPrompts(parsePromptImport(note, title || suggestedTitle, true).map(prompt => tidyNote(prompt, tags)));
+    return validateImportPrompts(parsePromptImport(note, title || suggestedTitle, true).map(prompt => tidyNote(prompt, tags)), true);
   }
   // Otherwise a single note retains every character, including frontmatter and headings.
   if (!/^# .+/.test(text)) {
-    return validateImportPrompts([{ name: title || suggestedTitle.trim() || suggestTitle(text) || 'Imported note', folder: null, fields: [{ name: 'Prompt', content: source }] }]);
+    return validateImportPrompts([{ name: title || suggestedTitle.trim() || suggestTitle(text) || 'Imported note', folder: null, fields: [{ name: 'Prompt', content: source }] }], true);
   }
   const prompts: PromptCreateRequest[] = [];
   let current: PromptCreateRequest | undefined;
@@ -232,7 +238,37 @@ export function parsePromptImport(original: string, suggestedTitle = 'Imported n
     const taken = new Set<string>();
     prompt.fields = fields.map(field => ({ ...field, name: sectionName(field.name, taken) }));
   }
-  return validateImportPrompts(prompts);
+  return validateImportPrompts(prompts, true);
+}
+
+/** What stops a previewed prompt from being imported until it is edited, in plain words. */
+export function importProblem(prompt: ImportPrompt): string | null {
+  const title = prompt.name.trim();
+  if (!title) return 'Add a title.';
+  if (title.length > MAX_TITLE) return `The title is ${title.length} characters; shorten it to ${MAX_TITLE}.`;
+  const long = prompt.fields.find(field => field.content.length > MAX_SECTION);
+  return long ? `Section “${long.name}” is ${long.content.length.toLocaleString('en')} characters, over the 10,000 limit.` : null;
+}
+
+/**
+ * Split each over-long section at paragraph breaks (or, failing that, every 10,000
+ * characters) into numbered sections, so no text is lost: "Reference", "Reference 2".
+ */
+export function splitLongSections(prompt: ImportPrompt): ImportPrompt {
+  const taken = new Set<string>();
+  const fields = prompt.fields.flatMap(field => {
+    if (field.content.length <= MAX_SECTION) return [field];
+    const parts = [''];
+    for (const paragraph of field.content.split(/(?<=\n\n)/)) {
+      for (let i = 0; i < paragraph.length; i += MAX_SECTION) {
+        const piece = paragraph.slice(i, i + MAX_SECTION);
+        if (parts[parts.length - 1].length + piece.length > MAX_SECTION) parts.push('');
+        parts[parts.length - 1] += piece;
+      }
+    }
+    return parts.map(content => ({ name: field.name, content: content.trim() }));
+  });
+  return { ...prompt, fields: fields.map(field => ({ ...field, name: sectionName(field.name, taken) })) };
 }
 
 /**
@@ -355,7 +391,7 @@ export function parseCsvPrompts(text: string): ImportPrompt[] {
       fields: [{ name: 'Prompt', content: row[promptAt].trim() }],
       ...(header.some((name, i) => isFavourite(name.trim(), row[i] ?? '')) && { is_favorite: true as const }),
     };
-  }));
+  }), true);
 }
 
 export interface ImportFile { name: string; path: string; text: string }
@@ -390,9 +426,10 @@ export function parseImportFiles(files: ImportFile[], keepOriginal = false): { p
       const parsed = /\.csv$/i.test(file.name) ? parseCsvPrompts(file.text) : parsePromptImport(file.text, titleFromFileName(file.name), keepOriginal);
       prompts.push(...parsed.map(prompt => ({ ...prompt, folder: prompt.folder ?? folder })));
     } catch (error) {
-      skipped.push(`${file.name}: ${(error as Error).message}`);
+      // A note holds one prompt, so "Prompt 1:" says nothing.
+      skipped.push(`${file.name}: ${(error as Error).message.replace(/^Prompt 1: /, '')}`);
     }
   }
-  if (prompts.length > 100) fail(`These files hold ${prompts.length} prompts. Import up to 100 at a time.`);
+  if (prompts.length > MAX_IMPORT_PROMPTS) fail(`These files hold ${prompts.length.toLocaleString('en')} prompts. Import up to 1,000 at a time.`);
   return { prompts, skipped };
 }

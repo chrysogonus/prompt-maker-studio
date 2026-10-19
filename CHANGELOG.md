@@ -10,6 +10,17 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Changed
+
+- Add existing prompts previews and imports up to 1,000 prompts at a time, with
+  progress, instead of refusing more than 100. Each prompt has a tick box, so templates
+  and other notes can be left out, with Select all new and Select none.
+- A note with a title over 100 characters or a section over 10,000 characters is
+  previewed with what to change instead of skipped; a long section can be split into
+  numbered sections without losing text. Skipped files are listed with plain reasons,
+  errors stand out, a title repeated within one import is flagged, placeholders show how
+  many prompts use them, and the folder picker says "Choose folder".
+
 ### Fixed
 
 - Imported notes are no longer skipped for headings with list numbers, punctuation,

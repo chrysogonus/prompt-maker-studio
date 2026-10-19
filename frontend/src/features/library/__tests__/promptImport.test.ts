@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertPlaceholders, findPlaceholders, isImportableFile, parseCsvPrompts, parseImportFiles, parsePromptImport, titleFromFileName } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, importProblem, isImportableFile, parseCsvPrompts, parseImportFiles, parsePromptImport, splitLongSections, titleFromFileName } from '@/lib/promptImport';
 
 describe('prompt import', () => {
   it('restores export sections, folder and variable metadata without server-only data', () => {
@@ -68,8 +68,9 @@ describe('prompt import', () => {
     ]);
     expect(prompts.map(prompt => [prompt.name, prompt.folder])).toEqual([['Blog', 'Prompts'], ['One', null], ['Two', null]]);
     expect(skipped).toEqual(['Empty.md: Include some note text or a JSON export.']);
-    const many = Array.from({ length: 101 }, (_, i) => ({ name: `${i}.md`, path: `${i}.md`, text: `Prompt ${i}` }));
-    expect(() => parseImportFiles(many)).toThrow('101 prompts');
+    const many = Array.from({ length: 1001 }, (_, i) => ({ name: `${i}.md`, path: `${i}.md`, text: `Prompt ${i}` }));
+    expect(() => parseImportFiles(many)).toThrow('1,001 prompts');
+    expect(parseImportFiles(many.slice(0, 1000)).prompts).toHaveLength(1000);
   });
   it('removes Notion page properties, filing by tag and keeping the favourite', () => {
     const page = '# Cold email\n\nTags: Sales, Email\nCreated: October 1, 2026 9:00 AM\nStatus: Favourite\n\nWrite to [Name].';
@@ -152,9 +153,26 @@ describe('prompt import', () => {
   it('refuses binary files instead of importing them as text', () => {
     expect(() => parsePromptImport('PK\u0003\u0004\u0000\u0000binary')).toThrow('not a text note');
   });
-  it('keeps the 5 MB and 100 prompt limits', () => {
+  it('keeps the 5 MB and 1,000 prompt limits', () => {
     expect(() => parsePromptImport('x'.repeat(5 * 1024 * 1024 + 1))).toThrow('5 MB');
-    expect(() => parsePromptImport(Array.from({ length: 101 }, (_, i) => `# Note ${i}\nText`).join('\n'))).toThrow('100 prompts');
+    expect(() => parsePromptImport(Array.from({ length: 1001 }, (_, i) => `# Note ${i}\nText`).join('\n'))).toThrow('1,000 prompts');
+  });
+  it('reads a note with a long title or section, saying what to change instead of skipping it', () => {
+    const [long] = parsePromptImport(`# ${'Long title '.repeat(10)}\n## Reference\n${'word '.repeat(2100)}`);
+    expect(importProblem(long)).toBe('The title is 109 characters; shorten it to 100.');
+    expect(importProblem({ ...long, name: 'Short' })).toBe('Section “Reference” is 10,499 characters, over the 10,000 limit.');
+    expect(importProblem({ ...long, name: ' ' })).toBe('Add a title.');
+    expect(() => parsePromptImport(JSON.stringify({ prompts: [{ name: 'x'.repeat(101), fields: [{ name: 'Task', content: 'OK' }] }] }))).toThrow('title must contain');
+  });
+  it('splits a long section at paragraph breaks into numbered sections without losing text', () => {
+    const paragraph = `${'word '.repeat(800).trim()}\n\n`;
+    const prompt = { name: 'Guide', folder: null, fields: [{ name: 'Task', content: 'Use it.' }, { name: 'Reference', content: paragraph.repeat(3).trim() }] };
+    const split = splitLongSections(prompt);
+    expect(split.fields.map(field => [field.name, field.content.length])).toEqual([['Task', 7], ['Reference', 8000], ['Reference 2', 3999]]);
+    expect(split.fields.slice(1).map(field => field.content).join('\n\n')).toBe(prompt.fields[1].content);
+    expect(importProblem(split)).toBeNull();
+    // One paragraph with no breaks is cut every 10,000 characters.
+    expect(splitLongSections({ ...prompt, fields: [{ name: 'Blob', content: 'x'.repeat(25000) }] }).fields.map(field => field.content.length)).toEqual([10000, 10000, 5000]);
   });
   it.each([
     '', '{broken', '{"prompts":[]}',

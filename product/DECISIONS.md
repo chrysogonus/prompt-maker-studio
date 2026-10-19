@@ -1168,3 +1168,33 @@ skipped only when its rows were exported as pages (`X/` beside `X.csv`), across 
 parts and chosen folders, and `X_all.csv` is preferred to `X.csv`. The tidy-up also removes
 Obsidian comments, Dataview queries and embedded files, unwraps highlights, and removes
 Notion `<aside>` callouts, by the same reasoning as Obsidian callouts.
+
+---
+
+## Import Preview Selects, Flags and Imports up to 1,000
+
+**Status**: Accepted (2026-10-19)
+
+**Context**: The same first-time-user test found that a vault of more than 100 notes could
+not be previewed at all, that templates, readmes and parent pages could not be left out,
+and that a note with a title over 100 characters or a section over 10,000 characters was
+skipped whole with a developer-style message.
+
+**Decision**: The preview takes up to 1,000 prompts and imports the ticked ones one by one,
+showing progress. Every prompt has a tick box: new prompts start ticked, prompts already in
+the library start unticked (the earlier "Import a copy anyway" default). Notes are parsed
+leniently: a long title or section is previewed with what to change, and a long section can
+be split at paragraph breaks into numbered sections, losing no text. Nothing is shortened
+silently. JSON exports and the final pre-write check stay strict. Skipped files are listed
+with their reasons, and a title repeated within one import is flagged but stays ticked,
+since different folders may hold different prompts.
+
+**Rationale**: Each prompt is already created by its own request, so the old cap protected
+nothing but made the commonest migration fail; progress covers the longer wait. Letting
+people choose and fix in the preview is cheaper than importing and deleting afterwards.
+
+**Consequences**: Amends "Vaults and Notion Exports Import as Downloaded" (duplicates are now
+an unticked box rather than a separate copy option) and supersedes the 100-prompt limit in
+`docs/saved-prompts.md`.
+
+**Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`.

@@ -7,7 +7,7 @@ import Dialog from '@/components/ui/Dialog';
 import { ApiClient } from '@/lib/api';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { libraryHref } from '@/lib/libraryViews';
-import { convertPlaceholders, findPlaceholders, ImportFile, ImportPrompt, isImportableFile, MAX_IMPORT_BYTES, parseImportFiles, parsePromptImport, pasteHandoffKey, titleFromFileName, validateImportPrompts } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, ImportFile, ImportPrompt, importProblem, isImportableFile, MAX_IMPORT_BYTES, parseImportFiles, parsePromptImport, pasteHandoffKey, splitLongSections, titleFromFileName, validateImportPrompts } from '@/lib/promptImport';
 import { MAX_ZIP_BYTES, readZip } from '@/lib/importArchive';
 import type { PromptHistoryResponse } from '@/types/prompt';
 import styles from './LibraryPage.module.css';
@@ -43,6 +43,9 @@ function importedHref(created: PromptHistoryResponse[]): string {
   return folders.size === 1 && folder ? libraryHref({ type: 'folder', folder }) : '/library';
 }
 
+const plural = (count: number, word: string) => `${count.toLocaleString('en')} ${word}${count === 1 ? '' : 's'}`;
+const sameTitle = (a: ImportPrompt, b: ImportPrompt) => a.name.trim().toLowerCase() === b.name.trim().toLowerCase();
+
 export default function ImportPrompts({ onCreated, folders, existingTitles = [], primary = false }: {
   onCreated: (prompts: PromptHistoryResponse[]) => void;
   folders: string[];
@@ -54,6 +57,7 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const imported = useRef<PromptHistoryResponse[]>([]);
+  const folderInput = useRef<HTMLInputElement>(null);
   // A file's name is only a fallback title for that file, not for text pasted afterwards.
   const fileTitle = useRef(false);
   const close = () => {
@@ -70,6 +74,8 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
   const [result, setResult] = useState('');
   const [done, setDone] = useState<PromptHistoryResponse[] | null>(null);
   const [busy, setBusy] = useState(false);
+  // How many prompts have been sent so far, while importing.
+  const [progress, setProgress] = useState(0);
   const [keepOriginal, setKeepOriginal] = useState(false);
   const [beforeConvert, setBeforeConvert] = useState<ImportPrompt[] | null>(null);
   const [files, setFiles] = useState<ImportFile[]>([]);
@@ -79,13 +85,15 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
   const [tidied, setTidied] = useState(false);
   // Placeholders the user unticked; everything else found is offered for conversion.
   const [unchosen, setUnchosen] = useState<string[]>([]);
-  // Duplicates the user chose to import anyway, by preview position.
-  const [copies, setCopies] = useState<number[]>([]);
+  // Preview positions the user ticked or unticked: new prompts start ticked, duplicates unticked.
+  const [toggled, setToggled] = useState<number[]>([]);
   // The library only refreshes when the dialog closes, so count this session's imports too.
   const [sessionTitles, setSessionTitles] = useState<string[]>([]);
   const existing = new Set([...existingTitles, ...sessionTitles].map(title => title.trim().toLowerCase()));
   const isDuplicate = (prompt: ImportPrompt) => existing.has(prompt.name.trim().toLowerCase());
-  const skips = (prompt: ImportPrompt, index: number) => isDuplicate(prompt) && !copies.includes(index);
+  const ticked = (prompt: ImportPrompt, index: number) => isDuplicate(prompt) === toggled.includes(index);
+  // A ticked prompt is imported once nothing stops it.
+  const included = (prompt: ImportPrompt, index: number) => ticked(prompt, index) && !importProblem(prompt);
   const updateSource = (text: string) => { setSource(text); setPreview(null); setError(''); setResult(''); };
   const showPreview = (keep: boolean) => {
     try {
@@ -95,7 +103,7 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
       setPreview(parsed.prompts);
       setSkipped(parsed.skipped);
       setTidied(JSON.stringify(parse(true).prompts) !== JSON.stringify(parse(false).prompts));
-      setBeforeConvert(null); setUnchosen([]); setCopies([]); setError(''); setResult('');
+      setBeforeConvert(null); setUnchosen([]); setToggled([]); setError(''); setResult('');
     } catch (error) { setError((error as Error).message); }
   };
   // One file goes into the paste box to edit; several, or a folder, are listed instead.
@@ -133,15 +141,20 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
   const fromNote = files.length ? files.some(file => !/\.(json|csv)$/i.test(file.name)) : !!source.trim() && !/^[{[]/.test(source.trim());
   // A fresh single note may go to AI conversion instead; retries and JSON exports may not.
   const singleNote = preview?.length === 1 && fromNote && files.length <= 1;
-  const placeholders = preview ? findPlaceholders(preview) : [];
-  const included = preview ? preview.filter((prompt, index) => !skips(prompt, index)).length : 0;
+  const placeholders = preview ? findPlaceholders(preview.filter(ticked)) : [];
+  const usedIn = (token: string) => preview!.filter((prompt, index) => ticked(prompt, index) && findPlaceholders([prompt]).includes(token)).length;
+  const count = preview ? preview.filter(included).length : 0;
+  const problems = preview ? preview.filter((prompt, index) => ticked(prompt, index) && importProblem(prompt)).length : 0;
   const chosen = placeholders.filter(token => !unchosen.includes(token));
-  const sharedFolder = preview?.every(prompt => (prompt.folder ?? '') === (preview[0].folder ?? '')) ? preview[0].folder ?? '' : '';
+  const mixedFolders = !!preview?.some(prompt => (prompt.folder ?? '') !== (preview[0].folder ?? ''));
+  const sharedFolder = preview && !mixedFolders ? preview[0].folder ?? '' : '';
   const importPrompts = async () => {
     let validated: ImportPrompt[];
-    const duplicates = preview!.filter(skips).length;
-    try { validated = validateImportPrompts(preview!.filter((prompt, index) => !skips(prompt, index))); } catch (error) { setError((error as Error).message); return; }
+    const duplicates = preview!.filter((prompt, index) => isDuplicate(prompt) && !ticked(prompt, index)).length;
+    const leftOut = preview!.length - duplicates - count;
+    try { validated = validateImportPrompts(preview!.filter(included)); } catch (error) { setError((error as Error).message); return; }
     setBusy(true);
+    setProgress(0);
     setError('');
     const created: PromptHistoryResponse[] = [];
     const failed: ImportPrompt[] = [];
@@ -151,6 +164,7 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
         // A failed favorite flag must not undo a successful import.
         created.push(is_favorite ? await ApiClient.updatePrompt(saved.id, { is_favorite }).catch(() => saved) : saved);
       } catch { failed.push(is_favorite ? { ...prompt, is_favorite } : prompt); }
+      setProgress(created.length + failed.length);
     }
     if (created.length) {
       imported.current.push(...created);
@@ -158,13 +172,13 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
       notifyLibraryChanged();
     }
     setPreview(failed.length ? failed : null);
-    setCopies([]);
+    setToggled([]);
     setBeforeConvert(null);
     setSource('');
     setFiles([]);
     setSkipped([]);
     setDone(failed.length ? null : created);
-    setResult(`Imported ${created.length} of ${validated.length} prompts.${duplicates ? ` Skipped ${duplicates} already in your library.` : ''}${failed.length ? ` ${failed.length} failed; only these remain below for retry.` : ''}`);
+    setResult(`Imported ${created.length} of ${validated.length} prompts.${duplicates ? ` Skipped ${duplicates} already in your library.` : ''}${leftOut ? ` Left out ${leftOut} not selected or needing changes.` : ''}${failed.length ? ` ${failed.length} failed; only these remain below for retry.` : ''}`);
     setBusy(false);
   };
   const reuseWithAI = () => {
@@ -175,6 +189,8 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
     close();
     router.push('/editor/new?import=1');
   };
+  const edit = (index: number, change: (prompt: ImportPrompt) => ImportPrompt) => setPreview(preview!.map((item, i) => i === index ? change(item) : item));
+  const toggle = (index: number) => setToggled(toggled.includes(index) ? toggled.filter(item => item !== index) : [...toggled, index]);
   return <>
     <Button variant={primary ? 'primary' : 'secondary'} onClick={() => setOpen(true)}>Add existing prompts</Button>
     <Dialog className={styles.importDialog} isOpen={open} title="Add existing prompts" onClose={close}>
@@ -188,7 +204,7 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
           void droppedFiles(event.dataTransfer.items).then(picked => readFiles(picked, picked.some(({ path }) => path.includes('/'))));
         }}>
         {result && <p role="status">{result}</p>}
-        {error && <p role="alert">{error}</p>}
+        {error && <p role="alert" className={styles.importError}>{error}</p>}
         {done && <>
           <div className={styles.formActions}>
             <Button variant="ghost" onClick={() => { setDone(null); setResult(''); }}>Import more</Button>
@@ -199,11 +215,11 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
         </>}
         {!preview && !done && <>
           <p className={styles.dialogText}>Paste a prompt, choose files or a whole folder, or drop them here. Notion and Obsidian notes work as exported. You can review everything before it is added; existing prompts are never replaced.</p>
-          <div className={styles.field}>
+          {!files.length && <div className={styles.field}>
             <label htmlFor="import-source">Paste text</label>
             <textarea id="import-source" value={source} disabled={busy} onChange={event => { updateSource(event.target.value); if (fileTitle.current) { setNoteTitle(''); fileTitle.current = false; } }} rows={8}
               placeholder="For example: Summarize {{notes}} for {{team}} in three bullets." />
-          </div>
+          </div>}
           <div className={styles.field}>
             <label htmlFor="import-file">Or choose files: .md, .txt, .csv, .json, or a Notion .zip export</label>
             <input id="import-file" type="file" multiple accept=".json,.md,.markdown,.txt,.csv,.zip" disabled={busy}
@@ -211,45 +227,57 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
           </div>
           <div className={styles.field}>
             <label htmlFor="import-folder">Or choose a folder, such as an Obsidian vault</label>
-            <input id="import-folder" type="file" multiple disabled={busy} {...{ webkitdirectory: '' }}
+            {/* The browser's own folder input says "Choose Files"; this button says what it does. */}
+            <input ref={folderInput} id="import-folder" type="file" multiple hidden disabled={busy} {...{ webkitdirectory: '' }}
               onChange={event => { void readFiles([...event.target.files ?? []].map(file => ({ file, path: file.webkitRelativePath || file.name })), true); event.target.value = ''; }} />
+            <Button variant="secondary" className={styles.fieldAction} disabled={busy} onClick={() => folderInput.current?.click()}>Choose folder</Button>
           </div>
           {files.length > 0 && <div className={styles.fileList} role="status">
             <p>{files.length} file{files.length === 1 ? '' : 's'} ready: {files.slice(0, 5).map(file => file.name).join(', ')}{files.length > 5 ? ` and ${files.length - 5} more` : ''}.</p>
             <Button variant="ghost" disabled={busy} onClick={() => { setFiles([]); setResult(''); }}>Clear files</Button>
           </div>}
-          <div className={styles.field}>
+          {!files.length && <div className={styles.field}>
             <label htmlFor="import-note-title">Title for a single note</label>
             <input id="import-note-title" value={noteTitle} onChange={event => setNoteTitle(event.target.value)} maxLength={100} placeholder="From the first line" disabled={busy} />
             <small>Used when the text has no # Title. You can change it in the preview.</small>
-          </div>
+          </div>}
           <details className={styles.dialogText}>
             <summary>Format details</summary>
-            <p>A note without a heading is kept in one Prompt section. Note metadata is tidied first: YAML front matter, Notion page properties, Obsidian callouts and trailing #tags are removed, [[links]] read as text, the front matter title or first heading becomes the title, the first tag suggests a folder, and a Notion favourite stays a favourite. You can keep the original text in the preview.</p>
-            <p>For several prompts in one note, start each with a heading and optionally add smaller headings for sections; a pasted page that starts at ## works the same way. Headings inside code fences remain text. Up to 100 prompts at a time.</p>
+            <p>A note without a heading is kept in one Prompt section. Note metadata is tidied first: YAML front matter, Notion page properties and callouts, Obsidian callouts, comments, Dataview queries, embedded files and trailing #tags are removed, [[links]] and ==highlights== read as text, the front matter title or first heading becomes the title, the first tag suggests a folder, and a Notion favourite stays a favourite. You can keep the original text in the preview.</p>
+            <p>For several prompts in one note, start each with a heading and optionally add smaller headings for sections; a pasted page that starts at ## works the same way. Headings inside code fences remain text. Up to 1,000 prompts at a time.</p>
             <p>JSON files use the Prompt Maker Studio export format: titles, sections, folders, variable settings and favorites are copied. Version history, dates and notes are not imported; this is not a full archive restore.</p>
           </details>
           <Button variant="primary" disabled={busy || (!source.trim() && !files.length)} onClick={() => showPreview(keepOriginal)}>Preview</Button>
         </>}
         {preview && <>
-          <p className={styles.dialogText}>Review {preview.length} prompt{preview.length === 1 ? '' : 's'} before importing. Edit titles and folders below; leave a folder empty for Unfiled.</p>
-          {skipped.length > 0 && <p className={styles.dialogText}>Skipped: {skipped.join(' ')}</p>}
+          <p className={styles.dialogText}>Review {plural(preview.length, 'prompt')} before importing. Untick any you don&apos;t want, and edit titles and folders; leave a folder empty for Unfiled.</p>
+          {skipped.length > 0 && <div className={styles.importError}>
+            <p>Skipped {plural(skipped.length, 'file')}:</p>
+            <ul>{skipped.map(reason => <li key={reason}>{reason}</li>)}</ul>
+          </div>}
+          {problems > 0 && <p className={styles.importError}>{plural(problems, 'prompt')} need{problems === 1 ? 's' : ''} a change below before {problems === 1 ? 'it' : 'they'} can be imported.</p>}
           {fromNote && tidied && <label className={styles.checkRow}>
             <input type="checkbox" checked={keepOriginal} disabled={busy} onChange={event => { setKeepOriginal(event.target.checked); showPreview(event.target.checked); }} />
             Keep the original note text (front matter, page properties, callouts and tags)
           </label>}
-          {preview.length > 1 && <div className={styles.field}>
-            <label htmlFor="import-folder-all">Folder for all prompts</label>
-            <input id="import-folder-all" value={sharedFolder} list="import-folders" maxLength={255} disabled={busy} placeholder="Unfiled"
-              onChange={event => setPreview(preview.map(item => ({ ...item, folder: event.target.value })))} />
-          </div>}
+          {preview.length > 1 && <>
+            <div className={styles.field}>
+              <label htmlFor="import-folder-all">Folder for all prompts</label>
+              <input id="import-folder-all" value={sharedFolder} list="import-folders" maxLength={255} disabled={busy} placeholder={mixedFolders ? 'Different folders; type one to use for all' : 'Unfiled'}
+                onChange={event => setPreview(preview.map(item => ({ ...item, folder: event.target.value })))} />
+            </div>
+            <div className={styles.selectionBar}>
+              <Button variant="ghost" disabled={busy} onClick={() => setToggled([])}>Select all new</Button>
+              <Button variant="ghost" disabled={busy} onClick={() => setToggled(preview.flatMap((prompt, index) => isDuplicate(prompt) ? [] : [index]))}>Select none</Button>
+            </div>
+          </>}
           {placeholders.length > 0 && !beforeConvert && <fieldset className={styles.placeholderOffer}>
             <legend>Found {placeholders.length === 1 ? 'a placeholder' : `${placeholders.length} placeholders`}. Choose which become inputs you fill in:</legend>
             <div className={styles.placeholderChoices}>
               {placeholders.map(token => <label key={token}>
                 <input type="checkbox" checked={!unchosen.includes(token)} disabled={busy}
                   onChange={event => setUnchosen(event.target.checked ? unchosen.filter(item => item !== token) : [...unchosen, token])} />
-                <code>{token}</code>
+                <code>{token}</code>{preview.length > 1 && ` (${plural(usedIn(token), 'prompt')})`}
               </label>)}
             </div>
             <Button variant="secondary" disabled={busy || !chosen.length} onClick={() => { setBeforeConvert(preview); setPreview(convertPlaceholders(preview, chosen)); }}>
@@ -260,28 +288,39 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
             <Button variant="ghost" disabled={busy} onClick={() => { setPreview(preview.map((item, i) => ({ ...item, fields: beforeConvert[i].fields, variable_metadata: beforeConvert[i].variable_metadata }))); setBeforeConvert(null); }}>Undo</Button>
           </p>}
           <div className={styles.importPreview}>
-            {preview.map((prompt, index) => <div className={styles.importItem} key={index}>
-              <div className={styles.field}>
-                <label htmlFor={`import-title-${index}`}>Title for prompt {index + 1}</label>
-                <input id={`import-title-${index}`} value={prompt.name} maxLength={100} disabled={busy} onChange={event => setPreview(preview.map((item, i) => i === index ? { ...item, name: event.target.value } : item))} />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor={`import-folder-${index}`}>Folder for {prompt.name}</label>
-                <input id={`import-folder-${index}`} value={prompt.folder ?? ''} list="import-folders" maxLength={255} disabled={busy} onChange={event => setPreview(preview.map((item, i) => i === index ? { ...item, folder: event.target.value } : item))} />
-              </div>
-              {isDuplicate(prompt) && <label className={styles.checkRow}>
-                <input type="checkbox" checked={copies.includes(index)} disabled={busy}
-                  onChange={event => setCopies(event.target.checked ? [...copies, index] : copies.filter(item => item !== index))} />
-                Already in your library. Import a copy anyway
-              </label>}
-              <details open={preview.length <= 5}><summary>{prompt.fields.length} section{prompt.fields.length === 1 ? '' : 's'}</summary>{prompt.fields.map(field => <div key={field.name}><strong>{field.name}</strong><pre className={styles.importText}>{field.content}</pre></div>)}</details>
-            </div>)}
+            {preview.map((prompt, index) => {
+              const problem = importProblem(prompt);
+              const first = preview.findIndex(other => sameTitle(other, prompt));
+              return <div className={styles.importItem} key={index}>
+                <label className={styles.checkRow}>
+                  <input type="checkbox" checked={ticked(prompt, index)} disabled={busy} onChange={() => toggle(index)} />
+                  {isDuplicate(prompt) ? 'Already in your library. Import a copy anyway' : `Import prompt ${index + 1}`}
+                </label>
+                <div className={styles.field}>
+                  <label htmlFor={`import-title-${index}`}>Title for prompt {index + 1}</label>
+                  <input id={`import-title-${index}`} value={prompt.name} maxLength={100} disabled={busy} aria-invalid={!!importProblem({ ...prompt, fields: [] })}
+                    aria-describedby={problem ? `import-problem-${index}` : undefined} onChange={event => edit(index, item => ({ ...item, name: event.target.value }))} />
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor={`import-folder-${index}`}>Folder for {prompt.name}</label>
+                  <input id={`import-folder-${index}`} value={prompt.folder ?? ''} list="import-folders" maxLength={255} disabled={busy} onChange={event => edit(index, item => ({ ...item, folder: event.target.value }))} />
+                </div>
+                {first < index && <p className={styles.dialogText}>Same title as prompt {first + 1} in this import.</p>}
+                {problem && <div id={`import-problem-${index}`} className={styles.importError}>
+                  <p>{problem}{/^Section/.test(problem) && ' Split it at paragraph breaks into numbered sections; no text is removed.'}</p>
+                  {/^Section/.test(problem) && <Button variant="secondary" className={styles.fieldAction} disabled={busy} onClick={() => edit(index, splitLongSections)}>Split section</Button>}
+                </div>}
+                <details open={preview.length <= 5}><summary>{prompt.fields.length} section{prompt.fields.length === 1 ? '' : 's'}</summary>{prompt.fields.map(field => <div key={field.name}><strong>{field.name}</strong><pre className={styles.importText}>{field.content}</pre></div>)}</details>
+              </div>;
+            })}
           </div>
           {singleNote && <p className={styles.dialogText}>Keep it as written, or let AI split it into sections and suggest inputs (needs an AI connection).</p>}
           <div className={styles.formActions}>
             <Button variant="ghost" disabled={busy} onClick={() => { setPreview(null); setBeforeConvert(null); setError(''); }}>Back</Button>
             {singleNote && <Button variant="secondary" disabled={busy} onClick={reuseWithAI}>Make reusable with AI</Button>}
-            <Button variant="primary" disabled={busy || !included} onClick={() => void importPrompts()}>{busy ? 'Importing…' : !included ? 'Nothing new to import' : singleNote ? 'Keep as written' : `Import ${included} prompt${included === 1 ? '' : 's'}`}</Button>
+            <Button variant="primary" disabled={busy || !count} onClick={() => void importPrompts()}>
+              {busy ? (count > 1 ? `Importing ${progress} of ${count}…` : 'Importing…') : !count ? (preview.every(isDuplicate) ? 'Nothing new to import' : 'Nothing selected to import') : singleNote ? 'Keep as written' : `Import ${plural(count, 'prompt')}`}
+            </Button>
           </div>
         </>}
         <Button variant="ghost" disabled={busy} onClick={close}>Close</Button>

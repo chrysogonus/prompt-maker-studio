@@ -136,9 +136,13 @@ above both panes as stored only in the current browser.
   (failed moves stay selected for retry) or delete them together, with one Undo. Grid metadata sits separately from actions.
 - **Add existing prompts** is the library's one entry point for bringing prompts in. It
   accepts pasted text, a JSON export or Markdown (`# Title`, optional `## Section`
-  headings), up to 100 prompts and 5 MB per import; format details are folded away.
-  Review and edit names/folders, with section text shown for up to five prompts, before
-  creating new copies. Sections, variable settings and favorites are retained; history,
+  headings), up to 1,000 prompts and 5 MB per file per import, with progress shown while
+  importing; format details are folded away. Review before creating new copies: untick
+  prompts to leave out (Select all new / Select none), edit names and folders, with section
+  text shown for up to five prompts. A note whose title is over 100 characters or whose
+  section is over 10,000 characters is previewed with what to change instead of skipped;
+  a long section can be split losslessly into numbered sections. Files that hold no
+  prompt are listed with the reason, and a title repeated within one import is flagged. Sections, variable settings and favorites are retained; history,
   dates and notes are not restored. Failed items remain for retry. After success it
   offers Open imported prompts (the prompt, its folder, or the library) or Import more.
 - A single pasted note can be kept as written or sent to **Make reusable with AI**, which
@@ -165,8 +169,8 @@ above both panes as stored only in the current browser.
   Property lines that hold the prompt text are kept; only metadata such as Tags, Created
   and Status is removed. Binary files are refused with an explanation, and an HTML export
   with advice to export Markdown & CSV instead.
-- A previewed prompt whose title is already in the library is skipped unless
-  **Import a copy anyway** is ticked, so re-importing a vault does not duplicate it.
+- A previewed prompt whose title is already in the library starts unticked
+  (**Import a copy anyway**), so re-importing a vault does not duplicate it.
 - The preview offers to turn placeholders such as `[TOPIC]`, `{audience}` or
   `<transcript>` into inputs (each can be unticked; `[[wiki-links]]` are never offered),
   keeping each placeholder's wording as the input's hint, with Undo, and a **Folder for all prompts** field when
