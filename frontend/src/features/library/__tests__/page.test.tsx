@@ -397,12 +397,12 @@ describe('LibraryPage', () => {
     expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Blog outline');
     expect(screen.queryByText(/tags: \[writing\]/)).not.toBeInTheDocument();
     expect(screen.getByText('2 sections')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('checkbox', { name: /Keep the note's front matter/ }));
+    await user.click(screen.getByRole('checkbox', { name: /Keep the original note text/ }));
     expect(screen.getByText(/tags: \[writing\]/)).toBeVisible();
-    await user.click(screen.getByRole('checkbox', { name: /Keep the note's front matter/ }));
+    await user.click(screen.getByRole('checkbox', { name: /Keep the original note text/ }));
 
-    await user.type(screen.getByLabelText('Folder for Blog outline'), 'Writing');
+    // The note's first tag is the suggested folder.
+    expect(screen.getByLabelText('Folder for Blog outline')).toHaveValue('Writing');
     await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
     expect(JSON.parse(sessionStorage.getItem(pasteHandoffKey())!)).toEqual({ text: 'Outline a post.\n\n## Output\n- 5 headings', title: 'Blog outline', folder: 'Writing' });
   });

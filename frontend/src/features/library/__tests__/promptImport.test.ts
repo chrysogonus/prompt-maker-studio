@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertPlaceholders, findPlaceholders, hasFrontmatter, isImportableFile, parseImportFiles, parsePromptImport, titleFromFileName } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, isImportableFile, parseImportFiles, parsePromptImport, titleFromFileName } from '@/lib/promptImport';
 
 describe('prompt import', () => {
   it('restores export sections, folder and variable metadata without server-only data', () => {
@@ -21,8 +21,7 @@ describe('prompt import', () => {
   });
   it('removes frontmatter and reads the rest as Markdown, using its # Title', () => {
     const source = '---\ntitle: "Café notes"\ntags: [work, draft]\n---\n# Body heading\nA note\n## Output\nThree bullets';
-    expect(hasFrontmatter(source)).toBe(true);
-    expect(parsePromptImport(source, 'Filename')).toEqual([{ name: 'Body heading', folder: null, fields: [
+    expect(parsePromptImport(source, 'Filename')).toEqual([{ name: 'Body heading', folder: 'Work', fields: [
       { name: 'Prompt', content: 'A note' }, { name: 'Output', content: 'Three bullets' },
     ] }]);
   });
@@ -69,6 +68,34 @@ describe('prompt import', () => {
     expect(skipped).toEqual(['Empty.md: Include some note text or a JSON export.']);
     const many = Array.from({ length: 101 }, (_, i) => ({ name: `${i}.md`, path: `${i}.md`, text: `Prompt ${i}` }));
     expect(() => parseImportFiles(many)).toThrow('101 prompts');
+  });
+  it('removes Notion page properties, filing by tag and keeping the favourite', () => {
+    const page = '# Cold email\n\nTags: Sales, Email\nCreated: October 1, 2026 9:00 AM\nStatus: Favourite\n\nWrite to [Name].';
+    expect(parsePromptImport(page)).toEqual([{ name: 'Cold email', folder: 'Sales', is_favorite: true, fields: [{ name: 'Prompt', content: 'Write to [Name].' }] }]);
+    expect(parsePromptImport(page, undefined, true)[0].fields[0].content).toContain('Tags: Sales');
+  });
+  it('keeps "Key: value" lines that are prompt text rather than metadata', () => {
+    expect(parsePromptImport('# Tutor\nRole: You are a patient tutor.\nGoal: Explain [TOPIC].')[0]).toEqual({
+      name: 'Tutor', folder: null, fields: [{ name: 'Prompt', content: 'Role: You are a patient tutor.\nGoal: Explain [TOPIC].' }],
+    });
+  });
+  it('removes Obsidian callouts and trailing tags, reads wiki-links as text and leaves code alone', () => {
+    const note = '> [!tip] Use with Claude\n> Paste the topic first.\n\nSee [[Style guide]] and [[Voice|our voice]].\nUse #fff for the background. #prompt #writing\n#draft\n```\nkeep #tag and [[link]]\n```';
+    expect(parsePromptImport(note, 'Note')[0]).toEqual({ name: 'Note', folder: 'Prompt', fields: [{ name: 'Prompt', content:
+      'See Style guide and our voice.\nUse #fff for the background.\n```\nkeep #tag and [[link]]\n```' }] });
+    expect(parsePromptImport(note, 'Note', true)[0].fields[0].content).toBe(note);
+  });
+  it('files a note by its first front matter tag, written as a list or inline', () => {
+    expect(parsePromptImport('---\ntags:\n  - writing\n  - blog\n---\nBody')[0].folder).toBe('Writing');
+    expect(parsePromptImport('---\ntags: [dev, review]\n---\nBody')[0].folder).toBe('Dev');
+  });
+  it('treats the top heading of a pasted page as its title level', () => {
+    expect(parsePromptImport('## Support reply\n\nReply to [message].\n\n### Rules\n- Be kind')).toEqual([{ name: 'Support reply', folder: null, fields: [
+      { name: 'Prompt', content: 'Reply to [message].' }, { name: 'Rules', content: '- Be kind' },
+    ] }]);
+    expect(parsePromptImport('## Prompt A\nWrite about [X].\n\n## Prompt B\nSummarise [Y].').map(prompt => prompt.name)).toEqual(['Prompt A', 'Prompt B']);
+    // A note that starts with text keeps its later headings as text.
+    expect(parsePromptImport('Summarise this:\n\n## Output\n- Decisions', 'Meeting')[0].fields).toEqual([{ name: 'Prompt', content: 'Summarise this:\n\n## Output\n- Decisions' }]);
   });
   it('keeps the 5 MB and 100 prompt limits', () => {
     expect(() => parsePromptImport('x'.repeat(5 * 1024 * 1024 + 1))).toThrow('5 MB');

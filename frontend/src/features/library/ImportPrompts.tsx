@@ -7,7 +7,7 @@ import Dialog from '@/components/ui/Dialog';
 import { ApiClient } from '@/lib/api';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { libraryHref } from '@/lib/libraryViews';
-import { convertPlaceholders, findPlaceholders, hasFrontmatter, ImportFile, ImportPrompt, isImportableFile, MAX_IMPORT_BYTES, parseImportFiles, parsePromptImport, pasteHandoffKey, titleFromFileName, validateImportPrompts } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, ImportFile, ImportPrompt, isImportableFile, MAX_IMPORT_BYTES, parseImportFiles, parsePromptImport, pasteHandoffKey, titleFromFileName, validateImportPrompts } from '@/lib/promptImport';
 import type { PromptHistoryResponse } from '@/types/prompt';
 import styles from './LibraryPage.module.css';
 
@@ -72,18 +72,17 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
   const [files, setFiles] = useState<ImportFile[]>([]);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
+  // Whether tidying the notes changed anything, so keeping the original is a real choice.
+  const [tidied, setTidied] = useState(false);
   const updateSource = (text: string) => { setSource(text); setPreview(null); setError(''); setResult(''); };
   const showPreview = (keep: boolean) => {
     try {
-      if (files.length) {
-        const parsed = parseImportFiles(files, keep);
-        if (!parsed.prompts.length) throw new Error(`None of these files hold a prompt. ${parsed.skipped.join(' ')}`);
-        setPreview(parsed.prompts);
-        setSkipped(parsed.skipped);
-      } else {
-        setPreview(parsePromptImport(source, noteTitle, keep));
-        setSkipped([]);
-      }
+      const parse = (original: boolean) => files.length ? parseImportFiles(files, original) : { prompts: parsePromptImport(source, noteTitle, original), skipped: [] };
+      const parsed = parse(keep);
+      if (!parsed.prompts.length) throw new Error(`None of these files hold a prompt. ${parsed.skipped.join(' ')}`);
+      setPreview(parsed.prompts);
+      setSkipped(parsed.skipped);
+      setTidied(JSON.stringify(parse(true).prompts) !== JSON.stringify(parse(false).prompts));
       setBeforeConvert(null); setError(''); setResult('');
     } catch (error) { setError((error as Error).message); }
   };
@@ -196,8 +195,8 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
           </div>
           <details className={styles.dialogText}>
             <summary>Format details</summary>
-            <p>A note without a # Title is kept as written in one Prompt section. YAML front matter is removed first, and its simple title becomes the prompt title; you can keep the original text in the preview. Other YAML metadata is not mapped.</p>
-            <p>For several prompts, start each with # Title and optionally add ## Section name headings. Headings inside code fences remain text. Up to 100 prompts at a time.</p>
+            <p>A note without a heading is kept in one Prompt section. Note metadata is tidied first: YAML front matter, Notion page properties, Obsidian callouts and trailing #tags are removed, [[links]] read as text, the front matter title or first heading becomes the title, the first tag suggests a folder, and a Notion favourite stays a favourite. You can keep the original text in the preview.</p>
+            <p>For several prompts in one note, start each with a heading and optionally add smaller headings for sections; a pasted page that starts at ## works the same way. Headings inside code fences remain text. Up to 100 prompts at a time.</p>
             <p>JSON files use the Prompt Maker Studio export format: titles, sections, folders, variable settings and favorites are copied. Version history, dates and notes are not imported; this is not a full archive restore.</p>
           </details>
           <Button variant="primary" disabled={busy || (!source.trim() && !files.length)} onClick={() => showPreview(keepOriginal)}>Preview</Button>
@@ -205,9 +204,9 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
         {preview && <>
           <p className={styles.dialogText}>Review {preview.length} prompt{preview.length === 1 ? '' : 's'} before importing. Edit titles and folders below; leave a folder empty for Unfiled.</p>
           {skipped.length > 0 && <p className={styles.dialogText}>Skipped: {skipped.join(' ')}</p>}
-          {fromNote && (files.length ? files.some(file => hasFrontmatter(file.text)) : hasFrontmatter(source)) && <label className={styles.checkRow}>
+          {fromNote && tidied && <label className={styles.checkRow}>
             <input type="checkbox" checked={keepOriginal} disabled={busy} onChange={event => { setKeepOriginal(event.target.checked); showPreview(event.target.checked); }} />
-            Keep the note&apos;s front matter and title line in the prompt text
+            Keep the original note text (front matter, page properties, callouts and tags)
           </label>}
           {preview.length > 1 && <div className={styles.field}>
             <label htmlFor="import-folder-all">Folder for all prompts</label>

@@ -17,6 +17,10 @@ any release. See [Project status](./README.md#project-status).
   files and folders dropped onto the dialog. They share one preview; each note's
   folder is suggested from its parent folder, Notion page IDs are dropped from
   file-name titles, and files without prompts are listed as skipped.
+- Imported notes drop Notion page properties, Obsidian callouts and trailing `#tags`,
+  and read `[[links]]` as text, under the same "keep the original" choice as front
+  matter. The first tag suggests the folder, a Notion favourite stays a favourite, and
+  a pasted page that starts at `##` uses that heading as its title and splits on it.
 
 - The empty library leads with Add existing prompts and says it takes Notion,
   Obsidian and Markdown notes; New prompt sits beside it.
