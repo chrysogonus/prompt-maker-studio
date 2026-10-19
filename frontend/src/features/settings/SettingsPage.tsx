@@ -5,6 +5,7 @@ import { SecuritySettings } from './SecuritySettings';
 import { PreferencesSettings } from './PreferencesSettings';
 import { ConnectionSettings } from './ConnectionSettings';
 import { ExportSettings } from './ExportSettings';
+import { ConnectedAppsSettings } from './ConnectedAppsSettings';
 import { DeleteAccountSettings } from './DeleteAccountSettings';
 
 import styles from './SettingsPage.module.css';
@@ -18,7 +19,7 @@ export default function SettingsPage() {
     <div className={styles.page}>
       <h1 className={styles.title}>Settings</h1>
       <nav className={styles.sectionNav} aria-label="Settings sections">
-        {[['profile', 'Profile'], ['security', 'Password and sessions'], ['preferences', 'Appearance and library'], ['api', 'AI connection'], ['data', 'Your data'], ['danger', 'Delete account']].map(([id, label]) => (
+        {[['profile', 'Profile'], ['security', 'Password and sessions'], ['preferences', 'Appearance and library'], ['api', 'AI connection'], ['chatgpt', 'ChatGPT'], ['data', 'Your data'], ['danger', 'Delete account']].map(([id, label]) => (
           <a key={id} href={`#s-${id}`}>{label}</a>
         ))}
       </nav>
@@ -60,6 +61,8 @@ export default function SettingsPage() {
       />
 
       <ConnectionSettings />
+
+      <ConnectedAppsSettings />
 
       <ExportSettings
         isExporting={settings.isExporting}

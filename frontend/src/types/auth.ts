@@ -73,6 +73,12 @@ export interface LLMProviderOption {
  * The user's bring-your-own provider connection. Never carries the API key —
  * only `api_key_hint`, a masked display fragment.
  */
+/** An app such as ChatGPT linked to the account through OAuth (see docs/mcp.md). */
+export interface ConnectedApp {
+  client_id: string;
+  name: string;
+}
+
 export interface LLMConnection {
   configured: boolean;
   provider: string | null;

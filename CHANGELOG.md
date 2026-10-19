@@ -31,6 +31,8 @@ any release. See [Project status](./README.md#project-status).
   only metadata lines are removed. Binary files are refused instead of imported as text.
 - Importing skips prompts whose title is already in the library unless "Import a copy
   anyway" is ticked, and selected library prompts can be deleted together with one Undo.
+- Settings has a ChatGPT section: the connector address to copy, the steps to connect,
+  and the connected apps, each with Disconnect (`GET`/`DELETE /api/auth/me/connected-apps`).
 - Make reusable with AI leaves out notes meant for the prompt's owner, such as which
   AI tool to use, reminders, tags or links to other notes, instead of making them sections.
 

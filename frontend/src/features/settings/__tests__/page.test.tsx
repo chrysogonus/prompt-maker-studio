@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { within, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SettingsPage from '../SettingsPage';
 import { AuthService } from '@/lib/auth';
@@ -18,6 +18,8 @@ vi.mock('@/lib/auth', () => ({
     testLLMConnection: vi.fn(),
     logoutEverywhere: vi.fn(),
     setSignInNotice: vi.fn(),
+    getConnectedApps: vi.fn(),
+    disconnectConnectedApp: vi.fn(),
   },
 }));
 
@@ -93,6 +95,7 @@ beforeEach(() => {
   setCurrentUser.mockClear();
   vi.mocked(AuthService.getCurrentUser).mockResolvedValue(user());
   vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection());
+  vi.mocked(AuthService.getConnectedApps).mockResolvedValue([]);
   vi.mocked(ApiClient.getPromptsConfig).mockResolvedValue({
     provider_connected: true,
     provider: 'openai',
@@ -337,5 +340,31 @@ describe('SettingsPage', () => {
     expect(logout).not.toHaveBeenCalled();
     // Still open, so a mistyped password can simply be corrected.
     expect(screen.getByLabelText('Confirm your password')).toBeInTheDocument();
+  });
+});
+
+describe('ChatGPT', () => {
+  it('explains how to connect, with the server address to copy', async () => {
+    const user = userEvent.setup();
+    const clipboard = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+    renderSettings();
+    const section = await screen.findByRole('region', { name: 'ChatGPT' });
+    expect(within(section).getByText(`${window.location.origin}/api/mcp`)).toBeInTheDocument();
+    expect(within(section).getByRole('link', { name: /OpenAI's guide/ })).toHaveAttribute('href', expect.stringContaining('openai.com'));
+    expect(await within(section).findByText('No apps are connected yet.')).toBeInTheDocument();
+    await user.click(within(section).getByRole('button', { name: 'Copy address' }));
+    expect(clipboard).toHaveBeenCalledWith(`${window.location.origin}/api/mcp`);
+    expect(within(section).getByRole('button', { name: 'Copied' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'ChatGPT' })).toHaveAttribute('href', '#s-chatgpt');
+  });
+
+  it('lists connected apps and disconnects one', async () => {
+    vi.mocked(AuthService.getConnectedApps).mockResolvedValue([{ client_id: 'abc', name: 'ChatGPT' }]);
+    vi.mocked(AuthService.disconnectConnectedApp).mockResolvedValue(undefined);
+    renderSettings();
+    const section = await screen.findByRole('region', { name: 'ChatGPT' });
+    await userEvent.click(await within(section).findByRole('button', { name: 'Disconnect' }));
+    expect(AuthService.disconnectConnectedApp).toHaveBeenCalledWith('abc');
+    expect(await within(section).findByText('No apps are connected yet.')).toBeInTheDocument();
   });
 });

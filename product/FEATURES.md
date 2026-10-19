@@ -70,6 +70,7 @@ and the reasoning is in `product/DECISIONS.md`.
 |---|---|---|---|
 | MCP tools for the library | ✅ Implemented | `/api/mcp` exposes `list_saved_prompts` (filter by folder or favorites), `get_prompt` (including variable hints), `save_prompt`, `update_prompt` (optimistic concurrency, version kept) and `list_prompt_versions`. Both transports use the shared prompt services, so section rules and rendering are identical | `backend/app/api/mcp_routes.py`, `docs/mcp.md` |
 | OAuth account linking | ✅ Implemented | Dynamic client registration, PKCE, a consent page, rotating refresh tokens; linked clients are disconnected by sign-out-everywhere, password changes and account deletion | `backend/app/api/oauth_routes.py`, `backend/app/services/oauth_provider.py`, `frontend/src/app/oauth/authorize/page.tsx` |
+| Connect to ChatGPT in Settings | ✅ Implemented | Settings → ChatGPT shows the connector address with Copy, the three connection steps with OpenAI's guide, and the connected apps with a Disconnect button each (`GET`/`DELETE /api/auth/me/connected-apps`) | `frontend/src/features/settings/ConnectedAppsSettings.tsx`, `backend/app/api/account_routes.py`, `backend/app/services/oauth_provider.py` |
 
 ## Shell & Visual System
 | Feature | Status | Description | Implemented in |
