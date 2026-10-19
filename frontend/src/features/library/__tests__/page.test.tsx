@@ -687,6 +687,18 @@ describe('LibraryPage', () => {
       expect(screen.getByText(/Skipped: Empty.md: Include some note text/)).toBeInTheDocument();
     });
 
+    it('lists a database CSV as one prompt per row', async () => {
+      const user = userEvent.setup();
+      await renderLibrary();
+      await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+      await user.upload(screen.getByLabelText(/Or choose files/), note('Name,Prompt,Tags\nCold email,Write to [Name].,Sales\nReport,Summarise [Week].,Work', 'Prompts 3f2a9c1e8b7d4a6f.csv'));
+      expect(await screen.findByText(/1 file ready/)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Preview' }));
+      expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Cold email');
+      expect(screen.getByLabelText('Folder for Cold email')).toHaveValue('Sales');
+      expect(screen.getByLabelText('Title for prompt 2')).toHaveValue('Report');
+    });
+
     it('accepts files dropped onto the dialog', async () => {
       const user = userEvent.setup();
       await renderLibrary();

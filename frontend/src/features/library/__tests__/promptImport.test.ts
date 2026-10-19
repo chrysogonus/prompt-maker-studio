@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertPlaceholders, findPlaceholders, isImportableFile, parseImportFiles, parsePromptImport, titleFromFileName } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, isImportableFile, parseCsvPrompts, parseImportFiles, parsePromptImport, titleFromFileName } from '@/lib/promptImport';
 
 describe('prompt import', () => {
   it('restores export sections, folder and variable metadata without server-only data', () => {
@@ -58,6 +58,7 @@ describe('prompt import', () => {
     expect(isImportableFile('Vault/.obsidian/app.json')).toBe(false);
     expect(isImportableFile('Vault/.trash/Old.md')).toBe(false);
     expect(isImportableFile('Vault/image.png')).toBe(false);
+    expect(isImportableFile('Export/Prompts.csv')).toBe(true);
   });
   it('merges several files, suggesting each note\'s folder and reporting files without prompts', () => {
     const { prompts, skipped } = parseImportFiles([
@@ -97,6 +98,23 @@ describe('prompt import', () => {
     expect(parsePromptImport('## Prompt A\nWrite about [X].\n\n## Prompt B\nSummarise [Y].').map(prompt => prompt.name)).toEqual(['Prompt A', 'Prompt B']);
     // A note that starts with text keeps its later headings as text.
     expect(parsePromptImport('Summarise this:\n\n## Output\n- Decisions', 'Meeting')[0].fields).toEqual([{ name: 'Prompt', content: 'Summarise this:\n\n## Output\n- Decisions' }]);
+  });
+  it('reads a database CSV: name, prompt text and tags, with quoted commas and line breaks', () => {
+    const csv = '\uFEFFName,Prompt,Tags,Created\r\nCold email,"Write to [Name], briefly.\nEnd with a question.","Sales, Email",Oct 1\r\n,"Summarise ""this"" text",,\r\nEmpty,,,\r\n';
+    expect(parseCsvPrompts(csv)).toEqual([
+      { name: 'Cold email', folder: 'Sales', fields: [{ name: 'Prompt', content: 'Write to [Name], briefly.\nEnd with a question.' }] },
+      { name: 'Summarise "this" text', folder: null, fields: [{ name: 'Prompt', content: 'Summarise "this" text' }] },
+    ]);
+    expect(parseCsvPrompts('Title,Notes,Long text\nA,x,The real prompt text here')[0].fields[0].content).toBe('The real prompt text here');
+    expect(() => parseCsvPrompts('Name,Prompt\n')).toThrow('no rows');
+  });
+  it('keeps prompt text stored in a Notion property and drops only the metadata', () => {
+    expect(parsePromptImport('# Cold email\n\nPrompt: Write to [Name].\nTags: Sales\nAudience: Founders\n\nMore detail.')[0]).toEqual({
+      name: 'Cold email', folder: 'Sales', fields: [{ name: 'Prompt', content: 'Write to [Name].\nAudience: Founders\n\nMore detail.' }],
+    });
+  });
+  it('refuses binary files instead of importing them as text', () => {
+    expect(() => parsePromptImport('PK\u0003\u0004\u0000\u0000binary')).toThrow('not a text note');
   });
   it('keeps the 5 MB and 100 prompt limits', () => {
     expect(() => parsePromptImport('x'.repeat(5 * 1024 * 1024 + 1))).toThrow('5 MB');

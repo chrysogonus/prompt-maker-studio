@@ -25,6 +25,10 @@ any release. See [Project status](./README.md#project-status).
   `[[wiki-links]]`, and keeps each placeholder's wording as its input's hint
   (`[PASTE CODE HERE]` becomes an input hinted "Paste code here").
 - A note without a title is named from its first line instead of "Imported note".
+- Notion's Markdown & CSV `.zip` export can be imported as downloaded (read in the
+  browser, including nested part zips), and a database `.csv` becomes one prompt per
+  row with Tags as its folder. A Notion property that holds the prompt text is kept;
+  only metadata lines are removed. Binary files are refused instead of imported as text.
 
 - The empty library leads with Add existing prompts and says it takes Notion,
   Obsidian and Markdown notes; New prompt sits beside it.

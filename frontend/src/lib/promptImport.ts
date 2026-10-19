@@ -102,6 +102,7 @@ function promoteHeadings(text: string): string {
 // naming familiar metadata is removed, so a prompt starting "Role: …" stays intact.
 const PROPERTY_BLOCK = /^((?:[A-Z][\w ]{0,30}: [^\n]*(?:\n|$))+)\n*/;
 const METADATA_KEY = /^(tags?|created( time| by)?|last edited( time| by)?|status|category|type|date|url|favou?rite|owner|author|model|source):/i;
+const PROMPT_KEY = /^(prompt|content|text|body|instructions?)$/i;
 const TRAILING_TAG = /(?:^|\s)(#[A-Za-z][\w/-]*)$/;
 const HEX_COLOUR = /^#(?:[0-9a-f]{3}){1,2}$/i;
 
@@ -113,12 +114,15 @@ function tidyNote(prompt: ImportPrompt, noteTags: string[]): ImportPrompt {
     let content = field.content;
     const properties = index === 0 ? content.match(PROPERTY_BLOCK) : null;
     if (properties && properties[1].split('\n').some(line => METADATA_KEY.test(line))) {
-      for (const line of properties[1].split('\n')) {
+      const kept: string[] = [];
+      for (const line of properties[1].split('\n').filter(Boolean)) {
         const [, key = '', value = ''] = line.match(/^([^:]+):\s*(.*)$/) ?? [];
         if (/^tags?$/i.test(key)) tags.push(...value.split(','));
         if ((/^status$/i.test(key) && /favou?rite/i.test(value)) || (/^favou?rite$/i.test(key) && /^(yes|true|x|✓)$/i.test(value.trim()))) favorite = true;
+        // Only metadata goes; a database's prompt text often lives in a property.
+        if (!METADATA_KEY.test(line)) kept.push(PROMPT_KEY.test(key) ? value : line);
       }
-      content = content.slice(properties[0].length);
+      content = [kept.join('\n'), content.slice(properties[0].length)].filter(Boolean).join('\n\n');
     }
     let inCallout = false;
     content = mapProse(content, line => {
@@ -156,6 +160,7 @@ function tidyNote(prompt: ImportPrompt, noteTags: string[]): ImportPrompt {
  */
 export function parsePromptImport(source: string, suggestedTitle = 'Imported note', keepOriginal = false): ImportPrompt[] {
   if (new Blob([source]).size > MAX_IMPORT_BYTES) fail('Import files must be 5 MB or smaller.');
+  if (source.includes('\u0000')) fail('This is not a text note. Choose .md, .txt, .csv or .json files, or a Notion .zip export.');
   const text = source.trim();
   if (/^[{[]/.test(text)) {
     let data: unknown;
@@ -256,12 +261,62 @@ export function convertPlaceholders(prompts: ImportPrompt[], chosen?: string[]):
 }
 
 /** A file name as a title: no extension, and no Notion page ID such as "Cold email 8b7e…". */
+const NOTION_ID = /\s+[0-9a-f]{16,32}$/i;
 export const titleFromFileName = (name: string) =>
-  name.replace(/\.[^.]+$/, '').replace(/\s+[0-9a-f]{16,32}$/i, '').trim().slice(0, 100);
+  name.replace(/\.[^.]+$/, '').replace(NOTION_ID, '').trim().slice(0, 100);
 
 /** Files worth reading from a chosen or dropped folder: notes and exports, not app settings. */
 export const isImportableFile = (path: string) =>
-  /\.(md|markdown|txt|json)$/i.test(path) && !path.split('/').some(part => part.startsWith('.'));
+  /\.(md|markdown|txt|json|csv)$/i.test(path) && !path.split('/').some(part => part.startsWith('.'));
+
+/** Rows of a CSV file (RFC 4180: quoted fields may hold commas, quotes and line breaks). */
+function csvRows(text: string): string[][] {
+  const rows: string[][] = [[]];
+  let field = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (quoted) {
+      if (char === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (char === '"') quoted = false;
+      else field += char;
+    } else if (char === '"') quoted = true;
+    else if (char === ',') { rows[rows.length - 1].push(field); field = ''; }
+    else if (char === '\n' || char === '\r') {
+      if (char === '\r' && text[i + 1] === '\n') i++;
+      rows[rows.length - 1].push(field); field = ''; rows.push([]);
+    } else field += char;
+  }
+  rows[rows.length - 1].push(field);
+  return rows.filter(row => row.some(cell => cell.trim()));
+}
+
+/**
+ * A database export (Notion, Airtable, a spreadsheet) as prompts: the Name or Title
+ * column titles each row, a Prompt-like column (or else the longest text column)
+ * holds its text, and Tags suggests its folder.
+ */
+export function parseCsvPrompts(text: string): ImportPrompt[] {
+  const [header, ...rows] = csvRows(text.replace(/^\uFEFF/, ''));
+  if (!header || !rows.length) return fail('This CSV file has no rows.');
+  const column = (pattern: RegExp) => header.findIndex(name => pattern.test(name.trim()));
+  const titleAt = Math.max(0, column(/^(name|title)$/i));
+  const tagsAt = column(/^tags?$/i);
+  let promptAt = column(PROMPT_KEY);
+  if (promptAt < 0) {
+    const lengths = header.map((_, i) => i === titleAt || i === tagsAt ? -1 : rows.reduce((total, row) => total + (row[i]?.length ?? 0), 0));
+    promptAt = lengths.indexOf(Math.max(...lengths));
+  }
+  if (promptAt < 0 || promptAt === titleAt) return fail('No column with prompt text was found in this CSV file.');
+  return validateImportPrompts(rows.filter(row => row[promptAt]?.trim()).map(row => {
+    const tag = row[tagsAt]?.split(',')[0]?.trim();
+    return {
+      name: (row[titleAt]?.trim() || suggestTitle(row[promptAt]) || 'Imported prompt').slice(0, 100),
+      folder: tag ? tag[0].toUpperCase() + tag.slice(1) : null,
+      fields: [{ name: 'Prompt', content: row[promptAt].trim() }],
+    };
+  }));
+}
 
 export interface ImportFile { name: string; path: string; text: string }
 
@@ -273,10 +328,10 @@ export function parseImportFiles(files: ImportFile[], keepOriginal = false): { p
   const prompts: ImportPrompt[] = [];
   const skipped: string[] = [];
   for (const file of files) {
-    const folder = file.path.split('/').slice(0, -1).pop() || null;
+    const folder = (file.path.split('/').slice(0, -1).pop() ?? '').replace(NOTION_ID, '').trim() || null;
     try {
-      prompts.push(...parsePromptImport(file.text, titleFromFileName(file.name), keepOriginal)
-        .map(prompt => ({ ...prompt, folder: prompt.folder ?? folder })));
+      const parsed = /\.csv$/i.test(file.name) ? parseCsvPrompts(file.text) : parsePromptImport(file.text, titleFromFileName(file.name), keepOriginal);
+      prompts.push(...parsed.map(prompt => ({ ...prompt, folder: prompt.folder ?? folder })));
     } catch (error) {
       skipped.push(`${file.name}: ${(error as Error).message}`);
     }

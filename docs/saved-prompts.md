@@ -153,6 +153,12 @@ above both panes as stored only in the current browser.
   `##`) becomes the title and smaller headings become sections. The first tag suggests a
   folder and a Notion favourite stays a favourite; the preview can keep the original
   text instead.
+- Notion's **Export → Markdown & CSV** `.zip` can be chosen as it is: its pages are read
+  (the browser unzips it; nested part zips too, up to 50 MB), and a database `.csv` on its
+  own becomes one prompt per row (Name or Title, a Prompt/Content column or else the
+  longest text column, and Tags as the folder). Property lines that hold the prompt text
+  are kept; only metadata such as Tags, Created and Status is removed. Binary files are
+  refused with an explanation.
 - The preview offers to turn placeholders such as `[TOPIC]`, `{audience}` or
   `<transcript>` into inputs (each can be unticked; `[[wiki-links]]` are never offered),
   keeping each placeholder's wording as the input's hint, with Undo, and a **Folder for all prompts** field when

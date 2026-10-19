@@ -8,6 +8,7 @@ import { ApiClient } from '@/lib/api';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { libraryHref } from '@/lib/libraryViews';
 import { convertPlaceholders, findPlaceholders, ImportFile, ImportPrompt, isImportableFile, MAX_IMPORT_BYTES, parseImportFiles, parsePromptImport, pasteHandoffKey, titleFromFileName, validateImportPrompts } from '@/lib/promptImport';
+import { MAX_ZIP_BYTES, readZip } from '@/lib/importArchive';
 import type { PromptHistoryResponse } from '@/types/prompt';
 import styles from './LibraryPage.module.css';
 
@@ -90,27 +91,37 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
   };
   // One file goes into the paste box to edit; several, or a folder, are listed instead.
   const readFiles = async (picked: PickedFile[], fromFolder: boolean) => {
-    const notes = picked.filter(({ path }) => isImportableFile(path));
+    const isZip = (path: string) => /\.zip$/i.test(path);
+    const notes = picked.filter(({ path }) => isImportableFile(path) || isZip(path));
     const ignored = picked.length - notes.length;
     updateSource('');
     setFiles([]);
-    if (!notes.length) { setError(picked.length ? 'Choose .md, .txt or .json files.' : ''); return; }
-    if (notes.some(({ file }) => file.size > MAX_IMPORT_BYTES)) { setError('Import files must be 5 MB or smaller.'); return; }
+    if (!notes.length) { setError(picked.length ? 'Choose .md, .txt, .csv or .json files, or a Notion .zip export.' : ''); return; }
+    if (notes.some(({ file, path }) => file.size > (isZip(path) ? MAX_ZIP_BYTES : MAX_IMPORT_BYTES))) {
+      setError('Import files must be 5 MB or smaller, and .zip exports 50 MB or smaller.');
+      return;
+    }
     setBusy(true);
     try {
-      if (notes.length === 1 && !fromFolder) {
+      // A single note goes into the paste box to edit; exports and several files are listed.
+      if (notes.length === 1 && !fromFolder && /\.(md|markdown|txt|json)$/i.test(notes[0].path)) {
         updateSource(await notes[0].file.text());
         setNoteTitle(titleFromFileName(notes[0].file.name));
         fileTitle.current = true;
       } else {
-        setFiles(await Promise.all(notes.map(async ({ file, path }) => ({ name: file.name, path, text: await file.text() }))));
+        const read = await Promise.all(notes.map(async ({ file, path }) => isZip(path)
+          ? readZip(new Uint8Array(await file.arrayBuffer()))
+          : [{ name: file.name, path, text: await file.text() }]));
+        const found = read.flat();
+        if (!found.length) { setError('This export holds no .md, .txt, .csv or .json notes.'); return; }
+        setFiles(found);
         setNoteTitle('');
         if (ignored) setResult(`${ignored} other file${ignored === 1 ? ' was' : 's were'} ignored.`);
       }
-    } catch { setError('Could not read these files.'); }
+    } catch (error) { setError(error instanceof Error && /zip/i.test(error.message) ? error.message : 'Could not read these files.'); }
     finally { setBusy(false); }
   };
-  const fromNote = files.length ? files.some(file => !/\.json$/i.test(file.name)) : !!source.trim() && !/^[{[]/.test(source.trim());
+  const fromNote = files.length ? files.some(file => !/\.(json|csv)$/i.test(file.name)) : !!source.trim() && !/^[{[]/.test(source.trim());
   // A fresh single note may go to AI conversion instead; retries and JSON exports may not.
   const singleNote = preview?.length === 1 && fromNote && files.length <= 1;
   const placeholders = preview ? findPlaceholders(preview) : [];
@@ -178,8 +189,8 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
               placeholder="For example: Summarize {{notes}} for {{team}} in three bullets." />
           </div>
           <div className={styles.field}>
-            <label htmlFor="import-file">Or choose files (.md, .txt or .json, up to 5 MB each)</label>
-            <input id="import-file" type="file" multiple accept=".json,.md,.markdown,.txt" disabled={busy}
+            <label htmlFor="import-file">Or choose files: .md, .txt, .csv, .json, or a Notion .zip export</label>
+            <input id="import-file" type="file" multiple accept=".json,.md,.markdown,.txt,.csv,.zip" disabled={busy}
               onChange={event => { void readFiles([...event.target.files ?? []].map(file => ({ file, path: file.name })), false); event.target.value = ''; }} />
           </div>
           <div className={styles.field}>
