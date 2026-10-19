@@ -17,6 +17,7 @@ vi.mock('@/lib/auth', () => ({
     deleteLLMConnection: vi.fn(),
     testLLMConnection: vi.fn(),
     logoutEverywhere: vi.fn(),
+    setSignInNotice: vi.fn(),
   },
 }));
 
@@ -308,6 +309,8 @@ describe('SettingsPage', () => {
       expect(ApiClient.deleteAccount).toHaveBeenCalledWith('testpass123');
       expect(logout).toHaveBeenCalled();
     });
+    expect(AuthService.setSignInNotice).toHaveBeenCalledWith('Your account and all its prompts were deleted.');
+    expect(window.location.pathname).toBe('/library');
   });
 
   it('cannot delete without entering a password', async () => {

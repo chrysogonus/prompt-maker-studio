@@ -19,13 +19,17 @@ function importedHref(created: PromptHistoryResponse[]): string {
   return folders.size === 1 && folder ? libraryHref({ type: 'folder', folder }) : '/library';
 }
 
-export default function ImportPrompts({ onCreated, folders }: {
+export default function ImportPrompts({ onCreated, folders, primary = false }: {
   onCreated: (prompts: PromptHistoryResponse[]) => void;
   folders: string[];
+  /** The empty library leads with importing, since most people arrive with prompts. */
+  primary?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const imported = useRef<PromptHistoryResponse[]>([]);
+  // A file's name is only a fallback title for that file, not for text pasted afterwards.
+  const fileTitle = useRef(false);
   const close = () => {
     if (busy) return;
     setOpen(false);
@@ -83,7 +87,7 @@ export default function ImportPrompts({ onCreated, folders }: {
     router.push('/editor/new?import=1');
   };
   return <>
-    <Button variant="secondary" onClick={() => setOpen(true)}>Add existing prompts</Button>
+    <Button variant={primary ? 'primary' : 'secondary'} onClick={() => setOpen(true)}>Add existing prompts</Button>
     <Dialog className={styles.importDialog} isOpen={open} title="Add existing prompts" onClose={close}>
       <div className={styles.form}>
         {result && <p role="status">{result}</p>}
@@ -100,7 +104,7 @@ export default function ImportPrompts({ onCreated, folders }: {
           <p className={styles.dialogText}>Paste a prompt or choose a file. You can review everything before it is added; existing prompts are never replaced.</p>
           <div className={styles.field}>
             <label htmlFor="import-source">Paste text</label>
-            <textarea id="import-source" value={source} disabled={busy} onChange={event => updateSource(event.target.value)} rows={8}
+            <textarea id="import-source" value={source} disabled={busy} onChange={event => { updateSource(event.target.value); if (fileTitle.current) { setNoteTitle(''); fileTitle.current = false; } }} rows={8}
               placeholder="For example: Summarize {{notes}} for {{team}} in three bullets." />
           </div>
           <div className={styles.field}>
@@ -111,7 +115,7 @@ export default function ImportPrompts({ onCreated, folders }: {
               updateSource('');
               if (file.size > MAX_IMPORT_BYTES) { setError('Import files must be 5 MB or smaller.'); return; }
               setBusy(true);
-              try { updateSource(await file.text()); setNoteTitle(file.name.replace(/\.[^.]+$/, '').slice(0, 100)); } catch { setError('Could not read this file.'); }
+              try { updateSource(await file.text()); setNoteTitle(file.name.replace(/\.[^.]+$/, '').slice(0, 100)); fileTitle.current = true; } catch { setError('Could not read this file.'); }
               finally { setBusy(false); }
             }} />
           </div>

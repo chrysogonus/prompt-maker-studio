@@ -422,22 +422,20 @@
   margin-top: var(--space-6);
 }
 
-.primaryLink {
+.secondaryLink {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
   padding: 0 16px;
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
+  background: var(--color-panel);
+  color: var(--text-primary);
   font-weight: var(--weight-semibold);
 }
 
-.primaryLink {
-  background: var(--color-accent-tag);
-  color: var(--on-accent);
-}
-
-.primaryLink:hover {
-  background: var(--color-accent-tag-hover);
+.secondaryLink:hover {
+  background: var(--bg-tertiary);
 }
 
 .starters {
@@ -501,6 +499,7 @@
 
 .formActions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-2);
 }

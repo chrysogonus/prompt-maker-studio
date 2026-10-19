@@ -296,11 +296,15 @@ function LibraryContent() {
             Save the prompts you keep retyping. Split them into sections, mark the parts that change
             with <code>{'{{variables}}'}</code>, and copy a filled-in version whenever you need it.
           </p>
+          <p>
+            Already keep prompts in Notion, Obsidian or Markdown files? Add them here; you review
+            everything before it is saved.
+          </p>
           <div className={styles.heroActions}>
-            <Link href="/editor/new" className={styles.primaryLink}>
+            <ImportPrompts onCreated={addImported} folders={folders} primary />
+            <Link href="/editor/new" className={styles.secondaryLink}>
               New prompt
             </Link>
-            <ImportPrompts onCreated={addImported} folders={folders} />
           </div>
           <h2>Or start from a template</h2>
           <ul className={styles.starters}>

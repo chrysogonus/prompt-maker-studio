@@ -256,6 +256,12 @@ export class AuthService {
     }
   }
 
+  /** Explain on the sign-in screen why the user was signed out, e.g. after deleting the account. */
+  static setSignInNotice(reason: string): void {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem(SESSION_EXPIRY_KEY, JSON.stringify({ reason, returnTo: '/library' }));
+  }
+
   static clearSessionExpiry(): void {
     if (typeof window === 'undefined') return;
     sessionStorage.removeItem(SESSION_EXPIRY_KEY);

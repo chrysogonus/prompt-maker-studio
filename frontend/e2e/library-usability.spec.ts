@@ -68,6 +68,8 @@ for (const width of [1440, 390, 320]) {
     const dialogBox = (await page.getByRole('dialog', { name: 'Add existing prompts' }).boundingBox())!;
     expect(dialogBox.y).toBeGreaterThanOrEqual(0);
     expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(height);
+    // Nothing inside the dialog may be wider than the dialog, e.g. a row of buttons on phones.
+    expect(await page.getByRole('dialog', { name: 'Add existing prompts' }).evaluate(d => d.scrollWidth <= d.clientWidth)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`import-${width}.png`), fullPage: true });
     await page.getByRole('button', { name: 'Keep as written' }).click();

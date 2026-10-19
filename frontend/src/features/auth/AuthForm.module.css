@@ -244,6 +244,11 @@
 /* Sits under its own field, so the offending input is identifiable at a glance
    as well as through aria-describedby. Colour is not the only signal — the
    input also carries aria-invalid and the .input[aria-invalid] border below. */
+.fieldHint {
+  color: var(--text-secondary);
+  font-size: var(--text-sm-size);
+}
+
 .fieldError {
   color: var(--color-danger);
   font-size: var(--text-sm-size);

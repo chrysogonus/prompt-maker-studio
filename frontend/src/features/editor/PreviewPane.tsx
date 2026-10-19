@@ -61,6 +61,9 @@ export default function PreviewPane({
   const [tryOpen, setTryOpen] = useState(false);
   const tryingRef = useRef(false);
   const copiedTimer = useRef<number | null>(null);
+  const resultRef = useRef<HTMLElement>(null);
+  // The output lands below the fold of the panel; bring it into view once.
+  useEffect(() => { if (result) resultRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); }, [result]);
   useEffect(
     () => () => {
       if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
@@ -266,7 +269,7 @@ export default function PreviewPane({
             </div>
             {trying && <p className={styles.tryResult} role="status">Running the filled prompt…</p>}
             {tryError && <p className={styles.tryResult} role="alert">{tryError}{tryError.includes('Settings →') && <> <Link href="/settings#s-api">Open Settings</Link></>}</p>}
-            {result && <section className={styles.tryResult} aria-label="Try once output">
+            {result && <section ref={resultRef} className={styles.tryResult} aria-label="Try once output">
               <h3>Output</h3>
               <p>{result.response.provider} / {result.response.model}</p>
               {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier inputs. Run again to try the current prompt.</p>}

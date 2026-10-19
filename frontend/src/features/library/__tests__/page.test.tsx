@@ -611,6 +611,20 @@ describe('LibraryPage', () => {
     expect(AuthService.updateProfile).toHaveBeenCalledWith({ default_library_view: 'grid' });
   });
 
+  it('does not reuse a chosen file name as the title of text pasted afterwards', async () => {
+    // jsdom has no Blob.text(); browsers do.
+    File.prototype.text ??= function (this: File) {
+      return new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(this); });
+    };
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.upload(screen.getByLabelText(/Or choose a file/), new File(['A note from a file'], 'Old file.md', { type: 'text/markdown' }));
+    await waitFor(() => expect(screen.getByLabelText('Title for a single note')).toHaveValue('Old file'));
+    fireEvent.change(screen.getByLabelText('Paste text'), { target: { value: 'Something pasted instead' } });
+    expect(screen.getByLabelText('Title for a single note')).toHaveValue('');
+  });
+
   it('marks inputs in prompt snippets', async () => {
     vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [{ name: 'Task', content: 'Summarise {{notes}} for {{team}}.' }] })]);
     const { container } = await renderLibrary();
@@ -622,7 +636,9 @@ describe('LibraryPage', () => {
     await renderLibrary();
 
     expect(screen.getByRole('heading', { name: 'Your prompt library is empty' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add existing prompts' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add existing prompts' })).toHaveClass(/primary/);
+    expect(screen.getByText(/Notion, Obsidian or Markdown files/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New prompt' })).toHaveAttribute('href', '/editor/new');
     expect(screen.queryByRole('link', { name: 'Paste a prompt' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Rewrite my text/ })).toHaveAttribute(
       'href',

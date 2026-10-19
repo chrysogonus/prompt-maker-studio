@@ -12,6 +12,9 @@ any release. See [Project status](./README.md#project-status).
 
 ### Changed
 
+- The empty library leads with Add existing prompts and says it takes Notion,
+  Obsidian and Markdown notes; New prompt sits beside it.
+
 - Library grid cards show the variable count like the list, and card snippets
   prefer the Task section over a shared role line.
 - Save as written suggests a short title from the first line, without `{{variables}}`.
@@ -46,6 +49,13 @@ any release. See [Project status](./README.md#project-status).
   the library; Output options or the library menu add the section tags.
 
 ### Fixed
+
+- The import preview's buttons wrap on phones instead of pushing "Keep as written"
+  off-screen, and a file's name is no longer reused as the title of text pasted
+  afterwards.
+- Registration shows the password rules under the field while typing, Try once
+  scrolls its output into view, and deleting an account ends on the sign-in screen
+  with a confirmation.
 
 - Undoing a pasted conversion no longer reopens its review dialog when you return
   to the prompt; only a Paste dialog left open is recovered.
