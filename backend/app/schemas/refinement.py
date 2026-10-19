@@ -45,11 +45,14 @@ class RefineSnapshotQuestionsRequest(RefineSnapshotRequest):
     force: bool = False
 
 
-class RefineSnapshotDraftRequest(RefineSnapshotRequest, RefineDraftRequest):
+class RefineSnapshotDraftRequest(RefineSnapshotRequest):
+    # No questions at all asks for an improvement without clarifications.
+    qa_pairs: list[RefineQAPair] = Field(default_factory=list, max_length=10)
+
     @field_validator("qa_pairs")
     @classmethod
     def require_answer(cls, pairs: list[RefineQAPair]) -> list[RefineQAPair]:
-        if not any(pair.answer.strip() for pair in pairs):
+        if pairs and not any(pair.answer.strip() for pair in pairs):
             message = "Answer at least one question before creating a draft"
             raise ValueError(message)
         return pairs

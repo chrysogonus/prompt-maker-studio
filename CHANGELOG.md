@@ -71,6 +71,10 @@ any release. See [Project status](./README.md#project-status).
   an outdated "Your unsaved changes were restored" notice next to the import notice.
 - Library search matches every word in any order across titles, folders and sections
   ("email refund" finds "Refund Request Template"), and ignores extra spaces.
+- Refine offers Improve without questions, for a draft that tightens the wording
+  without new requirements; `POST /api/prompts/refine/draft` accepts no `qa_pairs`.
+  Its questions no longer ask what a `{{variable}}` should be, and an applied draft
+  stays in the panel so it can be applied again after Undo without another AI call.
 
 ## [0.7.0] - 2026-10-18
 

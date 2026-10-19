@@ -96,11 +96,10 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
     await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}}.');
 
+    // The applied draft stays in the panel, so it applies again without another AI call.
     await page.getByRole('button', { name: 'Refine', exact: true }).click();
-    await panel.getByRole('button', { name: 'Find questions' }).click();
-    await panel.getByLabel('Who will read this?').fill('Beginners');
-    await panel.getByRole('button', { name: 'Create draft' }).click();
     await panel.getByRole('button', { name: 'Apply changes' }).click();
+    expect(calls).toBe(1);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     const save = page.getByRole('dialog', { name: 'Save prompt' });
     await save.getByLabel('Name', { exact: true }).fill('Refined explanation');

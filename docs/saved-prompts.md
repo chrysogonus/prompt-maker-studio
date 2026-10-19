@@ -62,9 +62,12 @@ stored sections are unchanged. The library menu also offers Copy as plain text.
 ## Refinement
 
 Choose **Refine** to work on the current sections, including a new or unsaved
-prompt. Explicitly request questions, answer them, then request a draft. Review
+prompt. Explicitly request questions, answer them, then request a draft, or choose
+**Improve without questions** for a draft that tightens the wording without new
+requirements. Questions never ask what a `{{variable}}` should be. Review
 section-level changes or the full draft, edit the proposal and apply locally
-with Undo; normal Save persists it. Closing the panel retains the session in
+with Undo; normal Save persists it. After Undo the same draft can be applied again
+without another AI call. Closing the panel retains the session in
 memory, while navigation/reload discards the session. Changing the source
 sections requires restarting. Refinement replaces the desktop preview and uses
 a full-screen dialog on phones. Each AI request shows provider and charge

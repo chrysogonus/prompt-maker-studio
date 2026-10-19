@@ -79,7 +79,7 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 | `GET` | `/api/prompts/{id}/versions` | Yes | Version history |
 | `POST` | `/api/prompts/{id}/versions/{version_id}/restore` | Yes | Restore a version (the replaced state becomes a version) |
 | `POST` | `/api/prompts/refine/questions` | Yes | Ask clarifying questions about current editor `fields`; optional `force` |
-| `POST` | `/api/prompts/refine/draft` | Yes | Revise current `fields` using `qa_pairs`; returns validated section edits without saving |
+| `POST` | `/api/prompts/refine/draft` | Yes | Revise current `fields` using `qa_pairs` (omit or send `[]` to improve without clarifications); returns validated section edits without saving |
 | `POST` | `/api/prompts/{id}/refine/questions`, `/refine/draft` | Yes | Retained saved-prompt refinement API; draft returns text |
 
 For `PATCH`, null values leave fields unchanged; use `folder: ""` to unfile

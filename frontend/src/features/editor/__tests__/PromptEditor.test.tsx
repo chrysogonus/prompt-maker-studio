@@ -496,6 +496,44 @@ describe('prompt refinement', () => {
     expect(ApiClient.getRefinementQuestions).toHaveBeenLastCalledWith(prompt().fields, true);
   });
 
+  it('improves the prompt without questions, from the start or when no gaps are found', async () => {
+    const user = userEvent.setup();
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Improve without questions' }));
+    await screen.findByRole('button', { name: 'Apply changes' });
+    expect(ApiClient.createRefinementDraft).toHaveBeenLastCalledWith(prompt().fields, []);
+    expect(ApiClient.getRefinementQuestions).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValueOnce({ questions: [] });
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await screen.findByText('No important gaps were identified.');
+    await user.click(screen.getByRole('button', { name: 'Improve without questions' }));
+    await screen.findByRole('button', { name: 'Apply changes' });
+    expect(ApiClient.createRefinementDraft).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps an applied draft so it can be applied again after Undo without another AI call', async () => {
+    const user = userEvent.setup();
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.type(await screen.findByLabelText('Who will read this?'), 'Managers');
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
+    await user.click(await screen.findByRole('button', { name: 'Apply changes' }));
+    const refined = 'You are a concise engineering lead writing for managers.';
+    expect(screen.getByLabelText('Role text')).toHaveValue(refined);
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    expect(screen.getByText('These changes are applied to your draft.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Close refinement' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByLabelText('Role text')).toHaveValue(prompt().fields[0].content);
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Apply changes' }));
+    expect(screen.getByLabelText('Role text')).toHaveValue(refined);
+    expect(ApiClient.createRefinementDraft).toHaveBeenCalledTimes(1);
+  });
+
   it('explains a missing connection without starting an AI call', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.getPromptsConfig).mockResolvedValue({ provider_connected: false } as never);
