@@ -45,6 +45,7 @@ describe('prompt import', () => {
     expect(convertPlaceholders(prompts)[0].fields[0].content).toBe(
       'Outline {{topic}} for {{target_audience}} in a {{tone}} voice. Use {{transcript}}. Keep {{format}}, <ROLE>x</ROLE>, <example>e</example>, [a link](https://x.y), arr[i] and [ ].');
     expect(findPlaceholders(convertPlaceholders(prompts))).toEqual([]);
+    expect(findPlaceholders([{ name: 'P', folder: null, fields: [{ name: 'Prompt', content: 'See [[Writing style guide]] and [[Voice|our voice]].' }] }])).toEqual([]);
   });
   it('titles files from their names without extensions or Notion page IDs', () => {
     expect(titleFromFileName('Cold email 8b7e6d5c4a3b2a1f8b7e6d5c4a3b2a1f.md')).toBe('Cold email');

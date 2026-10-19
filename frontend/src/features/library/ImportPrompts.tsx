@@ -74,6 +74,8 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
   const [dragging, setDragging] = useState(false);
   // Whether tidying the notes changed anything, so keeping the original is a real choice.
   const [tidied, setTidied] = useState(false);
+  // Placeholders the user unticked; everything else found is offered for conversion.
+  const [unchosen, setUnchosen] = useState<string[]>([]);
   const updateSource = (text: string) => { setSource(text); setPreview(null); setError(''); setResult(''); };
   const showPreview = (keep: boolean) => {
     try {
@@ -83,7 +85,7 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
       setPreview(parsed.prompts);
       setSkipped(parsed.skipped);
       setTidied(JSON.stringify(parse(true).prompts) !== JSON.stringify(parse(false).prompts));
-      setBeforeConvert(null); setError(''); setResult('');
+      setBeforeConvert(null); setUnchosen([]); setError(''); setResult('');
     } catch (error) { setError((error as Error).message); }
   };
   // One file goes into the paste box to edit; several, or a folder, are listed instead.
@@ -112,6 +114,7 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
   // A fresh single note may go to AI conversion instead; retries and JSON exports may not.
   const singleNote = preview?.length === 1 && fromNote && files.length <= 1;
   const placeholders = preview ? findPlaceholders(preview) : [];
+  const chosen = placeholders.filter(token => !unchosen.includes(token));
   const sharedFolder = preview?.every(prompt => (prompt.folder ?? '') === (preview[0].folder ?? '')) ? preview[0].folder ?? '' : '';
   const importPrompts = async () => {
     let validated: ImportPrompt[];
@@ -190,7 +193,7 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
           </div>}
           <div className={styles.field}>
             <label htmlFor="import-note-title">Title for a single note</label>
-            <input id="import-note-title" value={noteTitle} onChange={event => setNoteTitle(event.target.value)} maxLength={100} placeholder="Imported note" disabled={busy} />
+            <input id="import-note-title" value={noteTitle} onChange={event => setNoteTitle(event.target.value)} maxLength={100} placeholder="From the first line" disabled={busy} />
             <small>Used when the text has no # Title. You can change it in the preview.</small>
           </div>
           <details className={styles.dialogText}>
@@ -213,14 +216,21 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
             <input id="import-folder-all" value={sharedFolder} list="import-folders" maxLength={255} disabled={busy} placeholder="Unfiled"
               onChange={event => setPreview(preview.map(item => ({ ...item, folder: event.target.value })))} />
           </div>}
-          {placeholders.length > 0 && <div className={styles.placeholderOffer}>
-            <p>Found {placeholders.length === 1 ? 'a placeholder' : `${placeholders.length} placeholders`}: {placeholders.map(token => <code key={token}>{token}</code>)}</p>
-            <Button variant="secondary" disabled={busy} onClick={() => { setBeforeConvert(preview); setPreview(convertPlaceholders(preview)); }}>
-              {placeholders.length === 1 ? 'Turn it into an input' : 'Turn them into inputs'}
+          {placeholders.length > 0 && !beforeConvert && <fieldset className={styles.placeholderOffer}>
+            <legend>Found {placeholders.length === 1 ? 'a placeholder' : `${placeholders.length} placeholders`}. Choose which become inputs you fill in:</legend>
+            <div className={styles.placeholderChoices}>
+              {placeholders.map(token => <label key={token}>
+                <input type="checkbox" checked={!unchosen.includes(token)} disabled={busy}
+                  onChange={event => setUnchosen(event.target.checked ? unchosen.filter(item => item !== token) : [...unchosen, token])} />
+                <code>{token}</code>
+              </label>)}
+            </div>
+            <Button variant="secondary" disabled={busy || !chosen.length} onClick={() => { setBeforeConvert(preview); setPreview(convertPlaceholders(preview, chosen)); }}>
+              {placeholders.length === 1 ? 'Turn it into an input' : `Turn ${chosen.length === placeholders.length ? 'them' : chosen.length} into inputs`}
             </Button>
-          </div>}
-          {beforeConvert && <p role="status" className={styles.dialogText}>Placeholders are now inputs you fill in before copying.{' '}
-            <Button variant="ghost" disabled={busy} onClick={() => { setPreview(preview.map((item, i) => ({ ...item, fields: beforeConvert[i].fields }))); setBeforeConvert(null); }}>Undo</Button>
+          </fieldset>}
+          {beforeConvert && <p role="status" className={styles.dialogText}>Placeholders are now inputs you fill in before copying; their wording is kept as each input&apos;s hint.{' '}
+            <Button variant="ghost" disabled={busy} onClick={() => { setPreview(preview.map((item, i) => ({ ...item, fields: beforeConvert[i].fields, variable_metadata: beforeConvert[i].variable_metadata }))); setBeforeConvert(null); }}>Undo</Button>
           </p>}
           <div className={styles.importPreview}>
             {preview.map((prompt, index) => <div className={styles.importItem} key={index}>

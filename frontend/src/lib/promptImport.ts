@@ -1,4 +1,5 @@
 import { storageKey } from '@/lib/branding';
+import { suggestTitle } from '@/lib/sections';
 import type { PromptCreateRequest, VariableMetadataItem } from '@/types/prompt';
 
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
@@ -173,7 +174,7 @@ export function parsePromptImport(source: string, suggestedTitle = 'Imported not
   }
   // Otherwise a single note retains every character, including frontmatter and headings.
   if (!/^# .+/.test(text)) {
-    return validateImportPrompts([{ name: title || suggestedTitle.trim() || 'Imported note', folder: null, fields: [{ name: 'Prompt', content: source }] }]);
+    return validateImportPrompts([{ name: title || suggestedTitle.trim() || suggestTitle(text) || 'Imported note', folder: null, fields: [{ name: 'Prompt', content: source }] }]);
   }
   const prompts: PromptCreateRequest[] = [];
   let current: PromptCreateRequest | undefined;
@@ -205,10 +206,10 @@ export function parsePromptImport(source: string, suggestedTitle = 'Imported not
   return validateImportPrompts(prompts);
 }
 
-// [TOPIC] or [insert topic] (not a Markdown link or arr[i]), {topic} (not {{topic}}),
-// and <transcript> when no </transcript> closes it as a tag.
+// [TOPIC] or [insert topic] (not a Markdown link, a [[wiki-link]] or arr[i]), {topic}
+// (not {{topic}}), and <transcript> when no </transcript> closes it as a tag.
 // ponytail: heuristic; people see the list and choose before anything changes.
-const PLACEHOLDER = /(?<![\w\]])\[([A-Za-z][\w -]{1,40})\](?!\()|(?<![{\w])\{([A-Za-z][\w -]{0,40})\}(?!\})|<([a-z][a-z0-9_ -]{1,40})>/g;
+const PLACEHOLDER = /(?<![\w\][])\[([A-Za-z][\w -]{1,40})\](?![\](])|(?<![{\w])\{([A-Za-z][\w -]{0,40})\}(?!\})|<([a-z][a-z0-9_ -]{1,40})>/g;
 
 const placeholderName = (inner: string) => inner.trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/[^a-z0-9_]/g, '');
 
@@ -228,15 +229,30 @@ export function findPlaceholders(prompts: ImportPrompt[]): string[] {
   return [...new Set(prompts.flatMap(prompt => prompt.fields.flatMap(field => [...placeholdersIn(field.content).keys()])))];
 }
 
-/** Rewrite every found placeholder as a `{{name}}` input. */
-export function convertPlaceholders(prompts: ImportPrompt[]): ImportPrompt[] {
-  return prompts.map(prompt => ({
-    ...prompt,
-    fields: prompt.fields.map(field => {
+/** "[PASTE CODE HERE]" reads as the hint "Paste code here". */
+const placeholderHint = (token: string) => {
+  const inner = token.slice(1, -1).trim().replace(/[_-]+/g, ' ');
+  return inner.charAt(0).toUpperCase() + inner.slice(1).toLowerCase();
+};
+
+/**
+ * Rewrite the chosen placeholders (all by default) as `{{name}}` inputs, keeping
+ * each placeholder's wording as its input's hint unless the input already has one.
+ */
+export function convertPlaceholders(prompts: ImportPrompt[], chosen?: string[]): ImportPrompt[] {
+  return prompts.map(prompt => {
+    const metadata = { ...prompt.variable_metadata };
+    const fields = prompt.fields.map(field => {
       const found = placeholdersIn(field.content);
-      return { ...field, content: field.content.replace(PLACEHOLDER, token => found.has(token) ? `{{${found.get(token)}}}` : token) };
-    }),
-  }));
+      return { ...field, content: field.content.replace(PLACEHOLDER, token => {
+        const name = found.get(token);
+        if (!name || (chosen && !chosen.includes(token))) return token;
+        metadata[name] = { ...(metadata[name] ?? { type: 'text' }), description: metadata[name]?.description || placeholderHint(token) };
+        return `{{${name}}}`;
+      }) };
+    });
+    return Object.keys(metadata).length ? { ...prompt, fields, variable_metadata: metadata } : { ...prompt, fields };
+  });
 }
 
 /** A file name as a title: no extension, and no Notion page ID such as "Cold email 8b7e…". */

@@ -21,6 +21,10 @@ any release. See [Project status](./README.md#project-status).
   and read `[[links]]` as text, under the same "keep the original" choice as front
   matter. The first tag suggests the folder, a Notion favourite stays a favourite, and
   a pasted page that starts at `##` uses that heading as its title and splits on it.
+- The placeholder offer lists each placeholder with a checkbox, never includes
+  `[[wiki-links]]`, and keeps each placeholder's wording as its input's hint
+  (`[PASTE CODE HERE]` becomes an input hinted "Paste code here").
+- A note without a title is named from its first line instead of "Imported note".
 
 - The empty library leads with Add existing prompts and says it takes Notion,
   Obsidian and Markdown notes; New prompt sits beside it.

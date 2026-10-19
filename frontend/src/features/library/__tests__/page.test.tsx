@@ -383,7 +383,7 @@ describe('LibraryPage', () => {
     await user.type(screen.getByLabelText('Paste text'), 'Plan a trip to Lisbon.');
     await user.click(screen.getByRole('button', { name: 'Preview' }));
     await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
-    expect(JSON.parse(sessionStorage.getItem(pasteHandoffKey())!)).toEqual({ text: 'Plan a trip to Lisbon.', title: 'Imported note', folder: null });
+    expect(JSON.parse(sessionStorage.getItem(pasteHandoffKey())!)).toEqual({ text: 'Plan a trip to Lisbon.', title: 'Plan a trip to Lisbon.', folder: null });
     expect(push).toHaveBeenCalledWith('/editor/new?import=1');
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
   });
@@ -407,21 +407,33 @@ describe('LibraryPage', () => {
     expect(JSON.parse(sessionStorage.getItem(pasteHandoffKey())!)).toEqual({ text: 'Outline a post.\n\n## Output\n- 5 headings', title: 'Blog outline', folder: 'Writing' });
   });
 
-  it('offers to turn found placeholders into inputs, with undo', async () => {
+  it('turns the chosen placeholders into inputs with their wording as hints, with undo', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.createPrompt).mockResolvedValue(saved({ id: 20, name: 'Post' }));
     await renderLibrary();
     await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
-    fireEvent.change(screen.getByLabelText('Paste text'), { target: { value: '# Post\nWrite about [TOPIC] for {audience}.' } });
+    fireEvent.change(screen.getByLabelText('Paste text'), { target: { value: '# Post\nWrite about [TOPIC] for {audience}, see [[Style]]. Code: [PASTE CODE HERE]' } });
     await user.click(screen.getByRole('button', { name: 'Preview' }));
-    expect(screen.getByText(/Found 2 placeholders/)).toHaveTextContent('[TOPIC]{audience}');
-    await user.click(screen.getByRole('button', { name: 'Turn them into inputs' }));
-    expect(screen.getByText('Write about {{topic}} for {{audience}}.')).toBeVisible();
+    const offer = screen.getByRole('group', { name: /Found 3 placeholders/ });
+    expect(within(offer).getAllByRole('checkbox').map(box => box.parentElement!.textContent)).toEqual(['[TOPIC]', '{audience}', '[PASTE CODE HERE]']);
+    await user.click(within(offer).getByRole('checkbox', { name: '{audience}' }));
+    await user.click(screen.getByRole('button', { name: 'Turn 2 into inputs' }));
+    expect(screen.getByText('Write about {{topic}} for {audience}, see Style. Code: {{paste_code_here}}')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Undo' }));
-    expect(screen.getByText('Write about [TOPIC] for {audience}.')).toBeVisible();
+    expect(screen.getByText('Write about [TOPIC] for {audience}, see Style. Code: [PASTE CODE HERE]')).toBeVisible();
+    // Undo keeps the earlier choices; tick the third one back.
+    await user.click(screen.getByRole('checkbox', { name: '{audience}' }));
     await user.click(screen.getByRole('button', { name: 'Turn them into inputs' }));
     await user.click(screen.getByRole('button', { name: 'Keep as written' }));
-    await waitFor(() => expect(ApiClient.createPrompt).toHaveBeenCalledWith({ name: 'Post', folder: null, fields: [{ name: 'Prompt', content: 'Write about {{topic}} for {{audience}}.' }] }));
+    await waitFor(() => expect(ApiClient.createPrompt).toHaveBeenCalledWith({
+      name: 'Post', folder: null,
+      fields: [{ name: 'Prompt', content: 'Write about {{topic}} for {{audience}}, see Style. Code: {{paste_code_here}}' }],
+      variable_metadata: {
+        topic: { type: 'text', description: 'Topic' },
+        audience: { type: 'text', description: 'Audience' },
+        paste_code_here: { type: 'text', description: 'Paste code here' },
+      },
+    }));
   });
 
   it('files every previewed prompt in one folder', async () => {

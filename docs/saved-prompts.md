@@ -154,7 +154,8 @@ above both panes as stored only in the current browser.
   folder and a Notion favourite stays a favourite; the preview can keep the original
   text instead.
 - The preview offers to turn placeholders such as `[TOPIC]`, `{audience}` or
-  `<transcript>` into inputs, with Undo, and a **Folder for all prompts** field when
+  `<transcript>` into inputs (each can be unticked; `[[wiki-links]]` are never offered),
+  keeping each placeholder's wording as the input's hint, with Undo, and a **Folder for all prompts** field when
   several prompts are imported.
 - Paste a prompt offers Save as written without AI. The source becomes one Task
   section, preserving its text. Prompts with a single section copy as plain text by
