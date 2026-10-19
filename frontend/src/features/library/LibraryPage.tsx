@@ -328,7 +328,7 @@ function LibraryContent() {
     <div className={styles.page}>
       <header className={styles.head}>
         <h1>{title}</h1>
-        <ImportPrompts onCreated={addImported} folders={folders} existingTitles={(prompts ?? []).map(prompt => prompt.name ?? '')} />
+        <ImportPrompts onCreated={addImported} folders={folders} existing={prompts ?? []} />
         {view.type === 'folder' && (
           <div className={styles.menuWrap} data-menu>
             <button

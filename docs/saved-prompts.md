@@ -170,7 +170,16 @@ above both panes as stored only in the current browser.
   and Status is removed. Binary files are refused with an explanation, and an HTML export
   with advice to export Markdown & CSV instead.
 - A previewed prompt whose title is already in the library starts unticked
-  (**Import a copy anyway**), so re-importing a vault does not duplicate it.
+  (**Import a copy anyway**), so re-importing a vault does not duplicate it. When its text
+  differs from the library prompt (placeholders converted on the first import do not
+  count), the preview offers Leave it as it is (the default), **Update it**, or Import a
+  copy. Updating saves the imported sections over the most recently matched library prompt
+  with the note "Updated from import", so the earlier text stays in History; a concurrent
+  edit fails with 409 and stays in the preview for retry. Importing is a one-time copy, not
+  a sync.
+- Closing the dialog keeps an unfinished preview; reopening it says so and offers
+  **Start over**. Notes directly inside a chosen or dropped folder start Unfiled, while
+  notes in its subfolders are filed by those subfolders.
 - The preview offers to turn placeholders such as `[TOPIC]`, `{audience}` or
   `<transcript>` into inputs (each can be unticked; `[[wiki-links]]` are never offered),
   keeping each placeholder's wording as the input's hint, with Undo, and a **Folder for all prompts** field when

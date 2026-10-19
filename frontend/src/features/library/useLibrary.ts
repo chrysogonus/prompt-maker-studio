@@ -144,7 +144,8 @@ export function useLibrary() {
 
   const selectedPrompts = (prompts ?? []).filter(prompt => selected.includes(prompt.id));
   const toggleSelected = (id: number) => setSelected(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
-  const addImported = (created: Prompt[]) => setPrompts(current => [...created, ...(current ?? [])]);
+  // An import can also update library prompts, which move to the top instead of appearing twice.
+  const addImported = (created: Prompt[]) => setPrompts(current => [...created, ...(current ?? []).filter(prompt => !created.some(item => item.id === prompt.id))]);
   const moveSelected = async (event: FormEvent) => {
     event.preventDefault();
     if (batchBusy || !selectedPrompts.length) return;

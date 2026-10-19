@@ -1198,3 +1198,35 @@ an unticked box rather than a separate copy option) and supersedes the 100-promp
 `docs/saved-prompts.md`.
 
 **Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`.
+
+---
+
+## Re-import Can Update Changed Prompts as a New Version
+
+**Status**: Accepted (2026-10-19)
+
+**Context**: People moving from Notion or Obsidian keep editing there and expect to bring
+changes over, but importing again only offered a second copy of an edited note. Closing the
+dialog also kept an unfinished preview that reappeared without explanation, and notes at the
+top of a chosen vault were filed under the vault's own name.
+
+**Decision**: When a previewed prompt's title matches a library prompt and its sections
+differ, the preview offers Leave it as it is (default), Update it, or Import a copy.
+Placeholders converted on the first import do not count as a change. Updating PATCHes the
+sections (and merges any new variable settings) into the most recently matched prompt with
+the version note "Updated from import" and its concurrency timestamp, keeping folder, title
+and favourite. The dialog and landing page say importing is a one-time copy. Closing keeps
+an unfinished preview; reopening says so and offers Start over. Notes directly inside a
+chosen or dropped folder start Unfiled.
+
+**Rationale**: Version history already makes an overwrite reversible, so an explicit update
+is safe without building a sync. Keeping work on Close protects a long review from a
+misclick, and saying so on reopening removes the confusion. The chosen folder is the
+collection, not a category in it.
+
+**Consequences**: Replaces the dialog's "existing prompts are never replaced" promise with an
+explicit per-prompt choice; amends "Vaults and Notion Exports Import as Downloaded". Matching
+is by title only, so a renamed note still imports as new. Two-way sync stays out of scope.
+
+**Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/features/library/useLibrary.ts`,
+`frontend/src/app/page.tsx`.

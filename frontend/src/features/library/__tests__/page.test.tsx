@@ -526,7 +526,8 @@ describe('LibraryPage', () => {
     await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
     await user.type(screen.getByLabelText('Paste text'), '# LinkedIn post\nAgain\n# Brand new\nFresh');
     await user.click(screen.getByRole('button', { name: 'Preview' }));
-    expect(screen.getByRole('checkbox', { name: /Already in your library/ })).not.toBeChecked();
+    // Its text differs from the library's, so updating it is offered too; leaving it is the default.
+    expect(screen.getByRole('radio', { name: 'Leave it as it is' })).toBeChecked();
     expect(screen.getByRole('button', { name: 'Import 1 prompt' })).toBeEnabled();
     await user.click(screen.getByRole('button', { name: 'Import 1 prompt' }));
     expect(await screen.findByText('Imported 1 of 1 prompts. Skipped 1 already in your library.')).toBeInTheDocument();
@@ -537,14 +538,51 @@ describe('LibraryPage', () => {
     await user.type(screen.getByLabelText('Paste text'), '# LinkedIn post\nAgain');
     await user.click(screen.getByRole('button', { name: 'Preview' }));
     expect(screen.getByRole('button', { name: 'Nothing new to import' })).toBeDisabled();
-    await user.click(screen.getByRole('checkbox', { name: /Import a copy anyway/ }));
+    await user.click(screen.getByRole('radio', { name: 'Import a copy' }));
     expect(screen.getByRole('button', { name: 'Keep as written' })).toBeEnabled();
+  });
+
+  it('updates a changed library prompt as a new version when asked, and only then', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.updatePrompt).mockImplementation(async (id, patch) => saved({ id, name: 'LinkedIn post', fields: patch.fields ?? [] }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# LinkedIn post\nTurn my notes into a post for [[AUDIENCE].');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await user.click(screen.getByRole('radio', { name: 'Update it (the current text stays in History)' }));
+    await user.click(screen.getByRole('button', { name: 'Update 1 prompt' }));
+    expect(await screen.findByText('Imported 0 of 0 prompts. Updated 1 (earlier text kept in History).')).toBeInTheDocument();
+    expect(ApiClient.createPrompt).not.toHaveBeenCalled();
+    expect(ApiClient.updatePrompt).toHaveBeenCalledWith(3, {
+      fields: [{ name: 'Prompt', content: 'Turn my notes into a post for [AUDIENCE].' }], note: 'Updated from import', last_updated_at: '2026-07-02T00:00:00',
+    });
+    // The updated text now matches, so importing it again offers nothing.
+    await user.click(screen.getByRole('button', { name: 'Import more' }));
+    await user.type(screen.getByLabelText('Paste text'), '# LinkedIn post\nTurn my notes into a post for [[AUDIENCE].');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByRole('checkbox', { name: /Import a copy anyway/ })).not.toBeChecked();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  });
+
+  it('keeps an unfinished preview after Close, with a way to start over', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# Brand new\nFresh');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    expect(screen.getByText(/Your earlier import is still here/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Brand new');
+    await user.click(screen.getByRole('button', { name: 'Start over' }));
+    expect(screen.getByLabelText('Paste text')).toHaveValue('');
+    expect(screen.queryByText(/Your earlier import is still here/)).not.toBeInTheDocument();
   });
 
   it('counts prompts imported earlier in the same session, starting from an empty library', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([]);
-    vi.mocked(ApiClient.createPrompt).mockImplementation(async (body) => saved({ id: 41, name: body.name }));
+    vi.mocked(ApiClient.createPrompt).mockImplementation(async (body) => saved({ id: 41, name: body.name, fields: body.fields }));
     await renderLibrary();
     await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
     await user.type(screen.getByLabelText('Paste text'), '# Cold email\nWrite');
@@ -740,12 +778,15 @@ describe('LibraryPage', () => {
         note('{"theme": "dark"}', 'app.json', 'Vault/.obsidian/app.json'),
         note('png', 'image.png', 'Vault/Prompts/image.png'),
         note('', 'Empty.md', 'Vault/Empty.md'),
+        note('Root note.', 'Root.md', 'Vault/Root.md'),
       ]);
-      expect(await screen.findByText(/2 files ready/)).toBeInTheDocument();
+      expect(await screen.findByText(/3 files ready/)).toBeInTheDocument();
       expect(screen.getByText('2 other files were ignored.')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Preview' }));
       expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Blog');
       expect(screen.getByLabelText('Folder for Blog')).toHaveValue('Prompts');
+      // A note directly in the chosen folder is not filed under the folder's own name.
+      expect(screen.getByLabelText('Folder for Root')).toHaveValue('');
       expect(screen.getByText('Skipped 1 file:')).toBeInTheDocument();
       expect(screen.getByText('Empty.md: Include some note text or a JSON export.')).toBeInTheDocument();
     });

@@ -9,7 +9,7 @@ import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { libraryHref } from '@/lib/libraryViews';
 import { convertPlaceholders, findPlaceholders, ImportFile, ImportPrompt, importProblem, isImportableFile, MAX_IMPORT_BYTES, parseImportFiles, parsePromptImport, pasteHandoffKey, splitLongSections, titleFromFileName, validateImportPrompts } from '@/lib/promptImport';
 import { MAX_ZIP_BYTES, readZip } from '@/lib/importArchive';
-import type { PromptHistoryResponse } from '@/types/prompt';
+import type { PromptField, PromptHistoryResponse } from '@/types/prompt';
 import styles from './LibraryPage.module.css';
 
 type PickedFile = { file: File; path: string };
@@ -44,18 +44,29 @@ function importedHref(created: PromptHistoryResponse[]): string {
 }
 
 const plural = (count: number, word: string) => `${count.toLocaleString('en')} ${word}${count === 1 ? '' : 's'}`;
-const sameTitle = (a: ImportPrompt, b: ImportPrompt) => a.name.trim().toLowerCase() === b.name.trim().toLowerCase();
+const sameTitle = (a: { name?: string | null }, b: { name?: string | null }) => (a.name ?? '').trim().toLowerCase() === (b.name ?? '').trim().toLowerCase();
+const sameText = (a: PromptField[], b: PromptField[]) =>
+  JSON.stringify(a.map(field => [field.name, field.content])) === JSON.stringify(b.map(field => [field.name, field.content]));
 
-export default function ImportPrompts({ onCreated, folders, existingTitles = [], primary = false }: {
+/** Common root of a chosen or dropped folder: its notes are filed by their own folders, not its name. */
+function withoutRoot(picked: PickedFile[]): PickedFile[] {
+  const root = picked[0]?.path.split('/')[0];
+  return picked.every(({ path }) => path.startsWith(`${root}/`)) ? picked.map(({ file, path }) => ({ file, path: path.slice(root.length + 1) })) : picked;
+}
+
+export default function ImportPrompts({ onCreated, folders, existing = [], primary = false }: {
+  /** Prompts created or updated by the import. */
   onCreated: (prompts: PromptHistoryResponse[]) => void;
   folders: string[];
-  /** Titles already in the library; importing them again is skipped unless asked. */
-  existingTitles?: string[];
+  /** The library; a prompt whose title is already there is skipped unless a copy or an update is chosen. */
+  existing?: PromptHistoryResponse[];
   /** The empty library leads with importing, since most people arrive with prompts. */
   primary?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // Closing keeps an unfinished preview; reopening says so and offers to start over.
+  const [resumed, setResumed] = useState(false);
   const imported = useRef<PromptHistoryResponse[]>([]);
   const folderInput = useRef<HTMLInputElement>(null);
   // A file's name is only a fallback title for that file, not for text pasted afterwards.
@@ -87,13 +98,27 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
   const [unchosen, setUnchosen] = useState<string[]>([]);
   // Preview positions the user ticked or unticked: new prompts start ticked, duplicates unticked.
   const [toggled, setToggled] = useState<number[]>([]);
+  // Duplicates whose library prompt should be updated (as a new version) instead.
+  const [updating, setUpdating] = useState<number[]>([]);
   // The library only refreshes when the dialog closes, so count this session's imports too.
-  const [sessionTitles, setSessionTitles] = useState<string[]>([]);
-  const existing = new Set([...existingTitles, ...sessionTitles].map(title => title.trim().toLowerCase()));
-  const isDuplicate = (prompt: ImportPrompt) => existing.has(prompt.name.trim().toLowerCase());
+  const [sessionPrompts, setSessionPrompts] = useState<PromptHistoryResponse[]>([]);
+  // The most recent library prompt with the same title, if any.
+  const match = (prompt: ImportPrompt) => [...sessionPrompts].reverse().find(other => sameTitle(other, prompt)) ?? existing.find(other => sameTitle(other, prompt));
+  const isDuplicate = (prompt: ImportPrompt) => !!match(prompt);
+  // Changed since it was imported: placeholders converted on the first import do not count.
+  const isChanged = (prompt: ImportPrompt) => {
+    const current = match(prompt);
+    return !!current && !sameText(prompt.fields, current.fields) && !sameText(convertPlaceholders([prompt])[0].fields, current.fields);
+  };
   const ticked = (prompt: ImportPrompt, index: number) => isDuplicate(prompt) === toggled.includes(index);
+  const updates = (prompt: ImportPrompt, index: number) => updating.includes(index) && isChanged(prompt) && !importProblem(prompt);
   // A ticked prompt is imported once nothing stops it.
-  const included = (prompt: ImportPrompt, index: number) => ticked(prompt, index) && !importProblem(prompt);
+  const included = (prompt: ImportPrompt, index: number) => ticked(prompt, index) && !updating.includes(index) && !importProblem(prompt);
+  const startOver = () => {
+    setPreview(null); setFiles([]); setSource(''); setNoteTitle(''); setSkipped([]); setToggled([]); setUpdating([]);
+    setBeforeConvert(null); setUnchosen([]); setKeepOriginal(false); setError(''); setResult(''); setResumed(false);
+    fileTitle.current = false;
+  };
   const updateSource = (text: string) => { setSource(text); setPreview(null); setError(''); setResult(''); };
   const showPreview = (keep: boolean) => {
     try {
@@ -103,11 +128,12 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
       setPreview(parsed.prompts);
       setSkipped(parsed.skipped);
       setTidied(JSON.stringify(parse(true).prompts) !== JSON.stringify(parse(false).prompts));
-      setBeforeConvert(null); setUnchosen([]); setToggled([]); setError(''); setResult('');
+      setBeforeConvert(null); setUnchosen([]); setToggled([]); setUpdating([]); setError(''); setResult('');
     } catch (error) { setError((error as Error).message); }
   };
   // One file goes into the paste box to edit; several, or a folder, are listed instead.
-  const readFiles = async (picked: PickedFile[], fromFolder: boolean) => {
+  const readFiles = async (chosen: PickedFile[], fromFolder: boolean) => {
+    const picked = fromFolder ? withoutRoot(chosen) : chosen;
     const isZip = (path: string) => /\.zip$/i.test(path);
     const notes = picked.filter(({ path }) => isImportableFile(path) || isZip(path));
     const ignored = picked.length - notes.length;
@@ -144,15 +170,20 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
   const placeholders = preview ? findPlaceholders(preview.filter(ticked)) : [];
   const usedIn = (token: string) => preview!.filter((prompt, index) => ticked(prompt, index) && findPlaceholders([prompt]).includes(token)).length;
   const count = preview ? preview.filter(included).length : 0;
+  const updateCount = preview ? preview.filter(updates).length : 0;
   const problems = preview ? preview.filter((prompt, index) => ticked(prompt, index) && importProblem(prompt)).length : 0;
   const chosen = placeholders.filter(token => !unchosen.includes(token));
   const mixedFolders = !!preview?.some(prompt => (prompt.folder ?? '') !== (preview[0].folder ?? ''));
   const sharedFolder = preview && !mixedFolders ? preview[0].folder ?? '' : '';
   const importPrompts = async () => {
     let validated: ImportPrompt[];
-    const duplicates = preview!.filter((prompt, index) => isDuplicate(prompt) && !ticked(prompt, index)).length;
-    const leftOut = preview!.length - duplicates - count;
-    try { validated = validateImportPrompts(preview!.filter(included)); } catch (error) { setError((error as Error).message); return; }
+    let toUpdate: ImportPrompt[] = [];
+    const duplicates = preview!.filter((prompt, index) => isDuplicate(prompt) && !ticked(prompt, index) && !updates(prompt, index)).length;
+    const leftOut = preview!.length - duplicates - count - updateCount;
+    try {
+      validated = count ? validateImportPrompts(preview!.filter(included)) : [];
+      toUpdate = updateCount ? validateImportPrompts(preview!.filter(updates)) : [];
+    } catch (error) { setError((error as Error).message); return; }
     setBusy(true);
     setProgress(0);
     setError('');
@@ -166,19 +197,33 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
       } catch { failed.push(is_favorite ? { ...prompt, is_favorite } : prompt); }
       setProgress(created.length + failed.length);
     }
+    let updated = 0;
+    for (const prompt of toUpdate) {
+      const current = match(prompt)!;
+      try {
+        // The library prompt's current text stays in its History; a concurrent edit fails with 409 and stays for retry.
+        created.push(await ApiClient.updatePrompt(current.id, {
+          fields: prompt.fields, ...(prompt.variable_metadata && { variable_metadata: { ...current.variable_metadata, ...prompt.variable_metadata } }),
+          note: 'Updated from import', ...(current.updated_at && { last_updated_at: current.updated_at }),
+        }));
+        updated++;
+      } catch { failed.push(prompt); }
+      setProgress(created.length + failed.length);
+    }
     if (created.length) {
       imported.current.push(...created);
-      setSessionTitles(titles => [...titles, ...created.map(prompt => prompt.name ?? '')]);
+      setSessionPrompts(prompts => [...prompts, ...created]);
       notifyLibraryChanged();
     }
     setPreview(failed.length ? failed : null);
     setToggled([]);
+    setUpdating([]);
     setBeforeConvert(null);
     setSource('');
     setFiles([]);
     setSkipped([]);
     setDone(failed.length ? null : created);
-    setResult(`Imported ${created.length} of ${validated.length} prompts.${duplicates ? ` Skipped ${duplicates} already in your library.` : ''}${leftOut ? ` Left out ${leftOut} not selected or needing changes.` : ''}${failed.length ? ` ${failed.length} failed; only these remain below for retry.` : ''}`);
+    setResult(`Imported ${created.length - updated} of ${validated.length} prompts.${updated ? ` Updated ${updated} (earlier text kept in History).` : ''}${duplicates ? ` Skipped ${duplicates} already in your library.` : ''}${leftOut ? ` Left out ${leftOut} not selected or needing changes.` : ''}${failed.length ? ` ${failed.length} failed; only these remain below for retry.` : ''}`);
     setBusy(false);
   };
   const reuseWithAI = () => {
@@ -192,7 +237,7 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
   const edit = (index: number, change: (prompt: ImportPrompt) => ImportPrompt) => setPreview(preview!.map((item, i) => i === index ? change(item) : item));
   const toggle = (index: number) => setToggled(toggled.includes(index) ? toggled.filter(item => item !== index) : [...toggled, index]);
   return <>
-    <Button variant={primary ? 'primary' : 'secondary'} onClick={() => setOpen(true)}>Add existing prompts</Button>
+    <Button variant={primary ? 'primary' : 'secondary'} onClick={() => { setResumed(!!preview); setOpen(true); }}>Add existing prompts</Button>
     <Dialog className={styles.importDialog} isOpen={open} title="Add existing prompts" onClose={close}>
       <div className={styles.form} data-dragging={dragging || undefined}
         onDragOver={event => { if (!preview && !done && event.dataTransfer.types.includes('Files')) { event.preventDefault(); setDragging(true); } }}
@@ -214,7 +259,7 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
           </div>
         </>}
         {!preview && !done && <>
-          <p className={styles.dialogText}>Paste a prompt, choose files or a whole folder, or drop them here. Notion and Obsidian notes work as exported. You can review everything before it is added; existing prompts are never replaced.</p>
+          <p className={styles.dialogText}>Paste a prompt, choose files or a whole folder, or drop them here. Notion and Obsidian notes work as exported. You can review everything before it is added. Importing copies your notes once; import them again later to add new ones or update prompts that changed.</p>
           {!files.length && <div className={styles.field}>
             <label htmlFor="import-source">Paste text</label>
             <textarea id="import-source" value={source} disabled={busy} onChange={event => { updateSource(event.target.value); if (fileTitle.current) { setNoteTitle(''); fileTitle.current = false; } }} rows={8}
@@ -250,6 +295,9 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
           <Button variant="primary" disabled={busy || (!source.trim() && !files.length)} onClick={() => showPreview(keepOriginal)}>Preview</Button>
         </>}
         {preview && <>
+          {resumed && <p role="status" className={styles.dialogText}>Your earlier import is still here.{' '}
+            <Button variant="ghost" disabled={busy} onClick={startOver}>Start over</Button>
+          </p>}
           <p className={styles.dialogText}>Review {plural(preview.length, 'prompt')} before importing. Untick any you don&apos;t want, and edit titles and folders; leave a folder empty for Unfiled.</p>
           {skipped.length > 0 && <div className={styles.importError}>
             <p>Skipped {plural(skipped.length, 'file')}:</p>
@@ -292,10 +340,22 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
               const problem = importProblem(prompt);
               const first = preview.findIndex(other => sameTitle(other, prompt));
               return <div className={styles.importItem} key={index}>
-                <label className={styles.checkRow}>
+                {isChanged(prompt) ? <fieldset className={styles.duplicateChoice}>
+                  <legend>Already in your library, with different text:</legend>
+                  {([['skip', 'Leave it as it is'], ['update', 'Update it (the current text stays in History)'], ['copy', 'Import a copy']] as const).map(([choice, label]) =>
+                    <label key={choice} className={styles.checkRow}>
+                      <input type="radio" name={`import-duplicate-${index}`} disabled={busy}
+                        checked={choice === 'update' ? updating.includes(index) : choice === 'copy' ? ticked(prompt, index) && !updating.includes(index) : !ticked(prompt, index) && !updating.includes(index)}
+                        onChange={() => {
+                          setUpdating(choice === 'update' ? [...updating, index] : updating.filter(item => item !== index));
+                          setToggled(choice === 'copy' ? [...toggled, index] : toggled.filter(item => item !== index));
+                        }} />
+                      {label}
+                    </label>)}
+                </fieldset> : <label className={styles.checkRow}>
                   <input type="checkbox" checked={ticked(prompt, index)} disabled={busy} onChange={() => toggle(index)} />
                   {isDuplicate(prompt) ? 'Already in your library. Import a copy anyway' : `Import prompt ${index + 1}`}
-                </label>
+                </label>}
                 <div className={styles.field}>
                   <label htmlFor={`import-title-${index}`}>Title for prompt {index + 1}</label>
                   <input id={`import-title-${index}`} value={prompt.name} maxLength={100} disabled={busy} aria-invalid={!!importProblem({ ...prompt, fields: [] })}
@@ -318,8 +378,12 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
           <div className={styles.formActions}>
             <Button variant="ghost" disabled={busy} onClick={() => { setPreview(null); setBeforeConvert(null); setError(''); }}>Back</Button>
             {singleNote && <Button variant="secondary" disabled={busy} onClick={reuseWithAI}>Make reusable with AI</Button>}
-            <Button variant="primary" disabled={busy || !count} onClick={() => void importPrompts()}>
-              {busy ? (count > 1 ? `Importing ${progress} of ${count}…` : 'Importing…') : !count ? (preview.every(isDuplicate) ? 'Nothing new to import' : 'Nothing selected to import') : singleNote ? 'Keep as written' : `Import ${plural(count, 'prompt')}`}
+            <Button variant="primary" disabled={busy || !(count + updateCount)} onClick={() => void importPrompts()}>
+              {busy ? (count + updateCount > 1 ? `Importing ${progress} of ${count + updateCount}…` : 'Importing…')
+                : !(count + updateCount) ? (preview.every(isDuplicate) ? 'Nothing new to import' : 'Nothing selected to import')
+                : !count ? `Update ${plural(updateCount, 'prompt')}`
+                : singleNote ? 'Keep as written'
+                : `Import ${plural(count, 'prompt')}${updateCount ? ` and update ${updateCount}` : ''}`}
             </Button>
           </div>
         </>}

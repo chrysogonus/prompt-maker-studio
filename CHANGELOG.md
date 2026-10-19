@@ -12,6 +12,11 @@ any release. See [Project status](./README.md#project-status).
 
 ### Changed
 
+- Importing a note again can update its library prompt when the text changed, saving
+  the earlier text in History; leaving it as it is stays the default, and the dialog and
+  landing page say importing is a one-time copy. Closing the dialog keeps an unfinished
+  preview, and reopening offers Start over. Notes directly in a chosen folder start
+  Unfiled instead of being filed under the folder's name.
 - Add existing prompts previews and imports up to 1,000 prompts at a time, with
   progress, instead of refusing more than 100. Each prompt has a tick box, so templates
   and other notes can be left out, with Select all new and Select none.

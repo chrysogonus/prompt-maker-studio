@@ -123,7 +123,8 @@ export default async function LandingPage() {
             <div>
               <dt>Bring your existing prompts</dt>
               <dd>
-                Paste a prompt or import Markdown notes, such as Notion or Obsidian exports.
+                Paste a prompt or import Markdown notes, such as Notion or Obsidian exports. Importing
+                copies them once; import again to add new notes or update prompts that changed.
                 Placeholders like [topic] become inputs, and an AI provider you connect can split a
                 prompt into sections for you to review.
               </dd>
