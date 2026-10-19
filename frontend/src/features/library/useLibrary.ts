@@ -40,6 +40,12 @@ export function useLibrary() {
   const toastTimer = useRef<number | null>(null);
   const pendingDelete = useRef<{ prompt: Prompt; timer: number } | null>(null);
 
+  // The toggle remembers the choice as the "Library opens as" setting.
+  const chooseLayout = (next: 'list' | 'grid') => {
+    setLayout(next);
+    AuthService.updateProfile({ default_library_view: next }).catch(() => { /* Only this visit keeps it. */ });
+  };
+
   const showToast = useCallback((next: Toast, ms = 3500) => {
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
     setToast(next);
@@ -312,7 +318,7 @@ export function useLibrary() {
     search,
     setSearch,
     layout,
-    setLayout,
+    setLayout: chooseLayout,
     renamingId,
     setRenamingId,
     menuId,

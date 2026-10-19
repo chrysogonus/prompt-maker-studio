@@ -35,7 +35,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 vi.mock('@/lib/auth', () => ({
-  AuthService: { getCurrentUser: vi.fn() },
+  AuthService: { getCurrentUser: vi.fn(), updateProfile: vi.fn() },
 }));
 
 function saved(overrides: Partial<PromptHistoryResponse> = {}): PromptHistoryResponse {
@@ -96,6 +96,7 @@ beforeEach(() => {
     created_at: '2026-01-01T00:00:00Z',
     default_library_view: 'list',
   });
+  vi.mocked(AuthService.updateProfile).mockResolvedValue({ id: 1, username: 'alex', created_at: '2026-01-01T00:00:00Z' });
 });
 
 async function renderLibrary(params = '') {
@@ -221,7 +222,7 @@ describe('LibraryPage', () => {
 
     const card = screen.getByRole('listitem');
     expect(within(card).getByText('2 variables')).toBeInTheDocument();
-    expect(within(card).getByText('Rewrite {{draft}} in a {{tone}} voice.')).toBeInTheDocument();
+    expect(card.querySelector('p')).toHaveTextContent('Rewrite {{draft}} in a {{tone}} voice.');
     expect(within(card).queryByText('You are a helpful editor.')).not.toBeInTheDocument();
   });
 
@@ -600,6 +601,20 @@ describe('LibraryPage', () => {
     await renderLibrary();
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute('aria-pressed', 'true'));
+  });
+
+  it('remembers the layout toggle as the library view setting', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Grid' }));
+    expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute('aria-pressed', 'true');
+    expect(AuthService.updateProfile).toHaveBeenCalledWith({ default_library_view: 'grid' });
+  });
+
+  it('marks inputs in prompt snippets', async () => {
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [{ name: 'Task', content: 'Summarise {{notes}} for {{team}}.' }] })]);
+    const { container } = await renderLibrary();
+    expect([...container.querySelectorAll('li p span')].map(span => span.textContent)).toEqual(['{{notes}}', '{{team}}']);
   });
 
   it('invites a first prompt when the library is empty', async () => {

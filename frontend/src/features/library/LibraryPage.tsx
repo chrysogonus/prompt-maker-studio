@@ -16,7 +16,7 @@ import {
 
 import { RECOVERED_HISTORY_FOLDER } from '@/lib/libraryViews';
 import { relativeTime } from '@/lib/relativeTime';
-import { variablesIn } from '@/lib/sections';
+import { splitVariables, variablesIn } from '@/lib/sections';
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
 
 import styles from './LibraryPage.module.css';
@@ -70,7 +70,8 @@ function LibraryContent() {
 
   const preview = (prompt: Prompt) => {
     const match = searchMatch(prompt, search);
-    return match ? <><strong>{match.label}:</strong> {match.before}<mark>{match.match}</mark>{match.after}</> : excerpt(prompt);
+    return match ? <><strong>{match.label}:</strong> {match.before}<mark>{match.match}</mark>{match.after}</>
+      : splitVariables(excerpt(prompt)).map((part, i) => part.kind === 'variable' ? <span key={i} className={styles.snippetVariable}>{part.text}</span> : part.text);
   };
 
   const selection = (prompt: Prompt) => (
