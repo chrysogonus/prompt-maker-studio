@@ -42,6 +42,10 @@ export default function HistoryPanel({
   // Version rows are the states before each edit, so the live prompt is one newer.
   const sameSettings = !selected || selected.variable_metadata == null || snapshot([], selected.variable_metadata) === snapshot([], current.variable_metadata);
   const currentNumber = Math.max(0, ...versions.map((version) => version.version_number)) + 1;
+  // A version is stored when the next save replaces it, so it was written when the one
+  // before it was replaced; version 1 was written when the prompt was created.
+  const replacedAt = new Map(versions.map((version) => [version.version_number, version.created_at]));
+  const writtenAt = (number: number) => number === 1 ? current.created_at : replacedAt.get(number - 1);
 
   const restore = async (version: PromptVersionResponse) => {
     setRestoring(true);
@@ -69,7 +73,7 @@ export default function HistoryPanel({
           </button>
           <h3 className={styles.diffTitle}>Version {selected.version_number} compared with current</h3>
           <p className={styles.diffMeta}>
-            {formatDate(selected.created_at)}
+            {formatDate(writtenAt(selected.version_number) ?? selected.created_at)}
             {selected.note ? `. ${selected.note}` : ''}
           </p>
           {selected.legacy_note && (
@@ -118,7 +122,7 @@ export default function HistoryPanel({
           <li>
             <div className={styles.version} data-current="true">
               <span className={styles.versionTitle}>Version {currentNumber}, current</span>
-              <span className={styles.versionMeta}>{formatDate(current.updated_at ?? current.created_at)}</span>
+              <span className={styles.versionMeta}>{formatDate(writtenAt(currentNumber) ?? current.created_at)}</span>
               {current.current_note && <span className={styles.versionNote}>{current.current_note}</span>}
             </div>
           </li>
@@ -126,7 +130,7 @@ export default function HistoryPanel({
             <li key={version.id}>
               <button type="button" className={styles.version} onClick={() => setSelectedId(version.id)}>
                 <span className={styles.versionTitle}>Version {version.version_number}</span>
-                <span className={styles.versionMeta}>{formatDate(version.created_at)}</span>
+                <span className={styles.versionMeta}>{formatDate(writtenAt(version.version_number) ?? version.created_at)}</span>
                 {version.note && <span className={styles.versionNote}>{version.note}</span>}
               </button>
             </li>

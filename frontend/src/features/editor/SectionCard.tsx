@@ -87,7 +87,9 @@ export default function SectionCard({
   const confirmInsert = (event: FormEvent) => {
     event.preventDefault();
     if (!insert) return;
-    const name = insert.name.trim();
+    // "Target audience" becomes target_audience rather than an error.
+    const typed = insert.name.trim();
+    const name = /\s/.test(typed) ? typed.toLowerCase().replace(/\s+/g, '_') : typed;
     if (!isVariableName(name)) {
       setInsert({ ...insert, error: 'Start with a letter or _, then use letters, numbers, _ or -.' });
       return;

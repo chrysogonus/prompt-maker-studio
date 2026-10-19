@@ -724,6 +724,23 @@ describe('PromptEditor with a saved prompt', () => {
     expect(screen.getByText('Restored version 1')).toBeInTheDocument();
   });
 
+  it('dates each version by when it was written, not when it was replaced', async () => {
+    const user = userEvent.setup();
+    const shown = (iso: string) => new Date(iso).toLocaleString(undefined, {
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+    });
+    vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([
+      version({ id: 12, version_number: 2, created_at: '2026-07-05T00:00:00Z' }),
+      version({ id: 11, version_number: 1, created_at: '2026-07-03T00:00:00Z' }),
+    ]);
+    await renderSaved();
+    await openTool(user, 'History');
+    const history = screen.getByRole('complementary', { name: 'Version history' });
+    expect(within(history).getByText('Version 3, current').parentElement).toHaveTextContent(shown('2026-07-05T00:00:00Z'));
+    expect(within(history).getByRole('button', { name: /Version 2/ })).toHaveTextContent(shown('2026-07-03T00:00:00Z'));
+    expect(within(history).getByRole('button', { name: /Version 1/ })).toHaveTextContent(shown('2026-07-01T00:00:00Z'));
+  });
+
   it('does not restore over unsaved edits', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([version()]);
@@ -1215,14 +1232,14 @@ it('turns selected text into an input and keeps it as the example', async () => 
   text.setSelectionRange(15, 21);
   await user.click(screen.getByRole('button', { name: 'Insert input in Task' }));
   const name = screen.getByLabelText('Input name for “Lisbon” (kept as its example)');
-  await user.type(name, 'two words');
+  await user.type(name, '2 cities');
   await user.click(screen.getByRole('button', { name: 'Insert' }));
   expect(screen.getByRole('alert')).toHaveTextContent('Start with a letter');
   await user.clear(name);
-  await user.type(name, 'city{Enter}');
-  expect(text).toHaveValue('Plan a trip to {{city}}.');
+  await user.type(name, 'Destination City{Enter}');
+  expect(text).toHaveValue('Plan a trip to {{destination_city}}.');
   expect(text).toHaveFocus();
-  expect(screen.getByLabelText('Example input for city')).toHaveValue('Lisbon');
+  expect(screen.getByLabelText('Example input for destination_city')).toHaveValue('Lisbon');
 
   await user.click(screen.getByRole('button', { name: 'Insert input in Task' }));
   await user.keyboard('{Escape}');
