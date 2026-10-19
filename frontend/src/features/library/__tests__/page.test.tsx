@@ -291,9 +291,9 @@ describe('LibraryPage', () => {
     await renderLibrary();
     await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
     const input = screen.getByLabelText('Paste text');
-    await user.type(input, '# Good\nOK\n# Bad\n## 123 invalid\nBad');
+    await user.type(input, `# Good\nOK\n# ${'Bad '.repeat(26)}\nBad`);
     await user.click(screen.getByRole('button', { name: 'Preview' }));
-    expect(screen.getByRole('alert')).toHaveTextContent('section names');
+    expect(screen.getByRole('alert')).toHaveTextContent('title must contain');
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
     await user.clear(input);
     await user.type(input, '# Good\nOK');

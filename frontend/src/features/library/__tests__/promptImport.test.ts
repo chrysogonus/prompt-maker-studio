@@ -113,6 +113,42 @@ describe('prompt import', () => {
       name: 'Cold email', folder: 'Sales', fields: [{ name: 'Prompt', content: 'Write to [Name].\nAudience: Founders\n\nMore detail.' }],
     });
   });
+  it('turns headings with numbering, punctuation or repeats into valid, unique section names', () => {
+    const note = '# Review\n## 1. Role\nA\n## Step 2: Draft (optional)\nB\n## Résumé ✨\nC\n## Example\nD\n## Example\nE\n## 2024\nF\n## ✨\nG';
+    expect(parsePromptImport(note)[0].fields.map(field => field.name)).toEqual(
+      ['Role', 'Step 2 Draft optional', 'Resume', 'Example', 'Example 2', 'Section 2024', 'Section']);
+    // An empty default section does not take the name of a later "## Prompt".
+    expect(parsePromptImport('# Notion page\n\n## Prompt\nWrite.')[0].fields).toEqual([{ name: 'Prompt', content: 'Write.' }]);
+    expect(parsePromptImport(note, undefined, true)[0].fields).toHaveLength(7);
+  });
+  it('removes Obsidian comments, embeds, highlights and Dataview queries, and Notion callouts', () => {
+    const note = 'Write a ==warm== intro about {topic}. %% try Claude %%\n%% a\nprivate note %%\n![[diagram.png]]\nSee ![[Style guide]].\n```dataview\nLIST FROM #x\n```\n<aside>\n💡 Tip for me\n\n</aside>\nKeep it short. a == b';
+    expect(parsePromptImport(note, 'Intro')[0].fields[0].content).toBe('Write a warm intro about {topic}.\nSee Style guide.\nKeep it short. a == b');
+    expect(parsePromptImport(note, 'Intro', true)[0].fields[0].content).toBe(note);
+  });
+  it('reads Windows line endings as plain lines', () => {
+    expect(parsePromptImport('# Title\r\nLine one\r\nLine two\r\n')[0].fields[0].content).toBe('Line one\nLine two');
+    expect(parsePromptImport('Explain <regex>\r\n', 'Regex', true)).toEqual(parsePromptImport('Explain <regex>\r\n', 'Regex'));
+  });
+  it('prefers exported pages to their database CSV, but keeps a CSV whose rows were not exported as pages', () => {
+    const csv = 'Name,Prompt\nCold email,Write to [Name].\nFollow-up,Nudge [Name].';
+    const page = { name: 'Cold email 8b7e.md', path: 'Export.zip/Library/Prompts 3f2a/Cold email 8b7e.md', text: '# Cold email\nWrite to [Name].' };
+    const titles = (files: Parameters<typeof parseImportFiles>[0]) => parseImportFiles(files).prompts.map(prompt => prompt.name);
+    // With pages, even when a split export put them in another part.
+    expect(titles([page, { name: 'Prompts 3f2a.csv', path: 'Export-Part-2.zip/Library/Prompts 3f2a.csv', text: csv },
+      { name: 'Prompts 3f2a_all.csv', path: 'Library/Prompts 3f2a_all.csv', text: csv }])).toEqual(['Cold email']);
+    // Without pages: a parent page or readme beside the CSV, and only one of X.csv / X_all.csv.
+    expect(titles([{ name: 'Library.md', path: 'Library.md', text: '# Library\nMy prompts.' },
+      { name: 'Prompts 3f2a.csv', path: 'Library/Prompts 3f2a.csv', text: csv },
+      { name: 'Prompts 3f2a_all.csv', path: 'Library/Prompts 3f2a_all.csv', text: csv }])).toEqual(['Library', 'Cold email', 'Follow-up']);
+  });
+  it('suggests folders without the parts of a split export', () => {
+    expect(parseImportFiles([{ name: 'Library.md', path: 'Export-Part-1.zip/Library.md', text: 'Text' },
+      { name: 'One.md', path: 'Export-Part-1.zip/Notes 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d/One.md', text: 'Text' }]).prompts.map(prompt => prompt.folder)).toEqual([null, 'Notes']);
+  });
+  it('keeps a Notion database row\'s favourite from its CSV', () => {
+    expect(parseCsvPrompts('Name,Prompt,Status,Favourite\nA,Text a,Favorite,\nB,Text b,,Yes\nC,Text c,Done,No').map(prompt => prompt.is_favorite)).toEqual([true, true, undefined]);
+  });
   it('refuses binary files instead of importing them as text', () => {
     expect(() => parsePromptImport('PK\u0003\u0004\u0000\u0000binary')).toThrow('not a text note');
   });

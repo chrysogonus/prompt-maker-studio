@@ -121,7 +121,7 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
         const read = await Promise.all(notes.map(async ({ file, path }) => isZip(path)
           ? readZip(new Uint8Array(await file.arrayBuffer()))
           : [{ name: file.name, path, text: await file.text() }]));
-        const found = read.flat();
+        const found = read.flat().sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
         if (!found.length) { setError('This export holds no .md, .txt, .csv or .json notes.'); return; }
         setFiles(found);
         setNoteTitle('');

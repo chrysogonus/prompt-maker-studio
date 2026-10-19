@@ -1159,3 +1159,12 @@ existing prompts.
 
 **Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`,
 `frontend/src/lib/importArchive.ts`, `frontend/src/features/library/LibraryPage.tsx`.
+
+**Amended (2026-10-19)**: A second first-time-user test found notes rejected whole for headings
+such as `## 1. Role` or `## Step 2: Draft`, and every CSV in a zip dropped whenever any page
+was present, losing a database exported without its subpages. Headings now become valid,
+unique section names on import (the API's section-name rule is unchanged). A database CSV is
+skipped only when its rows were exported as pages (`X/` beside `X.csv`), across zips, split
+parts and chosen folders, and `X_all.csv` is preferred to `X.csv`. The tidy-up also removes
+Obsidian comments, Dataview queries and embedded files, unwraps highlights, and removes
+Notion `<aside>` callouts, by the same reasoning as Obsidian callouts.

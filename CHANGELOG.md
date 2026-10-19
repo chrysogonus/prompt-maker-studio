@@ -10,6 +10,20 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Fixed
+
+- Imported notes are no longer skipped for headings with list numbers, punctuation,
+  accents or repeats (`## 1. Role`, `## Step 2: Draft`, a second `## Example`); these
+  become valid section names instead.
+- A database CSV in a Notion zip or chosen folder is read unless its rows were also
+  exported as pages, so an export without subpages no longer loses every row. A split
+  export's part names are no longer suggested as folders, and a CSV row's Favourite
+  status is kept.
+- Imported notes also drop Obsidian `%% comments %%`, Dataview queries and embedded files,
+  read `==highlights==` as text, and drop Notion `<aside>` callouts. Windows line endings
+  no longer offer "Keep the original note text" for an untouched note, several files
+  preview in folder order, and a Notion HTML export explains how to export Markdown & CSV.
+
 ## [0.8.0] - 2026-10-19
 
 See the [release record](./docs/releases/0.8.0.md).
