@@ -12,6 +12,12 @@ any release. See [Project status](./README.md#project-status).
 
 ### Changed
 
+- Add existing prompts accepts several files at once, a whole folder (such as an
+  Obsidian vault, skipping hidden folders like `.obsidian` and non-note files), or
+  files and folders dropped onto the dialog. They share one preview; each note's
+  folder is suggested from its parent folder, Notion page IDs are dropped from
+  file-name titles, and files without prompts are listed as skipped.
+
 - The empty library leads with Add existing prompts and says it takes Notion,
   Obsidian and Markdown notes; New prompt sits beside it.
 

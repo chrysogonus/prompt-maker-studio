@@ -55,7 +55,7 @@ for (const width of [1440, 390, 320]) {
     await expect(page.getByText('Moved 1 of 1 prompts.')).toBeVisible();
     await page.getByRole('button', { name: 'Add existing prompts', exact: true }).click();
     const note = '---\ntitle: New prompt\ntags: [work]\n---\nGive a useful answer.';
-    await page.getByLabel('Or choose a file').setInputFiles({ name: 'Daily note.md', mimeType: 'text/markdown', buffer: Buffer.from(note) });
+    await page.getByLabel('Or choose files').setInputFiles({ name: 'Daily note.md', mimeType: 'text/markdown', buffer: Buffer.from(note) });
     await expect(page.getByLabel('Title for a single note')).toHaveValue('Daily note');
     await page.getByRole('button', { name: 'Preview', exact: true }).click();
     await expect(page.getByLabel('Title for prompt 1')).toHaveValue('New prompt');

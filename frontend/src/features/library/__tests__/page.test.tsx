@@ -619,10 +619,72 @@ describe('LibraryPage', () => {
     const user = userEvent.setup();
     await renderLibrary();
     await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
-    await user.upload(screen.getByLabelText(/Or choose a file/), new File(['A note from a file'], 'Old file.md', { type: 'text/markdown' }));
+    await user.upload(screen.getByLabelText(/Or choose files/), new File(['A note from a file'], 'Old file.md', { type: 'text/markdown' }));
     await waitFor(() => expect(screen.getByLabelText('Title for a single note')).toHaveValue('Old file'));
     fireEvent.change(screen.getByLabelText('Paste text'), { target: { value: 'Something pasted instead' } });
     expect(screen.getByLabelText('Title for a single note')).toHaveValue('');
+  });
+
+  describe('several files at once', () => {
+    beforeEach(() => {
+      // jsdom has no Blob.text(); browsers do.
+      File.prototype.text ??= function (this: File) {
+        return new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(this); });
+      };
+    });
+    const note = (text: string, name: string, path?: string) => {
+      const file = new File([text], name, { type: 'text/markdown' });
+      if (path) Object.defineProperty(file, 'webkitRelativePath', { value: path });
+      return file;
+    };
+
+    it('previews several chosen files together, titled from their names without Notion IDs', async () => {
+      const user = userEvent.setup();
+      vi.mocked(ApiClient.createPrompt).mockImplementation(async (body) => saved({ id: 30, name: body.name, folder: body.folder }));
+      await renderLibrary();
+      await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+      await user.upload(screen.getByLabelText(/Or choose files/), [
+        note('Write about [X].', 'Cold email 8b7e6d5c4a3b2a1f8b7e6d5c4a3b2a1f.md'),
+        note('# Meeting summary\nSummarise it.', 'meeting.md'),
+      ]);
+      expect(await screen.findByText(/2 files ready: Cold email 8b7e/)).toBeInTheDocument();
+      expect(screen.getByLabelText('Paste text')).toHaveValue('');
+      await user.click(screen.getByRole('button', { name: 'Preview' }));
+      expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Cold email');
+      expect(screen.getByLabelText('Title for prompt 2')).toHaveValue('Meeting summary');
+      expect(screen.queryByRole('button', { name: 'Make reusable with AI' })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Import 2 prompts' }));
+      await screen.findByText('Imported 2 of 2 prompts.');
+    });
+
+    it('reads a chosen folder, ignoring app settings and other files, and suggests each note\'s folder', async () => {
+      const user = userEvent.setup();
+      await renderLibrary();
+      await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+      await user.upload(screen.getByLabelText(/Or choose a folder/), [
+        note('Outline [TOPIC].', 'Blog.md', 'Vault/Prompts/Blog.md'),
+        note('{"theme": "dark"}', 'app.json', 'Vault/.obsidian/app.json'),
+        note('png', 'image.png', 'Vault/Prompts/image.png'),
+        note('', 'Empty.md', 'Vault/Empty.md'),
+      ]);
+      expect(await screen.findByText(/2 files ready/)).toBeInTheDocument();
+      expect(screen.getByText('2 other files were ignored.')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Preview' }));
+      expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Blog');
+      expect(screen.getByLabelText('Folder for Blog')).toHaveValue('Prompts');
+      expect(screen.getByText(/Skipped: Empty.md: Include some note text/)).toBeInTheDocument();
+    });
+
+    it('accepts files dropped onto the dialog', async () => {
+      const user = userEvent.setup();
+      await renderLibrary();
+      await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+      const files = [note('First [A].', 'a.md'), note('Second [B].', 'b.md')];
+      const entry = (file: File) => ({ isFile: true, name: file.name, file: (resolve: (f: File) => void) => resolve(file) });
+      const items = files.map(file => ({ webkitGetAsEntry: () => entry(file) }));
+      fireEvent.drop(screen.getByLabelText('Paste text').closest('div[data-dragging], div')!.parentElement!, { dataTransfer: { items, types: ['Files'], files } });
+      expect(await screen.findByText(/2 files ready: a.md, b.md/)).toBeInTheDocument();
+    });
   });
 
   it('marks inputs in prompt snippets', async () => {

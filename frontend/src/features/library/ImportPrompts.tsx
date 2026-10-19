@@ -7,9 +7,32 @@ import Dialog from '@/components/ui/Dialog';
 import { ApiClient } from '@/lib/api';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { libraryHref } from '@/lib/libraryViews';
-import { convertPlaceholders, findPlaceholders, hasFrontmatter, ImportPrompt, MAX_IMPORT_BYTES, parsePromptImport, pasteHandoffKey, validateImportPrompts } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, hasFrontmatter, ImportFile, ImportPrompt, isImportableFile, MAX_IMPORT_BYTES, parseImportFiles, parsePromptImport, pasteHandoffKey, titleFromFileName, validateImportPrompts } from '@/lib/promptImport';
 import type { PromptHistoryResponse } from '@/types/prompt';
 import styles from './LibraryPage.module.css';
+
+type PickedFile = { file: File; path: string };
+
+/** Everything inside dropped files and folders, with each file's path in its folder. */
+async function droppedFiles(items: DataTransferItemList): Promise<PickedFile[]> {
+  const walk = async (entry: FileSystemEntry, path: string): Promise<PickedFile[]> => {
+    if (entry.isFile) {
+      const file = await new Promise<File>((resolve, reject) => (entry as FileSystemFileEntry).file(resolve, reject));
+      return [{ file, path: `${path}${file.name}` }];
+    }
+    const reader = (entry as FileSystemDirectoryEntry).createReader();
+    const children: FileSystemEntry[] = [];
+    // Directory readers return entries in batches until an empty one.
+    for (;;) {
+      const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => reader.readEntries(resolve, reject));
+      if (!batch.length) break;
+      children.push(...batch);
+    }
+    return (await Promise.all(children.map(child => walk(child, `${path}${entry.name}/`)))).flat();
+  };
+  const entries = [...items].map(item => item.webkitGetAsEntry?.()).filter((entry): entry is FileSystemEntry => !!entry);
+  return (await Promise.all(entries.map(entry => walk(entry, '')))).flat();
+}
 
 /** One prompt opens ready to use; several open where they were filed. */
 function importedHref(created: PromptHistoryResponse[]): string {
@@ -46,14 +69,49 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
   const [busy, setBusy] = useState(false);
   const [keepOriginal, setKeepOriginal] = useState(false);
   const [beforeConvert, setBeforeConvert] = useState<ImportPrompt[] | null>(null);
+  const [files, setFiles] = useState<ImportFile[]>([]);
+  const [skipped, setSkipped] = useState<string[]>([]);
+  const [dragging, setDragging] = useState(false);
   const updateSource = (text: string) => { setSource(text); setPreview(null); setError(''); setResult(''); };
   const showPreview = (keep: boolean) => {
-    try { setPreview(parsePromptImport(source, noteTitle, keep)); setBeforeConvert(null); setError(''); setResult(''); }
-    catch (error) { setError((error as Error).message); }
+    try {
+      if (files.length) {
+        const parsed = parseImportFiles(files, keep);
+        if (!parsed.prompts.length) throw new Error(`None of these files hold a prompt. ${parsed.skipped.join(' ')}`);
+        setPreview(parsed.prompts);
+        setSkipped(parsed.skipped);
+      } else {
+        setPreview(parsePromptImport(source, noteTitle, keep));
+        setSkipped([]);
+      }
+      setBeforeConvert(null); setError(''); setResult('');
+    } catch (error) { setError((error as Error).message); }
   };
-  const fromNote = !!source.trim() && !/^[{[]/.test(source.trim());
+  // One file goes into the paste box to edit; several, or a folder, are listed instead.
+  const readFiles = async (picked: PickedFile[], fromFolder: boolean) => {
+    const notes = picked.filter(({ path }) => isImportableFile(path));
+    const ignored = picked.length - notes.length;
+    updateSource('');
+    setFiles([]);
+    if (!notes.length) { setError(picked.length ? 'Choose .md, .txt or .json files.' : ''); return; }
+    if (notes.some(({ file }) => file.size > MAX_IMPORT_BYTES)) { setError('Import files must be 5 MB or smaller.'); return; }
+    setBusy(true);
+    try {
+      if (notes.length === 1 && !fromFolder) {
+        updateSource(await notes[0].file.text());
+        setNoteTitle(titleFromFileName(notes[0].file.name));
+        fileTitle.current = true;
+      } else {
+        setFiles(await Promise.all(notes.map(async ({ file, path }) => ({ name: file.name, path, text: await file.text() }))));
+        setNoteTitle('');
+        if (ignored) setResult(`${ignored} other file${ignored === 1 ? ' was' : 's were'} ignored.`);
+      }
+    } catch { setError('Could not read these files.'); }
+    finally { setBusy(false); }
+  };
+  const fromNote = files.length ? files.some(file => !/\.json$/i.test(file.name)) : !!source.trim() && !/^[{[]/.test(source.trim());
   // A fresh single note may go to AI conversion instead; retries and JSON exports may not.
-  const singleNote = preview?.length === 1 && fromNote;
+  const singleNote = preview?.length === 1 && fromNote && files.length <= 1;
   const placeholders = preview ? findPlaceholders(preview) : [];
   const sharedFolder = preview?.every(prompt => (prompt.folder ?? '') === (preview[0].folder ?? '')) ? preview[0].folder ?? '' : '';
   const importPrompts = async () => {
@@ -74,6 +132,8 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
     setPreview(failed.length ? failed : null);
     setBeforeConvert(null);
     setSource('');
+    setFiles([]);
+    setSkipped([]);
     setDone(failed.length ? null : created);
     setResult(`Imported ${created.length} of ${validated.length} prompts.${failed.length ? ` ${failed.length} failed; only these remain below for retry.` : ''}`);
     setBusy(false);
@@ -89,7 +149,15 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
   return <>
     <Button variant={primary ? 'primary' : 'secondary'} onClick={() => setOpen(true)}>Add existing prompts</Button>
     <Dialog className={styles.importDialog} isOpen={open} title="Add existing prompts" onClose={close}>
-      <div className={styles.form}>
+      <div className={styles.form} data-dragging={dragging || undefined}
+        onDragOver={event => { if (!preview && !done && event.dataTransfer.types.includes('Files')) { event.preventDefault(); setDragging(true); } }}
+        onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }}
+        onDrop={event => {
+          if (preview || done) return;
+          event.preventDefault();
+          setDragging(false);
+          void droppedFiles(event.dataTransfer.items).then(picked => readFiles(picked, picked.some(({ path }) => path.includes('/'))));
+        }}>
         {result && <p role="status">{result}</p>}
         {error && <p role="alert">{error}</p>}
         {done && <>
@@ -101,24 +169,26 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
           </div>
         </>}
         {!preview && !done && <>
-          <p className={styles.dialogText}>Paste a prompt or choose a file. You can review everything before it is added; existing prompts are never replaced.</p>
+          <p className={styles.dialogText}>Paste a prompt, choose files or a whole folder, or drop them here. Notion and Obsidian notes work as exported. You can review everything before it is added; existing prompts are never replaced.</p>
           <div className={styles.field}>
             <label htmlFor="import-source">Paste text</label>
             <textarea id="import-source" value={source} disabled={busy} onChange={event => { updateSource(event.target.value); if (fileTitle.current) { setNoteTitle(''); fileTitle.current = false; } }} rows={8}
               placeholder="For example: Summarize {{notes}} for {{team}} in three bullets." />
           </div>
           <div className={styles.field}>
-            <label htmlFor="import-file">Or choose a file (.md, .txt or .json, up to 5 MB)</label>
-            <input id="import-file" type="file" accept=".json,.md,.markdown,.txt" disabled={busy} onChange={async event => {
-              const file = event.target.files?.[0];
-              if (!file) return;
-              updateSource('');
-              if (file.size > MAX_IMPORT_BYTES) { setError('Import files must be 5 MB or smaller.'); return; }
-              setBusy(true);
-              try { updateSource(await file.text()); setNoteTitle(file.name.replace(/\.[^.]+$/, '').slice(0, 100)); fileTitle.current = true; } catch { setError('Could not read this file.'); }
-              finally { setBusy(false); }
-            }} />
+            <label htmlFor="import-file">Or choose files (.md, .txt or .json, up to 5 MB each)</label>
+            <input id="import-file" type="file" multiple accept=".json,.md,.markdown,.txt" disabled={busy}
+              onChange={event => { void readFiles([...event.target.files ?? []].map(file => ({ file, path: file.name })), false); event.target.value = ''; }} />
           </div>
+          <div className={styles.field}>
+            <label htmlFor="import-folder">Or choose a folder, such as an Obsidian vault</label>
+            <input id="import-folder" type="file" multiple disabled={busy} {...{ webkitdirectory: '' }}
+              onChange={event => { void readFiles([...event.target.files ?? []].map(file => ({ file, path: file.webkitRelativePath || file.name })), true); event.target.value = ''; }} />
+          </div>
+          {files.length > 0 && <div className={styles.fileList} role="status">
+            <p>{files.length} file{files.length === 1 ? '' : 's'} ready: {files.slice(0, 5).map(file => file.name).join(', ')}{files.length > 5 ? ` and ${files.length - 5} more` : ''}.</p>
+            <Button variant="ghost" disabled={busy} onClick={() => { setFiles([]); setResult(''); }}>Clear files</Button>
+          </div>}
           <div className={styles.field}>
             <label htmlFor="import-note-title">Title for a single note</label>
             <input id="import-note-title" value={noteTitle} onChange={event => setNoteTitle(event.target.value)} maxLength={100} placeholder="Imported note" disabled={busy} />
@@ -130,11 +200,12 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
             <p>For several prompts, start each with # Title and optionally add ## Section name headings. Headings inside code fences remain text. Up to 100 prompts at a time.</p>
             <p>JSON files use the Prompt Maker Studio export format: titles, sections, folders, variable settings and favorites are copied. Version history, dates and notes are not imported; this is not a full archive restore.</p>
           </details>
-          <Button variant="primary" disabled={busy || !source.trim()} onClick={() => showPreview(keepOriginal)}>Preview</Button>
+          <Button variant="primary" disabled={busy || (!source.trim() && !files.length)} onClick={() => showPreview(keepOriginal)}>Preview</Button>
         </>}
         {preview && <>
           <p className={styles.dialogText}>Review {preview.length} prompt{preview.length === 1 ? '' : 's'} before importing. Edit titles and folders below; leave a folder empty for Unfiled.</p>
-          {fromNote && hasFrontmatter(source) && <label className={styles.checkRow}>
+          {skipped.length > 0 && <p className={styles.dialogText}>Skipped: {skipped.join(' ')}</p>}
+          {fromNote && (files.length ? files.some(file => hasFrontmatter(file.text)) : hasFrontmatter(source)) && <label className={styles.checkRow}>
             <input type="checkbox" checked={keepOriginal} disabled={busy} onChange={event => { setKeepOriginal(event.target.checked); showPreview(event.target.checked); }} />
             Keep the note&apos;s front matter and title line in the prompt text
           </label>}

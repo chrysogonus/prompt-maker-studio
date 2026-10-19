@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertPlaceholders, findPlaceholders, hasFrontmatter, parsePromptImport } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, hasFrontmatter, isImportableFile, parseImportFiles, parsePromptImport, titleFromFileName } from '@/lib/promptImport';
 
 describe('prompt import', () => {
   it('restores export sections, folder and variable metadata without server-only data', () => {
@@ -46,6 +46,29 @@ describe('prompt import', () => {
     expect(convertPlaceholders(prompts)[0].fields[0].content).toBe(
       'Outline {{topic}} for {{target_audience}} in a {{tone}} voice. Use {{transcript}}. Keep {{format}}, <ROLE>x</ROLE>, <example>e</example>, [a link](https://x.y), arr[i] and [ ].');
     expect(findPlaceholders(convertPlaceholders(prompts))).toEqual([]);
+  });
+  it('titles files from their names without extensions or Notion page IDs', () => {
+    expect(titleFromFileName('Cold email 8b7e6d5c4a3b2a1f8b7e6d5c4a3b2a1f.md')).toBe('Cold email');
+    expect(titleFromFileName('Weekly report.markdown')).toBe('Weekly report');
+    expect(titleFromFileName('Version 2 notes.md')).toBe('Version 2 notes');
+  });
+  it('reads notes and exports from a folder but not app settings or other files', () => {
+    expect(isImportableFile('Vault/Prompts/Blog.md')).toBe(true);
+    expect(isImportableFile('Vault/export.json')).toBe(true);
+    expect(isImportableFile('Vault/.obsidian/app.json')).toBe(false);
+    expect(isImportableFile('Vault/.trash/Old.md')).toBe(false);
+    expect(isImportableFile('Vault/image.png')).toBe(false);
+  });
+  it('merges several files, suggesting each note\'s folder and reporting files without prompts', () => {
+    const { prompts, skipped } = parseImportFiles([
+      { name: 'Blog.md', path: 'Vault/Prompts/Blog.md', text: 'Outline [TOPIC].' },
+      { name: 'Two.md', path: 'Two.md', text: '# One\nA\n# Two\nB' },
+      { name: 'Empty.md', path: 'Vault/Empty.md', text: '   ' },
+    ]);
+    expect(prompts.map(prompt => [prompt.name, prompt.folder])).toEqual([['Blog', 'Prompts'], ['One', null], ['Two', null]]);
+    expect(skipped).toEqual(['Empty.md: Include some note text or a JSON export.']);
+    const many = Array.from({ length: 101 }, (_, i) => ({ name: `${i}.md`, path: `${i}.md`, text: `Prompt ${i}` }));
+    expect(() => parseImportFiles(many)).toThrow('101 prompts');
   });
   it('keeps the 5 MB and 100 prompt limits', () => {
     expect(() => parsePromptImport('x'.repeat(5 * 1024 * 1024 + 1))).toThrow('5 MB');

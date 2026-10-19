@@ -151,3 +151,33 @@ export function convertPlaceholders(prompts: ImportPrompt[]): ImportPrompt[] {
     }),
   }));
 }
+
+/** A file name as a title: no extension, and no Notion page ID such as "Cold email 8b7e…". */
+export const titleFromFileName = (name: string) =>
+  name.replace(/\.[^.]+$/, '').replace(/\s+[0-9a-f]{16,32}$/i, '').trim().slice(0, 100);
+
+/** Files worth reading from a chosen or dropped folder: notes and exports, not app settings. */
+export const isImportableFile = (path: string) =>
+  /\.(md|markdown|txt|json)$/i.test(path) && !path.split('/').some(part => part.startsWith('.'));
+
+export interface ImportFile { name: string; path: string; text: string }
+
+/**
+ * Several files become one preview. A file's folder (from a chosen folder) is its
+ * suggested folder; a file that holds no prompts is reported instead of failing the rest.
+ */
+export function parseImportFiles(files: ImportFile[], keepOriginal = false): { prompts: ImportPrompt[]; skipped: string[] } {
+  const prompts: ImportPrompt[] = [];
+  const skipped: string[] = [];
+  for (const file of files) {
+    const folder = file.path.split('/').slice(0, -1).pop() || null;
+    try {
+      prompts.push(...parsePromptImport(file.text, titleFromFileName(file.name), keepOriginal)
+        .map(prompt => ({ ...prompt, folder: prompt.folder ?? folder })));
+    } catch (error) {
+      skipped.push(`${file.name}: ${(error as Error).message}`);
+    }
+  }
+  if (prompts.length > 100) fail(`These files hold ${prompts.length} prompts. Import up to 100 at a time.`);
+  return { prompts, skipped };
+}
