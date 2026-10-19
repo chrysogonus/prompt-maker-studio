@@ -82,7 +82,8 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
   // Duplicates the user chose to import anyway, by preview position.
   const [copies, setCopies] = useState<number[]>([]);
   // The library only refreshes when the dialog closes, so count this session's imports too.
-  const existing = new Set([...existingTitles, ...imported.current.map(prompt => prompt.name ?? '')].map(title => title.trim().toLowerCase()));
+  const [sessionTitles, setSessionTitles] = useState<string[]>([]);
+  const existing = new Set([...existingTitles, ...sessionTitles].map(title => title.trim().toLowerCase()));
   const isDuplicate = (prompt: ImportPrompt) => existing.has(prompt.name.trim().toLowerCase());
   const skips = (prompt: ImportPrompt, index: number) => isDuplicate(prompt) && !copies.includes(index);
   const updateSource = (text: string) => { setSource(text); setPreview(null); setError(''); setResult(''); };
@@ -151,7 +152,11 @@ export default function ImportPrompts({ onCreated, folders, existingTitles = [],
         created.push(is_favorite ? await ApiClient.updatePrompt(saved.id, { is_favorite }).catch(() => saved) : saved);
       } catch { failed.push(is_favorite ? { ...prompt, is_favorite } : prompt); }
     }
-    if (created.length) { imported.current.push(...created); notifyLibraryChanged(); }
+    if (created.length) {
+      imported.current.push(...created);
+      setSessionTitles(titles => [...titles, ...created.map(prompt => prompt.name ?? '')]);
+      notifyLibraryChanged();
+    }
     setPreview(failed.length ? failed : null);
     setCopies([]);
     setBeforeConvert(null);
