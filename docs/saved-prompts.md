@@ -132,8 +132,8 @@ above both panes as stored only in the current browser.
 - `/library` lists every prompt by most recent edit, in a list or a grid (the default is a
   Settings preference), with search across names, folders and section text; every word
   must match, in any order.
-- Choose Recently edited or Title A–Z sorting. Select prompts to file them together;
-  failed moves stay selected for retry. Grid metadata sits separately from actions.
+- Choose Recently edited or Title A–Z sorting. Select prompts to file them together
+  (failed moves stay selected for retry) or delete them together, with one Undo. Grid metadata sits separately from actions.
 - **Add existing prompts** is the library's one entry point for bringing prompts in. It
   accepts pasted text, a JSON export or Markdown (`# Title`, optional `## Section`
   headings), up to 100 prompts and 5 MB per import; format details are folded away.
@@ -159,6 +159,8 @@ above both panes as stored only in the current browser.
   longest text column, and Tags as the folder). Property lines that hold the prompt text
   are kept; only metadata such as Tags, Created and Status is removed. Binary files are
   refused with an explanation.
+- A previewed prompt whose title is already in the library is skipped unless
+  **Import a copy anyway** is ticked, so re-importing a vault does not duplicate it.
 - The preview offers to turn placeholders such as `[TOPIC]`, `{audience}` or
   `<transcript>` into inputs (each can be unticked; `[[wiki-links]]` are never offered),
   keeping each placeholder's wording as the input's hint, with Undo, and a **Folder for all prompts** field when

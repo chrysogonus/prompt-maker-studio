@@ -29,6 +29,8 @@ any release. See [Project status](./README.md#project-status).
   browser, including nested part zips), and a database `.csv` becomes one prompt per
   row with Tags as its folder. A Notion property that holds the prompt text is kept;
   only metadata lines are removed. Binary files are refused instead of imported as text.
+- Importing skips prompts whose title is already in the library unless "Import a copy
+  anyway" is ticked, and selected library prompts can be deleted together with one Undo.
 
 - The empty library leads with Add existing prompts and says it takes Notion,
   Obsidian and Markdown notes; New prompt sits beside it.

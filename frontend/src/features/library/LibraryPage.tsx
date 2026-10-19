@@ -63,6 +63,7 @@ function LibraryContent() {
     move,
     duplicate,
     remove,
+    deleteSelected,
     renameFolder,
     removeFolder,
     folders,
@@ -327,7 +328,7 @@ function LibraryContent() {
     <div className={styles.page}>
       <header className={styles.head}>
         <h1>{title}</h1>
-        <ImportPrompts onCreated={addImported} folders={folders} />
+        <ImportPrompts onCreated={addImported} folders={folders} existingTitles={(prompts ?? []).map(prompt => prompt.name ?? '')} />
         {view.type === 'folder' && (
           <div className={styles.menuWrap} data-menu>
             <button
@@ -417,7 +418,8 @@ function LibraryContent() {
           <input aria-label="File selected in folder" value={batchFolder} onChange={event => setBatchFolder(event.target.value)} list="library-folders" maxLength={255} placeholder="Unfiled" disabled={batchBusy} />
         </label>
         <Button variant="secondary" type="submit" disabled={batchBusy}>{batchBusy ? 'Moving…' : 'Move selected'}</Button>
-        <small>Leave empty to move to Unfiled.</small>
+        <Button variant="danger" type="button" disabled={batchBusy} onClick={deleteSelected}>Delete selected</Button>
+        <small>Leave the folder empty to move to Unfiled. Deleting can be undone for a few seconds.</small>
       </form>}
       {batchResult && <p className={styles.note} role="status">{batchResult}</p>}
       {body}

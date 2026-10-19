@@ -43,9 +43,11 @@ function importedHref(created: PromptHistoryResponse[]): string {
   return folders.size === 1 && folder ? libraryHref({ type: 'folder', folder }) : '/library';
 }
 
-export default function ImportPrompts({ onCreated, folders, primary = false }: {
+export default function ImportPrompts({ onCreated, folders, existingTitles = [], primary = false }: {
   onCreated: (prompts: PromptHistoryResponse[]) => void;
   folders: string[];
+  /** Titles already in the library; importing them again is skipped unless asked. */
+  existingTitles?: string[];
   /** The empty library leads with importing, since most people arrive with prompts. */
   primary?: boolean;
 }) {
@@ -77,6 +79,11 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
   const [tidied, setTidied] = useState(false);
   // Placeholders the user unticked; everything else found is offered for conversion.
   const [unchosen, setUnchosen] = useState<string[]>([]);
+  // Duplicates the user chose to import anyway, by preview position.
+  const [copies, setCopies] = useState<number[]>([]);
+  const existing = new Set(existingTitles.map(title => title.trim().toLowerCase()));
+  const isDuplicate = (prompt: ImportPrompt) => existing.has(prompt.name.trim().toLowerCase());
+  const skips = (prompt: ImportPrompt, index: number) => isDuplicate(prompt) && !copies.includes(index);
   const updateSource = (text: string) => { setSource(text); setPreview(null); setError(''); setResult(''); };
   const showPreview = (keep: boolean) => {
     try {
@@ -86,7 +93,7 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
       setPreview(parsed.prompts);
       setSkipped(parsed.skipped);
       setTidied(JSON.stringify(parse(true).prompts) !== JSON.stringify(parse(false).prompts));
-      setBeforeConvert(null); setUnchosen([]); setError(''); setResult('');
+      setBeforeConvert(null); setUnchosen([]); setCopies([]); setError(''); setResult('');
     } catch (error) { setError((error as Error).message); }
   };
   // One file goes into the paste box to edit; several, or a folder, are listed instead.
@@ -125,11 +132,13 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
   // A fresh single note may go to AI conversion instead; retries and JSON exports may not.
   const singleNote = preview?.length === 1 && fromNote && files.length <= 1;
   const placeholders = preview ? findPlaceholders(preview) : [];
+  const included = preview ? preview.filter((prompt, index) => !skips(prompt, index)).length : 0;
   const chosen = placeholders.filter(token => !unchosen.includes(token));
   const sharedFolder = preview?.every(prompt => (prompt.folder ?? '') === (preview[0].folder ?? '')) ? preview[0].folder ?? '' : '';
   const importPrompts = async () => {
     let validated: ImportPrompt[];
-    try { validated = validateImportPrompts(preview); } catch (error) { setError((error as Error).message); return; }
+    const duplicates = preview!.filter(skips).length;
+    try { validated = validateImportPrompts(preview!.filter((prompt, index) => !skips(prompt, index))); } catch (error) { setError((error as Error).message); return; }
     setBusy(true);
     setError('');
     const created: PromptHistoryResponse[] = [];
@@ -143,12 +152,13 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
     }
     if (created.length) { imported.current.push(...created); notifyLibraryChanged(); }
     setPreview(failed.length ? failed : null);
+    setCopies([]);
     setBeforeConvert(null);
     setSource('');
     setFiles([]);
     setSkipped([]);
     setDone(failed.length ? null : created);
-    setResult(`Imported ${created.length} of ${validated.length} prompts.${failed.length ? ` ${failed.length} failed; only these remain below for retry.` : ''}`);
+    setResult(`Imported ${created.length} of ${validated.length} prompts.${duplicates ? ` Skipped ${duplicates} already in your library.` : ''}${failed.length ? ` ${failed.length} failed; only these remain below for retry.` : ''}`);
     setBusy(false);
   };
   const reuseWithAI = () => {
@@ -253,6 +263,11 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
                 <label htmlFor={`import-folder-${index}`}>Folder for {prompt.name}</label>
                 <input id={`import-folder-${index}`} value={prompt.folder ?? ''} list="import-folders" maxLength={255} disabled={busy} onChange={event => setPreview(preview.map((item, i) => i === index ? { ...item, folder: event.target.value } : item))} />
               </div>
+              {isDuplicate(prompt) && <label className={styles.checkRow}>
+                <input type="checkbox" checked={copies.includes(index)} disabled={busy}
+                  onChange={event => setCopies(event.target.checked ? [...copies, index] : copies.filter(item => item !== index))} />
+                Already in your library. Import a copy anyway
+              </label>}
               <details open={preview.length <= 5}><summary>{prompt.fields.length} section{prompt.fields.length === 1 ? '' : 's'}</summary>{prompt.fields.map(field => <div key={field.name}><strong>{field.name}</strong><pre className={styles.importText}>{field.content}</pre></div>)}</details>
             </div>)}
           </div>
@@ -260,7 +275,7 @@ export default function ImportPrompts({ onCreated, folders, primary = false }: {
           <div className={styles.formActions}>
             <Button variant="ghost" disabled={busy} onClick={() => { setPreview(null); setBeforeConvert(null); setError(''); }}>Back</Button>
             {singleNote && <Button variant="secondary" disabled={busy} onClick={reuseWithAI}>Make reusable with AI</Button>}
-            <Button variant="primary" disabled={busy} onClick={() => void importPrompts()}>{busy ? 'Importing…' : singleNote ? 'Keep as written' : `Import ${preview.length} prompt${preview.length === 1 ? '' : 's'}`}</Button>
+            <Button variant="primary" disabled={busy || !included} onClick={() => void importPrompts()}>{busy ? 'Importing…' : !included ? 'Nothing new to import' : singleNote ? 'Keep as written' : `Import ${included} prompt${included === 1 ? '' : 's'}`}</Button>
           </div>
         </>}
         <Button variant="ghost" disabled={busy} onClick={close}>Close</Button>

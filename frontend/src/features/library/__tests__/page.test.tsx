@@ -496,6 +496,50 @@ describe('LibraryPage', () => {
     expect(screen.getByText('Copied the “Weekly status update” template')).toBeInTheDocument();
   });
 
+  it('deletes selected prompts together, with one undo', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.deletePrompt).mockResolvedValue(undefined);
+    const view = await renderLibrary();
+    await user.click(screen.getByRole('checkbox', { name: 'Select LinkedIn post' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select Weekly status update' }));
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    expect(rowNames()).not.toEqual(expect.arrayContaining(['LinkedIn post']));
+    expect(rowNames()).not.toContain('Weekly status update');
+    expect(screen.getByText('Deleted 2 prompts')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(rowNames()).toEqual(expect.arrayContaining(['LinkedIn post', 'Weekly status update']));
+    expect(ApiClient.deletePrompt).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select LinkedIn post' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select Weekly status update' }));
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    view.unmount();
+    expect(ApiClient.flushDeletePrompt).toHaveBeenCalledWith(3);
+    expect(ApiClient.flushDeletePrompt).toHaveBeenCalledWith(1);
+  });
+
+  it('skips prompts already in the library unless a copy is wanted', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.createPrompt).mockImplementation(async (body) => saved({ id: 40, name: body.name }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# LinkedIn post\nAgain\n# Brand new\nFresh');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByRole('checkbox', { name: /Already in your library/ })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Import 1 prompt' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Import 1 prompt' }));
+    expect(await screen.findByText('Imported 1 of 1 prompts. Skipped 1 already in your library.')).toBeInTheDocument();
+    expect(ApiClient.createPrompt).toHaveBeenCalledTimes(1);
+    expect(ApiClient.createPrompt).toHaveBeenCalledWith(expect.objectContaining({ name: 'Brand new' }));
+
+    await user.click(screen.getByRole('button', { name: 'Import more' }));
+    await user.type(screen.getByLabelText('Paste text'), '# LinkedIn post\nAgain');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByRole('button', { name: 'Nothing new to import' })).toBeDisabled();
+    await user.click(screen.getByRole('checkbox', { name: /Import a copy anyway/ }));
+    expect(screen.getByRole('button', { name: 'Keep as written' })).toBeEnabled();
+  });
+
   it('deletes with an undo, and only tells the server once the undo window has passed', async () => {
     const user = userEvent.setup();
     const view = await renderLibrary();

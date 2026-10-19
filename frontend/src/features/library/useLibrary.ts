@@ -38,7 +38,7 @@ export function useLibrary() {
   const [folderRemoveOpen, setFolderRemoveOpen] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef<number | null>(null);
-  const pendingDelete = useRef<{ prompt: Prompt; timer: number } | null>(null);
+  const pendingDelete = useRef<{ prompts: Prompt[]; timer: number } | null>(null);
 
   // The toggle remembers the choice as the "Library opens as" setting.
   const chooseLayout = (next: 'list' | 'grid') => {
@@ -55,7 +55,7 @@ export function useLibrary() {
   const load = useCallback(async (fresh = false) => {
     try {
       const data = await (fresh ? refreshLibrary() : loadLibrary());
-      setPrompts(data.filter(prompt => prompt.id !== pendingDelete.current?.prompt.id));
+      setPrompts(data.filter(prompt => !pendingDelete.current?.prompts.some(pending => pending.id === prompt.id)));
       setLoadError('');
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Failed to load your prompts.');
@@ -84,7 +84,7 @@ export function useLibrary() {
       if (!pending) return;
       window.clearTimeout(pending.timer);
       pendingDelete.current = null;
-      ApiClient.flushDeletePrompt(pending.prompt.id);
+      for (const prompt of pending.prompts) ApiClient.flushDeletePrompt(prompt.id);
     };
     window.addEventListener('pagehide', flush);
     return () => {
@@ -232,42 +232,54 @@ export function useLibrary() {
     }
   };
 
-  const commitDelete = async (prompt: Prompt) => {
+  const commitDelete = async (targets: Prompt[]) => {
     pendingDelete.current = null;
-    try {
-      await ApiClient.deletePrompt(prompt.id);
-      notifyLibraryChanged();
-    } catch {
-      setPrompts((current) => (current ? [prompt, ...current] : current));
-      showToast({ text: `Could not delete “${prompt.name}”. It is back in your library.` });
+    const failed: Prompt[] = [];
+    for (const prompt of targets) {
+      try { await ApiClient.deletePrompt(prompt.id); } catch { failed.push(prompt); }
+    }
+    if (failed.length < targets.length) notifyLibraryChanged();
+    if (failed.length) {
+      setPrompts((current) => (current ? [...failed, ...current] : current));
+      showToast({ text: failed.length === 1
+        ? `Could not delete “${failed[0].name}”. It is back in your library.`
+        : `Could not delete ${failed.length} prompts. They are back in your library.` });
     }
   };
 
-  const remove = (prompt: Prompt) => {
+  /** Prompts leave the view at once; the server hears about it only after the Undo window. */
+  const removeMany = (targets: Prompt[]) => {
     setMenuId(null);
     // Only one delete waits at a time; an earlier one goes through now.
     const earlier = pendingDelete.current;
     if (earlier) {
       window.clearTimeout(earlier.timer);
-      void commitDelete(earlier.prompt);
+      void commitDelete(earlier.prompts);
     }
-    setPrompts((current) => current?.filter((p) => p.id !== prompt.id) ?? null);
-    const timer = window.setTimeout(() => void commitDelete(prompt), UNDO_MS);
-    pendingDelete.current = { prompt, timer };
+    const ids = new Set(targets.map((prompt) => prompt.id));
+    setPrompts((current) => current?.filter((p) => !ids.has(p.id)) ?? null);
+    const timer = window.setTimeout(() => void commitDelete(targets), UNDO_MS);
+    pendingDelete.current = { prompts: targets, timer };
     showToast(
       {
-        text: `Deleted “${prompt.name}”`,
+        text: targets.length === 1 ? `Deleted “${targets[0].name}”` : `Deleted ${targets.length} prompts`,
         action: {
           label: 'Undo',
           run: () => {
             window.clearTimeout(timer);
             pendingDelete.current = null;
-            setPrompts((current) => (current ? [prompt, ...current] : current));
+            setPrompts((current) => (current ? [...targets, ...current] : current));
           },
         },
       },
       UNDO_MS,
     );
+  };
+  const remove = (prompt: Prompt) => removeMany([prompt]);
+  const deleteSelected = () => {
+    removeMany(selectedPrompts);
+    setSelected([]);
+    setBatchResult('');
   };
 
   const renameFolder = async (event: FormEvent) => {
@@ -342,6 +354,7 @@ export function useLibrary() {
     move,
     duplicate,
     remove,
+    deleteSelected,
     renameFolder,
     removeFolder,
     folders,
