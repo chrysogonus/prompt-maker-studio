@@ -6,7 +6,7 @@ import PromptEditor from '@/features/editor/PromptEditor';
 
 function NewPrompt() {
   const params = useSearchParams();
-  // The empty library links here to start from a template or straight into Paste a prompt.
+  // The library links here to start from a template or, from Add existing prompts, into Paste a prompt.
   return (
     <PromptEditor
       initialStarter={params.get('starter') ?? undefined}

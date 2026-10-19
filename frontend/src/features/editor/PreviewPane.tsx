@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { ApiClient } from '@/lib/api';
 import AICallContext from '@/components/ui/AICallContext';
 import { fillVariables, renderPlainSections, renderSections, sectionTag, splitVariables } from '@/lib/sections';
@@ -18,6 +19,8 @@ interface PreviewPaneProps {
   aiConfigError?: boolean;
   onLoadExamples: () => void;
   onClearValues: () => void;
+  /** Filled inputs are kept in this browser for the next visit. */
+  inputsRemembered?: boolean;
   variables: string[];
   metadata: Record<string, VariableMetadataItem>;
   values: Record<string, string>;
@@ -29,7 +32,7 @@ interface PreviewPaneProps {
   onCopyFailed: () => void;
 }
 
-type CopyKind = 'template' | 'filled' | 'placeholders';
+type CopyKind = 'template' | 'filled' | 'placeholders' | 'output';
 
 export default function PreviewPane({
   fields,
@@ -37,6 +40,7 @@ export default function PreviewPane({
   aiConfigLoading = false,
   aiConfigError = false,
   onClearValues,
+  inputsRemembered = false,
   onLoadExamples,
   variables,
   metadata,
@@ -49,7 +53,7 @@ export default function PreviewPane({
   onCopyFailed,
 }: PreviewPaneProps) {
   const [copied, setCopied] = useState<CopyKind | null>(null);
-  const [outputFormat, setOutputFormat] = useState<'sections' | 'plain'>('sections');
+  const [formatChoice, setOutputFormat] = useState<'sections' | 'plain' | null>(null);
   const [trying, setTrying] = useState(false);
   const [result, setResult] = useState<{ text: string; response: TryPromptResponse } | null>(null);
   const [tryError, setTryError] = useState('');
@@ -57,6 +61,9 @@ export default function PreviewPane({
   const [tryOpen, setTryOpen] = useState(false);
   const tryingRef = useRef(false);
   const copiedTimer = useRef<number | null>(null);
+  const resultRef = useRef<HTMLElement>(null);
+  // The output lands below the fold of the panel; bring it into view once.
+  useEffect(() => { if (result) resultRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); }, [result]);
   useEffect(
     () => () => {
       if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
@@ -75,6 +82,8 @@ export default function PreviewPane({
   }
 
   const filled = mode === 'filled' && variables.length > 0;
+  // A single section has nothing to separate, so its tags are noise unless chosen.
+  const outputFormat = formatChoice ?? (fields.length === 1 ? 'plain' : 'sections');
   const template = outputFormat === 'plain' ? renderPlainSections(fields) : renderSections(fields);
   const unfilled = variables.filter((name) => metadata[name]?.required ? !values[name]?.trim() : !values[name]);
   const missingRequired = unfilled.filter((name) => metadata[name]?.required);
@@ -87,7 +96,8 @@ export default function PreviewPane({
   const copy = async (kind: CopyKind) => {
     if (kind === 'filled' && missingRequired.length) return;
     try {
-      await navigator.clipboard.writeText(kind === 'template' ? template : filledText);
+      const text = kind === 'template' ? template : kind === 'output' ? result?.response.output_text ?? '' : filledText;
+      await navigator.clipboard.writeText(text);
       setCopied(kind);
       if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
       copiedTimer.current = window.setTimeout(() => setCopied(null), 1600);
@@ -214,7 +224,7 @@ export default function PreviewPane({
             ) : (
               `${missingOptional.length} optional variables are not filled in.`
             )}{' '}
-            They’ll be copied as placeholders.
+            {missingOptional.length === 1 ? 'It’ll be copied as a placeholder.' : 'They’ll be copied as placeholders.'}
           </p>
         )}
         <div className={styles.previewActions}>
@@ -233,6 +243,9 @@ export default function PreviewPane({
         )}
         {filled && <button type="button" className={styles.copyButton} data-secondary="true" disabled={!Object.values(values).some(Boolean)} onClick={onClearValues}>Clear inputs</button>}
         </div>
+        {filled && inputsRemembered && Object.values(values).some(Boolean) && (
+          <p className={styles.previewLong}>Inputs stay on this device until you clear them.</p>
+        )}
         <details className={styles.outputOptions}>
           <summary>Output options</summary>
           <label className={styles.outputFormat}>
@@ -255,12 +268,17 @@ export default function PreviewPane({
               </button>
             </div>
             {trying && <p className={styles.tryResult} role="status">Running the filled prompt…</p>}
-            {tryError && <p className={styles.tryResult} role="alert">{tryError}</p>}
-            {result && <section className={styles.tryResult} aria-label="Try once output">
+            {tryError && <p className={styles.tryResult} role="alert">{tryError}{tryError.includes('Settings →') && <> <Link href="/settings#s-api">Open Settings</Link></>}</p>}
+            {result && <section ref={resultRef} className={styles.tryResult} aria-label="Try once output">
               <h3>Output</h3>
               <p>{result.response.provider} / {result.response.model}</p>
               {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier inputs. Run again to try the current prompt.</p>}
               <pre tabIndex={0}>{result.response.output_text || 'The model returned no text.'}</pre>
+              {result.response.output_text && (
+                <button type="button" className={styles.copyButton} data-secondary="true" onClick={() => copy('output')}>
+                  {copied === 'output' ? 'Copied' : 'Copy output'}
+                </button>
+              )}
             </section>}
           </details>
         )}

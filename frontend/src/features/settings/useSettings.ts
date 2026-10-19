@@ -170,6 +170,8 @@ export function useSettings() {
     try {
       await ApiClient.deleteAccount(deletePassword);
       logout();
+      AuthService.setSignInNotice('Your account and all its prompts were deleted.');
+      window.history.replaceState(null, '', '/library');
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete account.');
       // The confirmation stays open so a mistyped password can be corrected,

@@ -181,9 +181,11 @@ and start a new conversation.
 
 ### 4. Disconnect
 
-Removing the plugin in ChatGPT stops it from calling the server. To cut off every linked
-client from the server side, use **Sign out everywhere** in Settings or change the
-password: access and refresh tokens are rejected immediately.
+Removing the plugin in ChatGPT stops it from calling the server. **Settings → ChatGPT**
+lists the connected apps with a **Disconnect** button for each; to cut off every linked
+client at once, use **Sign out everywhere** or change the password. Either way, access
+and refresh tokens are rejected immediately. The same Settings section shows users this
+server's connector address and the steps above.
 
 ### Troubleshooting
 

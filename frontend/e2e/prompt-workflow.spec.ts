@@ -96,18 +96,17 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
     await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}}.');
 
+    // The applied draft stays in the panel, so it applies again without another AI call.
     await page.getByRole('button', { name: 'Refine', exact: true }).click();
-    await panel.getByRole('button', { name: 'Find questions' }).click();
-    await panel.getByLabel('Who will read this?').fill('Beginners');
-    await panel.getByRole('button', { name: 'Create draft' }).click();
     await panel.getByRole('button', { name: 'Apply changes' }).click();
+    expect(calls).toBe(1);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     const save = page.getByRole('dialog', { name: 'Save prompt' });
     await save.getByLabel('Name', { exact: true }).fill('Refined explanation');
     await save.getByRole('button', { name: 'Save prompt' }).click();
     await expect(page).toHaveURL(/\/editor\/\d+$/);
     await page.reload();
-    await page.getByRole('tab', { name: 'Edit', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
     await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}} to beginners in three short paragraphs.');
     await page.getByLabel('Task text').fill('Explain {{topic}} to beginners briefly.');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -191,10 +190,9 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   await register(page, user);
   await createSavedPrompt(page, promptName, 'Verify saved prompt persistence');
 
-  // The preview shows the text exactly as it will be copied.
+  // The preview shows the text exactly as it will be copied; one section copies without tags.
   const preview = page.getByLabel('Prompt text');
-  await expect(preview).toContainText('<TASK>');
-  await expect(preview).toContainText('Verify saved prompt persistence');
+  await expect(preview).toHaveText('Verify saved prompt persistence');
 
   await sidebarLink(page, /All prompts/).click();
   await expect(page).toHaveURL(/\/library$/);
@@ -347,7 +345,8 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
     'Handle {{alpha}} for {{beta}} and mention {{alpha}} again.',
   );
 
-  // A hint is saved with the prompt and shown while filling it in.
+  // A saved prompt with inputs opens ready to fill; editing its hints is deliberate.
+  await page.getByRole('button', { name: 'Edit template', exact: true }).click();
   await page.getByLabel('Hint for alpha').fill('The thing to handle');
   const hintSave = promptPatch(page, promptId);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -362,8 +361,10 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
   // A genuine cross-session conflict still returns 409, and keeps the edit.
   const tabB = await context.newPage();
   await tabB.goto(`/editor/${promptId}`);
+  await tabB.getByRole('button', { name: 'Edit template', exact: true }).click();
   await expect(tabB.getByLabel('Task text')).toHaveValue(/alpha/);
 
+  await page.getByRole('button', { name: 'Edit template', exact: true }).click();
   await page.getByLabel('Task text').fill('tab A wins {{alpha}}');
   const tabASave = promptPatch(page, promptId);
   await page.getByRole('button', { name: 'Save', exact: true }).click();

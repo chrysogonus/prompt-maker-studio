@@ -320,10 +320,34 @@ describe('LLMConnectionForm', () => {
     render(<LLMConnectionForm />);
     await screen.findByLabelText('Provider');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Disconnect…' }));
+    expect(screen.getByText(/AI features stop working until you connect again/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Erase key and disconnect' }));
 
     expect(await screen.findByText(/API key has been erased/)).toBeInTheDocument();
     expect(screen.getByText('Not connected')).toBeInTheDocument();
+  });
+
+  it('keeps the connection when Disconnect is cancelled', async () => {
+    render(<LLMConnectionForm />);
+    await screen.findByLabelText('Provider');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Disconnect…' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(AuthService.deleteLLMConnection).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Disconnect…' })).toBeInTheDocument();
+  });
+
+  it('names the server default that replaces your own connection', async () => {
+    vi.mocked(AuthService.getLLMConnection).mockResolvedValue(
+      connection({ server_default: { provider_label: 'OpenAI', model: 'gpt-4.1-mini' } }),
+    );
+    render(<LLMConnectionForm />);
+    expect(await screen.findByText(/Without it, this server’s shared connection \(OpenAI, gpt-4.1-mini\) would be used/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Disconnect…' }));
+    expect(screen.getByText(/AI features will use this server’s shared connection \(OpenAI, gpt-4.1-mini\)/)).toBeInTheDocument();
   });
 
   it('shows an empty state when nothing is connected yet', async () => {
@@ -344,7 +368,7 @@ describe('LLMConnectionForm', () => {
     expect(screen.getByLabelText('Provider')).toHaveValue('');
     // Nothing to test or disconnect before a provider is chosen.
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
-    expect(screen.queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Disconnect…' })).not.toBeInTheDocument();
   });
 
   it('shows the server default, testable, when the user has no connection', async () => {
@@ -407,6 +431,7 @@ it('rejects malformed workspace IDs and sends null to clear a saved workspace', 
   await user.clear(workspace);
   await user.click(screen.getByRole('button', { name: 'Save connection' }));
   await waitFor(() => expect(AuthService.updateLLMConnection).toHaveBeenCalledWith(expect.objectContaining({ workspace_id: null })));
-  await user.click(screen.getByRole('button', { name: 'Disconnect' }));
+  await user.click(screen.getByRole('button', { name: 'Disconnect…' }));
+  await user.click(screen.getByRole('button', { name: 'Erase key and disconnect' }));
   await waitFor(() => expect(screen.queryByLabelText('Anthropic workspace ID (optional)')).not.toBeInTheDocument());
 });

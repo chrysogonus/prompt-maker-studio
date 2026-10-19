@@ -273,7 +273,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
               minLength={view === 'login' ? 1 : 10}
               autoComplete={view === 'login' ? 'current-password' : 'new-password'}
               aria-invalid={!!fieldErrors.password}
-              aria-describedby={fieldErrors.password ? 'password-error' : undefined}
+              aria-describedby={fieldErrors.password ? 'password-error' : view === 'register' ? 'password-hint' : undefined}
             />
             <button
               type="button"
@@ -285,10 +285,12 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
               {showPassword ? 'Hide' : 'Show'}
             </button>
           </div>
-          {fieldErrors.password && (
+          {fieldErrors.password ? (
             <p id="password-error" className={styles.fieldError}>
               {fieldErrors.password}
             </p>
+          ) : view === 'register' && (
+            <p id="password-hint" className={styles.fieldHint}>{PASSWORD_HINT}.</p>
           )}
         </div>
 

@@ -10,11 +10,125 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.8.0; see the [release candidate](./docs/releases/0.8.0.md).
+
+### Changed
+
+- Add existing prompts accepts several files at once, a whole folder (such as an
+  Obsidian vault, skipping hidden folders like `.obsidian` and non-note files), or
+  files and folders dropped onto the dialog. They share one preview; each note's
+  folder is suggested from its parent folder, Notion page IDs are dropped from
+  file-name titles, and files without prompts are listed as skipped.
+- Imported notes drop Notion page properties, Obsidian callouts and trailing `#tags`,
+  and read `[[links]]` as text, under the same "keep the original" choice as front
+  matter. The first tag suggests the folder, a Notion favourite stays a favourite, and
+  a pasted page that starts at `##` uses that heading as its title and splits on it.
+- The placeholder offer lists each placeholder with a checkbox, never includes
+  `[[wiki-links]]`, and keeps each placeholder's wording as its input's hint
+  (`[PASTE CODE HERE]` becomes an input hinted "Paste code here").
+- A note without a title is named from its first line instead of "Imported note".
+- Notion's Markdown & CSV `.zip` export can be imported as downloaded (read in the
+  browser, including nested part zips), and a database `.csv` becomes one prompt per
+  row with Tags as its folder. A Notion property that holds the prompt text is kept;
+  only metadata lines are removed. Binary files are refused instead of imported as text.
+- Importing skips prompts whose title is already in the library, including ones imported
+  earlier in the same session, unless "Import a copy anyway" is ticked, and selected
+  library prompts can be deleted together with one Undo.
+- Settings has a ChatGPT section: the connector address to copy, the steps to connect,
+  and the connected apps, each with Disconnect (`GET`/`DELETE /api/auth/me/connected-apps`).
+- Make reusable with AI leaves out notes meant for the prompt's owner, such as which
+  AI tool to use, reminders, tags or links to other notes, instead of making them sections.
+- The empty library leads with Add existing prompts and says it takes Notion,
+  Obsidian and Markdown notes; New prompt sits beside it.
+- Library grid cards show the variable count like the list, and card snippets
+  prefer the Task section over a shared role line.
+- Save as written suggests a short title from the first line, without `{{variables}}`.
+- History and evaluation run times show the time zone. Example inputs are multiline,
+  full folder names appear on hover in the sidebar, and the editor title shows a
+  rename icon. The Variables panel drops its unrelated travel example.
+- AI actions say whether they use your own connection, billed by your provider, or
+  this server's shared connection, paid for by the operator. `/api/prompts/config`
+  adds `uses_server_default`.
+- Saved prompts with variables open ready to fill from anywhere, with Edit template
+  for wording changes. Filled inputs are kept on this device for every saved prompt
+  until cleared, and the preview says so.
+- The library has one **Add existing prompts** entry point for pasted text and files,
+  replacing the separate Paste a prompt link and Import prompts button. The dialog
+  folds format details away, shows section text for small imports, offers Make
+  reusable with AI for a single note, and ends with Open imported prompts or Import
+  more. Favorites in a JSON export carry over.
+- Inputs, selects, text areas and secondary buttons use a control border that meets
+  3:1 contrast on every surface in both themes, including the preview's fill-in
+  fields. Editor section cards mark their text area with a 3:1 left rail, and focus
+  outlines the whole card in both themes. Decorative borders and dividers are unchanged.
+- Each section has an Insert input control: name an input to add it at the caret, or
+  select text first to turn it into an input that keeps the text as its example.
+- Importing a note removes its YAML front matter and reads the rest as Markdown, so
+  a leading `# Title` becomes the title and `##` headings become sections. The
+  preview can keep the original text instead. Make reusable with AI receives the
+  note's body without front matter or its title line.
+- The import preview offers to turn placeholders such as `[TOPIC]`, `{audience}` or
+  `<transcript>` into inputs, with Undo, and adds a Folder for all prompts field when
+  several prompts are imported. The file picker matches the app's buttons.
+- Prompts with a single section copy as plain text by default, in the preview and from
+  the library; Output options or the library menu add the section tags.
+
+### Fixed
+
+- The import preview's buttons wrap on phones instead of pushing "Keep as written"
+  off-screen, and a file's name is no longer reused as the title of text pasted
+  afterwards.
+- Registration shows the password rules under the field while typing, Try once
+  scrolls its output into view, and deleting an account ends on the sign-in screen
+  with a confirmation.
+- Undoing a pasted conversion no longer reopens its review dialog when you return
+  to the prompt; only a Paste dialog left open is recovered.
+- Section text no longer shrinks to its first line after switching from Fill and
+  copy to Edit template; text areas also refit when their width changes.
+- The sidebar's New prompt button keeps its size when many folders make the
+  sidebar scroll.
+- A Try once output no longer squeezes the fill-in fields out of the preview, and
+  it has its own Copy output button.
+- Disconnecting an AI provider asks first, says the API key will be erased and what
+  AI features fall back to. While your own connection is used, Settings names the
+  server's shared connection that would replace it.
+- Provider errors point to Settings → AI connection (the section's real name) and
+  link to it. Refine no longer claims a shared connection is your own, Settings
+  lists every AI feature, and its data note says imports keep favorites.
+- A single unfilled input reads "It'll be copied as a placeholder", and Evaluate
+  says "Runs 1 case" instead of "Runs all 1 case".
+- Make reusable with AI no longer fills inputs with placeholder text such as `[TOPIC]`;
+  they start empty. AI-created sections use readable names (`Output format`, not
+  `output_format`) and the title is no longer turned into a section.
+- The title and folder chosen in the library's import preview carry through Make
+  reusable with AI into the Save dialog, and applying the conversion no longer leaves
+  an outdated "Your unsaved changes were restored" notice next to the import notice.
+- Library search matches every word in any order across titles, folders and sections
+  ("email refund" finds "Refund Request Template"), and ignores extra spaces.
+- Refine offers Improve without questions, for a draft that tightens the wording
+  without new requirements; `POST /api/prompts/refine/draft` accepts no `qa_pairs`.
+  Its questions no longer ask what a `{{variable}}` should be, and an applied draft
+  stays in the panel so it can be applied again after Undo without another AI call.
+- Library cards are wider, so titles and all card actions fit on fewer lines, and
+  snippets mark `{{inputs}}`. The List/Grid toggle now saves the "Library opens as"
+  setting. The search field's clear button uses the app's colours.
+- Insert input turns a name with spaces into an input name (`Target audience` becomes
+  `target_audience`) instead of rejecting it.
+- Version history dates each version by when it was written rather than when a later
+  save replaced it.
+- Suggested evaluation cases favour realistic inputs and add an adversarial case only
+  for prompts that handle text from other people. The empty-state text hides while
+  suggestions are shown.
+- The landing page mentions importing Markdown notes from Notion or Obsidian, and its screenshots and
+  the documentation screenshots show the current app.
+
+## [0.7.0] - 2026-10-18
+
 ### Added
 
 - Serve operator-supplied Terms of Service at `/terms` and show its legal link
   when `nutzungsbedingungen.html` is available in the mounted legal directory.
-  Prepared for 0.7.0; see the [release candidate](./docs/releases/0.7.0.md).
+  See the [release record](./docs/releases/0.7.0.md).
 
 ## [0.6.1] - 2026-10-17
 
@@ -681,7 +795,8 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.7.0
 [0.6.1]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.6.1
 [0.6.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.6.0
 [0.5.1]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.5.1

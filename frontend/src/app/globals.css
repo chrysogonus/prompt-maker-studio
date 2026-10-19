@@ -8,14 +8,18 @@
   --pm-mark-color: var(--accent-text);
 
   /* Blush paper, plum ink. Every text colour below clears WCAG AA (4.5:1) on
-     canvas, panel and panel-raised; muted is the tightest at 4.4:1+ on the
-     sidebar tint, so it is never used for body copy there. */
+     canvas, panel, panel-raised, overlay and sidebar; muted is the tightest at
+     5.05:1 on the sidebar, and only 4.46:1 on plum-wash, so muted text never
+     sits on a solid plum-wash. app/__tests__/globals.test.ts checks these pairs. */
   --color-canvas: #fbf5f4;
   --color-panel: #ffffff;
   --color-panel-raised: #f7eef0;
   --color-overlay: #fffdfb;
   --color-border: #ecdce3;
   --color-border-strong: #dcc5d1;
+  /* Borders above only decorate and divide. A form control's edge needs 3:1
+     against every surface (WCAG 1.4.11), so controls use this instead. */
+  --color-control-border: #8f7787;
   --color-text-primary: #2b1b28;
   --color-text-secondary: #6e5868;
   --color-text-muted: #735d6c;
@@ -41,6 +45,7 @@
   --pv-muted: #c9afc0;
   --pv-var: #ff9b7a;
   --pv-border: #3e2738;
+  --pv-control-border: #866b80;
   --pv-input: #352030;
 
   /* Accent usage rule: --color-accent-tag (coral) is the ONLY actionable/
@@ -157,6 +162,7 @@
   --color-overlay: #2d2234;
   --color-border: #3a2a3f;
   --color-border-strong: #513b59;
+  --color-control-border: #86708f;
   --color-text-primary: #f8f7fa;
   --color-text-secondary: #b4a7b9;
   --color-text-muted: #9d8fa6;
@@ -171,6 +177,7 @@
   --pv-muted: #b4a7b9;
   --pv-var: #ff9876;
   --pv-border: #3a2a3f;
+  --pv-control-border: #76657f;
   --pv-input: #201727;
   --color-accent-tag: #ff9876;
   --color-accent-tag-hover: #ffb196;

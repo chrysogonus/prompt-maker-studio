@@ -62,8 +62,8 @@ export default function ImportDialog({
       {replacesContent && <p className={styles.dialogHint}>Use in editor will replace your current sections and variable settings in the draft. Undo restores the previous draft. Save to keep the conversion.</p>}
       <ImportReview session={session} onChange={onSessionChange} onImport={onImport} onClose={onClose} />
     </> : <form className={styles.dialogForm} onSubmit={submit}>
-      <p className={styles.dialogText}>Keep your words as written, or optionally use AI to organize sections and suggest reusable inputs. Saving as written keeps all text in one Task section; copied output includes &lt;TASK&gt; section wrappers.</p>
-      <p className={styles.dialogHint}>Save as written works without AI. You can rename the prompt before saving. Choose Plain text in the preview to copy without section wrappers.</p>
+      <p className={styles.dialogText}>Keep your words as written, or optionally use AI to organize sections and suggest reusable inputs. Saving as written keeps all text in one Task section, which copies as plain text.</p>
+      <p className={styles.dialogHint}>Save as written works without AI. You can rename the prompt before saving.</p>
       {aiConfigLoading ? <p role="status">Checking AI connection…</p> : aiConfigError ? <p role="status">Could not check the AI connection. Reload to retry; you can still save as written.</p> : <AICallContext config={aiConfig} />}
       {!aiConfigLoading && !aiAvailable && <p><Link href="/settings#s-api">Open Settings</Link> to review your AI connection.</p>}
       <textarea className={styles.importText} value={session.text}
@@ -71,7 +71,7 @@ export default function ImportDialog({
         placeholder="For example: Plan a 3-day trip to Lisbon for 2 adults with a budget of €900. Give me a daily itinerary."
         aria-label="Prompt to convert" maxLength={10_000} disabled={busy} autoFocus />
       {replacesContent && <small className={styles.dialogHint}>Conversion starts a review. Your current draft stays as it is until you choose Use in editor.</small>}
-      {error && <p className={styles.formError} role="alert">{error}</p>}
+      {error && <p className={styles.formError} role="alert">{error}{error.includes('Settings →') && <> <Link href="/settings#s-api">Open Settings</Link></>}</p>}
       {busy && <p role="status">Creating sections and identifying reusable inputs…</p>}
       <div className={styles.dialogActions}>
         <Button variant="ghost" onClick={onClose} disabled={busy}>Close</Button>

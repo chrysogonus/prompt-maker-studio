@@ -51,6 +51,19 @@ class TestGenerateClarifyingQuestions:
         assert "explicitly requested additional questions" in system_message
         assert "avoiding dimensions already answered" in system_message
 
+    def test_drops_questions_about_what_a_placeholder_should_be(self):
+        connection, create = _connection_returning(
+            {"questions": ["What topic should replace {{topic}}?", "Who is the audience?"]}
+        )
+
+        result, _ = PromptRefinerService.generate_clarifying_questions(
+            "Write about {{topic}}", connection
+        )
+
+        assert result == ["Who is the audience?"]
+        system_message = create.call_args.kwargs["messages"][0]["content"]
+        assert "never ask what value" in system_message
+
     def test_propagates_provider_errors(self):
         connection = make_connection(MagicMock(side_effect=OpenAIError("boom")))
 
@@ -120,6 +133,18 @@ class TestSectionDraft:
             "clarifications": [{"question": "Audience?", "answer": "Beginners"}],
         }
         assert request["response_format"]["json_schema"]["name"] == "refine_sections"
+        assert "No clarifications were given" not in request["messages"][0]["content"]
+
+    def test_improves_without_clarifications_without_inventing_requirements(self):
+        fields = [PromptField(name="Task", content="Explain {{topic}}.")]
+        connection, create = _connection_returning(
+            {"fields": [field.model_dump() for field in fields]}
+        )
+        PromptRefinerService.generate_section_draft(fields, [], connection)
+        request = create.call_args.kwargs
+        assert "No clarifications were given" in request["messages"][0]["content"]
+        assert "do not invent new requirements" in request["messages"][0]["content"]
+        assert json.loads(request["messages"][1]["content"])["clarifications"] == []
 
     def test_accepts_nested_examples_using_the_outer_section_tag(self):
         source = [

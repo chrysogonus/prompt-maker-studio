@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import renderingCases from '../../../../contracts/section-rendering.json';
 import {
   fillVariables,
+  insertVariable,
+  isVariableName,
   normalizeSectionName,
   renderSections,
   sectionNameError,
   sectionTag,
   splitVariables,
+  suggestTitle,
   unbalancedTags,
   variablesIn,
 } from '../sections';
@@ -76,5 +79,38 @@ describe('unbalancedTags', () => {
     expect(unbalancedTags('<b>bold</b> and <i>open')).toEqual(['i']);
     expect(unbalancedTags('</note> stray')).toEqual(['note']);
     expect(unbalancedTags('no tags, {{var}} only')).toEqual([]);
+  });
+});
+
+describe('suggestTitle', () => {
+  it('uses the first line without variables or Markdown markers', () => {
+    expect(suggestTitle('  # Review this {{code}} for security.\nMore text')).toBe('Review this for security.');
+  });
+
+  it('cuts long lines at a word boundary', () => {
+    const title = suggestTitle('Write a detailed weekly status update for the platform team covering risks and blockers');
+    expect(title).toBe('Write a detailed weekly status update for the platform team');
+    expect(title.length).toBeLessThanOrEqual(60);
+  });
+
+  it('leaves the name empty when the first line is only a variable', () => {
+    expect(suggestTitle('{{draft}}\nPolish this.')).toBe('');
+  });
+});
+
+describe('insertVariable', () => {
+  it('replaces the selection and returns it as the example', () => {
+    expect(insertVariable('Plan a trip to Lisbon.', 15, 21, 'city')).toEqual({
+      text: 'Plan a trip to {{city}}.', replaced: 'Lisbon', caret: 23,
+    });
+  });
+
+  it('inserts at the caret without a selection', () => {
+    expect(insertVariable('Hello ', 6, 6, 'name')).toEqual({ text: 'Hello {{name}}', replaced: '', caret: 14 });
+  });
+
+  it('accepts only names that render as variables', () => {
+    expect(isVariableName('city_name-2')).toBe(true);
+    expect(['', '2city', 'two words', 'a.b'].some(isVariableName)).toBe(false);
   });
 });

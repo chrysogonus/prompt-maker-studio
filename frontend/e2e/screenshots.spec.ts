@@ -88,11 +88,14 @@ test('captures the README screenshots', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Weekly status update', exact: true })).toBeVisible();
   await shoot(page, 'library');
 
-  // A saved prompt being filled in, with the text ready to copy.
+  // A saved prompt's sections beside its filled-in preview, ready to copy.
   await page.getByRole('link', { name: 'Weekly status update', exact: true }).click();
   await expect(page.getByRole('radio', { name: 'Filled' })).toHaveAttribute('aria-checked', 'true');
   await page.getByLabel('team', { exact: true }).fill('Payments');
   await page.getByLabel('week', { exact: true }).fill('6–10 Oct');
+  // Show the sections beside the filled preview, as the landing page describes.
+  await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+  await expect(page.getByLabel('Role text')).toBeVisible();
   await shoot(page, 'editor');
 
   // Comparing an earlier version with the current text.
@@ -118,9 +121,7 @@ test('captures the README screenshots', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto('/library');
   await page.getByRole('link', { name: 'Reply to a tricky email', exact: true }).click();
-  await expect(page.getByRole('tab', { name: 'Fill and copy' })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  await expect(page.getByRole('button', { name: 'Edit template', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Copy filled prompt' })).toBeVisible();
   await shoot(page, 'phone');
 });

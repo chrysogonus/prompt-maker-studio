@@ -218,7 +218,7 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
     if not user.llm_provider:
         msg = (
             "No AI provider is connected. Add your provider and API key in "
-            "Settings → API access to use AI features."
+            "Settings → AI connection to use AI features."
         )
         raise NoProviderConfiguredError(msg)
 
@@ -227,7 +227,7 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
     except ValueError as exc:
         msg = (
             f"Your saved AI provider ('{user.llm_provider}') is no longer supported. "
-            "Pick a provider again in Settings → API access."
+            "Pick a provider again in Settings → AI connection."
         )
         raise NoProviderConfiguredError(msg) from exc
 
@@ -235,13 +235,13 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
     if not resolved_model:
         msg = (
             f"No model is configured for your {provider.label} connection. "
-            "Set one in Settings → API access."
+            "Set one in Settings → AI connection."
         )
         raise NoProviderConfiguredError(msg)
 
     base_url = user.llm_base_url or provider.default_base_url
     if not base_url:
-        msg = f"Your {provider.label} connection has no base URL. Set one in Settings → API access."
+        msg = f"Your {provider.label} connection has no base URL. Set one in Settings → AI connection."
         raise NoProviderConfiguredError(msg)
 
     if user.llm_api_key_encrypted:
@@ -250,11 +250,11 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
         except SecretDecryptionError as exc:
             msg = (
                 "Your stored API key could not be read (the server's encryption key changed). "
-                "Re-enter it in Settings → API access."
+                "Re-enter it in Settings → AI connection."
             )
             raise StoredKeyUnreadableError(msg) from exc
     elif provider.requires_api_key:
-        msg = f"No API key is configured for {provider.label}. Add one in Settings → API access."
+        msg = f"No API key is configured for {provider.label}. Add one in Settings → AI connection."
         raise NoProviderConfiguredError(msg)
     else:
         api_key = _LOCAL_API_KEY_PLACEHOLDER
@@ -499,7 +499,7 @@ def json_completion(
 
     msg = (
         f"{connection.provider_label} did not return valid JSON for model "
-        f"'{connection.model}'. Try a more capable model in Settings → API access."
+        f"'{connection.model}'. Try a more capable model in Settings → AI connection."
     )
     raise LLMResponseFormatError(msg) from last_error
 
@@ -512,7 +512,7 @@ _ERROR_RULES: tuple[tuple[type[Exception], int, str], ...] = (
     (
         AuthenticationError,
         _HTTP_UNPROCESSABLE,
-        "{who} rejected your API key. Check or replace it in Settings → API access.",
+        "{who} rejected your API key. Check or replace it in Settings → AI connection.",
     ),
     (
         PermissionDeniedError,
@@ -532,7 +532,7 @@ _ERROR_RULES: tuple[tuple[type[Exception], int, str], ...] = (
         _HTTP_UNPROCESSABLE,
         (
             "{who} has no model matching your configured model name. "
-            "Check it in Settings → API access."
+            "Check it in Settings → AI connection."
         ),
     ),
     (APITimeoutError, _HTTP_BAD_GATEWAY, "{who} did not respond in time. Please try again."),
@@ -541,7 +541,7 @@ _ERROR_RULES: tuple[tuple[type[Exception], int, str], ...] = (
         _HTTP_BAD_GATEWAY,
         (
             "Could not reach {who} at the configured base URL. "
-            "Check the endpoint in Settings → API access."
+            "Check the endpoint in Settings → AI connection."
         ),
     ),
 )
@@ -549,17 +549,17 @@ _ERROR_RULES: tuple[tuple[type[Exception], int, str], ...] = (
 _STATUS_RULES: dict[int, tuple[int, str]] = {
     _HTTP_UNAUTHORIZED: (
         _HTTP_UNPROCESSABLE,
-        "{who} rejected your API key. Check or replace it in Settings → API access.",
+        "{who} rejected your API key. Check or replace it in Settings → AI connection.",
     ),
     _HTTP_FORBIDDEN: (
         _HTTP_UNPROCESSABLE,
-        "{who} rejected your API key. Check or replace it in Settings → API access.",
+        "{who} rejected your API key. Check or replace it in Settings → AI connection.",
     ),
     _HTTP_NOT_FOUND: (
         _HTTP_UNPROCESSABLE,
         (
             "{who} returned 404 for the configured endpoint or model. "
-            "Check both in Settings → API access."
+            "Check both in Settings → AI connection."
         ),
     ),
 }
@@ -591,7 +591,7 @@ def describe_llm_error(exc: Exception, connection: LLMConnection | None) -> tupl
     ):
         return _HTTP_UNPROCESSABLE, (
             "Anthropic requires a valid workspace for this API key. "
-            "Add or check the Anthropic workspace ID in Settings → API access, "
+            "Add or check the Anthropic workspace ID in Settings → AI connection, "
             "and confirm the key has access to that workspace."
         )
 

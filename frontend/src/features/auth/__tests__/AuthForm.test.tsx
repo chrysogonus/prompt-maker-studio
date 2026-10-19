@@ -191,6 +191,8 @@ describe('AuthForm — register view', () => {
     render(<AuthForm onSuccess={mockOnSuccess} />);
     await userEvent.click(screen.getByRole('button', { name: /create account/i }));
     expect(screen.getByRole('heading', { name: /create your account/i })).toBeInTheDocument();
+    // The rules stay visible while typing, not only as a placeholder.
+    expect(screen.getByLabelText('Password')).toHaveAccessibleDescription('10+ characters, with a number and a symbol.');
   });
 
   it('registers and auto-logs-in on success', async () => {

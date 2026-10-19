@@ -11,7 +11,7 @@
 .variable { display: grid; gap: var(--space-3); padding: var(--space-4) 0; border-bottom: 1px solid var(--color-border); }
 .variable label { display: grid; gap: var(--space-1); }
 .variable input:not([type='checkbox']), .variable textarea {
-  width: 100%; min-width: 0; min-height: 44px; padding: 9px 10px; border: 1px solid var(--color-border-strong);
+  width: 100%; min-width: 0; min-height: 44px; padding: 9px 10px; border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm); background: var(--color-panel); color: var(--text-primary); font: inherit;
 }
 .variable textarea { resize: vertical; }

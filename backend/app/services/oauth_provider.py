@@ -194,6 +194,44 @@ def approve_authorization(db: Session, request: dict, user: User) -> str:
     return construct_redirect_uri(request["redirect_uri"], code=code, state=request["state"])
 
 
+def connected_apps(db: Session, user: User) -> list[dict]:
+    """Clients that still hold a usable refresh token for this account."""
+    rows = (
+        db.query(OAuthRefreshToken)
+        .join(
+            OAuthGrant,
+            (OAuthGrant.user_id == OAuthRefreshToken.user_id)
+            & (OAuthGrant.client_id == OAuthRefreshToken.client_id),
+        )
+        .filter(
+            OAuthRefreshToken.user_id == user.id,
+            OAuthRefreshToken.token_version == (user.token_version or 0),
+            OAuthRefreshToken.grant_version == OAuthGrant.version,
+        )
+        .all()
+    )
+    live = {row.client_id for row in rows if as_utc(row.expires_at) > _now()}
+    apps = []
+    for client_id in live:
+        info = get_client_info(db, client_id)
+        apps.append(
+            {"client_id": client_id, "name": (info and info.client_name) or "Connected app"}
+        )
+    return sorted(apps, key=lambda app: (app["name"].lower(), app["client_id"]))
+
+
+def disconnect_app(db: Session, user: User, client_id: str) -> None:
+    """Revoke one client's access to this account, including access tokens already issued."""
+    grant = db.get(OAuthGrant, (user.id, client_id))
+    if grant is None:
+        raise OperationError(status_code=404, detail="That app is not connected to your account.")
+    # Access tokens carry the grant version, so bumping it ends them immediately.
+    grant.version += 1
+    for model in (OAuthAuthorizationCode, OAuthRefreshToken):
+        db.query(model).filter(model.user_id == user.id, model.client_id == client_id).delete()
+    db.commit()
+
+
 def deny_authorization(request: dict) -> str:
     return construct_redirect_uri(
         request["redirect_uri"],

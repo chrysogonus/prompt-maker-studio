@@ -42,6 +42,9 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
   const sourceKey = JSON.stringify(source);
   const stale = source !== null && sourceKey !== JSON.stringify(fields);
   const changed = draft?.some((field, i) => field.content !== source?.[i]?.content);
+  // Applying keeps the session: after Undo in the editor the same draft can be applied again.
+  const plain = (list: PromptField[]) => JSON.stringify(list.map(({ name, content }) => ({ name, content })));
+  const applied = !!draft && changed && plain(draft) === plain(fields);
 
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   useEffect(() => () => { requestRef.current += 1; }, []);
@@ -95,15 +98,12 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
     }
   };
 
-  const createDraft = async () => {
-    if (busy || stale || !source || !questions) return;
+  const requestDraft = async (snapshot: PromptField[], pairs: { question: string; answer: string }[]) => {
     const id = ++requestRef.current;
     setError('');
     setBusy('draft');
     try {
-      const result = await ApiClient.createRefinementDraft(source, questions
-        .map((question, i) => ({ question, answer: answers[i].trim() }))
-        .filter((pair) => pair.answer));
+      const result = await ApiClient.createRefinementDraft(snapshot, pairs);
       if (id !== requestRef.current) return;
       setDraft(result.fields);
       setReview(true);
@@ -114,6 +114,21 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
     } finally {
       if (id === requestRef.current) setBusy(null);
     }
+  };
+
+  const createDraft = () => {
+    if (busy || stale || !source || !questions) return;
+    void requestDraft(source, questions
+      .map((question, i) => ({ question, answer: answers[i].trim() }))
+      .filter((pair) => pair.answer));
+  };
+
+  // No questions: the AI tightens the current sections without new requirements.
+  const improve = () => {
+    if (busy || stale) return;
+    const snapshot = fields.map((field) => ({ ...field }));
+    setSource(snapshot);
+    void requestDraft(snapshot, []);
   };
 
   const reset = () => {
@@ -157,6 +172,12 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
             <p className={styles.hint}>Connect a provider in Settings to find questions and create a revised draft.</p>
             <Link href="/settings#s-api" className={styles.link}>Open Settings</Link>
           </>
+        ) : applied ? (
+          <>
+            <p>These changes are applied to your draft.</p>
+            <p className={styles.hint}>Save in the editor to keep them, or use Undo there to go back; this draft stays here to apply again.</p>
+            <Button variant="secondary" onClick={reset}>Start again</Button>
+          </>
         ) : stale ? (
           <>
             <p>Your prompt changed since this refinement started.</p>
@@ -189,13 +210,13 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
           </>
         ) : questions === null ? (
           <>
-            <p>Answer a few questions, then review a revised version of your prompt.</p>
-            <p className={styles.hint}>Uses your AI connection. Nothing is applied or saved automatically.</p>
+            <p>Answer a few questions, or skip them, then review a revised version of your prompt.</p>
+            <p className={styles.hint}>Nothing is applied or saved automatically.</p>
           </>
         ) : questions.length === 0 ? (
           <>
             <p>No important gaps were identified.</p>
-            <p className={styles.hint}>You can keep your prompt as it is, or ask for optional questions.</p>
+            <p className={styles.hint}>You can keep your prompt as it is, improve its wording without questions, or ask for optional questions.</p>
           </>
         ) : (
           <>
@@ -214,17 +235,17 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
             ))}
           </>
         )}
-        {error && <p className={styles.error} role="alert">{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}{error.includes('Settings →') && <> <Link href="/settings#s-api" className={styles.link}>Open Settings</Link></>}</p>}
         {busy && <p className={styles.hint} role="status">{busy === 'questions' ? 'Finding questions…' : 'Creating draft…'}</p>}
       </div>
 
       <div className={styles.foot}>
         {review && !stale ? (
           <>
-            <Button variant="ghost" onClick={() => { setReview(false); setError(''); }}>Back to answers</Button>
+            <Button variant="ghost" onClick={() => { setReview(false); setError(''); }}>{questions?.length ? 'Back to answers' : 'Back'}</Button>
             <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Discard draft</Button>
             <Button variant="primary" disabled={!changed || !aiAvailable} onClick={() => {
-              if (draft && !stale) { onApply(draft); reset(); }
+              if (draft && !stale) onApply(draft);
             }}>Apply changes</Button>
           </>
         ) : (
@@ -232,9 +253,12 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
             <Button variant="ghost" onClick={onClose}>Back to editor</Button>
             {aiAvailable && !stale && (
               questions === null || questions.length === 0 ? (
-                <Button variant={questions === null ? 'primary' : 'secondary'} disabled={busy !== null} onClick={() => findQuestions(questions !== null)}>
-                  {questions === null ? 'Find questions' : 'Ask more questions'}
-                </Button>
+                <>
+                  <Button variant="secondary" disabled={busy !== null} onClick={improve}>Improve without questions</Button>
+                  <Button variant={questions === null ? 'primary' : 'secondary'} disabled={busy !== null} onClick={() => findQuestions(questions !== null)}>
+                    {questions === null ? 'Find questions' : 'Ask more questions'}
+                  </Button>
+                </>
               ) : (
                 <Button variant="primary" disabled={busy !== null || !answers.some((answer) => answer.trim())} onClick={createDraft}>Create draft</Button>
               )

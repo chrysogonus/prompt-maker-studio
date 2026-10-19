@@ -997,3 +997,165 @@ Gemini Flash's fallback uses its post-introductory standard rate conservatively.
 [Gemini models](https://ai.google.dev/gemini-api/docs/models);
 `backend/app/services/llm_providers.py`, `backend/app/services/llm_model_catalog.py`,
 `frontend/src/features/settings/LLMConnectionForm.tsx`.
+
+---
+
+## Saved Prompts Open Ready to Fill and Remember Inputs Locally
+
+**Status**: Accepted (2026-10-18)
+
+**Context**: An external UX review (18 Oct 2026) found returning users had to tell
+template editing apart from filling a prompt once. The focused reuse view existed
+but opened only from the library's Fill and copy link, and filled inputs were
+remembered only after Paste a prompt, so whether inputs persisted was unpredictable.
+
+**Decision**: A saved prompt with variables opens in the focused reuse view from any
+entry point, including after its first save, unless restored unsaved template edits
+need to stay visible. Prompts without variables open in the editor. Edit template
+remains the deliberate way to change wording. Filled inputs for every saved prompt
+are kept in the account-scoped local draft, never on the server; the preview says
+so, and Clear inputs removes them. New unsaved prompts keep their previous behavior.
+
+**Consequences**: Opening a prompt to change its wording takes one extra click.
+Inputs can hold sensitive text in browser storage until cleared, the saved prompt
+changes, or the user signs out (explicit sign-out already removes drafts).
+
+**Sources**: `frontend/src/features/editor/usePromptEditor.ts`,
+`frontend/src/features/editor/PromptEditor.tsx`, `frontend/src/features/editor/PreviewPane.tsx`.
+
+---
+
+## One Library Entry Point for Existing Prompts
+
+**Status**: Accepted (2026-10-18)
+
+**Context**: The library offered New prompt, a Paste a prompt link and an Import prompts
+button. The external UX review (18 Oct 2026) found that someone bringing one existing
+prompt had to pick an implementation path before seeing it in the product, and that the
+import dialog led with format rules.
+
+**Decision**: The library shows New prompt and **Add existing prompts**. The latter opens
+the import dialog, which accepts pasted text and files, keeps format rules in a disclosure,
+and previews section text. A single pasted note offers Keep as written (no AI) or Make
+reusable with AI, which hands the text once through session storage to the editor's
+existing Paste a prompt flow rather than overwriting the user's new-prompt draft. The
+editor keeps Paste a prompt for new and saved prompts. JSON favorites are applied after
+creation because the create endpoint rejects extra fields.
+
+**Consequences**: AI conversion from the library takes one more step (Preview), and the
+no-AI path is the default. Full archive restore remains deferred (ROADMAP Later).
+
+**Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`,
+`frontend/src/features/editor/usePromptEditor.ts`.
+
+---
+
+## Control Boundaries Meet 3:1 Non-Text Contrast
+
+**Status**: Accepted (2026-10-18)
+
+**Context**: Earlier entries (palette remap, dark-mode recheck) state that colour pairings
+clear WCAG AA; that check covered text only. Measured against WCAG 1.4.11, every border
+token failed 3:1 (light `--color-border` on panel 1.32:1, dark 1.37:1, best case 2.02:1),
+and inputs, selects and secondary buttons relied on those borders as their only edge.
+
+**Decision**: Add `--color-control-border` (light `#8f7787`, dark `#86708f`) and
+`--pv-control-border` for the preview's fill-in fields (light `#866b80`, dark `#76657f`).
+Form fields, selects and secondary buttons use them; `--color-border` and
+`--color-border-strong` stay for cards, dividers and other decoration, keeping the calm
+palette. `frontend/src/app/__tests__/globals.test.ts` asserts text at 4.5:1 and control
+edges at 3:1 on canvas, panel, raised, overlay and sidebar (plus plum-wash and the preview
+surfaces) in both themes. This amends the AA statements above to cover non-text contrast.
+
+**Consequences**: Controls look slightly more defined. Section cards keep their soft outline,
+but their existing left rail now uses the control border, marking each borderless text area
+at about 4:1 without boxing it in. Because that rail and the coral focus colour are similarly
+bright, focus now outlines the whole card in coral in both themes (previously light changed
+only the rail). Selected and error states keep their existing colours.
+
+**Sources**: `frontend/src/app/globals.css`, `frontend/src/components/ui/Input.module.css`,
+`frontend/src/components/ui/Select.module.css`, `frontend/src/components/ui/Button.module.css`.
+
+---
+
+## Imported Notes Drop Front Matter and Offer Placeholder Inputs
+
+**Status**: Accepted (2026-10-19)
+
+**Context**: A persona test (someone moving prompts out of Notion and Obsidian) found that
+imported notes kept their YAML front matter and `# Title` line inside the prompt text, so both
+appeared in library snippets and were pasted into chat assistants. Placeholders people already
+write, such as `[TOPIC]`, `{audience}` or `<transcript>`, stayed plain text, and Make reusable
+with AI filled inputs with that placeholder text as if it were a value.
+
+**Decision**: Library import removes front matter and reads the rest of the note as Markdown, so
+a leading `# Title` becomes the title and `##` headings become sections; a preview checkbox keeps
+the original text instead. The preview lists placeholder spellings it recognises and converts
+them to `{{inputs}}` only when asked, with Undo. AI conversion keeps such text as an input's
+source phrase but leaves its value empty, names AI sections as display names, and receives the
+note body with its title and folder carried through to Save.
+
+**Rationale**: Front matter is note metadata, not instructions for a model. Placeholder detection
+is a heuristic, so it stays an explicit, reversible offer rather than an automatic rewrite.
+
+**Consequences**: Supersedes "all single-note text, including front matter, is preserved" from
+"One Library Entry Point for Existing Prompts". A note with front matter and `##` headings now
+imports as several sections, matching notes that already started with `# Title`.
+
+**Sources**: `frontend/src/lib/promptImport.ts`, `frontend/src/features/library/ImportPrompts.tsx`,
+`backend/app/services/prompt_parser.py`, `frontend/src/features/editor/usePromptEditor.ts`.
+
+---
+
+## Single-Section Prompts Copy as Plain Text by Default
+
+**Status**: Accepted (2026-10-19)
+
+**Context**: Notes imported or saved as written become one section, so every copy wrapped the
+user's own text in `<PROMPT>` or `<TASK>` tags they never wrote. Plain-text copying existed but
+sat behind Output options and the library menu.
+
+**Decision**: When a prompt has exactly one section, the editor preview and the library's Copy
+template default to plain text. Output options and the library menu (Copy with section tags) still
+add the tags. Prompts with two or more sections keep tags by default.
+
+**Rationale**: Tags separate sections; with a single section they separate nothing.
+
+**Consequences**: Amends the "Output stays XML-style only" consequence of "Sections Are the Only
+Thing Clients Write": stored `generated_prompt`, the API and the ChatGPT plugin still render tags;
+only the default copy format in the web app changes.
+
+**Sources**: `frontend/src/features/editor/PreviewPane.tsx`, `frontend/src/features/library/useLibrary.ts`,
+`frontend/src/features/library/LibraryPage.tsx`.
+
+---
+
+## Vaults and Notion Exports Import as Downloaded
+
+**Status**: Accepted (2026-10-19)
+
+**Context**: A first-time-user test with a real Obsidian vault and Notion export found that
+import took about six interactions per note, one file at a time, and that Notion's own export
+formats (a `.zip`, or a database `.csv`) were read as one prompt of raw text.
+
+**Decision**: The import dialog takes several files, a folder (skipping hidden folders such as
+`.obsidian` and non-note files), dropped files and folders, a Notion `.zip`, and a `.csv`, and
+merges them into one preview. Zips are read with the browser's own `DecompressionStream`
+rather than a library; within an export, Markdown pages are preferred to the database CSV.
+Notion page properties are removed only when they name familiar metadata, and only those
+lines; a property holding the prompt text keeps its value. Tags (front matter, trailing
+`#tags`, Notion Tags) suggest the folder, ahead of the parent folder's name. Titles already in
+the library are skipped unless "Import a copy anyway" is ticked.
+
+**Rationale**: Bringing an existing collection over is the first thing most new users do; it
+should work with the files those tools produce, in one pass. Native decompression avoids a new
+dependency and its notices. Skipping duplicates by default makes re-importing a vault safe.
+
+**Consequences**: Amends "Imported Notes Drop Front Matter and Offer Placeholder Inputs": the
+clean-up also covers Notion properties, callouts and trailing tags, and placeholders are now
+chosen one by one with their wording kept as hints. ZIP64 archives (over 4 GB or 65,535
+entries) are refused with advice to unzip first. The empty library now leads with Add
+existing prompts.
+
+**Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`,
+`frontend/src/lib/importArchive.ts`, `frontend/src/features/library/LibraryPage.tsx`.

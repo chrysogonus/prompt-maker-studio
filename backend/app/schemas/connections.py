@@ -6,9 +6,9 @@ from pydantic import BaseModel, Field
 class PromptsConfigResponse(BaseModel):
     """Schema for GET /api/prompts/config — the calling user's AI capability state.
 
-    Reports the *caller's own* bring-your-own provider connection, not a
-    global env check: with per-user credentials, "can this app do AI right
-    now" is a per-user question.
+    Reports the connection the caller's AI features use: their own when saved,
+    otherwise the operator's server default. "Can this app do AI right now" is
+    a per-user question, not a global env check.
     """
 
     # False when the user has no usable connection — the frontend uses this to
@@ -17,6 +17,9 @@ class PromptsConfigResponse(BaseModel):
     provider: str | None = None
     provider_label: str | None = None
     model: str | None = None
+    # True when calls run on the operator-funded server default rather than the
+    # caller's own (self-billed) connection, so the UI can say who pays.
+    uses_server_default: bool = False
     # Curated hosted choices, or the configured model for a custom/local provider.
     # Empty when no connection is configured, so the frontend never advertises
     # a model it can't actually run.

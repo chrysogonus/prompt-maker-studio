@@ -62,12 +62,14 @@ export interface PromptUpdateRequest {
 }
 
 export interface PromptsConfigResponse {
-  // Whether the *calling user* has a usable bring-your-own provider
-  // connection. AI features key off this, not an operator-wide flag.
+  // Whether the *calling user* has a usable connection: their own, or the
+  // operator's server default. AI features key off this.
   provider_connected: boolean;
   provider: string | null;
   provider_label: string | null;
   model: string | null;
+  // True when calls run on the operator-funded server default.
+  uses_server_default?: boolean;
   available_models: string[];
   // Calling user's and shared monthly budget snapshot.
   budget_exhausted: boolean;

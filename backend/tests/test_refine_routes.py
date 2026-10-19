@@ -310,6 +310,21 @@ class TestSnapshotRefinement:
         )
         assert response.status_code == 422
 
+    def test_draft_without_questions_asks_for_an_improvement(self, client, auth_headers):
+        with patch(
+            "app.api.refine_routes.PromptRefinerService.generate_section_draft",
+            return_value=(
+                {"fields": [{"name": "Goal", "content": "Write clearly about {{topic}}"}]},
+                _USAGE,
+            ),
+        ) as generate:
+            response = client.post(
+                "/api/prompts/refine/draft", headers=auth_headers, json={"fields": self.fields}
+            )
+        assert response.status_code == 200
+        assert response.json()["fields"][0]["content"] == "Write clearly about {{topic}}"
+        assert generate.call_args.args[1] == []
+
     def test_requires_at_least_one_answered_question(self, client, auth_headers):
         response = client.post(
             "/api/prompts/refine/draft",

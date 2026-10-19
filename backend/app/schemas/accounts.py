@@ -180,6 +180,13 @@ class ChangePasswordRequest(BaseModel):
     )
 
 
+class ConnectedApp(BaseModel):
+    """An MCP client, such as ChatGPT, that can currently act on the account."""
+
+    client_id: str
+    name: str
+
+
 _MAX_EVAL_VARIABLES = 50
 
 _MAX_EVAL_VARIABLE_NAME_LENGTH = 100

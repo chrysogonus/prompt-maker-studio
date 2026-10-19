@@ -16,6 +16,9 @@
   border-right: 1px solid var(--color-border);
 }
 
+/* The column scrolls; its items keep their size instead of squashing first. */
+.sidebar > * { flex-shrink: 0; }
+
 .brand {
   display: flex;
   align-items: center;
@@ -132,7 +135,7 @@
 .theme select {
   min-height: 44px;
   max-width: 130px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
   background: var(--color-panel);
   color: var(--text-primary);

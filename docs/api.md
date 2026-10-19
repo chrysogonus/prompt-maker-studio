@@ -30,6 +30,8 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 | `PUT` | `/api/auth/me/llm-connection` | Yes | Create or replace the connection; hosted models must be in the curated catalogue |
 | `DELETE` | `/api/auth/me/llm-connection` | Yes | Disconnect the provider and erase the stored key |
 | `POST` | `/api/auth/me/llm-connection/test` | Yes | Send a tiny probe to verify the configured endpoint, key, and model |
+| `GET` | `/api/auth/me/connected-apps` | Yes | List the MCP clients (such as ChatGPT) that still hold a valid connection to the caller's account: `[{client_id, name}]` |
+| `DELETE` | `/api/auth/me/connected-apps/{client_id}` | Yes | Disconnect one client (10/min): its access and refresh tokens stop working at once; 404 if it is not connected to the caller |
 | `POST` | `/api/auth/change-password` | Yes | Change password after verifying current password; revokes all other sessions |
 | `POST` | `/api/auth/forgot-password` | No | Initiate password reset email flow |
 | `POST` | `/api/auth/reset-password` | No | Complete password reset using token; revokes every session |
@@ -66,7 +68,7 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 | `POST` | `/api/prompts` | Yes | Save a new prompt from a name, sections, optional folder and variable metadata (hints, required inputs and examples) |
 | `POST` | `/api/prompts/parse-text` | Yes | Convert pasted text into sections; optional `extract_variables: true` also returns original input values and source phrases |
 | `POST` | `/api/prompts/try` | Yes | Run filled editor `text` once with the configured AI connection; records spend without saving a prompt |
-| `GET` | `/api/prompts/config` | Yes | The caller's effective AI connection (own or server default), suggested models, and shared/caller budget status |
+| `GET` | `/api/prompts/config` | Yes | The caller's effective AI connection (own or server default, flagged by `uses_server_default`), suggested models, and shared/caller budget status |
 | `GET` | `/api/prompts/saved` | Yes | List the library (supports `folder` and `favorite_only` filters) |
 | `GET` | `/api/prompts/folders` | Yes | Distinct folder names |
 | `PATCH` | `/api/prompts/folders?name=` | Yes | Rename a folder for all its prompts (merges onto an existing name) |
@@ -79,7 +81,7 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 | `GET` | `/api/prompts/{id}/versions` | Yes | Version history |
 | `POST` | `/api/prompts/{id}/versions/{version_id}/restore` | Yes | Restore a version (the replaced state becomes a version) |
 | `POST` | `/api/prompts/refine/questions` | Yes | Ask clarifying questions about current editor `fields`; optional `force` |
-| `POST` | `/api/prompts/refine/draft` | Yes | Revise current `fields` using `qa_pairs`; returns validated section edits without saving |
+| `POST` | `/api/prompts/refine/draft` | Yes | Revise current `fields` using `qa_pairs` (omit or send `[]` to improve without clarifications); returns validated section edits without saving |
 | `POST` | `/api/prompts/{id}/refine/questions`, `/refine/draft` | Yes | Retained saved-prompt refinement API; draft returns text |
 
 For `PATCH`, null values leave fields unchanged; use `folder: ""` to unfile

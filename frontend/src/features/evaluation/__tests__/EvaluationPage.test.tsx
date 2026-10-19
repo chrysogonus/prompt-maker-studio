@@ -238,6 +238,7 @@ it('reviews AI suggestions without saving them until the user accepts an edited 
   await user.type(screen.getByLabelText('Testing focus (optional)'), 'Output format');
   await user.click(screen.getByRole('button', { name: 'Generate suggestions' }));
   await screen.findByText('Checks the output format.');
+  expect(screen.queryByText('Try your prompt with a few examples.')).not.toBeInTheDocument();
   expect(ApiClient.createEvalCase).not.toHaveBeenCalled();
   await user.click(screen.getByRole('button', { name: 'Review and add Returns JSON' }));
   expect(screen.getByLabelText('Checks')).toHaveValue('{json}');
@@ -461,7 +462,7 @@ it('offers AI settings after an explicit run failure without linking case valida
   vi.mocked(ApiClient.runEvaluation).mockRejectedValue(new ApiError('No AI provider is available.', 422));
   await open([example]);
   await user.click(screen.getByRole('button', { name: 'Run evaluation' }));
-  expect(await screen.findByRole('link', { name: 'Open Settings' })).toHaveAttribute('href', '/settings');
+  expect(await screen.findByRole('link', { name: 'Open Settings' })).toHaveAttribute('href', '/settings#s-api');
   await user.click(screen.getByRole('button', { name: 'Edit Returns JSON' }));
   vi.mocked(ApiClient.updateEvalCase).mockRejectedValue(new ApiError('Invalid criteria.', 422));
   await user.click(screen.getByRole('button', { name: 'Save test case' }));

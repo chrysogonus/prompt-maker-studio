@@ -5,11 +5,11 @@ the unified `billed_calls` spend ledger (written by every billed LLM call path
 see services/spend_ledger.py). Checked before every billed call so a runaway
 request is rejected before money is spent, not after.
 
-Since users now bring their own provider credentials, these ceilings no longer
-protect an operator's wallet — the user pays their own provider directly. They
-remain useful as *usage guard rails*: a shared or demo deployment can still cap
-how much activity the app will drive on anyone's behalf, and a per-user ceiling
-still stops one runaway loop from burning that user's own quota. Self-hosted
+Whoever owns the effective credential pays: a user's own connection bills their
+provider, while the optional server default bills the operator. The ceilings
+apply to both, as *usage guard rails*: they cap the operator's spend on the
+shared default, and a per-user ceiling still stops one runaway loop from burning
+a user's own quota. Self-hosted
 providers price at 0.0 (see services/llm_pricing.py), so ceilings simply never
 bind for an Ollama or vLLM connection. See product/DECISIONS.md.
 """

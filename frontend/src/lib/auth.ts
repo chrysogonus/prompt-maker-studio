@@ -2,7 +2,7 @@
  * Authentication utilities
  */
 
-import { ChangePasswordRequest, ForgotPasswordRequest, LLMConnection, LLMConnectionTestResult, LLMConnectionUpdate, LLMModelPriceInfo, LoginRequest, RegisterRequest, ResetPasswordRequest, TokenResponse, User, UserUpdate } from '@/types/auth';
+import { ChangePasswordRequest, ConnectedApp, ForgotPasswordRequest, LLMConnection, LLMConnectionTestResult, LLMConnectionUpdate, LLMModelPriceInfo, LoginRequest, RegisterRequest, ResetPasswordRequest, TokenResponse, User, UserUpdate } from '@/types/auth';
 import { clearUserContentKeys, migrateLegacyStorageKeys, storageKey } from '@/lib/branding';
 import { API_URL } from './apiBase';
 import { extractErrorMessage } from './api/errors';
@@ -256,6 +256,12 @@ export class AuthService {
     }
   }
 
+  /** Explain on the sign-in screen why the user was signed out, e.g. after deleting the account. */
+  static setSignInNotice(reason: string): void {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem(SESSION_EXPIRY_KEY, JSON.stringify({ reason, returnTo: '/library' }));
+  }
+
   static clearSessionExpiry(): void {
     if (typeof window === 'undefined') return;
     sessionStorage.removeItem(SESSION_EXPIRY_KEY);
@@ -314,6 +320,26 @@ export class AuthService {
   /** List models the configured provider exposes, with estimated token prices. */
   static async getLLMModels(): Promise<LLMModelPriceInfo[]> {
     return this.llmConnectionRequest('GET', undefined, '/models');
+  }
+
+  /** Apps such as ChatGPT that can currently use this account's library. */
+  static async getConnectedApps(): Promise<ConnectedApp[]> {
+    const response = await fetch(`${API_URL}/api/auth/me/connected-apps`, { credentials: CREDENTIALS });
+    if (!response.ok) throw new Error('Could not load connected apps.');
+    return response.json();
+  }
+
+  /** Disconnect one app; its access ends at once. */
+  static async disconnectConnectedApp(clientId: string): Promise<void> {
+    const response = await fetch(`${API_URL}/api/auth/me/connected-apps/${encodeURIComponent(clientId)}`, {
+      method: 'DELETE',
+      headers: csrfHeaders(),
+      credentials: CREDENTIALS,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Could not disconnect the app.' }));
+      throw new Error(extractErrorMessage(errorData.detail) || 'Could not disconnect the app.');
+    }
   }
 
   private static async llmConnectionRequest<T>(

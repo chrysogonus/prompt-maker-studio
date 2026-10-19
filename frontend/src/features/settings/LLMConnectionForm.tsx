@@ -2,7 +2,8 @@
  * Settings, AI connection: the user's bring-your-own LLM provider connection.
  *
  * Every AI feature runs against the provider configured here, billed to the
- * user's own account — there is no operator-wide key. The stored API key is
+ * user's own account; without one, the operator's server default (if any) is
+ * used at the operator's expense. The stored API key is
  * never returned by the backend, so an existing key shows only as a masked
  * hint and the field stays blank; submitting it blank keeps the stored key.
  */
@@ -46,6 +47,7 @@ export default function LLMConnectionForm() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [testedSelection, setTestedSelection] = useState('');
@@ -217,7 +219,11 @@ export default function LLMConnectionForm() {
                 : 'Not connected'}
           </span>
           <p className={styles.hint}>
-            Your own OpenAI-compatible account. Calls are billed by your provider.
+            {!connection?.configured && connection?.server_default
+              ? 'The site operator pays for the shared connection. Save your own account to use it instead; your provider then bills you.'
+              : connection?.configured && connection.server_default
+                ? `Your own account; your provider bills these calls. Without it, this server’s shared connection (${connection.server_default.provider_label}, ${connection.server_default.model}) would be used.`
+                : 'Your own account; your provider bills these calls.'}
           </p>
         </div>
       </div>
@@ -402,17 +408,28 @@ export default function LLMConnectionForm() {
         >
           {isTesting ? 'Testing…' : 'Test connection'}
         </Button>
-        {connection?.provider && (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleDisconnect}
-            disabled={isSaving}
-          >
-            Disconnect
+        {connection?.provider && !confirmDisconnect && (
+          <Button type="button" variant="secondary" onClick={() => setConfirmDisconnect(true)} disabled={isSaving}>
+            Disconnect…
           </Button>
         )}
       </div>
+      {connection?.provider && confirmDisconnect && (
+        <div className={styles.actions}>
+          <p className={styles.hint}>
+            This erases your saved API key.{' '}
+            {connection.server_default
+              ? `AI features will use this server’s shared connection (${connection.server_default.provider_label}, ${connection.server_default.model}).`
+              : 'AI features stop working until you connect again.'}
+          </p>
+          <Button type="button" variant="danger" onClick={() => { setConfirmDisconnect(false); void handleDisconnect(); }} disabled={isSaving}>
+            Erase key and disconnect
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setConfirmDisconnect(false)} disabled={isSaving}>
+            Cancel
+          </Button>
+        </div>
+      )}
     </form>
   );
 }

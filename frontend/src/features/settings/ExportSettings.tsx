@@ -26,8 +26,9 @@ export function ExportSettings({
       <div className={styles.body}>
         <p className={styles.text}>
           Download a data archive with every prompt, its folders and full version history as JSON.
-          Library import creates copies of current prompts; it does not restore original history,
-          dates, notes or favorites. Keep the archive for your complete records.
+          Library import creates copies of current prompts with their folders and favorites; it
+          does not restore original history, dates or notes. Keep the archive for your complete
+          records.
         </p>
         <div className={styles.actions}>
           <Button variant="secondary" onClick={handleExport} disabled={isExporting}>

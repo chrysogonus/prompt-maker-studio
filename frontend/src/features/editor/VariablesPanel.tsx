@@ -29,11 +29,11 @@ export default function VariablesPanel({
   return (
     <section className={styles.variables} aria-labelledby="variables-heading">
       <h2 id="variables-heading">Variables</h2>
-      <p className={styles.variablesIntro}>Change “Lisbon” to <code>{'{{destination}}'}</code> to fill in a different place each time. <Link href="/guides/prompt-template-variables">Learn about variables</Link></p>
       {variables.length === 0 && stale.length === 0 ? (
         <p className={styles.variablesIntro}>
           Put the parts that change in double braces, like <code>{'{{audience}}'}</code>. They
-          become fields you fill in before copying.
+          become fields you fill in before copying.{' '}
+          <Link href="/guides/prompt-template-variables">Learn about variables</Link>
         </p>
       ) : (
         <p className={styles.variablesIntro}>Hints appear when you fill the prompt in. Required inputs and examples are optional settings; save to keep them.</p>
@@ -57,7 +57,7 @@ export default function VariablesPanel({
               onChange={(event) => onChangeMetadata(name, { required: event.target.checked })} />
               Required {name}
             </label>
-            <input type="text" value={metadata[name]?.example ?? ''} maxLength={10_000}
+            <textarea value={metadata[name]?.example ?? ''} maxLength={10_000} rows={2}
               aria-label={`Example input for ${name}`} placeholder="Example input (loaded only when requested)"
               onChange={(event) => onChangeMetadata(name, { example: event.target.value || null })} />
             </div>

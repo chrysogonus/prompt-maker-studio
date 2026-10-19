@@ -6,6 +6,7 @@ import {
   Library,
   Menu,
   MoreHorizontal,
+  Pencil,
   Plus,
   Search,
   Settings,
@@ -134,6 +135,7 @@ export const VersionNodeIcon = semanticIcon(GitCommitHorizontal);
 export const CompareVersionIcon = semanticIcon(GitCompareArrows);
 export const RestoreVersionIcon = semanticIcon(RotateCcw);
 export const RemoveIcon = semanticIcon(X);
+export const EditIcon = semanticIcon(Pencil);
 export const RefineIcon = semanticIcon(Sparkles);
 export const SuccessStatusIcon = semanticIcon(CircleCheck);
 export const ErrorStatusIcon = semanticIcon(CircleAlert);

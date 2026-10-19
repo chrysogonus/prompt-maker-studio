@@ -3,7 +3,7 @@
 from datetime import timedelta
 import logging
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Path, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.api import deps
@@ -18,12 +18,14 @@ from app.limiter import limiter
 from app.models.user import User
 from app.schemas.accounts import (
     ChangePasswordRequest,
+    ConnectedApp,
     DeleteAccountRequest,
     UserResponse,
     UserUpdate,
 )
 
 logger = logging.getLogger(__name__)
+from app.services import oauth_provider
 from app.services.accounts import profile
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
@@ -142,3 +144,26 @@ def change_password(
         ),
     )
     return {"message": "Password updated successfully.", "expires_at": session_expires_at()}
+
+
+@router.get("/me/connected-apps", response_model=list[ConnectedApp])
+def list_connected_apps(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Apps such as ChatGPT that can currently use this account's prompt library."""
+    return deps.call_service(oauth_provider.connected_apps, db, current_user)
+
+
+@router.delete("/me/connected-apps/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
+def disconnect_connected_app(
+    request: Request,
+    response: Response,
+    client_id: str = Path(..., max_length=64),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Disconnect one app; its tokens stop working at once and it must ask again."""
+    deps.call_service(oauth_provider.disconnect_app, db, current_user, client_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

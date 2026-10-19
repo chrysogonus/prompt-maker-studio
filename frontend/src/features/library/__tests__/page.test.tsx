@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LibraryPage from '../LibraryPage';
 import { ApiClient } from '@/lib/api';
 import { AuthService } from '@/lib/auth';
+import { pasteHandoffKey } from '@/lib/promptImport';
 import type { PromptHistoryResponse } from '@/types/prompt';
 
 import { LibraryDataProvider } from '@/features/library/LibraryData';
@@ -34,7 +35,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 vi.mock('@/lib/auth', () => ({
-  AuthService: { getCurrentUser: vi.fn() },
+  AuthService: { getCurrentUser: vi.fn(), updateProfile: vi.fn() },
 }));
 
 function saved(overrides: Partial<PromptHistoryResponse> = {}): PromptHistoryResponse {
@@ -95,6 +96,7 @@ beforeEach(() => {
     created_at: '2026-01-01T00:00:00Z',
     default_library_view: 'list',
   });
+  vi.mocked(AuthService.updateProfile).mockResolvedValue({ id: 1, username: 'alex', created_at: '2026-01-01T00:00:00Z' });
 });
 
 async function renderLibrary(params = '') {
@@ -155,6 +157,29 @@ describe('LibraryPage', () => {
     expect(rowNames()).toHaveLength(4);
   });
 
+  it('matches every search word in any order, across title, folder and sections', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([
+      saved({ id: 1, name: 'Refund Request Template', folder: 'Support', fields: [{ name: 'Task', content: 'Draft a refund confirmation email.' }] }),
+      saved({ id: 2, name: 'Escalation Notice', folder: 'Support', fields: [{ name: 'Task', content: 'Escalate the ticket.' }] }),
+    ]);
+    const { container } = await renderLibrary();
+    const search = screen.getByLabelText('Search prompts');
+    await user.type(search, 'email refund');
+    expect(rowNames()).toEqual(['Refund Request Template']);
+    expect(container.querySelector('mark')).toHaveTextContent('email');
+    await user.clear(search);
+    await user.type(search, '  escalation   notice ');
+    expect(rowNames()).toEqual(['Escalation Notice']);
+    expect(container.querySelector('mark')).toHaveTextContent('Escalation Notice');
+    await user.clear(search);
+    await user.type(search, 'support ticket');
+    expect(rowNames()).toEqual(['Escalation Notice']);
+    await user.clear(search);
+    await user.type(search, 'refund ticket');
+    expect(screen.getByText('No prompts match “refund ticket”')).toBeInTheDocument();
+  });
+
   it.each(['list', 'grid'])('shows matching context in %s and keeps the default excerpt without a query', async layout => {
     const user = userEvent.setup();
     vi.mocked(AuthService.getCurrentUser).mockResolvedValue({ id: 1, username: 'alex', created_at: '2026-01-01', default_library_view: layout as 'list' | 'grid' });
@@ -163,7 +188,7 @@ describe('LibraryPage', () => {
       { name: 'Task', content: 'Long introduction. '.repeat(50) + 'Visit the cafe\u0301 tomorrow <script>alert(1)</script>.' },
     ] })]);
     const { container } = await renderLibrary();
-    expect(screen.getByText('Return bullet points.')).toBeInTheDocument();
+    expect(screen.getByText(/^Long introduction\./)).toBeInTheDocument();
     const search = screen.getByLabelText('Search prompts');
     await user.type(search, 'tomorrow');
     expect(screen.getByText('Task:')).toBeInTheDocument();
@@ -183,20 +208,33 @@ describe('LibraryPage', () => {
     expect(screen.getByText('Task:')).toBeInTheDocument();
     expect(container.querySelector('mark')).toHaveTextContent('Visit the cafe\u0301');
     await user.clear(search);
-    expect(screen.getByText('Return bullet points.')).toBeInTheDocument();
+    expect(screen.getByText(/^Long introduction\./)).toBeInTheDocument();
     expect(container.querySelector('mark')).toBeNull();
+  });
+
+  it('shows the variable count and the task rather than the role on grid cards', async () => {
+    vi.mocked(AuthService.getCurrentUser).mockResolvedValue({ id: 1, username: 'alex', created_at: '2026-01-01', default_library_view: 'grid' });
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [
+      { name: 'Role', content: 'You are a helpful editor.' },
+      { name: 'Task', content: 'Rewrite {{draft}} in a {{tone}} voice.' },
+    ] })]);
+    await renderLibrary();
+
+    const card = screen.getByRole('listitem');
+    expect(within(card).getByText('2 variables')).toBeInTheDocument();
+    expect(card.querySelector('p')).toHaveTextContent('Rewrite {{draft}} in a {{tone}} voice.');
+    expect(within(card).queryByText('You are a helpful editor.')).not.toBeInTheDocument();
   });
 
   it('previews a pasted note with an editable fallback title and preserves its content', async () => {
     const user = userEvent.setup();
     await renderLibrary();
-    await user.click(screen.getByRole('button', { name: 'Import prompts' }));
-    await user.type(screen.getByLabelText('Paste Markdown or JSON'), 'A plain note\n## Existing heading\nKeep this.');
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), 'A plain note\n## Existing heading\nKeep this.');
     await user.type(screen.getByLabelText('Title for a single note'), 'My note');
-    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
     expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('My note');
-    await user.click(screen.getByText('1 section'));
-    expect(screen.getByText('A plain note\n## Existing heading\nKeep this.', { collapseWhitespace: false })).toBeInTheDocument();
+    expect(screen.getByText('A plain note\n## Existing heading\nKeep this.', { collapseWhitespace: false })).toBeVisible();
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
   });
 
@@ -216,10 +254,10 @@ describe('LibraryPage', () => {
     await renderLibrary();
     await user.click(screen.getByRole('button', { name: 'More actions for LinkedIn post' }));
     await user.click(screen.getByRole('button', { name: 'Delete' }));
-    await user.click(screen.getByRole('button', { name: 'Import prompts' }));
-    await user.type(screen.getByLabelText('Paste Markdown or JSON'), '# Greeting\nHello');
-    await user.click(screen.getByRole('button', { name: 'Preview import' }));
-    await user.click(screen.getByRole('button', { name: 'Import 1 prompt' }));
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# Greeting\nHello');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
     await screen.findByText(/Imported 1 of 1 prompts/);
     await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(rowNames()).not.toContain('LinkedIn post');
@@ -234,9 +272,9 @@ describe('LibraryPage', () => {
     vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([]);
     vi.mocked(ApiClient.createPrompt).mockResolvedValueOnce(saved({ id: 20, name: 'First' })).mockRejectedValueOnce(new Error('Offline')).mockResolvedValueOnce(saved({ id: 21, name: 'Second' }));
     await renderLibrary();
-    await user.click(screen.getByRole('button', { name: 'Import prompts' }));
-    await user.type(screen.getByLabelText('Paste Markdown or JSON'), '# First\nHello\n# Second\nThanks');
-    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# First\nHello\n# Second\nThanks');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
     await user.click(screen.getByRole('button', { name: 'Import 2 prompts' }));
     await screen.findByText(/Imported 1 of 2 prompts/);
     expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Second');
@@ -251,17 +289,17 @@ describe('LibraryPage', () => {
   it('rejects the whole invalid import before writes and validates edited titles', async () => {
     const user = userEvent.setup();
     await renderLibrary();
-    await user.click(screen.getByRole('button', { name: 'Import prompts' }));
-    const input = screen.getByLabelText('Paste Markdown or JSON');
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    const input = screen.getByLabelText('Paste text');
     await user.type(input, '# Good\nOK\n# Bad\n## 123 invalid\nBad');
-    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
     expect(screen.getByRole('alert')).toHaveTextContent('section names');
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
     await user.clear(input);
     await user.type(input, '# Good\nOK');
-    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
     await user.clear(screen.getByLabelText('Title for prompt 1'));
-    await user.click(screen.getByRole('button', { name: 'Import 1 prompt' }));
+    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
     expect(screen.getByRole('alert')).toHaveTextContent('title must contain');
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
   });
@@ -290,15 +328,137 @@ describe('LibraryPage', () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.createPrompt).mockResolvedValueOnce(saved({ id: 20, name: 'Greeting' })).mockRejectedValueOnce(new Error('Offline'));
     await renderLibrary();
-    await user.click(screen.getByRole('button', { name: 'Import prompts' }));
-    await user.type(screen.getByLabelText('Paste Markdown or JSON'), '# Greeting\nHello\n# Reply\nThanks');
-    await user.click(screen.getByRole('button', { name: 'Preview import' }));
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# Greeting\nHello\n# Reply\nThanks');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
     await user.type(screen.getByLabelText('Folder for Greeting'), 'Team');
     await user.click(screen.getByRole('button', { name: 'Import 2 prompts' }));
     expect(await screen.findByText(/Imported 1 of 2 prompts/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Title for prompt 1')).toHaveValue('Reply');
     expect(ApiClient.createPrompt).toHaveBeenCalledWith({ name: 'Greeting', folder: 'Team', fields: [{ name: 'Prompt', content: 'Hello' }] });
+  });
+
+  it('opens imported prompts from the success step or imports more', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.createPrompt).mockResolvedValueOnce(saved({ id: 20, name: 'First', folder: 'Team' })).mockResolvedValueOnce(saved({ id: 21, name: 'Second', folder: 'Team' }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# First\nHello\n# Second\nThanks');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByText('Thanks')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Import 2 prompts' }));
+    await screen.findByText('Imported 2 of 2 prompts.');
+    expect(screen.queryByLabelText('Paste text')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Import more' }));
+    expect(screen.getByLabelText('Paste text')).toHaveValue('');
+    await user.type(screen.getByLabelText('Paste text'), '# Third\nMore');
+    vi.mocked(ApiClient.createPrompt).mockResolvedValueOnce(saved({ id: 22, name: 'Third', folder: null }));
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
+    await user.click(await screen.findByRole('button', { name: 'Open imported prompt' }));
+    expect(push).toHaveBeenCalledWith('/editor/22');
+    expect(rowNames()).toEqual(expect.arrayContaining(['First', 'Second', 'Third']));
+  });
+
+  it('carries favorites from a JSON export without sending them on create', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.createPrompt).mockResolvedValue(saved({ id: 20, name: 'Starred' }));
+    vi.mocked(ApiClient.updatePrompt).mockResolvedValue(saved({ id: 20, name: 'Starred', is_favorite: true }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    fireEvent.change(screen.getByLabelText('Paste text'), { target: { value: JSON.stringify({ prompts: [{ name: 'Starred', is_favorite: true, fields: [{ name: 'Task', content: 'Hi' }] }] }) } });
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.queryByRole('button', { name: 'Make reusable with AI' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Import 1 prompt' }));
+    await screen.findByText('Imported 1 of 1 prompts.');
+    expect(ApiClient.createPrompt).toHaveBeenCalledWith({ name: 'Starred', folder: null, fields: [{ name: 'Task', content: 'Hi' }] });
+    expect(ApiClient.updatePrompt).toHaveBeenCalledWith(20, { is_favorite: true });
+  });
+
+  it('hands a single pasted note to AI conversion in the editor', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), 'Plan a trip to Lisbon.');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
+    expect(JSON.parse(sessionStorage.getItem(pasteHandoffKey())!)).toEqual({ text: 'Plan a trip to Lisbon.', title: 'Plan a trip to Lisbon.', folder: null });
+    expect(push).toHaveBeenCalledWith('/editor/new?import=1');
+    expect(ApiClient.createPrompt).not.toHaveBeenCalled();
+  });
+
+  it('drops note frontmatter and its title line unless the original is kept, and hands the body to AI', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    fireEvent.change(screen.getByLabelText('Paste text'), { target: { value: '---\ntitle: Blog outline\ntags: [writing]\n---\n# Blog outline\nOutline a post.\n## Output\n- 5 headings' } });
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Blog outline');
+    expect(screen.queryByText(/tags: \[writing\]/)).not.toBeInTheDocument();
+    expect(screen.getByText('2 sections')).toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox', { name: /Keep the original note text/ }));
+    expect(screen.getByText(/tags: \[writing\]/)).toBeVisible();
+    await user.click(screen.getByRole('checkbox', { name: /Keep the original note text/ }));
+
+    // The note's first tag is the suggested folder.
+    expect(screen.getByLabelText('Folder for Blog outline')).toHaveValue('Writing');
+    await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
+    expect(JSON.parse(sessionStorage.getItem(pasteHandoffKey())!)).toEqual({ text: 'Outline a post.\n\n## Output\n- 5 headings', title: 'Blog outline', folder: 'Writing' });
+  });
+
+  it('turns the chosen placeholders into inputs with their wording as hints, with undo', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.createPrompt).mockResolvedValue(saved({ id: 20, name: 'Post' }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    fireEvent.change(screen.getByLabelText('Paste text'), { target: { value: '# Post\nWrite about [TOPIC] for {audience}, see [[Style]]. Code: [PASTE CODE HERE]' } });
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    const offer = screen.getByRole('group', { name: /Found 3 placeholders/ });
+    expect(within(offer).getAllByRole('checkbox').map(box => box.parentElement!.textContent)).toEqual(['[TOPIC]', '{audience}', '[PASTE CODE HERE]']);
+    await user.click(within(offer).getByRole('checkbox', { name: '{audience}' }));
+    await user.click(screen.getByRole('button', { name: 'Turn 2 into inputs' }));
+    expect(screen.getByText('Write about {{topic}} for {audience}, see Style. Code: {{paste_code_here}}')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByText('Write about [TOPIC] for {audience}, see Style. Code: [PASTE CODE HERE]')).toBeVisible();
+    // Undo keeps the earlier choices; tick the third one back.
+    await user.click(screen.getByRole('checkbox', { name: '{audience}' }));
+    await user.click(screen.getByRole('button', { name: 'Turn them into inputs' }));
+    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
+    await waitFor(() => expect(ApiClient.createPrompt).toHaveBeenCalledWith({
+      name: 'Post', folder: null,
+      fields: [{ name: 'Prompt', content: 'Write about {{topic}} for {{audience}}, see Style. Code: {{paste_code_here}}' }],
+      variable_metadata: {
+        topic: { type: 'text', description: 'Topic' },
+        audience: { type: 'text', description: 'Audience' },
+        paste_code_here: { type: 'text', description: 'Paste code here' },
+      },
+    }));
+  });
+
+  it('files every previewed prompt in one folder', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# First\nHello\n# Second\nThanks');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await user.type(screen.getByLabelText('Folder for all prompts'), 'Team');
+    expect(screen.getByLabelText('Folder for First')).toHaveValue('Team');
+    expect(screen.getByLabelText('Folder for Second')).toHaveValue('Team');
+    await user.clear(screen.getByLabelText('Folder for Second'));
+    expect(screen.getByLabelText('Folder for all prompts')).toHaveValue('');
+  });
+
+  it('copies a single-section prompt as plain text, with tags on request', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [{ name: 'Prompt', content: 'Just {{this}}.' }], generated_prompt: '<PROMPT>\nJust {{this}}.\n</PROMPT>' })]);
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Copy the Weekly status update template' }));
+    expect(await navigator.clipboard.readText()).toBe('Just {{this}}.');
+    await user.click(screen.getByRole('button', { name: 'More actions for Weekly status update' }));
+    expect(screen.queryByRole('button', { name: 'Copy as plain text' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Copy with section tags' }));
+    expect(await navigator.clipboard.readText()).toBe('<PROMPT>\nJust {{this}}.\n</PROMPT>');
   });
 
   it('stars a prompt', async () => {
@@ -334,6 +494,66 @@ describe('LibraryPage', () => {
 
     expect(await navigator.clipboard.readText()).toBe(LIBRARY[0].generated_prompt);
     expect(screen.getByText('Copied the “Weekly status update” template')).toBeInTheDocument();
+  });
+
+  it('deletes selected prompts together, with one undo', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.deletePrompt).mockResolvedValue(undefined);
+    const view = await renderLibrary();
+    await user.click(screen.getByRole('checkbox', { name: 'Select LinkedIn post' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select Weekly status update' }));
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    expect(rowNames()).not.toEqual(expect.arrayContaining(['LinkedIn post']));
+    expect(rowNames()).not.toContain('Weekly status update');
+    expect(screen.getByText('Deleted 2 prompts')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(rowNames()).toEqual(expect.arrayContaining(['LinkedIn post', 'Weekly status update']));
+    expect(ApiClient.deletePrompt).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select LinkedIn post' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select Weekly status update' }));
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    view.unmount();
+    expect(ApiClient.flushDeletePrompt).toHaveBeenCalledWith(3);
+    expect(ApiClient.flushDeletePrompt).toHaveBeenCalledWith(1);
+  });
+
+  it('skips prompts already in the library unless a copy is wanted', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.createPrompt).mockImplementation(async (body) => saved({ id: 40, name: body.name }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# LinkedIn post\nAgain\n# Brand new\nFresh');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByRole('checkbox', { name: /Already in your library/ })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Import 1 prompt' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Import 1 prompt' }));
+    expect(await screen.findByText('Imported 1 of 1 prompts. Skipped 1 already in your library.')).toBeInTheDocument();
+    expect(ApiClient.createPrompt).toHaveBeenCalledTimes(1);
+    expect(ApiClient.createPrompt).toHaveBeenCalledWith(expect.objectContaining({ name: 'Brand new' }));
+
+    await user.click(screen.getByRole('button', { name: 'Import more' }));
+    await user.type(screen.getByLabelText('Paste text'), '# LinkedIn post\nAgain');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByRole('button', { name: 'Nothing new to import' })).toBeDisabled();
+    await user.click(screen.getByRole('checkbox', { name: /Import a copy anyway/ }));
+    expect(screen.getByRole('button', { name: 'Keep as written' })).toBeEnabled();
+  });
+
+  it('counts prompts imported earlier in the same session, starting from an empty library', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([]);
+    vi.mocked(ApiClient.createPrompt).mockImplementation(async (body) => saved({ id: 41, name: body.name }));
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.type(screen.getByLabelText('Paste text'), '# Cold email\nWrite');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
+    await user.click(await screen.findByRole('button', { name: 'Import more' }));
+    await user.type(screen.getByLabelText('Paste text'), '# Cold email\nWrite');
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByRole('checkbox', { name: /Already in your library/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nothing new to import' })).toBeDisabled();
   });
 
   it('deletes with an undo, and only tells the server once the undo window has passed', async () => {
@@ -455,12 +675,117 @@ describe('LibraryPage', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute('aria-pressed', 'true'));
   });
 
+  it('remembers the layout toggle as the library view setting', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Grid' }));
+    expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute('aria-pressed', 'true');
+    expect(AuthService.updateProfile).toHaveBeenCalledWith({ default_library_view: 'grid' });
+  });
+
+  it('does not reuse a chosen file name as the title of text pasted afterwards', async () => {
+    // jsdom has no Blob.text(); browsers do.
+    File.prototype.text ??= function (this: File) {
+      return new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(this); });
+    };
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+    await user.upload(screen.getByLabelText(/Or choose files/), new File(['A note from a file'], 'Old file.md', { type: 'text/markdown' }));
+    await waitFor(() => expect(screen.getByLabelText('Title for a single note')).toHaveValue('Old file'));
+    fireEvent.change(screen.getByLabelText('Paste text'), { target: { value: 'Something pasted instead' } });
+    expect(screen.getByLabelText('Title for a single note')).toHaveValue('');
+  });
+
+  describe('several files at once', () => {
+    beforeEach(() => {
+      // jsdom has no Blob.text(); browsers do.
+      File.prototype.text ??= function (this: File) {
+        return new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(this); });
+      };
+    });
+    const note = (text: string, name: string, path?: string) => {
+      const file = new File([text], name, { type: 'text/markdown' });
+      if (path) Object.defineProperty(file, 'webkitRelativePath', { value: path });
+      return file;
+    };
+
+    it('previews several chosen files together, titled from their names without Notion IDs', async () => {
+      const user = userEvent.setup();
+      vi.mocked(ApiClient.createPrompt).mockImplementation(async (body) => saved({ id: 30, name: body.name, folder: body.folder }));
+      await renderLibrary();
+      await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+      await user.upload(screen.getByLabelText(/Or choose files/), [
+        note('Write about [X].', 'Cold email 8b7e6d5c4a3b2a1f8b7e6d5c4a3b2a1f.md'),
+        note('# Meeting summary\nSummarise it.', 'meeting.md'),
+      ]);
+      expect(await screen.findByText(/2 files ready: Cold email 8b7e/)).toBeInTheDocument();
+      expect(screen.getByLabelText('Paste text')).toHaveValue('');
+      await user.click(screen.getByRole('button', { name: 'Preview' }));
+      expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Cold email');
+      expect(screen.getByLabelText('Title for prompt 2')).toHaveValue('Meeting summary');
+      expect(screen.queryByRole('button', { name: 'Make reusable with AI' })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Import 2 prompts' }));
+      await screen.findByText('Imported 2 of 2 prompts.');
+    });
+
+    it('reads a chosen folder, ignoring app settings and other files, and suggests each note\'s folder', async () => {
+      const user = userEvent.setup();
+      await renderLibrary();
+      await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+      await user.upload(screen.getByLabelText(/Or choose a folder/), [
+        note('Outline [TOPIC].', 'Blog.md', 'Vault/Prompts/Blog.md'),
+        note('{"theme": "dark"}', 'app.json', 'Vault/.obsidian/app.json'),
+        note('png', 'image.png', 'Vault/Prompts/image.png'),
+        note('', 'Empty.md', 'Vault/Empty.md'),
+      ]);
+      expect(await screen.findByText(/2 files ready/)).toBeInTheDocument();
+      expect(screen.getByText('2 other files were ignored.')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Preview' }));
+      expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Blog');
+      expect(screen.getByLabelText('Folder for Blog')).toHaveValue('Prompts');
+      expect(screen.getByText(/Skipped: Empty.md: Include some note text/)).toBeInTheDocument();
+    });
+
+    it('lists a database CSV as one prompt per row', async () => {
+      const user = userEvent.setup();
+      await renderLibrary();
+      await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+      await user.upload(screen.getByLabelText(/Or choose files/), note('Name,Prompt,Tags\nCold email,Write to [Name].,Sales\nReport,Summarise [Week].,Work', 'Prompts 3f2a9c1e8b7d4a6f.csv'));
+      expect(await screen.findByText(/1 file ready/)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Preview' }));
+      expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('Cold email');
+      expect(screen.getByLabelText('Folder for Cold email')).toHaveValue('Sales');
+      expect(screen.getByLabelText('Title for prompt 2')).toHaveValue('Report');
+    });
+
+    it('accepts files dropped onto the dialog', async () => {
+      const user = userEvent.setup();
+      await renderLibrary();
+      await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
+      const files = [note('First [A].', 'a.md'), note('Second [B].', 'b.md')];
+      const entry = (file: File) => ({ isFile: true, name: file.name, file: (resolve: (f: File) => void) => resolve(file) });
+      const items = files.map(file => ({ webkitGetAsEntry: () => entry(file) }));
+      fireEvent.drop(screen.getByLabelText('Paste text').closest('div[data-dragging], div')!.parentElement!, { dataTransfer: { items, types: ['Files'], files } });
+      expect(await screen.findByText(/2 files ready: a.md, b.md/)).toBeInTheDocument();
+    });
+  });
+
+  it('marks inputs in prompt snippets', async () => {
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [{ name: 'Task', content: 'Summarise {{notes}} for {{team}}.' }] })]);
+    const { container } = await renderLibrary();
+    expect([...container.querySelectorAll('li p span')].map(span => span.textContent)).toEqual(['{{notes}}', '{{team}}']);
+  });
+
   it('invites a first prompt when the library is empty', async () => {
     vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([]);
     await renderLibrary();
 
     expect(screen.getByRole('heading', { name: 'Your prompt library is empty' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Paste a prompt' })).toHaveAttribute('href', '/editor/new?import=1');
+    expect(screen.getByRole('button', { name: 'Add existing prompts' })).toHaveClass(/primary/);
+    expect(screen.getByText(/Notion, Obsidian or Markdown files/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New prompt' })).toHaveAttribute('href', '/editor/new');
+    expect(screen.queryByRole('link', { name: 'Paste a prompt' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Rewrite my text/ })).toHaveAttribute(
       'href',
       '/editor/new?starter=rewrite',

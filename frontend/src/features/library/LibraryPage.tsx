@@ -16,7 +16,7 @@ import {
 
 import { RECOVERED_HISTORY_FOLDER } from '@/lib/libraryViews';
 import { relativeTime } from '@/lib/relativeTime';
-import { variablesIn } from '@/lib/sections';
+import { splitVariables, variablesIn } from '@/lib/sections';
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
 
 import styles from './LibraryPage.module.css';
@@ -24,6 +24,8 @@ import type { Toast } from './libraryState';
 import { useLibrary } from './useLibrary';
 import ImportPrompts from './ImportPrompts';
 import { Prompt, excerpt, editedAt, searchMatch } from './libraryState';
+
+const variableLabel = (count: number) => (count ? `${count} variable${count === 1 ? '' : 's'}` : 'No variables');
 
 function LibraryContent() {
   const {
@@ -61,6 +63,7 @@ function LibraryContent() {
     move,
     duplicate,
     remove,
+    deleteSelected,
     renameFolder,
     removeFolder,
     folders,
@@ -68,7 +71,8 @@ function LibraryContent() {
 
   const preview = (prompt: Prompt) => {
     const match = searchMatch(prompt, search);
-    return match ? <><strong>{match.label}:</strong> {match.before}<mark>{match.match}</mark>{match.after}</> : excerpt(prompt);
+    return match ? <><strong>{match.label}:</strong> {match.before}<mark>{match.match}</mark>{match.after}</>
+      : splitVariables(excerpt(prompt)).map((part, i) => part.kind === 'variable' ? <span key={i} className={styles.snippetVariable}>{part.text}</span> : part.text);
   };
 
   const selection = (prompt: Prompt) => (
@@ -96,7 +100,9 @@ function LibraryContent() {
           <button type="button" onClick={() => copyTemplate(prompt)}>
             Copy template
           </button>
-          <button type="button" onClick={() => copyTemplate(prompt, true)}>Copy as plain text</button>
+          {prompt.fields.length === 1
+            ? <button type="button" onClick={() => copyTemplate(prompt, false)}>Copy with section tags</button>
+            : <button type="button" onClick={() => copyTemplate(prompt, true)}>Copy as plain text</button>}
           <button
             type="button"
             onClick={() => {
@@ -221,6 +227,7 @@ function LibraryContent() {
             <p className={search.trim() ? styles.searchExcerpt : styles.cardExcerpt}>{preview(prompt)}</p>
             <div className={styles.cardMeta}>
               {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
+              <span>{variableLabel(variablesIn(prompt.fields).length)}</span>
               <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
             </div>
             <div className={styles.cardFoot}>
@@ -255,7 +262,7 @@ function LibraryContent() {
                 <p className={search.trim() ? styles.searchExcerpt : styles.excerpt}>{preview(prompt)}</p>
                 <div className={styles.meta}>
                   {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
-                  <span>{variables ? `${variables} variable${variables === 1 ? '' : 's'}` : 'No variables'}</span>
+                  <span>{variableLabel(variables)}</span>
                   <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
                 </div>
               </div>
@@ -290,15 +297,16 @@ function LibraryContent() {
             Save the prompts you keep retyping. Split them into sections, mark the parts that change
             with <code>{'{{variables}}'}</code>, and copy a filled-in version whenever you need it.
           </p>
+          <p>
+            Already keep prompts in Notion, Obsidian or Markdown files? Add them here; you review
+            everything before it is saved.
+          </p>
           <div className={styles.heroActions}>
-            <Link href="/editor/new" className={styles.primaryLink}>
+            <ImportPrompts onCreated={addImported} folders={folders} primary />
+            <Link href="/editor/new" className={styles.secondaryLink}>
               New prompt
             </Link>
-            <Link href="/editor/new?import=1" className={styles.secondaryLink}>
-              Paste a prompt
-            </Link>
           </div>
-          <div className={styles.heroActions}><ImportPrompts onCreated={addImported} folders={folders} /></div>
           <h2>Or start from a template</h2>
           <ul className={styles.starters}>
             {STARTER_TEMPLATES.map((template) => (
@@ -320,8 +328,7 @@ function LibraryContent() {
     <div className={styles.page}>
       <header className={styles.head}>
         <h1>{title}</h1>
-        <Link href="/editor/new?import=1" className={styles.secondaryLink}>Paste a prompt</Link>
-        <ImportPrompts onCreated={addImported} folders={folders} />
+        <ImportPrompts onCreated={addImported} folders={folders} existingTitles={(prompts ?? []).map(prompt => prompt.name ?? '')} />
         {view.type === 'folder' && (
           <div className={styles.menuWrap} data-menu>
             <button
@@ -411,7 +418,8 @@ function LibraryContent() {
           <input aria-label="File selected in folder" value={batchFolder} onChange={event => setBatchFolder(event.target.value)} list="library-folders" maxLength={255} placeholder="Unfiled" disabled={batchBusy} />
         </label>
         <Button variant="secondary" type="submit" disabled={batchBusy}>{batchBusy ? 'Moving…' : 'Move selected'}</Button>
-        <small>Leave empty to move to Unfiled.</small>
+        <Button variant="danger" type="button" disabled={batchBusy} onClick={deleteSelected}>Delete selected</Button>
+        <small>Leave the folder empty to move to Unfiled. Deleting can be undone for a few seconds.</small>
       </form>}
       {batchResult && <p className={styles.note} role="status">{batchResult}</p>}
       {body}

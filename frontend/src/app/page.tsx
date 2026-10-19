@@ -121,10 +121,11 @@ export default async function LandingPage() {
               </dd>
             </div>
             <div>
-              <dt>Paste a prompt</dt>
+              <dt>Bring your existing prompts</dt>
               <dd>
-                Already have a prompt that works? Paste it, and the AI provider you connect splits it
-                into sections and turns its details into variables for you to review.
+                Paste a prompt or import Markdown notes, such as Notion or Obsidian exports.
+                Placeholders like [topic] become inputs, and an AI provider you connect can split a
+                prompt into sections for you to review.
               </dd>
             </div>
             <div>
@@ -167,8 +168,9 @@ export default async function LandingPage() {
           <h2 id="open-source-title">Open source, and yours to host</h2>
           <p>
             {APP_NAME} is licensed under Apache-2.0. Use it here, or run your own copy with Docker.
-            Saving and filling in prompts needs no AI connection. Paste a prompt uses your own OpenAI,
-            Anthropic, Gemini, Ollama or other OpenAI-compatible provider.
+            Saving and filling in prompts needs no AI connection. Optional AI features use your own
+            OpenAI, Anthropic, Gemini, Ollama or other OpenAI-compatible provider, or a shared
+            connection when the server offers one.
           </p>
           <ButtonLink href="/library" variant="primary" className={styles.cta}>
             Open the app

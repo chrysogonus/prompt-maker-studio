@@ -79,6 +79,42 @@ for (const theme of ['light', 'dark']) {
   });
 }
 
+test('keeps the fill-in fields when Try once returns a long output', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.route('**/api/prompts/config', route => route.fulfill({ json: {
+    provider_connected: true, provider: 'openai', provider_label: 'OpenAI', model: 'gpt-4.1-mini', uses_server_default: true,
+    available_models: ['gpt-4.1-mini'], budget_exhausted: false, global_budget_remaining_usd: null,
+  } }));
+  await page.route('**/api/prompts/try', route => route.fulfill({ json: {
+    output_text: Array.from({ length: 60 }, (_, i) => `Line ${i + 1} of a long answer.`).join('\n'), provider: 'openai', model: 'gpt-4.1-mini',
+  } }));
+  await page.goto('/editor/1?mode=filled');
+  const team = page.getByRole('textbox', { name: 'team' });
+  await team.fill('Platform');
+  // The fields' scroll area is what got squeezed, not the fields themselves.
+  const inputsHeight = () => team.evaluate(el => el.closest('label')!.parentElement!.clientHeight);
+  const before = await inputsHeight();
+  await page.getByText('Test with AI', { exact: true }).click();
+  await page.getByRole('button', { name: 'Try once', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Try once output' })).toBeVisible();
+  expect(await inputsHeight()).toBeGreaterThanOrEqual(before);
+});
+
+for (const viewport of [{ width: 1440, height: 720 }, { width: 390, height: 844 }]) {
+  test(`keeps New prompt full size with many folders at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.route('**/api/prompts/saved', route => route.fulfill({ json: Array.from({ length: 20 }, (_, i) => ({
+      id: i + 1, name: `Prompt ${i + 1}`, fields, generated_prompt: '', folder: `Folder ${i + 1}`,
+      created_at: '2026-10-01T10:00:00Z', updated_at: '2026-10-01T10:00:00Z',
+    })) }));
+    await page.goto('/library');
+    if (viewport.width <= 760) await page.getByRole('button', { name: 'Open navigation' }).click();
+    await expect(page.getByRole('link', { name: /Folder 20/ })).toBeVisible();
+    const button = (await page.getByRole('link', { name: 'New prompt', exact: true }).boundingBox())!;
+    expect(button.height).toBeGreaterThanOrEqual(36);
+  });
+}
+
 for (const theme of ['light', 'dark']) {
   for (const viewport of [{ width: 1280, height: 720 }, { width: 1024, height: 900 }, { width: 768, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
     test(`keeps the prompt and copy action in view at ${viewport.width}px in ${theme}`, async ({ page }, testInfo) => {
@@ -114,9 +150,12 @@ for (const theme of ['light', 'dark']) {
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(value => localStorage.setItem('theme', value), theme);
       await page.goto('/editor/1');
+      await page.getByRole('button', { name: 'Edit template', exact: true }).click();
       const edit = page.getByRole('tab', { name: 'Edit', exact: true });
       if (width <= 1200) await edit.click();
       await expect(page.getByLabel('Context text')).toBeVisible();
+      // The editor was hidden behind Fill and copy; its text must not be cut to one line.
+      await expect.poll(() => page.getByLabel('Context text').evaluate(el => el.clientHeight >= el.scrollHeight)).toBe(true);
       const preview = page.getByRole('complementary', { name: 'Preview', exact: true });
       if (width <= 1200) {
         await expect(preview).not.toBeVisible();
@@ -146,7 +185,7 @@ for (const width of [390, 1440]) {
     });
     await page.goto('/editor/new?import=1');
     const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
-    await expect(paste).toContainText('copied output includes <TASK> section wrappers');
+    await expect(paste).toContainText('one Task section, which copies as plain text');
     await paste.getByLabel('Prompt to convert').fill(text);
     await paste.getByRole('button', { name: 'Save as written' }).click();
     const save = page.getByRole('dialog', { name: 'Save prompt', exact: true });
@@ -163,6 +202,7 @@ for (const width of [320, 390, 768, 1440]) {
   test(`keeps mode controls, plain output and prompt details usable at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/editor/1');
+    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
     const useButton = page.getByRole('button', { name: 'Fill and copy', exact: true });
     const useTab = page.getByRole('tab', { name: 'Fill and copy', exact: true });
     if (width <= 1200) {

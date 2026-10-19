@@ -62,9 +62,12 @@ stored sections are unchanged. The library menu also offers Copy as plain text.
 ## Refinement
 
 Choose **Refine** to work on the current sections, including a new or unsaved
-prompt. Explicitly request questions, answer them, then request a draft. Review
+prompt. Explicitly request questions, answer them, then request a draft, or choose
+**Improve without questions** for a draft that tightens the wording without new
+requirements. Questions never ask what a `{{variable}}` should be. Review
 section-level changes or the full draft, edit the proposal and apply locally
-with Undo; normal Save persists it. Closing the panel retains the session in
+with Undo; normal Save persists it. After Undo the same draft can be applied again
+without another AI call. Closing the panel retains the session in
 memory, while navigation/reload discards the session. Changing the source
 sections requires restarting. Refinement replaces the desktop preview and uses
 a full-screen dialog on phones. Each AI request shows provider and charge
@@ -127,19 +130,44 @@ above both panes as stored only in the current browser.
 ## The library
 
 - `/library` lists every prompt by most recent edit, in a list or a grid (the default is a
-  Settings preference), with search across names, folders and section text.
-- Choose Recently edited or Title A–Z sorting. Select prompts to file them together;
-  failed moves stay selected for retry. Grid metadata sits separately from actions.
-- Import prompts accepts a JSON export or Markdown (`# Title`, optional `## Section`
-  headings), up to 100 prompts and 5 MB per import. Review and edit names/folders
-  before creating new copies. Sections and variable settings are retained; history,
-  dates, notes and favorite status are not restored. Failed items remain for retry.
+  Settings preference), with search across names, folders and section text; every word
+  must match, in any order.
+- Choose Recently edited or Title A–Z sorting. Select prompts to file them together
+  (failed moves stay selected for retry) or delete them together, with one Undo. Grid metadata sits separately from actions.
+- **Add existing prompts** is the library's one entry point for bringing prompts in. It
+  accepts pasted text, a JSON export or Markdown (`# Title`, optional `## Section`
+  headings), up to 100 prompts and 5 MB per import; format details are folded away.
+  Review and edit names/folders, with section text shown for up to five prompts, before
+  creating new copies. Sections, variable settings and favorites are retained; history,
+  dates and notes are not restored. Failed items remain for retry. After success it
+  offers Open imported prompts (the prompt, its folder, or the library) or Import more.
+- A single pasted note can be kept as written or sent to **Make reusable with AI**, which
+  opens the editor's Paste a prompt with the text filled in (handed over once through
+  session storage).
 - A single plain note needs no heading. Uploading suggests its filename as the title;
   pasted notes have an editable title. Simple one-line YAML `title` values can supply
-  a title; complex YAML uses the fallback. All single-note text, including front
-  matter, is preserved. Metadata is not mapped into folders or other settings.
+  a title; complex YAML uses the fallback. Note metadata is tidied: front matter, Notion
+  page properties (a "Key: value" block under the title naming Tags, Created, Status and
+  similar), Obsidian callouts and trailing `#tags` are removed, and `[[links]]` read as
+  text. The rest is read like Markdown, so the first heading (a pasted page may start at
+  `##`) becomes the title and smaller headings become sections. The first tag suggests a
+  folder and a Notion favourite stays a favourite; the preview can keep the original
+  text instead.
+- Notion's **Export → Markdown & CSV** `.zip` can be chosen as it is: its pages are read
+  (the browser unzips it; nested part zips too, up to 50 MB), and a database `.csv` on its
+  own becomes one prompt per row (Name or Title, a Prompt/Content column or else the
+  longest text column, and Tags as the folder). Property lines that hold the prompt text
+  are kept; only metadata such as Tags, Created and Status is removed. Binary files are
+  refused with an explanation.
+- A previewed prompt whose title is already in the library is skipped unless
+  **Import a copy anyway** is ticked, so re-importing a vault does not duplicate it.
+- The preview offers to turn placeholders such as `[TOPIC]`, `{audience}` or
+  `<transcript>` into inputs (each can be unticked; `[[wiki-links]]` are never offered),
+  keeping each placeholder's wording as the input's hint, with Undo, and a **Folder for all prompts** field when
+  several prompts are imported.
 - Paste a prompt offers Save as written without AI. The source becomes one Task
-  section, preserving its text; copied output includes the usual section wrappers.
+  section, preserving its text. Prompts with a single section copy as plain text by
+  default; Output options can add the section tags.
   Optional AI conversion still offers review before applying.
 - The sidebar narrows it to **Favorites**, a **folder**, or **Unfiled**.
 - Library cards expose Copy template and, for prompts with variables, Fill and copy, which opens

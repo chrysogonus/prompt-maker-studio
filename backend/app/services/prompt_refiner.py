@@ -24,7 +24,17 @@ _QUESTIONS_SYSTEM_PROMPT = (
     "never ask to narrow or restate an axis that is already explicit. Ask 2-4 short, "
     "concrete questions when important information is missing. If the prompt is sufficiently "
     "specified for its task, return an empty questions list. Examples are helpful but are not "
-    "required when the other constraints make the expected output clear."
+    "required when the other constraints make the expected output clear. "
+    "{{placeholders}} are filled in each time the template is used; never ask what value "
+    "one should take or what should replace it."
+)
+
+# A question about a placeholder's value would bake one use into a reusable template.
+_ASKS_ABOUT_PLACEHOLDER = re.compile(r"\{\{[^{}]+\}\}")
+
+_NO_CLARIFICATIONS_INSTRUCTION = (
+    " No clarifications were given: improve clarity, specificity and structure only where "
+    "the existing text already implies it, and do not invent new requirements, facts or examples."
 )
 
 _FORCE_QUESTIONS_INSTRUCTION = (
@@ -135,7 +145,8 @@ class PromptRefinerService:
         if not isinstance(questions, list):
             msg = "Provider response did not contain a questions list"
             raise ValueError(msg)
-        return [str(question) for question in questions], usage
+        asked = [str(question) for question in questions]
+        return [q for q in asked if not _ASKS_ABOUT_PLACEHOLDER.search(q)], usage
 
     @staticmethod
     def generate_draft(
@@ -177,6 +188,7 @@ class PromptRefinerService:
                 + " The template is supplied as ordered section objects. Return revised section "
                 "objects with exactly the same names and order. Revise only their content; "
                 "preserve every variable and embedded tag in its original section."
+                + ("" if qa_pairs else _NO_CLARIFICATIONS_INSTRUCTION)
             ),
             user_content=json.dumps(
                 {

@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react';
 
 import Button, { ButtonLink } from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
+import { EditIcon, FolderIcon } from '@/components/ui/icon';
 import { PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
 
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
@@ -43,6 +44,8 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
     refineOpen,
     setRefineOpen,
     restoredDraft,
+    openFocused,
+    rememberValues,
     loading,
     loadError,
     saving,
@@ -94,7 +97,9 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
   const toolsRef = useRef<HTMLDivElement>(null);
   const toolsButtonRef = useRef<HTMLButtonElement>(null);
   const pasteButtonRef = useRef<HTMLButtonElement>(null);
-  const [focusedUse, setFocusedUse] = useState(initialMode === 'filled');
+  // Until the user picks a view, saved prompts with inputs open ready to fill.
+  const [focusChoice, setFocusedUse] = useState<boolean | null>(initialMode === 'filled' ? true : null);
+  const focusedUse = focusChoice ?? openFocused;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   useEffect(() => {
@@ -154,6 +159,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
                 onClick={() => setMoveDialog(prompt.folder ?? '')}
                 title="Move to folder"
               >
+                <FolderIcon size={14} tone="inherit" className={styles.crumbIcon} />
                 {prompt.folder || 'Unfiled'}
               </button>
               <span className={styles.crumbSep} aria-hidden="true">
@@ -181,7 +187,8 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               onClick={() => setRenaming(true)}
               title="Rename"
             >
-              {prompt.name}
+              <span className={styles.titleText}>{prompt.name}</span>
+              <EditIcon size={14} className={styles.titleIcon} />
             </button>
           ) : (
             <h1 className={styles.title}>New prompt</h1>
@@ -348,6 +355,9 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
                 onChange={(change) => updateSection(section.key, change)}
                 onMove={(offset) => moveSection(index, offset)}
                 onRemove={() => removeSection(index)}
+                onVariableInserted={(name, example) => setMetadata((current) => current[name]?.example ? current : ({
+                  ...current, [name]: { ...current[name], type: current[name]?.type ?? 'text', example },
+                }))}
               />
             ))}
           </div>
@@ -404,6 +414,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
           metadata={metadata}
           values={values}
           onClearValues={() => setValues({})}
+          inputsRemembered={rememberValues}
           onLoadExamples={() => setValues((current) => ({
             ...current, ...Object.fromEntries(variables.filter((name) => metadata[name]?.example).map((name) => [name, metadata[name].example!])),
           }))}
