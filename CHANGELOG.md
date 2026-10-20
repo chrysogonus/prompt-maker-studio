@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.9.0; see the [release candidate](./docs/releases/0.9.0.md).
+
 ### Added
 
 - AI-reviewed evaluation results can be rated with your own 1–5 stars. Your rating is
