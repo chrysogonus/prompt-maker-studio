@@ -6,9 +6,10 @@ import { AuthService } from '@/lib/auth';
 import type { ConnectedApp } from '@/types/auth';
 import styles from './SettingsPage.module.css';
 
-const GUIDE = 'https://developers.openai.com/plugins/deploy/connect-chatgpt';
+const CHATGPT_GUIDE = 'https://developers.openai.com/plugins/deploy/connect-chatgpt';
+const CLAUDE_GUIDE = 'https://claude.com/docs/connectors/custom/add-unlisted';
 
-/** Use the library from inside ChatGPT: where to connect it, and what is connected now. */
+/** Use the library from inside ChatGPT or Claude: where to connect it, and what is connected now. */
 export function ConnectedAppsSettings() {
   const [apps, setApps] = useState<ConnectedApp[] | null>(null);
   const [error, setError] = useState('');
@@ -41,25 +42,29 @@ export function ConnectedAppsSettings() {
   return (
     <section className={styles.section} id="s-chatgpt" aria-labelledby="h-chatgpt">
       <div className={styles.intro}>
-        <h2 id="h-chatgpt">ChatGPT</h2>
-        <p>Use your library inside ChatGPT.</p>
+        <h2 id="h-chatgpt">ChatGPT and Claude</h2>
+        <p>Use your library inside ChatGPT or Claude.</p>
       </div>
       <div className={styles.body}>
         <p className={styles.text}>
-          Connect ChatGPT to list, open, fill in and save your prompts from a conversation. This is
-          separate from the AI connection above and needs no API key.
+          Connect ChatGPT or Claude to list, open, fill in and save your prompts from a conversation.
+          The AI work happens in that app on your own plan, such as a Claude Pro or Max subscription,
+          so it needs no API key here. It is separate from the AI connection above.
         </p>
         <ol className={styles.steps}>
           <li>
-            In ChatGPT, add a custom connector (a remote MCP server).{' '}
-            <a href={GUIDE} target="_blank" rel="noreferrer noopener">OpenAI&apos;s guide ↗</a> shows where, depending on your plan.
+            Add a custom connector (a remote MCP server). In ChatGPT,{' '}
+            <a href={CHATGPT_GUIDE} target="_blank" rel="noreferrer noopener">OpenAI&apos;s guide ↗</a> shows where,
+            depending on your plan. In Claude, go to Customize → Connectors → Add custom connector;{' '}
+            <a href={CLAUDE_GUIDE} target="_blank" rel="noreferrer noopener">Anthropic&apos;s guide ↗</a> covers
+            every plan, including Team and Enterprise, where an Owner adds it.
           </li>
           <li>
             Use this server address with OAuth sign-in:{' '}
             <code className={styles.connectUrl}>{url}</code>{' '}
             <Button variant="secondary" onClick={() => void copy()}>{copied ? 'Copied' : 'Copy address'}</Button>
           </li>
-          <li>When ChatGPT asks, sign in here and allow access.</li>
+          <li>When the app asks, sign in here and allow access.</li>
         </ol>
         <h3 className={styles.subheading}>Connected apps</h3>
         {apps === null && !error && <p className={styles.hint}>Loading…</p>}

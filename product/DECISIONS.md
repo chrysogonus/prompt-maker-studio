@@ -1159,3 +1159,217 @@ existing prompts.
 
 **Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`,
 `frontend/src/lib/importArchive.ts`, `frontend/src/features/library/LibraryPage.tsx`.
+
+**Amended (2026-10-19)**: A second first-time-user test found notes rejected whole for headings
+such as `## 1. Role` or `## Step 2: Draft`, and every CSV in a zip dropped whenever any page
+was present, losing a database exported without its subpages. Headings now become valid,
+unique section names on import (the API's section-name rule is unchanged). A database CSV is
+skipped only when its rows were exported as pages (`X/` beside `X.csv`), across zips, split
+parts and chosen folders, and `X_all.csv` is preferred to `X.csv`. The tidy-up also removes
+Obsidian comments, Dataview queries and embedded files, unwraps highlights, and removes
+Notion `<aside>` callouts, by the same reasoning as Obsidian callouts.
+
+---
+
+## Import Preview Selects, Flags and Imports up to 1,000
+
+**Status**: Accepted (2026-10-19)
+
+**Context**: The same first-time-user test found that a vault of more than 100 notes could
+not be previewed at all, that templates, readmes and parent pages could not be left out,
+and that a note with a title over 100 characters or a section over 10,000 characters was
+skipped whole with a developer-style message.
+
+**Decision**: The preview takes up to 1,000 prompts and imports the ticked ones one by one,
+showing progress. Every prompt has a tick box: new prompts start ticked, prompts already in
+the library start unticked (the earlier "Import a copy anyway" default). Notes are parsed
+leniently: a long title or section is previewed with what to change, and a long section can
+be split at paragraph breaks into numbered sections, losing no text. Nothing is shortened
+silently. JSON exports and the final pre-write check stay strict. Skipped files are listed
+with their reasons, and a title repeated within one import is flagged but stays ticked,
+since different folders may hold different prompts.
+
+**Rationale**: Each prompt is already created by its own request, so the old cap protected
+nothing but made the commonest migration fail; progress covers the longer wait. Letting
+people choose and fix in the preview is cheaper than importing and deleting afterwards.
+
+**Consequences**: Amends "Vaults and Notion Exports Import as Downloaded" (duplicates are now
+an unticked box rather than a separate copy option) and supersedes the 100-prompt limit in
+`docs/saved-prompts.md`.
+
+**Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`.
+
+---
+
+## Re-import Can Update Changed Prompts as a New Version
+
+**Status**: Accepted (2026-10-19)
+
+**Context**: People moving from Notion or Obsidian keep editing there and expect to bring
+changes over, but importing again only offered a second copy of an edited note. Closing the
+dialog also kept an unfinished preview that reappeared without explanation, and notes at the
+top of a chosen vault were filed under the vault's own name.
+
+**Decision**: When a previewed prompt's title matches a library prompt and its sections
+differ, the preview offers Leave it as it is (default), Update it, or Import a copy.
+Placeholders converted on the first import do not count as a change. Updating PATCHes the
+sections (and merges any new variable settings) into the most recently matched prompt with
+the version note "Updated from import" and its concurrency timestamp, keeping folder, title
+and favourite. The dialog and landing page say importing is a one-time copy. Closing keeps
+an unfinished preview; reopening says so and offers Start over. Notes directly inside a
+chosen or dropped folder start Unfiled.
+
+**Rationale**: Version history already makes an overwrite reversible, so an explicit update
+is safe without building a sync. Keeping work on Close protects a long review from a
+misclick, and saying so on reopening removes the confusion. The chosen folder is the
+collection, not a category in it.
+
+**Consequences**: Replaces the dialog's "existing prompts are never replaced" promise with an
+explicit per-prompt choice; amends "Vaults and Notion Exports Import as Downloaded". Matching
+is by title only, so a renamed note still imports as new. Two-way sync stays out of scope.
+
+**Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/features/library/useLibrary.ts`,
+`frontend/src/app/page.tsx`.
+
+---
+
+## AI Review Agreement Is Measured with the User's Own Ratings
+
+**Status**: Accepted (2026-10-20)
+
+**Context**: AI-review scores are about to inform refinement and version comparisons, but
+nothing showed whether they match the user's judgement. Each test case uses one scoring
+method, so the same output never had both an AI score and a human rating.
+
+**Decision**: A scored AI-review result accepts an optional 1–5 star rating through the
+existing rate endpoint, stored in the new `eval_run_results.human_score` (stars × 20). The
+AI score and the run average stay unchanged. Like a manual rating, it is final. Run history
+reports "agreed on X of Y", where agreement means the AI score is within one star (20
+points) of the user's rating, counted in the browser over the loaded runs.
+
+**Rationale**: Re-using the rating endpoint and the existing star scale avoided a new
+endpoint, table or scale conversion. Showing a count rather than a correlation keeps the
+number readable and honest for the handful of ratings a person will give.
+
+**Consequences**: Agreement reflects only loaded history pages; a server-side summary can
+replace it if histories grow long. Failed AI reviews cannot be rated. Ratings cannot be
+changed once saved. Migration 030 adds the column.
+
+**Sources**: `backend/app/services/evaluation/results.py`, `frontend/src/lib/evaluationStatus.ts`,
+`frontend/src/features/evaluation/RunResults.tsx`.
+
+---
+
+## Eval Runs Record the Text They Tested, Matched by Exact Text
+
+**Status**: Accepted (2026-10-20)
+
+**Context**: Refinement needs to test a draft before it is applied, and History needs to
+know which versions were tested. A run recorded only the live version number, so it could
+not test unsaved sections, and a restored version looked untested even when the same text
+had been evaluated.
+
+**Decision**: `POST /eval/runs` accepts optional unsaved `fields`, never saved. Every new
+run stores its rendered template in `eval_runs.tested_prompt`; a run of text other than
+the saved prompt records version number 0. Listing derives `tested_version` (the recorded
+number, or for a draft the first saved version with the same text) and `matches_current`
+by exact string comparison. Existing runs are not backfilled.
+
+**Rationale**: Exact text is the identity that matters to a model and needs no hash
+column; one extra query per list keeps it cheap. Version numbers recorded by older
+releases could be off by one, so reconstructing their text would invent history.
+
+**Consequences**: Supersedes the content-hash approach in the evaluation plan. Variable
+settings are not part of the identity because they do not change the text a case compiles
+from. Draft runs appear in Run history; refinement will start them (planned).
+
+**Sources**: `backend/app/services/eval_service.py`, `backend/app/services/evaluation/results.py`,
+`frontend/src/features/evaluation/EvaluationPage.tsx`.
+
+---
+
+## Refinement Uses Chosen Test Results and Checks Drafts Before Apply
+
+**Status**: Accepted (2026-10-20)
+
+**Context**: Refinement changed wording without evidence that the result was better, and
+evaluation scores were not used anywhere else.
+
+**Decision**: On saved prompts, Refine lists the latest run's scored results, weakest first,
+with nothing preselected; the user chooses up to five. The draft request carries only their
+IDs and the server loads, ownership-checks and trims the content, which the refiner treats as
+untrusted data while counting what was checked as a requirement. After review, Check against
+test cases evaluates the unsaved draft, plus the current sections unless a run already tested
+that exact text, and shows the existing comparison view. Questions do not use test results.
+
+**Rationale**: User choice avoids an invented failure threshold; sending IDs keeps model
+outputs from being supplied or enlarged by the client. Reusing the unsaved-sections run and
+comparison view kept the check small. Each case runs once, so the UI says differences can be
+chance and reports AI-review agreement where AI review is involved.
+
+**Consequences**: A check costs one or two evaluation runs and adds them to Run history.
+Unsaved prompts have no test cases, so neither feature appears there. A long suite can still
+exceed the two-minute client timeout (see the plan's persistent-jobs phase).
+
+**Sources**: `frontend/src/features/editor/RefineTests.tsx`, `frontend/src/features/editor/RefinePanel.tsx`,
+`backend/app/services/evaluation/results.py`, `backend/app/services/prompt_refiner.py`.
+
+---
+
+## Claude Subscriptions Reach the App Through the Connector, Not Sign-in
+
+**Status**: Accepted (2026-10-20)
+
+**Context**: The owner wanted the app's AI features to run on a Claude Pro/Max subscription
+instead of an API key. Anthropic's terms do not permit third-party developers to offer
+Claude.ai login, to route requests through Free, Pro or Max credentials on users' behalf, or
+to collect, store or intermediate Claude.ai credentials or session tokens
+(https://code.claude.com/docs/en/legal-and-compliance); since early 2026 this is enforced
+server-side.
+
+**Decision**: Do not add subscription sign-in, stored tokens or a server-side Claude Code
+bridge. Instead, support Claude as a client of the existing MCP server: allow
+`claude.ai` (Claude's hosted-app OAuth callback) in the default `OAUTH_REDIRECT_HOSTS`
+alongside `chatgpt.com`, and document connecting Claude in Settings and `docs/mcp.md`. The
+in-app AI features keep using an API key, the operator default, or a local model.
+
+**Rationale**: As a connector, Claude does the AI work inside Anthropic's own apps on the
+user's subscription, which the terms allow, and the server already met Claude's OAuth
+requirements (401 discovery, DCR, S256 PKCE, `offline_access`, rotating refresh tokens,
+form-encoded token requests, port-agnostic loopback, redirect host on the consent page).
+
+**Consequences**: Refine, Try once, Paste-a-prompt conversion and evaluations still need an
+API key or local model. Deployments with an explicit `OAUTH_REDIRECT_HOSTS` must add
+`claude.ai`. Client ID metadata documents remain unimplemented; Claude falls back to dynamic
+registration. Not yet verified against a live Claude account.
+
+**Sources**: `backend/app/services/oauth_provider.py`, `frontend/src/features/settings/ConnectedAppsSettings.tsx`,
+`docs/mcp.md`.
+
+---
+
+## One Known-Good Version per Prompt, and Test Status Matched by Text
+
+**Status**: Accepted (2026-10-20)
+
+**Context**: With runs tied to the text they tested, versions could show whether they were
+tested, and users wanted a fixed point to compare edits against.
+
+**Decision**: A prompt stores one optional `known_good_version`, set through the existing
+PATCH (0 clears; validated against existing version numbers before anything changes; no new
+version or content timestamp). History matches each version to the newest run of its exact
+text (older runs by number) from the newest 100 runs, and shows nothing about tests when the
+prompt has none. The library list adds `eval_status`/`eval_score` from one pass over the
+user's runs and one grouped version query; untested prompts show nothing on their cards.
+
+**Rationale**: A single mark covers "known good" without a milestones table. Reusing PATCH
+kept one write path with the existing concurrency check. Hiding "untested" avoids labelling
+the many prompts nobody evaluates.
+
+**Consequences**: Runs of the known-good version are labelled in Evaluate but not chosen as
+the default comparison, and refinement checks do not yet show the known-good result. Very
+long run histories make the library query read more rows; it can move to SQL aggregation.
+Duplicates start without a mark, since their history starts fresh.
+
+**Sources**: `backend/app/services/prompts/library.py`, `backend/app/services/evaluation/results.py`,
+`frontend/src/features/editor/HistoryPanel.tsx`, `frontend/src/features/library/LibraryPage.tsx`.

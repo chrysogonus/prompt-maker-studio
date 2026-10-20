@@ -9,10 +9,11 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import { PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
-import { runScoreLabel } from '@/lib/evaluationStatus';
+import { judgeAgreement, runScoreLabel, runVersionLabel } from '@/lib/evaluationStatus';
 import { parseServerDate } from '@/lib/relativeTime';
 import { variablesIn } from '@/lib/sections';
 import CaseForm from './CaseForm';
+import type { EvalRun } from '@/types/evaluation';
 import RunResults from './RunResults';
 import CompareResults from './CompareResults';
 import { CASE_LIMIT, METHOD_LABELS, useEvaluation } from './useEvaluation';
@@ -54,6 +55,9 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
   const incomplete = cases.filter((item) => !item.intentionally_empty && variables.some((name) => typeof item.variables[name] !== 'string' || !item.variables[name].trim()));
   const selectedRun = runs.find((item) => item.id === selectedRunId) ?? runs[0];
   const comparedRun = runs.find((item) => String(item.id) === comparisonId && item.id !== selectedRun?.id);
+  // ponytail: counts only the loaded history pages; a server summary if long histories matter.
+  const agreement = judgeAgreement(runs);
+  const knownGood = (item: EvalRun) => item.tested_version !== null && item.tested_version === prompt?.known_good_version;
   const closeImport = () => { setImportOpen(false); setError(''); };
 
   return (
@@ -180,7 +184,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
             {runs.map((item) => <button type="button" key={item.id} aria-pressed={selectedRun.id === item.id}
               onClick={() => { setSelectedRunId(item.id); setComparisonId(''); }}>
               <time dateTime={parseServerDate(item.created_at).toISOString()}>{runDate(item.created_at)}</time>
-              <span>Version {item.prompt_version_number}</span>
+              <span>{runVersionLabel(item)}{knownGood(item) ? ' · known good' : ''}</span>
               <strong>{runScoreLabel(item)}</strong>
             </button>)}
             {hasMoreRuns && <Button variant="secondary" disabled={!!busy} onClick={() => void loadOlderRuns()}>
@@ -188,14 +192,15 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
             </Button>}
           </nav>
           <div className={styles.results}>
-            <p className={styles.banner}>Tested version {selectedRun.prompt_version_number}. Current saved version {currentVersion}.</p>
-            {selectedRun.prompt_version_number !== currentVersion && <Button variant="secondary" onClick={() => void run()}
+            <p className={styles.banner}>Tested {selectedRun.tested_version === null ? 'an unsaved draft' : `version ${selectedRun.tested_version}`}. Current saved version {currentVersion}{selectedRun.matches_current && selectedRun.tested_version !== currentVersion ? ', with the same text' : ''}.</p>
+            {agreement.rated > 0 && <p className={styles.hint}>AI review agreed with your own rating on {agreement.agreed} of {agreement.rated} {agreement.rated === 1 ? 'output' : 'outputs'} (within one star).</p>}
+            {!selectedRun.matches_current && <Button variant="secondary" onClick={() => void run()}
               disabled={!!busy || !canUseAI || !cases.length || incomplete.length > 0}>Run current version</Button>}
             {runs.length > 1 && <div className={styles.compareControl}>
               <label htmlFor="compare-run">Compare with</label>
               <Select id="compare-run" value={comparedRun ? comparisonId : ''} onChange={(event) => setComparisonId(event.target.value)}>
                 <option value="">Don’t compare</option>
-                {runs.filter((item) => item.id !== selectedRun.id).map((item) => <option key={item.id} value={item.id}>{runDate(item.created_at)} / version {item.prompt_version_number}</option>)}
+                {runs.filter((item) => item.id !== selectedRun.id).map((item) => <option key={item.id} value={item.id}>{runDate(item.created_at)} / {runVersionLabel(item).toLowerCase()}{knownGood(item) ? ' (known good)' : ''}</option>)}
               </Select>
             </div>}
             {comparedRun ? <CompareResults selected={selectedRun} compared={comparedRun} /> : <RunResults key={selectedRun.id} run={selectedRun} busy={busy} onRate={rate} />}

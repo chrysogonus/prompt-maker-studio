@@ -58,6 +58,7 @@
 - As **Alex**, I want to test a filled draft once without saving it, after reviewing the provider and charge notice.
 - As **Alex**, I want to create reusable test cases with automatic checks, AI review or manual ratings, run them explicitly and compare historical outputs.
 - As **Alex**, I want to mark inputs as required and load saved examples only when I ask, so I know what I am copying or sending to AI.
+- As **Alex**, I want to point refinement at test results that went badly and check a draft against my test cases before applying it, so I know an edit is actually better.
 
 ### Planned stories (not yet implemented)
 - As **Alex**, I want to give direct refinement instructions and accept individual section edits instead of applying a whole proposal.

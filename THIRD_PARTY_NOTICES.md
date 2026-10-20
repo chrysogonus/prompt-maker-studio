@@ -24,7 +24,7 @@ byte for byte; inspect the built artifact when updating its inventory.
 | anyio | 4.14.2 | MIT |
 | attrs | 26.1.0 | MIT |
 | bcrypt | 5.0.0 | Apache-2.0 |
-| certifi | 2026.7.22 | MPL-2.0 |
+| certifi | 2026.10.19 | MPL-2.0 |
 | cffi | 2.1.0 | MIT-0 |
 | click | 8.4.2 | BSD-3-Clause |
 | cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause |

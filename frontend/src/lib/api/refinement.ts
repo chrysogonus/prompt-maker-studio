@@ -1,4 +1,4 @@
-import type { PromptField, RefineQAPair } from '@/types/prompt';
+import type { PromptField, RefineEvidence, RefineQAPair } from '@/types/prompt';
 import { API_URL } from '../apiBase';
 import { ApiError, extractBudgetDetails, extractErrorMessage } from './errors';
 import { authenticatedFetch } from './transport';
@@ -23,6 +23,6 @@ export function getRefinementQuestions(fields: PromptField[], force = false) {
   return refine<{ questions: string[] }>('questions', { fields, force });
 }
 
-export function createRefinementDraft(fields: PromptField[], qa_pairs: RefineQAPair[]) {
-  return refine<{ fields: PromptField[] }>('draft', { fields, qa_pairs });
+export function createRefinementDraft(fields: PromptField[], qa_pairs: RefineQAPair[], evidence?: RefineEvidence) {
+  return refine<{ fields: PromptField[] }>('draft', { fields, qa_pairs, evidence });
 }

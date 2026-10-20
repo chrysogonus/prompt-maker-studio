@@ -46,6 +46,7 @@ def export_prompts(db: Session, user_id: int):
             updated_at=prompt.updated_at,
             content_updated_at=prompt.content_updated_at,
             current_note=prompt.current_note,
+            known_good_version=prompt.known_good_version,
             variable_metadata=prompt.variable_metadata,
             versions=[
                 ExportedPromptVersion(

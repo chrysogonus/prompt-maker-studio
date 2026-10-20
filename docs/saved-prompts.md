@@ -136,9 +136,13 @@ above both panes as stored only in the current browser.
   (failed moves stay selected for retry) or delete them together, with one Undo. Grid metadata sits separately from actions.
 - **Add existing prompts** is the library's one entry point for bringing prompts in. It
   accepts pasted text, a JSON export or Markdown (`# Title`, optional `## Section`
-  headings), up to 100 prompts and 5 MB per import; format details are folded away.
-  Review and edit names/folders, with section text shown for up to five prompts, before
-  creating new copies. Sections, variable settings and favorites are retained; history,
+  headings), up to 1,000 prompts and 5 MB per file per import, with progress shown while
+  importing; format details are folded away. Review before creating new copies: untick
+  prompts to leave out (Select all new / Select none), edit names and folders, with section
+  text shown for up to five prompts. A note whose title is over 100 characters or whose
+  section is over 10,000 characters is previewed with what to change instead of skipped;
+  a long section can be split losslessly into numbered sections. Files that hold no
+  prompt are listed with the reason, and a title repeated within one import is flagged. Sections, variable settings and favorites are retained; history,
   dates and notes are not restored. Failed items remain for retry. After success it
   offers Open imported prompts (the prompt, its folder, or the library) or Import more.
 - A single pasted note can be kept as written or sent to **Make reusable with AI**, which
@@ -148,19 +152,34 @@ above both panes as stored only in the current browser.
   pasted notes have an editable title. Simple one-line YAML `title` values can supply
   a title; complex YAML uses the fallback. Note metadata is tidied: front matter, Notion
   page properties (a "Key: value" block under the title naming Tags, Created, Status and
-  similar), Obsidian callouts and trailing `#tags` are removed, and `[[links]]` read as
-  text. The rest is read like Markdown, so the first heading (a pasted page may start at
-  `##`) becomes the title and smaller headings become sections. The first tag suggests a
+  similar), Obsidian callouts, `%% comments %%`, Dataview queries and trailing `#tags`,
+  and Notion `<aside>` callouts are removed; `[[links]]` and `==highlights==` read as
+  text, and embedded images or files are left out. The rest is read like Markdown, so the
+  first heading (a pasted page may start at `##`) becomes the title and smaller headings
+  become sections, named without list numbers, accents or punctuation (`## 1. Role` is
+  Role, a repeated `## Example` is Example 2). The first tag suggests a
   folder and a Notion favourite stays a favourite; the preview can keep the original
   text instead.
 - Notion's **Export → Markdown & CSV** `.zip` can be chosen as it is: its pages are read
-  (the browser unzips it; nested part zips too, up to 50 MB), and a database `.csv` on its
-  own becomes one prompt per row (Name or Title, a Prompt/Content column or else the
-  longest text column, and Tags as the folder). Property lines that hold the prompt text
-  are kept; only metadata such as Tags, Created and Status is removed. Binary files are
-  refused with an explanation.
-- A previewed prompt whose title is already in the library is skipped unless
-  **Import a copy anyway** is ticked, so re-importing a vault does not duplicate it.
+  (the browser unzips it; nested part zips too, up to 50 MB, without the part names
+  becoming folders), and a database `.csv` becomes one prompt per row (Name or Title, a
+  Prompt/Content column or else the longest text column, Tags as the folder, and a
+  Favourite status). A database's CSV is read only when its rows were not also exported as
+  pages, from a zip or a chosen folder alike, and `X_all.csv` is preferred to `X.csv`.
+  Property lines that hold the prompt text are kept; only metadata such as Tags, Created
+  and Status is removed. Binary files are refused with an explanation, and an HTML export
+  with advice to export Markdown & CSV instead.
+- A previewed prompt whose title is already in the library starts unticked
+  (**Import a copy anyway**), so re-importing a vault does not duplicate it. When its text
+  differs from the library prompt (placeholders converted on the first import do not
+  count), the preview offers Leave it as it is (the default), **Update it**, or Import a
+  copy. Updating saves the imported sections over the most recently matched library prompt
+  with the note "Updated from import", so the earlier text stays in History; a concurrent
+  edit fails with 409 and stays in the preview for retry. Importing is a one-time copy, not
+  a sync.
+- Closing the dialog keeps an unfinished preview; reopening it says so and offers
+  **Start over**. Notes directly inside a chosen or dropped folder start Unfiled, while
+  notes in its subfolders are filed by those subfolders.
 - The preview offers to turn placeholders such as `[TOPIC]`, `{audience}` or
   `<transcript>` into inputs (each can be unticked; `[[wiki-links]]` are never offered),
   keeping each placeholder's wording as the input's hint, with Undo, and a **Folder for all prompts** field when
@@ -198,6 +217,7 @@ interface PromptHistoryResponse {
   folder?: string | null;
   is_favorite?: boolean;
   current_note?: string | null;
+  known_good_version?: number | null; // the version the user marked as known good
   variable_metadata?: Record<string, {
     type: string; description?: string | null; required?: boolean; example?: string | null;
   }> | null;

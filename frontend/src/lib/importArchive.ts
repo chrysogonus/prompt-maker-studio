@@ -22,6 +22,7 @@ export async function readZip(bytes: Uint8Array, prefix = ''): Promise<ImportFil
   if (offset === 0xffffffff) fail('This .zip file is too large to read here. Unzip it, then choose its folder.');
   const decoder = new TextDecoder();
   const files: ImportFile[] = [];
+  let html = false;
   for (let n = view.getUint16(end + 10, true); n > 0; n--) {
     if (view.getUint32(offset, true) !== 0x02014b50) fail('This .zip file could not be read.');
     const method = view.getUint16(offset + 10, true);
@@ -31,6 +32,7 @@ export async function readZip(bytes: Uint8Array, prefix = ''): Promise<ImportFil
     const path = decoder.decode(bytes.subarray(offset + 46, offset + 46 + nameLength));
     offset += 46 + nameLength + view.getUint16(offset + 30, true) + view.getUint16(offset + 32, true);
     const nested = /\.zip$/i.test(path) && !prefix;
+    if (/\.html?$/i.test(path)) html = true;
     if (path.endsWith('/') || (!nested && !isImportableFile(path)) || (method !== 0 && method !== 8)) continue;
     const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
     const raw = bytes.subarray(start, start + size);
@@ -39,6 +41,6 @@ export async function readZip(bytes: Uint8Array, prefix = ''): Promise<ImportFil
     if (nested) files.push(...await readZip(data, `${path}/`));
     else files.push({ name: path.split('/').pop()!, path: prefix + path, text: decoder.decode(data) });
   }
-  // A Notion database exports its rows both as pages and as a CSV; the pages hold more.
-  return files.some(file => !/\.csv$/i.test(file.name)) ? files.filter(file => !/\.csv$/i.test(file.name)) : files;
+  if (!files.length && html && !prefix) fail('This .zip is an HTML export. In Notion, export again and choose Markdown & CSV.');
+  return files;
 }

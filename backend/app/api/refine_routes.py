@@ -8,7 +8,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_llm_connection, get_owned_prompt, llm_http_error
+from app.api.deps import call_service, get_llm_connection, get_owned_prompt, llm_http_error
 from app.auth.dependencies import get_current_user
 from app.database.connection import get_db
 from app.limiter import limiter
@@ -23,6 +23,7 @@ from app.schemas.refinement import (
     RefineSnapshotQuestionsRequest,
 )
 from app.services.budget_service import BudgetExceededError, BudgetService
+from app.services.evaluation import results
 from app.services.prompt_refiner import PromptRefinerService
 from app.services.prompt_sections import render_sections
 from app.services.spend_ledger import bill_failed_attempts, record_billed_call
@@ -72,6 +73,11 @@ def get_snapshot_draft(
 ):
     """Return validated section edits; applying and saving are separate user actions."""
     connection = get_llm_connection(current_user)
+    evidence = (
+        call_service(results.refinement_evidence, db, current_user.id, body.evidence)
+        if body.evidence
+        else None
+    )
     try:
         BudgetService.check(db, current_user.id)
     except BudgetExceededError as exc:
@@ -82,6 +88,7 @@ def get_snapshot_draft(
                 body.fields,
                 [(pair.question, pair.answer) for pair in body.qa_pairs],
                 connection,
+                evidence,
             )
     except Exception as exc:
         raise llm_http_error(exc, connection, "refine/draft snapshot") from exc

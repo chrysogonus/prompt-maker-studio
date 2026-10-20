@@ -7,6 +7,13 @@ export interface PromptField {
   content: string;
 }
 
+/** Results from one of the user's eval runs; the server loads their content. */
+export interface RefineEvidence {
+  prompt_id: number;
+  run_id: number;
+  result_ids: number[];
+}
+
 export interface RefineQAPair {
   question: string;
   answer: string;
@@ -31,6 +38,10 @@ export interface PromptHistoryResponse {
   folder?: string | null;
   is_favorite?: boolean;
   variable_metadata?: Record<string, VariableMetadataItem> | null;
+  known_good_version?: number | null;
+  /** Library list only: whether evaluations tested the current text. */
+  eval_status?: 'untested' | 'current' | 'stale' | null;
+  eval_score?: number | null;
 }
 
 export interface ParseTextRequest {
@@ -56,6 +67,8 @@ export interface PromptUpdateRequest {
   fields?: PromptField[] | null;
   folder?: string | null;
   is_favorite?: boolean | null;
+  /** A version number to mark as known good; 0 clears the mark. */
+  known_good_version?: number;
   variable_metadata?: Record<string, VariableMetadataItem> | null;
   note?: string | null;
   last_updated_at?: string;

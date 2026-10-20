@@ -97,6 +97,11 @@ class PromptHistoryResponse(BaseModel):
     folder: str | None = None
     is_favorite: bool = False
     variable_metadata: dict[str, VariableMetadataItem] | None = None
+    known_good_version: int | None = None
+    # Library list only: whether evaluations tested the current text
+    # ("untested", "current", "stale") and the newest such run's score.
+    eval_status: Literal["untested", "current", "stale"] | None = None
+    eval_score: float | None = None
 
     class Config:
         from_attributes = True
@@ -121,6 +126,9 @@ class PromptUpdateRequest(BaseModel):
     )
     folder: str | None = Field(None, max_length=255, description="Organizational folder label")
     is_favorite: bool | None = Field(None, description="Whether the prompt is starred")
+    known_good_version: int | None = Field(
+        None, ge=0, description="Version number to mark as known good; 0 clears the mark"
+    )
     variable_metadata: dict[str, VariableMetadataItem] | None = Field(
         None, description="Type/description per detected template variable, keyed by name"
     )
@@ -199,6 +207,7 @@ class ExportedPrompt(BaseModel):
     content_updated_at: datetime | None = None
     current_note: str | None = None
     variable_metadata: dict[str, VariableMetadataItem] | None = None
+    known_good_version: int | None = None
     versions: list[ExportedPromptVersion]
 
 

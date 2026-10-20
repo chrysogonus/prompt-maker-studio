@@ -26,6 +26,10 @@ import ImportPrompts from './ImportPrompts';
 import { Prompt, excerpt, editedAt, searchMatch } from './libraryState';
 
 const variableLabel = (count: number) => (count ? `${count} variable${count === 1 ? '' : 's'}` : 'No variables');
+// Untested prompts say nothing: most prompts are never evaluated.
+const testLabel = (prompt: Prompt) =>
+  prompt.eval_status === 'current' ? (prompt.eval_score == null ? 'Tested' : `Tested · ${Math.round(prompt.eval_score)}/100`)
+    : prompt.eval_status === 'stale' ? 'Tests out of date' : null;
 
 function LibraryContent() {
   const {
@@ -228,6 +232,7 @@ function LibraryContent() {
             <div className={styles.cardMeta}>
               {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
               <span>{variableLabel(variablesIn(prompt.fields).length)}</span>
+              {testLabel(prompt) && <span>{testLabel(prompt)}</span>}
               <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
             </div>
             <div className={styles.cardFoot}>
@@ -263,6 +268,7 @@ function LibraryContent() {
                 <div className={styles.meta}>
                   {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
                   <span>{variableLabel(variables)}</span>
+                  {testLabel(prompt) && <span>{testLabel(prompt)}</span>}
                   <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
                 </div>
               </div>
@@ -328,7 +334,7 @@ function LibraryContent() {
     <div className={styles.page}>
       <header className={styles.head}>
         <h1>{title}</h1>
-        <ImportPrompts onCreated={addImported} folders={folders} existingTitles={(prompts ?? []).map(prompt => prompt.name ?? '')} />
+        <ImportPrompts onCreated={addImported} folders={folders} existing={prompts ?? []} />
         {view.type === 'folder' && (
           <div className={styles.menuWrap} data-menu>
             <button

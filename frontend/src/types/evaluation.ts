@@ -32,6 +32,7 @@ export interface EvalResult {
   label: string;
   rationale: string | null;
   score: number | null;
+  human_score: number | null;
   is_pending: boolean;
   output_text: string | null;
   criteria: string | null;
@@ -43,6 +44,9 @@ export interface EvalRun {
   id: number;
   prompt_id: number;
   prompt_version_number: number;
+  tested_version: number | null;
+  matches_current: boolean;
+  tested_prompt: string | null;
   score: number | null;
   created_at: string;
   results: EvalResult[];

@@ -90,6 +90,13 @@ def update_prompt(prompt_id: int, body: PromptUpdateRequest, db: Session, user_i
             for name, item in (prompt.variable_metadata or {}).items()
         }
     )
+    if body.known_good_version is not None:
+        # A content change in this request saves a new version, which can be named too.
+        newest = PromptVersionService.live_version_number(db, prompt.id) + int(content_changed)
+        if body.known_good_version > newest:
+            raise OperationError(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY, detail="Version not found"
+            )
     if content_changed:
         PromptVersionService.snapshot(db, prompt, user_id, note=body.note)
 
@@ -102,6 +109,8 @@ def update_prompt(prompt_id: int, body: PromptUpdateRequest, db: Session, user_i
         prompt.folder = body.folder
     if body.is_favorite is not None:
         prompt.is_favorite = body.is_favorite
+    if body.known_good_version is not None:
+        prompt.known_good_version = body.known_good_version or None
     if next_metadata is not None:
         prompt.variable_metadata = next_metadata
 

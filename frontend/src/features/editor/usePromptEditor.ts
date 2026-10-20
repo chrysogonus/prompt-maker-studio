@@ -423,6 +423,15 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     }
   };
 
+  const markKnownGood = async (versionNumber: number) => {
+    try {
+      await patch({ known_good_version: versionNumber });
+      showNotice({ text: versionNumber ? `Version ${versionNumber} marked as known good` : 'Known-good mark removed' });
+    } catch (err) {
+      reportError(err, 'Failed to update the known-good version.');
+    }
+  };
+
   const move = async (event: FormEvent) => {
     event.preventDefault();
     const folder = (moveDialog ?? '').trim();
@@ -598,6 +607,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     discardEdits,
     reloadAfterConflict,
     restore,
+    markKnownGood,
     rename,
     move,
     updateSection,

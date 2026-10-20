@@ -29,23 +29,24 @@ function zip(entries: Record<string, string | Uint8Array>, deflate = true): Uint
 }
 
 describe('readZip', () => {
-  it('reads the notes in a Notion export, preferring pages over the database CSV', async () => {
+  it('reads the notes and CSVs in a Notion export, skipping other files', async () => {
     const files = await readZip(zip({
       'Prompts 3f2a/Cold email 8b7e.md': '# Cold email\nWrite to [Name].',
       'Prompts 3f2a.csv': 'Name,Prompt\nCold email,Write to [Name].',
       'Prompts 3f2a/image.png': 'png',
       '.DS_Store': 'x',
     }));
-    expect(files).toEqual([{ name: 'Cold email 8b7e.md', path: 'Prompts 3f2a/Cold email 8b7e.md', text: '# Cold email\nWrite to [Name].' }]);
+    expect(files.map(file => file.path)).toEqual(['Prompts 3f2a/Cold email 8b7e.md', 'Prompts 3f2a.csv']);
   });
 
-  it('keeps a database CSV when it is the only export, reads stored entries and opens nested parts', async () => {
+  it('reads stored entries and opens nested parts', async () => {
     expect(await readZip(zip({ 'Prompts.csv': 'Name,Prompt\nA,B' }, false))).toEqual([{ name: 'Prompts.csv', path: 'Prompts.csv', text: 'Name,Prompt\nA,B' }]);
     const outer = zip({ 'Export-Part-1.zip': zip({ 'Notes/One.md': 'One' }) });
     expect(await readZip(outer)).toEqual([{ name: 'One.md', path: 'Export-Part-1.zip/Notes/One.md', text: 'One' }]);
   });
 
-  it('explains a file that is not a zip', async () => {
+  it('explains a file that is not a zip, and an HTML export', async () => {
     await expect(readZip(new TextEncoder().encode('just text'))).rejects.toThrow('could not be read');
+    await expect(readZip(zip({ 'Prompts 3f2a.html': '<h1>Prompts</h1>' }))).rejects.toThrow('choose Markdown & CSV');
   });
 });

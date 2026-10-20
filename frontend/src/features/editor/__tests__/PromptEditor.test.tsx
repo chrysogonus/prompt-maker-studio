@@ -6,6 +6,7 @@ import { ApiClient, ApiError } from '@/lib/api';
 import { storageKey } from '@/lib/branding';
 import { pasteHandoffKey } from '@/lib/promptImport';
 import { snapshot } from '../editorState';
+import type { EvalResult, EvalRun } from '@/types/evaluation';
 import type { PromptHistoryResponse, PromptVersionResponse } from '@/types/prompt';
 
 vi.mock('@/lib/api', async () => ({
@@ -22,6 +23,9 @@ vi.mock('@/lib/api', async () => ({
     getRefinementQuestions: vi.fn(),
     createRefinementDraft: vi.fn(),
     tryPrompt: vi.fn(),
+    getEvalRuns: vi.fn(),
+    getEvalCases: vi.fn(),
+    runEvaluation: vi.fn(),
   },
 }));
 
@@ -84,6 +88,8 @@ beforeEach(() => {
     global_budget_remaining_usd: null,
   });
   vi.mocked(ApiClient.getFolders).mockResolvedValue(['Work', 'Writing']);
+  vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([]);
+  vi.mocked(ApiClient.getEvalCases).mockResolvedValue([]);
   vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValue({ questions: ['Who will read this?'] });
   vi.mocked(ApiClient.createRefinementDraft).mockResolvedValue({ fields: [
     { name: 'Role', content: 'You are a concise engineering lead writing for managers.' },
@@ -254,6 +260,36 @@ it.each(['x', '😀'])('shows inline section length validation and prevents savi
   expect(text).toHaveAttribute('aria-invalid', 'false');
 });
 
+describe('known-good version and test results in History', () => {
+  it('shows each version\'s newest test result and marks a version as known good', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([version()]);
+    vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([
+      evalRun({ id: 9, score: 90, tested_prompt: prompt().generated_prompt }),
+      evalRun({ id: 8, score: 40, tested_prompt: prompt().generated_prompt }),
+    ]);
+    vi.mocked(ApiClient.updatePrompt).mockResolvedValue(prompt({ known_good_version: 2 }));
+    await renderSaved();
+    await openTool(user, 'History');
+    const history = screen.getByRole('complementary', { name: 'Version history' });
+    expect(await within(history).findByText('Tested · 90/100')).toBeInTheDocument();
+    expect(within(history).getByText('Not tested')).toBeInTheDocument();
+    await user.click(within(history).getByRole('button', { name: 'Mark as known good' }));
+    expect(ApiClient.updatePrompt).toHaveBeenCalledWith(1, expect.objectContaining({ known_good_version: 2 }));
+    expect(await within(history).findByText('Version 2, current · known good')).toBeInTheDocument();
+    expect(within(history).getByRole('button', { name: 'Remove known-good mark' })).toBeInTheDocument();
+  });
+
+  it('shows no test results when the prompt was never evaluated', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([version()]);
+    await renderSaved();
+    await openTool(user, 'History');
+    await waitFor(() => expect(ApiClient.getEvalRuns).toHaveBeenCalledWith(1, 100));
+    expect(screen.queryByText('Not tested')).not.toBeInTheDocument();
+  });
+});
+
 describe('variable inputs and reversible import', () => {
   it('allows restoring variable settings when the prompt text is unchanged', async () => {
     const user = userEvent.setup();
@@ -333,6 +369,78 @@ it('only opens evaluation for a saved prompt without unsaved changes', async () 
   expect(screen.getByRole('button', { name: 'Evaluate' })).toHaveAttribute('title', 'Save your changes before evaluating.');
 });
 
+function evalResult(overrides: Partial<EvalResult>): EvalResult {
+  return {
+    id: 1, eval_case_id: 1, method: 'rule', label: 'Case', rationale: null, score: 50, human_score: null,
+    is_pending: false, output_text: 'An output.', criteria: null, variables: {}, judge_model: null, ...overrides,
+  };
+}
+
+function evalRun(overrides: Partial<EvalRun>): EvalRun {
+  return {
+    id: 7, prompt_id: 1, prompt_version_number: 1, tested_version: 1, matches_current: true, tested_prompt: null,
+    score: 50, created_at: '2026-10-20T10:00:00', model: 'gpt-4.1-mini', total_latency_ms: 1,
+    total_prompt_tokens: 1, total_completion_tokens: 1, total_cost_usd: 0, results: [], ...overrides,
+  };
+}
+
+describe('refinement with test results', () => {
+  const latest = evalRun({ results: [
+    evalResult({ id: 31, label: 'Long notes', score: 80 }),
+    evalResult({ id: 32, label: 'Empty notes', score: 20 }),
+    evalResult({ id: 33, label: 'Provider failure', score: null, output_text: null }),
+  ] });
+
+  it('offers the latest scored results, weakest first, and sends only the chosen ones', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([latest]);
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    const picker = await screen.findByRole('group', { name: 'Improve using test results (optional)' });
+    expect(within(picker).getAllByRole('checkbox').map((box) => box.closest('label')?.textContent))
+      .toEqual(['Empty notes · 20/100', 'Long notes · 80/100']);
+    await user.click(within(picker).getByRole('checkbox', { name: 'Empty notes · 20/100' }));
+    await user.click(screen.getByRole('button', { name: 'Improve without questions' }));
+    await screen.findByRole('button', { name: 'Apply changes' });
+    expect(ApiClient.createRefinementDraft).toHaveBeenCalledWith(prompt().fields, [], { prompt_id: 1, run_id: 7, result_ids: [32] });
+  });
+
+  it('checks a draft against the test cases, reusing a run of the current text', async () => {
+    const user = userEvent.setup();
+    const current = evalRun({ id: 8, tested_prompt: prompt().generated_prompt, results: [evalResult({ output_text: 'Before.' })] });
+    vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([current]);
+    vi.mocked(ApiClient.getEvalCases).mockResolvedValue([{ id: 1 }] as never);
+    vi.mocked(ApiClient.runEvaluation).mockResolvedValue(evalRun({ id: 9, tested_version: null, results: [evalResult({ output_text: 'After.', score: 90 })] }));
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Improve without questions' }));
+    expect(await screen.findByText(/Runs your 1 test case on this draft with your AI connection/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Check against test cases' }));
+    expect(await screen.findByText('After.')).toBeInTheDocument();
+    expect(screen.getByText('Before.')).toBeInTheDocument();
+    expect(ApiClient.runEvaluation).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(ApiClient.runEvaluation).mock.calls[0][1]?.[0].content).toBe('You are a concise engineering lead writing for managers.');
+    expect(screen.getAllByRole('heading', { name: 'This draft' }).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Each case ran once/)).toBeInTheDocument();
+    expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
+  });
+
+  it('runs the current prompt too when no run tested its text', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getEvalCases).mockResolvedValue([{ id: 1 }, { id: 2 }] as never);
+    vi.mocked(ApiClient.runEvaluation).mockResolvedValue(evalRun({ tested_version: null }));
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Improve without questions' }));
+    expect(await screen.findByText(/Runs your 2 test cases on this draft and on your current prompt/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Check against test cases' }));
+    await screen.findByText(/Each case ran once/);
+    expect(vi.mocked(ApiClient.runEvaluation).mock.calls.map((call) => call[1]?.[0].content)).toEqual([
+      'You are a concise engineering lead writing for managers.', prompt().fields[0].content,
+    ]);
+  });
+});
+
 describe('prompt refinement', () => {
   it('keeps a pending request when closed and restores focus without starting another call', async () => {
     const user = userEvent.setup();
@@ -375,7 +483,7 @@ describe('prompt refinement', () => {
     await user.type(screen.getByLabelText('Audience?'), 'Managers');
     await user.click(screen.getByRole('button', { name: 'Create draft' }));
     await screen.findByRole('button', { name: 'Apply changes' });
-    expect(ApiClient.createRefinementDraft).toHaveBeenCalledWith(prompt().fields, [{ question: 'Audience?', answer: 'Managers' }]);
+    expect(ApiClient.createRefinementDraft).toHaveBeenCalledWith(prompt().fields, [{ question: 'Audience?', answer: 'Managers' }], undefined);
     await user.click(screen.getByRole('radio', { name: 'Full draft' }));
     expect(screen.getByLabelText('Draft Context')).toHaveTextContent('{{team}}');
     await user.click(screen.getByRole('button', { name: 'Back to answers' }));
@@ -465,7 +573,9 @@ describe('prompt refinement', () => {
     expect(ApiClient.createRefinementDraft).toHaveBeenCalledWith(
       [{ name: 'Task', content: 'Explain {{topic}}' }],
       [{ question: 'Who will read this?', answer: 'Beginners' }],
+      undefined,
     );
+    expect(ApiClient.getEvalRuns).not.toHaveBeenCalled();
   });
 
   it('invalidates a closed session when the source changes', async () => {
@@ -502,7 +612,7 @@ describe('prompt refinement', () => {
     await user.click(screen.getByRole('button', { name: 'Refine' }));
     await user.click(screen.getByRole('button', { name: 'Improve without questions' }));
     await screen.findByRole('button', { name: 'Apply changes' });
-    expect(ApiClient.createRefinementDraft).toHaveBeenLastCalledWith(prompt().fields, []);
+    expect(ApiClient.createRefinementDraft).toHaveBeenLastCalledWith(prompt().fields, [], undefined);
     expect(ApiClient.getRefinementQuestions).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Back' }));
     vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValueOnce({ questions: [] });

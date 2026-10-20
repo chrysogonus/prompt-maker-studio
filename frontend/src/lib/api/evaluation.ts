@@ -1,4 +1,5 @@
 import type { EvalCase, EvalCaseInput, EvalProposal, EvalRun } from '@/types/evaluation';
+import type { PromptField } from '@/types/prompt';
 import { API_URL } from '../apiBase';
 import { ApiError, extractBudgetDetails, extractErrorMessage } from './errors';
 import { authenticatedFetch } from './transport';
@@ -47,8 +48,10 @@ export async function generateEvalCases(promptId: number, goal: string): Promise
   }, true)).json();
 }
 
-export async function runEvaluation(promptId: number): Promise<EvalRun> {
-  return (await request(promptId, 'runs', { method: 'POST' }, true)).json();
+/** `fields` tests unsaved sections instead of the saved prompt; they are never saved. */
+export async function runEvaluation(promptId: number, fields?: PromptField[]): Promise<EvalRun> {
+  const body = fields && JSON.stringify({ fields: fields.map(({ name, content }) => ({ name, content })) });
+  return (await request(promptId, 'runs', { method: 'POST', body }, true)).json();
 }
 
 export async function getEvalRuns(promptId: number, limit = 50, offset = 0): Promise<EvalRun[]> {

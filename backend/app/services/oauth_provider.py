@@ -75,7 +75,8 @@ def allowed_redirect_hosts() -> set[str]:
     for), so this is what stops a look-alike app from using the consent page to
     send a user's authorization to a host it controls.
     """
-    raw = os.getenv("OAUTH_REDIRECT_HOSTS", "chatgpt.com")
+    # ChatGPT and the hosted Claude apps (claude.ai/api/mcp/auth_callback).
+    raw = os.getenv("OAUTH_REDIRECT_HOSTS", "chatgpt.com,claude.ai")
     return {host.strip().lower() for host in raw.split(",") if host.strip()}
 
 

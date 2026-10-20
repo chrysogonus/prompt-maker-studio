@@ -22,6 +22,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_eval_routes.py` | Eval case CRUD and caps, AI proposals, atomic CSV import/export, run creation/history pagination, manual ratings, ownership/cascade isolation, and budget-ceiling rejection |
 | `test_eval_service.py` | EvalService rule/judge/manual scoring, aggregate computation, per-case PlaygroundRunError isolation, and run/result reproducibility metadata (resolved model, aggregate cost/latency/tokens, criteria/variables/judge-model snapshot) |
 | `test_go_live_smoke.py` | Production readiness smoke coverage |
+| `test_known_good_version.py` | Marking and clearing a known-good version through PATCH (validated before any change, no new version, included in the export) and the library list's per-prompt evaluation status: untested, current by exact tested text or legacy version number, stale after edits, newest score, and per-account isolation |
 | `test_limiter.py` | Rate-limiter key function: per-client isolation, loopback fallback, and rejection of a client-supplied spoofed forwarding header |
 | `test_llm_client.py` | The single provider-client construction seam: own-connection/server-default resolution, per-provider timeouts, the portable JSON-completion strategy (prompt-carried schema, capability-aware `response_format`, tolerant parsing, bounded retry, usage across attempts), and provider-neutral error mapping |
 | `test_llm_connection_models.py` | Local/custom discovery, pricing, empty fallbacks, per-user TTL caching, and update/delete invalidation |

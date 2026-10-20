@@ -10,6 +10,7 @@ from app.schemas.accounts import (
     _MAX_EVAL_VARIABLE_VALUE_LENGTH,
     _MAX_EVAL_VARIABLES,
 )
+from app.schemas.refinement import RefineSnapshotRequest
 
 MAX_EVAL_CASES_PER_PROMPT = 20
 
@@ -99,6 +100,7 @@ class EvalRunResultResponse(BaseModel):
     label: str
     rationale: str | None
     score: float | None
+    human_score: float | None = None
     is_pending: bool
     output_text: str | None
     # Snapshot of the case's criteria/variables at run time, and the judge
@@ -117,6 +119,12 @@ class EvalRunResponse(BaseModel):
     id: int
     prompt_id: int
     prompt_version_number: int
+    # The saved version with the tested text (None: an unsaved draft), and
+    # whether that text is the prompt's current text — see describe_runs.
+    tested_version: int | None = None
+    matches_current: bool = False
+    # Null for runs from before migration 031.
+    tested_prompt: str | None = None
     score: float | None
     created_at: datetime
     results: list[EvalRunResultResponse]
@@ -130,6 +138,10 @@ class EvalRunResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class EvalRunRequest(RefineSnapshotRequest):
+    """Unsaved sections to evaluate instead of the saved prompt; never saved."""
 
 
 class EvalRunRateRequest(BaseModel):

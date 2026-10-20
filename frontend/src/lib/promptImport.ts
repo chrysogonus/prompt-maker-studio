@@ -3,6 +3,9 @@ import { suggestTitle } from '@/lib/sections';
 import type { PromptCreateRequest, VariableMetadataItem } from '@/types/prompt';
 
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
+export const MAX_IMPORT_PROMPTS = 1000;
+const MAX_TITLE = 100;
+const MAX_SECTION = 10_000;
 /** Hands a pasted note from the library to the editor's AI conversion, once. */
 export const pasteHandoffKey = () => storageKey('paste-handoff');
 
@@ -11,13 +14,16 @@ export type ImportPrompt = PromptCreateRequest & { is_favorite?: true };
 const fail = (message: string): never => { throw new Error(message); };
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 
-/** Validate the entire preview before making any writes. Export-only history is intentionally ignored. */
-export function validateImportPrompts(value: unknown): ImportPrompt[] {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 100) return fail('Import between 1 and 100 prompts at a time.');
+/**
+ * Validate the entire preview before making any writes. Export-only history is intentionally ignored.
+ * Notes are read `lenient`ly: a long title or section is shown in the preview to fix (see importProblem).
+ */
+export function validateImportPrompts(value: unknown, lenient = false): ImportPrompt[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_IMPORT_PROMPTS) return fail('Import between 1 and 1,000 prompts at a time.');
   return value.map((item: unknown, index: number) => {
     const invalid = (detail: string): never => fail(`Prompt ${index + 1}: ${detail}`);
     if (!object(item)) return invalid('expected a prompt object.');
-    if (typeof item.name !== 'string' || !item.name.trim() || item.name.trim().length > 100) return invalid('title must contain 1–100 characters.');
+    if (typeof item.name !== 'string' || !item.name.trim() || (!lenient && item.name.trim().length > MAX_TITLE)) return invalid('title must contain 1–100 characters.');
     if (item.folder != null && (typeof item.folder !== 'string' || item.folder.length > 255)) return invalid('folder must contain at most 255 characters.');
     if (!Array.isArray(item.fields) || item.fields.length === 0 || item.fields.length > 100) return invalid('include 1–100 sections.');
     const tags = new Set<string>();
@@ -28,7 +34,7 @@ export function validateImportPrompts(value: unknown): ImportPrompt[] {
       const tag = name.replace(/ /g, '_').toUpperCase();
       if (tags.has(tag)) return invalid('section names must be unique.');
       tags.add(tag);
-      if (field.content.length > 10000) return invalid('section text exceeds 10,000 characters.');
+      if (!lenient && field.content.length > MAX_SECTION) return invalid('section text exceeds 10,000 characters.');
       return { name, content: field.content };
     });
     const prompt: ImportPrompt = { name: item.name.trim(), folder: typeof item.folder === 'string' ? item.folder.trim() : null, fields,
@@ -105,42 +111,60 @@ const METADATA_KEY = /^(tags?|created( time| by)?|last edited( time| by)?|status
 const PROMPT_KEY = /^(prompt|content|text|body|instructions?)$/i;
 const TRAILING_TAG = /(?:^|\s)(#[A-Za-z][\w/-]*)$/;
 const HEX_COLOUR = /^#(?:[0-9a-f]{3}){1,2}$/i;
+const DATAVIEW = /^```dataview(?:js)?\b[^\n]*\n[\s\S]*?^```[ \t]*(?:\n|$)/gm;
+
+/** Notion marks a favourite with a Favourite status or a ticked Favourite property. */
+const isFavourite = (key: string, value: string) =>
+  (/^status$/i.test(key) && /favou?rite/i.test(value)) || (/^favou?rite$/i.test(key) && /^(yes|true|x|✓)$/i.test(value.trim()));
 
 /** Remove note-app metadata from imported prompt text and keep its tags and favourite flag. */
 function tidyNote(prompt: ImportPrompt, noteTags: string[]): ImportPrompt {
   const tags = [...noteTags];
   let favorite = false;
   const fields = prompt.fields.map((field, index) => {
-    let content = field.content;
+    // Dataview queries list notes in Obsidian; they mean nothing to a model.
+    let content = field.content.replace(DATAVIEW, '');
     const properties = index === 0 ? content.match(PROPERTY_BLOCK) : null;
     if (properties && properties[1].split('\n').some(line => METADATA_KEY.test(line))) {
       const kept: string[] = [];
       for (const line of properties[1].split('\n').filter(Boolean)) {
         const [, key = '', value = ''] = line.match(/^([^:]+):\s*(.*)$/) ?? [];
         if (/^tags?$/i.test(key)) tags.push(...value.split(','));
-        if ((/^status$/i.test(key) && /favou?rite/i.test(value)) || (/^favou?rite$/i.test(key) && /^(yes|true|x|✓)$/i.test(value.trim()))) favorite = true;
+        if (isFavourite(key, value)) favorite = true;
         // Only metadata goes; a database's prompt text often lives in a property.
         if (!METADATA_KEY.test(line)) kept.push(PROMPT_KEY.test(key) ? value : line);
       }
       content = [kept.join('\n'), content.slice(properties[0].length)].filter(Boolean).join('\n\n');
     }
     let inCallout = false;
+    let inAside = false;
+    let inComment = false;
     content = mapProse(content, line => {
-      // Obsidian callouts are notes to the reader, not instructions to a model.
-      if (/^>\s*\[![\w-]+\]/.test(line)) { inCallout = true; return null; }
-      if (inCallout && /^>/.test(line)) return null;
+      // Obsidian %% comments %% are notes to self, hidden even in Obsidian's reading view.
+      let text = '';
+      line.split('%%').forEach((part, i) => { if (i) inComment = !inComment; if (!inComment) text += part; });
+      // Obsidian callouts and Notion's <aside> callouts are notes to the reader, not instructions to a model.
+      if (/^>\s*\[![\w-]+\]/.test(text)) { inCallout = true; return null; }
+      if (inCallout && /^>/.test(text)) return null;
       inCallout = false;
+      if (/^\s*<aside>/.test(text)) inAside = true;
+      if (inAside) { if (text.includes('</aside>')) inAside = false; return null; }
       // Obsidian tags at the end of a line (or a line of only tags) become folder suggestions.
-      let kept = line.trimEnd();
+      let kept = text.trimEnd();
       const lineTags: string[] = [];
       for (let tag = kept.match(TRAILING_TAG); tag && !HEX_COLOUR.test(tag[1]); tag = kept.match(TRAILING_TAG)) {
         lineTags.unshift(tag[1].slice(1));
         kept = kept.slice(0, kept.length - tag[0].length).trimEnd();
       }
       tags.push(...lineTags);
-      if (!kept && line.trim()) return null;
-      // [[Page]] and [[Page|label]] read as their text.
-      return kept.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, page: string, label?: string) => label ?? page);
+      kept = kept
+        // [[Page]] and [[Page|label]] read as their text; an embedded image or file is left out.
+        .replace(/(!?)\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, embed: string, page: string, label?: string) =>
+          embed && /\.(?!md$)\w+$/i.test(page) ? '' : label ?? page)
+        // ==Highlights== keep their text.
+        .replace(/==(?=\S)([^=\n]+?)(?<=\S)==/g, '$1')
+        .trimEnd();
+      return !kept && line.trim() ? null : kept;
     });
     return content === field.content ? field : { ...field, content: content.trim() };
   }).filter((field, _, all) => field.content.trim() || all.length === 1);
@@ -158,9 +182,11 @@ function tidyNote(prompt: ImportPrompt, noteTags: string[]): ImportPrompt {
  * `keepOriginal` is set; the rest of the note is then read like any Markdown
  * prompt, so a leading `# Title` becomes the title instead of prompt text.
  */
-export function parsePromptImport(source: string, suggestedTitle = 'Imported note', keepOriginal = false): ImportPrompt[] {
-  if (new Blob([source]).size > MAX_IMPORT_BYTES) fail('Import files must be 5 MB or smaller.');
-  if (source.includes('\u0000')) fail('This is not a text note. Choose .md, .txt, .csv or .json files, or a Notion .zip export.');
+export function parsePromptImport(original: string, suggestedTitle = 'Imported note', keepOriginal = false): ImportPrompt[] {
+  if (new Blob([original]).size > MAX_IMPORT_BYTES) fail('Import files must be 5 MB or smaller.');
+  if (original.includes('\u0000')) fail('This is not a text note. Choose .md, .txt, .csv or .json files, or a Notion .zip export.');
+  // Windows line endings are not part of the note.
+  const source = original.replace(/\r\n?/g, '\n');
   const text = source.trim();
   if (/^[{[]/.test(text)) {
     let data: unknown;
@@ -175,17 +201,17 @@ export function parsePromptImport(source: string, suggestedTitle = 'Imported not
   if (!keepOriginal && (body || !frontmatter)) {
     const tags = frontmatter ? frontmatterTags(frontmatter[1]) : [];
     const note = promoteHeadings(frontmatter ? body : source);
-    return validateImportPrompts(parsePromptImport(note, title || suggestedTitle, true).map(prompt => tidyNote(prompt, tags)));
+    return validateImportPrompts(parsePromptImport(note, title || suggestedTitle, true).map(prompt => tidyNote(prompt, tags)), true);
   }
   // Otherwise a single note retains every character, including frontmatter and headings.
   if (!/^# .+/.test(text)) {
-    return validateImportPrompts([{ name: title || suggestedTitle.trim() || suggestTitle(text) || 'Imported note', folder: null, fields: [{ name: 'Prompt', content: source }] }]);
+    return validateImportPrompts([{ name: title || suggestedTitle.trim() || suggestTitle(text) || 'Imported note', folder: null, fields: [{ name: 'Prompt', content: source }] }], true);
   }
   const prompts: PromptCreateRequest[] = [];
   let current: PromptCreateRequest | undefined;
   let section: { name: string; content: string } | undefined;
   let fence: string | null = null;
-  for (const line of text.split(/\r?\n/)) {
+  for (const line of text.split('\n')) {
     const marker = line.match(/^\s{0,3}(`{3,}|~{3,})/);
     const heading = !fence && !marker ? line.match(/^(#{1,2}) (.+)$/) : null;
     if (heading?.[1] === '#') {
@@ -206,9 +232,58 @@ export function parsePromptImport(source: string, suggestedTitle = 'Imported not
     }
   }
   for (const prompt of prompts) for (const field of prompt.fields) field.content = field.content.trim();
-  // Whitespace before the first explicit section is not its own section.
-  for (const prompt of prompts) prompt.fields = prompt.fields.filter(field => field.name !== 'Prompt' || field.content || prompt.fields.length === 1);
-  return validateImportPrompts(prompts);
+  for (const prompt of prompts) {
+    // Whitespace before the first explicit section is not its own section.
+    const fields = prompt.fields.filter(field => field.name !== 'Prompt' || field.content || prompt.fields.length === 1);
+    const taken = new Set<string>();
+    prompt.fields = fields.map(field => ({ ...field, name: sectionName(field.name, taken) }));
+  }
+  return validateImportPrompts(prompts, true);
+}
+
+/** What stops a previewed prompt from being imported until it is edited, in plain words. */
+export function importProblem(prompt: ImportPrompt): string | null {
+  const title = prompt.name.trim();
+  if (!title) return 'Add a title.';
+  if (title.length > MAX_TITLE) return `The title is ${title.length} characters; shorten it to ${MAX_TITLE}.`;
+  const long = prompt.fields.find(field => field.content.length > MAX_SECTION);
+  return long ? `Section “${long.name}” is ${long.content.length.toLocaleString('en')} characters, over the 10,000 limit.` : null;
+}
+
+/**
+ * Split each over-long section at paragraph breaks (or, failing that, every 10,000
+ * characters) into numbered sections, so no text is lost: "Reference", "Reference 2".
+ */
+export function splitLongSections(prompt: ImportPrompt): ImportPrompt {
+  const taken = new Set<string>();
+  const fields = prompt.fields.flatMap(field => {
+    if (field.content.length <= MAX_SECTION) return [field];
+    const parts = [''];
+    for (const paragraph of field.content.split(/(?<=\n\n)/)) {
+      for (let i = 0; i < paragraph.length; i += MAX_SECTION) {
+        const piece = paragraph.slice(i, i + MAX_SECTION);
+        if (parts[parts.length - 1].length + piece.length > MAX_SECTION) parts.push('');
+        parts[parts.length - 1] += piece;
+      }
+    }
+    return parts.map(content => ({ name: field.name, content: content.trim() }));
+  });
+  return { ...prompt, fields: fields.map(field => ({ ...field, name: sectionName(field.name, taken) })) };
+}
+
+/**
+ * A `## heading` as a section name the API accepts: no list numbering, accents or
+ * punctuation ("1. Role" → "Role", "Step 1: Draft" → "Step 1 Draft"), unique by tag.
+ */
+function sectionName(heading: string, taken: Set<string>): string {
+  const words = heading.normalize('NFKD').replace(/[̀-ͯ'’]/g, '').replace(/^\s*\d+[.)]\s*/, '')
+    .replace(/[^A-Za-z0-9_ -]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90).trim();
+  const base = /^[A-Za-z_]/.test(words) ? words : `Section ${words}`.trim();
+  const tag = (name: string) => name.replace(/ /g, '_').toUpperCase();
+  let name = base;
+  for (let n = 2; taken.has(tag(name)); n++) name = `${base} ${n}`;
+  taken.add(tag(name));
+  return name;
 }
 
 // [TOPIC] or [insert topic] (not a Markdown link, a [[wiki-link]] or arr[i]), {topic}
@@ -314,11 +389,29 @@ export function parseCsvPrompts(text: string): ImportPrompt[] {
       name: (row[titleAt]?.trim() || suggestTitle(row[promptAt]) || 'Imported prompt').slice(0, 100),
       folder: tag ? tag[0].toUpperCase() + tag.slice(1) : null,
       fields: [{ name: 'Prompt', content: row[promptAt].trim() }],
+      ...(header.some((name, i) => isFavourite(name.trim(), row[i] ?? '')) && { is_favorite: true as const }),
     };
-  }));
+  }), true);
 }
 
 export interface ImportFile { name: string; path: string; text: string }
+
+/** A file's folders, without the parts of a split export (`Export-…-Part-1.zip`). */
+const folderPath = (path: string) => path.split('/').slice(0, -1).filter(part => !/\.zip$/i.test(part));
+
+/**
+ * A Notion database exports its rows as pages beside `X.csv` and `X_all.csv`; the pages
+ * hold more, so those CSVs are read only when the pages were not exported.
+ */
+function preferPages(files: ImportFile[]): ImportFile[] {
+  const pages = files.filter(file => !/\.csv$/i.test(file.name)).map(file => [...folderPath(file.path), ''].join('/'));
+  const base = (file: ImportFile) => [...folderPath(file.path), file.name.replace(/(_all)?\.csv$/i, '')].join('/');
+  return files.filter(file => !/\.csv$/i.test(file.name) || !(
+    pages.some(page => page.startsWith(`${base(file)}/`))
+    // Without pages, X_all.csv holds every row of X.csv.
+    || (!/_all\.csv$/i.test(file.name) && files.some(other => other !== file && /_all\.csv$/i.test(other.name) && base(other) === base(file)))
+  ));
+}
 
 /**
  * Several files become one preview. A file's folder (from a chosen folder) is its
@@ -327,15 +420,16 @@ export interface ImportFile { name: string; path: string; text: string }
 export function parseImportFiles(files: ImportFile[], keepOriginal = false): { prompts: ImportPrompt[]; skipped: string[] } {
   const prompts: ImportPrompt[] = [];
   const skipped: string[] = [];
-  for (const file of files) {
-    const folder = (file.path.split('/').slice(0, -1).pop() ?? '').replace(NOTION_ID, '').trim() || null;
+  for (const file of preferPages(files)) {
+    const folder = (folderPath(file.path).pop() ?? '').replace(NOTION_ID, '').trim() || null;
     try {
       const parsed = /\.csv$/i.test(file.name) ? parseCsvPrompts(file.text) : parsePromptImport(file.text, titleFromFileName(file.name), keepOriginal);
       prompts.push(...parsed.map(prompt => ({ ...prompt, folder: prompt.folder ?? folder })));
     } catch (error) {
-      skipped.push(`${file.name}: ${(error as Error).message}`);
+      // A note holds one prompt, so "Prompt 1:" says nothing.
+      skipped.push(`${file.name}: ${(error as Error).message.replace(/^Prompt 1: /, '')}`);
     }
   }
-  if (prompts.length > 100) fail(`These files hold ${prompts.length} prompts. Import up to 100 at a time.`);
+  if (prompts.length > MAX_IMPORT_PROMPTS) fail(`These files hold ${prompts.length.toLocaleString('en')} prompts. Import up to 1,000 at a time.`);
   return { prompts, skipped };
 }

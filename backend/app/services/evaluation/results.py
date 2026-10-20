@@ -1,19 +1,51 @@
 """Owned evaluation history and manual ratings."""
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.eval_run import EvalRun
 from app.models.eval_run_result import EvalRunResult
+from app.models.prompt import Prompt
+from app.models.prompt_version import PromptVersion
 from app.schemas.evaluation import EvalRunRateRequest
+from app.schemas.refinement import RefineEvidence
 from app.services.errors import OperationError
 from app.services.eval_service import EvalService
+from app.services.prompt_version_service import PromptVersionService
 from app.services.prompts.ownership import get_owned_prompt
+
+
+def describe_runs(db: Session, prompt: Prompt, runs: list[EvalRun]) -> list[EvalRun]:
+    """Set each run's `tested_version` (None for an unsaved draft never saved
+    since) and whether it tested the prompt's current text."""
+    live = PromptVersionService.live_version_number(db, prompt.id)
+    saved_texts = None
+    for run in runs:
+        if run.tested_prompt is None:  # Before migration 031 only the number was kept.
+            run.tested_version = run.prompt_version_number
+            run.matches_current = run.prompt_version_number == live
+            continue
+        run.matches_current = run.tested_prompt == prompt.generated_prompt
+        run.tested_version = run.prompt_version_number or None
+        if run.tested_version is None:
+            # A draft that was saved later belongs to the first version with its text.
+            if saved_texts is None:
+                saved_texts = [
+                    *db.query(PromptVersion.version_number, PromptVersion.generated_prompt)
+                    .filter(PromptVersion.prompt_id == prompt.id)
+                    .order_by(PromptVersion.version_number),
+                    (live, prompt.generated_prompt),
+                ]
+            run.tested_version = next(
+                (number for number, text in saved_texts if text == run.tested_prompt), None
+            )
+    return runs
 
 
 def list_eval_runs(prompt_id: int, db: Session, user_id: int, limit: int = 50, offset: int = 0):
     """List an owned prompt's eval run history, newest first."""
-    get_owned_prompt(prompt_id, user_id, db)
-    return (
+    prompt = get_owned_prompt(prompt_id, user_id, db)
+    runs = (
         db.query(EvalRun)
         .options(selectinload(EvalRun.results))
         .filter(EvalRun.prompt_id == prompt_id)
@@ -22,12 +54,14 @@ def list_eval_runs(prompt_id: int, db: Session, user_id: int, limit: int = 50, o
         .limit(limit)
         .all()
     )
+    return describe_runs(db, prompt, runs)
 
 
 def rate_eval_result(
     prompt_id: int, run_id: int, result_id: int, body: EvalRunRateRequest, db: Session, user_id: int
 ):
-    """Submit a 1-5 star manual rating for a pending Manual-method eval result."""
+    """Rate a pending Manual-method result, or record a person's own rating of
+    a judge-scored result beside the AI's score. Either rating is final."""
     prompt = get_owned_prompt(prompt_id, user_id, db)
 
     result = (
@@ -40,8 +74,88 @@ def rate_eval_result(
         )
         .first()
     )
+    if result and result.method == "judge" and result.score is not None:
+        if result.human_score is not None:
+            raise OperationError(status_code=404, detail="Unrated eval result not found")
+        # The run's aggregate stays the AI's: this rating only measures agreement.
+        result.human_score = body.stars * 20
+        db.commit()
+        db.refresh(result.run)
+        return describe_runs(db, prompt, [result.run])[0]
     if not result or not result.is_pending:
         raise OperationError(status_code=404, detail="Pending eval result not found")
 
     run, _ = EvalService.submit_manual_rating(db, result, body.stars)
-    return run
+    return describe_runs(db, prompt, [run])[0]
+
+
+# Bounds what one refinement request can send: five results at these sizes.
+_EVIDENCE_OUTPUT_MAX_CHARS = 2_000
+_EVIDENCE_FEEDBACK_MAX_CHARS = 1_000
+
+
+def refinement_evidence(db: Session, user_id: int, evidence: RefineEvidence) -> list[dict]:
+    """Load the caller's chosen results from one of their runs, trimmed for the refiner."""
+    prompt = get_owned_prompt(evidence.prompt_id, user_id, db)
+    rows = (
+        db.query(EvalRunResult)
+        .join(EvalRun, EvalRunResult.eval_run_id == EvalRun.id)
+        .filter(
+            EvalRun.prompt_id == prompt.id,
+            EvalRun.id == evidence.run_id,
+            EvalRunResult.id.in_(evidence.result_ids),
+        )
+        .order_by(EvalRunResult.id)
+        .all()
+    )
+    if len(rows) != len(set(evidence.result_ids)):
+        raise OperationError(status_code=404, detail="Test result not found")
+    return [
+        {
+            "test": row.label,
+            "inputs": row.variables or {},
+            "checked": row.criteria,
+            "score": row.score,
+            "your_rating": row.human_score,
+            "feedback": (row.rationale or "")[:_EVIDENCE_FEEDBACK_MAX_CHARS],
+            "output": (row.output_text or "")[:_EVIDENCE_OUTPUT_MAX_CHARS],
+        }
+        for row in rows
+    ]
+
+
+def annotate_eval_status(db: Session, user_id: int, prompts: list[Prompt]) -> list[Prompt]:
+    """Set each listed prompt's `eval_status` and `eval_score`: "current" with the
+    newest score for the current text, "stale" when only other text was tested,
+    "untested" without runs. Two queries for the whole library."""
+    # ponytail: reads one small row per run in the library; summarise in SQL if that grows large.
+    runs = (
+        db.query(
+            EvalRun.prompt_id,
+            EvalRun.score,
+            EvalRun.tested_prompt == Prompt.generated_prompt,
+            EvalRun.tested_prompt.is_(None),
+            EvalRun.prompt_version_number,
+        )
+        .join(Prompt, Prompt.id == EvalRun.prompt_id)
+        .filter(Prompt.user_id == user_id)
+        .order_by(EvalRun.id.desc())
+        .all()
+    )
+    latest_snapshot = dict(
+        db.query(PromptVersion.prompt_id, func.max(PromptVersion.version_number))
+        .join(Prompt, Prompt.id == PromptVersion.prompt_id)
+        .filter(Prompt.user_id == user_id)
+        .group_by(PromptVersion.prompt_id)
+        .all()
+    )
+    status: dict[int, tuple[str, float | None]] = {}
+    for prompt_id, score, same_text, legacy, version_number in runs:
+        # Before migration 031 a run kept only its version number.
+        current = same_text or (legacy and version_number == latest_snapshot.get(prompt_id, 0) + 1)
+        if current and status.get(prompt_id, ("stale",))[0] == "stale":
+            status[prompt_id] = ("current", score)
+        status.setdefault(prompt_id, ("stale", None))
+    for prompt in prompts:
+        prompt.eval_status, prompt.eval_score = status.get(prompt.id, ("untested", None))
+    return prompts

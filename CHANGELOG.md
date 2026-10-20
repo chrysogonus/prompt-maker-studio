@@ -10,7 +10,70 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
-Prepared for 0.8.0; see the [release candidate](./docs/releases/0.8.0.md).
+Prepared for 0.9.0; see the [release candidate](./docs/releases/0.9.0.md).
+
+### Added
+
+- AI-reviewed evaluation results can be rated with your own 1–5 stars. Your rating is
+  kept beside the AI score without changing it, and Run history shows how often the AI
+  review agreed with you (within one star).
+- Evaluations remember the exact prompt text they tested. Run history no longer asks
+  you to rerun a prompt whose current text was already tested (for example after
+  restoring a version). The API can also evaluate unsaved sections, shown as "Unsaved
+  draft" until the same text is saved.
+- Mark one version of a prompt as known good from History. History also shows each
+  version's newest test result, Evaluate labels runs of the known-good version, and
+  library cards say "Tested · 82/100" or "Tests out of date" for prompts you evaluate.
+- Claude can use your library as a custom connector, the same way ChatGPT does: add
+  `<your site>/api/mcp` under Customize → Connectors in Claude (any plan) and the AI
+  work runs on your own Claude subscription. Settings → ChatGPT and Claude shows how.
+  `OAUTH_REDIRECT_HOSTS` now defaults to `chatgpt.com,claude.ai`; if your `.env` sets it
+  explicitly (older `.env.example` files set `chatgpt.com`), add `claude.ai` there.
+- Refine can use your test results: choose up to five results from the latest evaluation
+  and the draft aims to improve on them. After reviewing a draft of a saved prompt, Check
+  against test cases runs your cases on the draft (and on your current prompt, unless it
+  was already tested) and compares the outputs side by side before you apply anything.
+
+### Changed
+
+- Importing a note again can update its library prompt when the text changed, saving
+  the earlier text in History; leaving it as it is stays the default, and the dialog and
+  landing page say importing is a one-time copy. Closing the dialog keeps an unfinished
+  preview, and reopening offers Start over. Notes directly in a chosen folder start
+  Unfiled instead of being filed under the folder's name.
+- Add existing prompts previews and imports up to 1,000 prompts at a time, with
+  progress, instead of refusing more than 100. Each prompt has a tick box, so templates
+  and other notes can be left out, with Select all new and Select none.
+- A note with a title over 100 characters or a section over 10,000 characters is
+  previewed with what to change instead of skipped; a long section can be split into
+  numbered sections without losing text. Skipped files are listed with plain reasons,
+  errors stand out, a title repeated within one import is flagged, placeholders show how
+  many prompts use them, and the folder picker says "Choose folder".
+
+### Fixed
+
+- Imported notes are no longer skipped for headings with list numbers, punctuation,
+  accents or repeats (`## 1. Role`, `## Step 2: Draft`, a second `## Example`); these
+  become valid section names instead.
+- A database CSV in a Notion zip or chosen folder is read unless its rows were also
+  exported as pages, so an export without subpages no longer loses every row. A split
+  export's part names are no longer suggested as folders, and a CSV row's Favourite
+  status is kept.
+- Imported notes also drop Obsidian `%% comments %%`, Dataview queries and embedded files,
+  read `==highlights==` as text, and drop Notion `<aside>` callouts. Windows line endings
+  no longer offer "Keep the original note text" for an untouched note, several files
+  preview in folder order, and a Notion HTML export explains how to export Markdown & CSV.
+
+### Security
+
+- The backend's `certifi` CA bundle is updated to 2026.10.19 for
+  [GHSA-6q48-6c7w-9gw2](https://github.com/advisories/GHSA-6q48-6c7w-9gw2): earlier
+  bundles trust a root whose intermediate CAs had compromised keys. Rebuilt images pick
+  it up; no configuration change.
+
+## [0.8.0] - 2026-10-19
+
+See the [release record](./docs/releases/0.8.0.md).
 
 ### Changed
 
@@ -795,7 +858,8 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.8.0
 [0.7.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.7.0
 [0.6.1]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.6.1
 [0.6.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.6.0

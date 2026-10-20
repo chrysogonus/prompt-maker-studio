@@ -45,9 +45,19 @@ class RefineSnapshotQuestionsRequest(RefineSnapshotRequest):
     force: bool = False
 
 
+class RefineEvidence(BaseModel):
+    """Evaluation results to improve on. Only IDs: the server loads the caller's
+    own results, so outputs can never be supplied or enlarged by the client."""
+
+    prompt_id: int
+    run_id: int
+    result_ids: list[int] = Field(..., min_length=1, max_length=5)
+
+
 class RefineSnapshotDraftRequest(RefineSnapshotRequest):
     # No questions at all asks for an improvement without clarifications.
     qa_pairs: list[RefineQAPair] = Field(default_factory=list, max_length=10)
+    evidence: RefineEvidence | None = None
 
     @field_validator("qa_pairs")
     @classmethod

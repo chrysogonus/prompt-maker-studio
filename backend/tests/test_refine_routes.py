@@ -375,3 +375,92 @@ class TestSnapshotRefinement:
                 else {"fields": self.fields},
             )
         assert response.status_code == 502
+
+
+class TestRefineWithTestResults:
+    fields = [{"name": "goal", "content": "Write about {{topic}}"}]
+
+    def _run(self, client, headers):
+        from app.services.playground_service import PlaygroundResult
+
+        prompt_id = _create_saved_prompt(client, headers)
+        client.post(
+            f"/api/prompts/{prompt_id}/eval/cases",
+            headers=headers,
+            json={"method": "rule", "criteria": "cats", "variables": {"topic": "dogs"}},
+        )
+        result = PlaygroundResult(
+            output_text="All about dogs. " * 400,
+            latency_ms=1,
+            prompt_tokens=1,
+            completion_tokens=1,
+            cost_usd=0.0,
+            provider="openai",
+            model="m",
+        )
+        with patch("app.services.eval_service.PlaygroundService.run", return_value=result):
+            run = client.post(f"/api/prompts/{prompt_id}/eval/runs", headers=headers).json()
+        return prompt_id, run
+
+    def _draft(self, client, headers, evidence):
+        with patch(
+            "app.api.refine_routes.PromptRefinerService.generate_section_draft",
+            return_value=({"fields": self.fields}, _USAGE),
+        ) as generate:
+            response = client.post(
+                "/api/prompts/refine/draft",
+                headers=headers,
+                json={"fields": self.fields, "evidence": evidence},
+            )
+        return response, generate
+
+    def test_draft_receives_the_chosen_results_loaded_and_trimmed_by_the_server(
+        self, client, auth_headers
+    ):
+        prompt_id, run = self._run(client, auth_headers)
+        result_id = run["results"][0]["id"]
+
+        response, generate = self._draft(
+            client,
+            auth_headers,
+            {"prompt_id": prompt_id, "run_id": run["id"], "result_ids": [result_id]},
+        )
+
+        assert response.status_code == 200
+        [item] = generate.call_args.args[3]
+        assert item["inputs"] == {"topic": "dogs"}
+        assert item["checked"] == "cats"
+        assert item["score"] == 0.0
+        assert item["output"].startswith("All about dogs.")
+        assert len(item["output"]) == 2000
+
+    def test_results_of_another_account_are_not_found(
+        self, client, auth_headers, second_auth_headers, db_session
+    ):
+        prompt_id, run = self._run(client, auth_headers)
+        evidence = {
+            "prompt_id": prompt_id,
+            "run_id": run["id"],
+            "result_ids": [run["results"][0]["id"]],
+        }
+
+        response, generate = self._draft(client, second_auth_headers, evidence)
+
+        assert response.status_code == 404
+        generate.assert_not_called()
+        assert db_session.query(BilledCall).filter_by(source="refine_draft").count() == 0
+
+    def test_result_ids_outside_the_run_are_not_found(self, client, auth_headers):
+        prompt_id, run = self._run(client, auth_headers)
+        evidence = {"prompt_id": prompt_id, "run_id": run["id"], "result_ids": [999_999]}
+
+        response, generate = self._draft(client, auth_headers, evidence)
+
+        assert response.status_code == 404
+        generate.assert_not_called()
+
+    def test_at_most_five_results_can_be_sent(self, client, auth_headers):
+        evidence = {"prompt_id": 1, "run_id": 1, "result_ids": [1, 2, 3, 4, 5, 6]}
+        response, generate = self._draft(client, auth_headers, evidence)
+        assert response.status_code == 422
+        generate.assert_not_called()

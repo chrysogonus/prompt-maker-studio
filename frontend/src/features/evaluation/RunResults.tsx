@@ -44,6 +44,13 @@ export function ResultFeedback({ result }: { result: EvalResult }) {
   </div>;
 }
 
+function StarButtons({ label, disabled, onRate }: { label: string; disabled: boolean; onRate: (stars: number) => void }) {
+  return <div role="group" aria-label={label} className={styles.ratingButtons}>
+    {[1, 2, 3, 4, 5].map((stars) => <Button key={stars} disabled={disabled}
+      aria-label={`Rate ${stars} out of 5`} onClick={() => onRate(stars)}>{stars}</Button>)}
+  </div>;
+}
+
 export default function RunResults({ run, busy, onRate }: {
   run: EvalRun;
   busy: string;
@@ -57,7 +64,7 @@ export default function RunResults({ run, busy, onRate }: {
           <h2>{runScoreLabel(run)}</h2>
           <p className={styles.hint}>{pending ? `${pending} ${pending === 1 ? 'result needs' : 'results need'} your rating. The overall score appears after all ratings are saved.` : 'Average of scored results. Failed and unscored results are excluded.'}</p>
         </div>
-        <span className={styles.hint}>Saved prompt version {run.prompt_version_number}</span>
+        <span className={styles.hint}>{run.tested_version === null ? 'Unsaved draft' : `Saved prompt version ${run.tested_version}`}</span>
       </div>
       <details className={styles.runDetails}>
         <summary>Run details</summary>
@@ -82,13 +89,19 @@ export default function RunResults({ run, busy, onRate }: {
           {result.is_pending && (
             <div className={styles.rating}>
               <p>How well did this output meet your expectations?</p>
-              <div role="group" aria-label={`Rate ${result.label || `test case ${index + 1}`}`} className={styles.ratingButtons}>
-                {[1, 2, 3, 4, 5].map((stars) => <Button key={stars} disabled={!!busy}
-                  aria-label={`Rate ${stars} out of 5`} onClick={() => void onRate(run.id, result.id, stars)}>{stars}</Button>)}
-              </div>
+              <StarButtons label={`Rate ${result.label || `test case ${index + 1}`}`} disabled={!!busy}
+                onRate={(stars) => void onRate(run.id, result.id, stars)} />
               <p className={styles.hint}>{busy === `rate:${result.id}` ? 'Saving rating…' : '1 = poor, 5 = excellent. A rating is final once saved.'}</p>
             </div>
           )}
+          {result.method === 'judge' && result.score !== null && (result.human_score === null ? (
+            <div className={styles.rating}>
+              <p>Do you agree with the AI review? Rate this output yourself.</p>
+              <StarButtons label={`Your rating of ${result.label || `test case ${index + 1}`}`} disabled={!!busy}
+                onRate={(stars) => void onRate(run.id, result.id, stars)} />
+              <p className={styles.hint}>{busy === `rate:${result.id}` ? 'Saving rating…' : 'Optional. Your rating is kept beside the AI score and does not change it. 1 = poor, 5 = excellent. A rating is final once saved.'}</p>
+            </div>
+          ) : <p className={styles.hint}>You rated this output {Math.round(result.human_score / 20)}/5.</p>)}
           <details className={styles.runDetails}>
             <summary>Inputs and scoring used for this result</summary>
             {result.variables && Object.keys(result.variables).length > 0 ? (

@@ -7,11 +7,15 @@ import AICallContext from '@/components/ui/AICallContext';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import { ApiClient } from '@/lib/api';
 import { diffWords } from '@/lib/diff';
+import type { EvalRun } from '@/types/evaluation';
 import type { PromptField, PromptsConfigResponse } from '@/types/prompt';
+import { DraftCheck, TestResultPicker, evidenceCandidates } from './RefineTests';
 import styles from './RefinePanel.module.css';
 
 interface RefinePanelProps {
   open: boolean;
+  /** A saved prompt's ID: its test results can guide and check the draft. */
+  promptId?: number;
   fields: PromptField[];
   aiAvailable: boolean;
   aiConfig: PromptsConfigResponse | null;
@@ -26,7 +30,7 @@ const REVIEW_OPTIONS = [
   { value: 'full', label: 'Full draft' },
 ] as const;
 
-export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiConfigLoading = false, aiConfigError = false, onClose, onApply }: RefinePanelProps) {
+export default function RefinePanel({ open, promptId, fields, aiAvailable, aiConfig, aiConfigLoading = false, aiConfigError = false, onClose, onApply }: RefinePanelProps) {
   const [source, setSource] = useState<PromptField[] | null>(null);
   const [questions, setQuestions] = useState<string[] | null>(null);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -35,6 +39,8 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
   const [view, setView] = useState<'changes' | 'full'>('changes');
   const [busy, setBusy] = useState<'questions' | 'draft' | null>(null);
   const [error, setError] = useState('');
+  const [tests, setTests] = useState<{ runs: EvalRun[]; caseCount: number } | null>(null);
+  const [chosen, setChosen] = useState<number[]>([]);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const requestRef = useRef(0);
@@ -45,8 +51,26 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
   // Applying keeps the session: after Undo in the editor the same draft can be applied again.
   const plain = (list: PromptField[]) => JSON.stringify(list.map(({ name, content }) => ({ name, content })));
   const applied = !!draft && changed && plain(draft) === plain(fields);
+  const latestRun = tests?.runs[0];
+  const evidence = promptId !== undefined && latestRun && chosen.length
+    ? { prompt_id: promptId, run_id: latestRun.id, result_ids: chosen } : undefined;
 
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  // Reloaded on each opening so runs made in Evaluate meanwhile are offered.
+  useEffect(() => {
+    if (!open || promptId === undefined || !aiAvailable) return;
+    let active = true;
+    Promise.all([ApiClient.getEvalRuns(promptId, 20), ApiClient.getEvalCases(promptId)])
+      .then(([runs, cases]) => {
+        if (!active) return;
+        setTests({ runs, caseCount: cases.length });
+        // A new latest run makes earlier choices meaningless.
+        setChosen((current) => runs[0] && current.every((id) => runs[0].results.some((r) => r.id === id)) ? current : []);
+      })
+      .catch(() => { /* Refinement works without test results. */ });
+    return () => { active = false; };
+  }, [open, promptId, aiAvailable]);
   useEffect(() => () => { requestRef.current += 1; }, []);
 
   useEffect(() => {
@@ -103,7 +127,7 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
     setError('');
     setBusy('draft');
     try {
-      const result = await ApiClient.createRefinementDraft(snapshot, pairs);
+      const result = await ApiClient.createRefinementDraft(snapshot, pairs, evidence);
       if (id !== requestRef.current) return;
       setDraft(result.fields);
       setReview(true);
@@ -140,6 +164,7 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
     setReview(false);
     setBusy(null);
     setError('');
+    setChosen([]);
   };
 
   return (
@@ -207,6 +232,10 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
                 </section>
               );
             })}
+            {promptId !== undefined && tests && tests.caseCount > 0 && changed && (
+              <DraftCheck key={plain(draft)} promptId={promptId} caseCount={tests.caseCount} runs={tests.runs}
+                source={source} draft={draft} disabled={!aiAvailable} />
+            )}
           </>
         ) : questions === null ? (
           <>
@@ -234,6 +263,9 @@ export default function RefinePanel({ open, fields, aiAvailable, aiConfig, aiCon
               </label>
             ))}
           </>
+        )}
+        {aiAvailable && !applied && !stale && !review && latestRun && evidenceCandidates(latestRun).length > 0 && (
+          <TestResultPicker run={latestRun} chosen={chosen} disabled={busy !== null} onChange={setChosen} />
         )}
         {error && <p className={styles.error} role="alert">{error}{error.includes('Settings →') && <> <Link href="/settings#s-api" className={styles.link}>Open Settings</Link></>}</p>}
         {busy && <p className={styles.hint} role="status">{busy === 'questions' ? 'Finding questions…' : 'Creating draft…'}</p>}

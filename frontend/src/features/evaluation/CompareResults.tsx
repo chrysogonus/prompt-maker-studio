@@ -1,5 +1,5 @@
 import type { EvalResult, EvalRun } from '@/types/evaluation';
-import { resultStatus, runScoreLabel } from '@/lib/evaluationStatus';
+import { resultStatus, runScoreLabel, runVersionLabel } from '@/lib/evaluationStatus';
 import { ResultFeedback } from './RunResults';
 import { METHOD_LABELS } from './useEvaluation';
 import styles from './Evaluation.module.css';
@@ -19,7 +19,7 @@ function ComparisonOutput({ result, title }: { result?: EvalResult; title: strin
   </div>;
 }
 
-export default function CompareResults({ selected, compared }: { selected: EvalRun; compared: EvalRun }) {
+export default function CompareResults({ selected, compared, titles }: { selected: EvalRun; compared: EvalRun; titles?: [string, string] }) {
   const rows: { selected?: EvalResult; compared?: EvalResult }[] = selected.results.map((result) => ({
     selected: result,
     compared: result.eval_case_id === null ? undefined : compared.results.find((item) => item.eval_case_id === result.eval_case_id),
@@ -27,8 +27,8 @@ export default function CompareResults({ selected, compared }: { selected: EvalR
   for (const result of compared.results) {
     if (!rows.some((row) => row.compared?.id === result.id)) rows.push({ compared: result });
   }
-  const selectedTitle = `Selected run / version ${selected.prompt_version_number}`;
-  const comparedTitle = `Compared run / version ${compared.prompt_version_number}`;
+  const selectedTitle = titles?.[0] ?? `Selected run / ${runVersionLabel(selected).toLowerCase()}`;
+  const comparedTitle = titles?.[1] ?? `Compared run / ${runVersionLabel(compared).toLowerCase()}`;
   return <section aria-label="Run comparison">
     <h2>Compare outputs</h2>
     <p className={styles.hint}>Cases are matched by their saved identity. Deleted cases are shown separately. Return to a single run to add manual ratings.</p>

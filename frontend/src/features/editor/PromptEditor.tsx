@@ -84,6 +84,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
     discardEdits,
     reloadAfterConflict,
     restore,
+    markKnownGood,
     rename,
     move,
     updateSection,
@@ -431,6 +432,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
 
         <RefinePanel
           open={refineOpen}
+          promptId={isNew ? undefined : promptId}
           fields={fields}
           aiAvailable={aiAvailable}
           aiConfig={aiConfig}
@@ -447,6 +449,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
             dirty={dirty}
             onClose={() => { setHistoryOpen(false); toolsButtonRef.current?.focus(); }}
             onRestore={restore}
+            onMarkKnownGood={markKnownGood}
           />
         )}
       </div>

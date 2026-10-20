@@ -23,6 +23,7 @@ from app.schemas.evaluation import (
     EvalCaseResponse,
     EvalCaseUpdateRequest,
     EvalRunRateRequest,
+    EvalRunRequest,
     EvalRunResponse,
 )
 from app.services.budget_service import BudgetExceededError, BudgetService
@@ -172,12 +173,13 @@ def delete_eval_case(
 def create_eval_run(
     request: Request,
     prompt_id: int,
+    body: EvalRunRequest | None = Body(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Run every eval case attached to an owned prompt against a real model and
-    score the results.
+    score the results. A body with `fields` tests those unsaved sections instead.
 
     Conservatively rate-limited (10/minute): each call can trigger one
     billed OpenAI Playground-style run per case, plus a grading call per
@@ -191,13 +193,15 @@ def create_eval_run(
 
     connection = get_llm_connection(current_user)
     try:
-        run = EvalService.run_evaluation(db, prompt, current_user)
+        run = EvalService.run_evaluation(
+            db, prompt, current_user, fields=body.fields if body else None
+        )
     except BudgetExceededError as exc:
         raise HTTPException(status_code=402, detail=str(exc)) from exc
     except Exception as exc:
         raise llm_http_error(exc, connection, "eval run") from exc
 
-    return run
+    return results.describe_runs(db, prompt, [run])[0]
 
 
 @router.get("/{prompt_id}/eval/runs", response_model=list[EvalRunResponse])
@@ -223,7 +227,7 @@ def rate_eval_result(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Submit a 1-5 star manual rating for a pending Manual-method eval result."""
+    """Rate a pending Manual-method result, or a judge-scored result to measure agreement."""
     return call_service(
         results.rate_eval_result, prompt_id, run_id, result_id, body, db, current_user.id
     )
