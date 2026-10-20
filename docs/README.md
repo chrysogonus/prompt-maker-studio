@@ -1,6 +1,6 @@
 # Documentation
 
-Reviewed against the codebase on 2026-10-17. **0.8.0** is the latest published
+Reviewed against the codebase on 2026-10-17. **0.9.0** is the latest published
 release. Publication, MCP Registry updates and production deployment are
 separate operations.
 
@@ -44,9 +44,9 @@ separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
-- [0.9.0 release candidate](releases/0.9.0.md): evaluation agreement, runs tied to the
+- [0.9.0 release record](releases/0.9.0.md): evaluation agreement, runs tied to the
   tested text, refinement from test results, known-good versions, the Claude connector,
-  import fixes, and validation.
+  import fixes, immutable image digests and validation.
 - [0.8.0 release record](releases/0.8.0.md): Notion and Obsidian import,
   ChatGPT connection settings, immutable image digests and validation.
 - [0.7.0 release record](releases/0.7.0.md): public Terms of Service route,

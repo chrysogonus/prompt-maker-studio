@@ -10,7 +10,9 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
-Prepared for 0.9.0; see the [release candidate](./docs/releases/0.9.0.md).
+## [0.9.0] - 2026-10-20
+
+See the [release record](./docs/releases/0.9.0.md).
 
 ### Added
 
@@ -858,7 +860,8 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.9.0
 [0.8.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.8.0
 [0.7.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.7.0
 [0.6.1]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.6.1
