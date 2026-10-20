@@ -1,6 +1,6 @@
 # Product Backlog
 
-> Reviewed against the codebase: 2026-10-16 (published 0.5.1).
+> Reviewed against the codebase: 2026-10-20 (unreleased changes on `dev`; published 0.8.0).
 > Items below describe unimplemented scope. See [implemented features](FEATURES.md)
 > and the [roadmap](ROADMAP.md) for delivered work and release status.
 > Existing priorities are retained; this sync does not select new product work.
@@ -9,10 +9,13 @@
 
 ### Extend AI Refinement Controls
 
+Phase 5 of the evaluate → refine loop (see [below](#evaluate--refine-loop-plan-of-2026-10-20)).
+
 - **Value**: Direct a specific change and keep only the suggested edits needed.
-- **Current gap**: Questions, section diffs, local Apply/Undo and Save are implemented. Direct change instructions and individual section acceptance are absent.
-- **Suggested approach**: Extend `frontend/src/features/editor/RefinePanel.tsx` and `backend/app/services/prompt_refiner.py`, keeping section structure and explicit review before Save.
-- **Effort**: High.
+- **Current gap**: Questions, test-result evidence, draft checks against test cases, section diffs, local Apply/Undo and Save are implemented. Direct change instructions and individual section acceptance are absent.
+- **Suggested approach**: Add an optional `instruction` (up to 1,000 characters) to `RefineSnapshotDraftRequest`, usable with or without Q&A and treated as the user's own request; keep the same-sections validation and say in the panel that instructions cannot add or remove sections. In review, a checkbox per changed section and Apply selected; the backend already validates each section independently, so partial apply needs no backend change.
+- **Source**: `frontend/src/features/editor/RefinePanel.tsx`, `backend/app/services/prompt_refiner.py`, `backend/app/schemas/refinement.py`.
+- **Effort**: Medium (about three days).
 
 ### Calibrate Evaluation Scores
 
@@ -82,6 +85,32 @@
 Refinement and evaluation are implemented. These are extensions to their current
 workflows, rather than rebuild prerequisites.
 
+### Evaluate → Refine Loop (plan of 2026-10-20)
+
+After a review of comparable products (Langfuse, Agenta, Promptfoo, prompt-library
+extensions, MCP prompt managers), the product deepens its own evaluation, refinement and
+versioning by joining them into one loop instead of adding new surfaces. Decisions are in
+[DECISIONS.md](DECISIONS.md); delivered parts are in [FEATURES.md](FEATURES.md).
+
+| Phase | Scope | Status |
+|---|---|---|
+| 1 | Rate AI-reviewed outputs; show how often AI review agrees (migration 030) | Done, unreleased |
+| 2 | Runs record the text they tested; evaluate unsaved sections (migration 031) | Done, unreleased |
+| 3 | Refine from chosen test results; check a draft against test cases before applying | Done, unreleased |
+| 4 | One known-good version; test results in History; library test status (migration 032) | Done, unreleased |
+| 5 | Direct refine instructions and per-section accept | Backlog: [Extend AI Refinement Controls](#extend-ai-refinement-controls) |
+| 6 | Persistent evaluation jobs, then a user-started "find a better version" | Backlog: [Evaluation Progress](#evaluation-progress-cancellation--partial-results), [Find a Better Version](#find-a-better-version-user-started) |
+
+Also delivered alongside: Claude as a custom connector on the existing MCP server, the
+permitted way to use a Claude subscription with the app (in-app AI still needs an API key
+or local model).
+
+Left over from phases 1–4, tracked in the items below: AI-review agreement beside compared
+scores ([Calibrate Evaluation Scores](#calibrate-evaluation-scores)), the known-good run as
+the default comparison and in refinement checks ([Evaluation Baselines](#evaluation-baselines--regression-gates)),
+several milestones ([Version Milestones](#version-milestones)), and server-side summaries
+for long histories (Low / Future).
+
 ### Eval Run Results Export (CSV)
 
 - **Value**: Analyze outputs and scores outside the app.
@@ -92,11 +121,22 @@ workflows, rather than rebuild prerequisites.
 
 ### Evaluation Progress, Cancellation & Partial Results
 
+Phase 6 of the evaluate → refine loop. Build it when large suites hit the timeout, the
+20-case cap is raised, or Find a Better Version is wanted.
+
 - **Value**: See progress and stop remaining work during a larger evaluation.
-- **Current gap**: Cases run on a five-worker thread pool, but the API is one synchronous request without progress/cancellation. Completed worker outcomes and reported usage are collected before persistence; provider I/O timeouts bound calls, without a separate future deadline.
-- **Suggested approach**: A persistent job with per-case status, cancellation of remaining work, retained results/usage and UI recovery after navigation.
-- **Source**: `backend/app/services/eval_service.py`, `frontend/src/features/evaluation/useEvaluation.ts`.
+- **Current gap**: Cases run on a five-worker thread pool, but the API is one synchronous request without progress/cancellation. Completed worker outcomes and reported usage are collected before persistence; provider I/O timeouts bound calls, without a separate future deadline. A hosted AI-review case makes two sequential calls of up to 30 seconds, so 20 cases on 5 workers can exceed the browser's two-minute limit for billed requests, and Refine's draft check may run two suites at once.
+- **Suggested approach**: An `eval_jobs` table with per-case status and an in-process worker (single-instance SQLite needs no queue service): cancellation of remaining work, retained results/usage, UI recovery after navigation, and unfinished jobs marked interrupted on restart.
+- **Source**: `backend/app/services/eval_service.py`, `frontend/src/features/evaluation/useEvaluation.ts`, `frontend/src/features/editor/RefineTests.tsx`.
 - **Effort**: High.
+
+### Find a Better Version (user-started)
+
+- **Value**: Let the app search for an improvement and show only drafts that beat the current or known-good version on the user's own cases.
+- **Current gap**: Refinement produces one draft per request and its check runs on demand. Nothing generates and compares several candidates.
+- **Suggested approach**: On top of persistent jobs, a user-started job generates two or three candidates (optionally from chosen failing results), tests each with the existing unsaved-sections run, and presents only those that score higher, with the per-case comparison and agreement caveat. Show the estimated cost (candidates × cases × up to two calls) and require confirmation; it never runs on its own or on save.
+- **Source**: `backend/app/services/prompt_refiner.py`, `backend/app/services/eval_service.py`, `frontend/src/features/editor/RefineTests.tsx`.
+- **Effort**: High; depends on Evaluation Progress, Cancellation & Partial Results.
 
 ### Custom Eval Judges
 
@@ -108,7 +148,7 @@ workflows, rather than rebuild prerequisites.
 ### Evaluation Baselines & Regression Gates
 
 - **Value**: Compare a change with an explicitly chosen known-good run.
-- **Current gap**: Historical run comparison exists and runs of the known-good version are labelled; choosing it as the comparison by default, acceptable-drop thresholds and acceptance gates do not. Evaluation completion/regression emails were retired.
+- **Current gap**: Historical run comparison exists and runs of the known-good version are labelled. Choosing it as the default comparison in Evaluate, showing its score in Refine's draft check, acceptable-drop thresholds and acceptance gates do not. Evaluation completion/regression emails were retired.
 - **Suggested approach**: Baseline selection, per-case/aggregate deltas and an overridable warning before accepting a regression.
 - **Effort**: Medium.
 
@@ -128,6 +168,8 @@ workflows, rather than rebuild prerequisites.
 - **Effort**: High; future priority.
 
 ## Priority: Low / Future
+
+- **Server-side evaluation summaries**: AI-review agreement is counted in the browser over loaded Run history pages, History matches the newest 100 runs, and the library status reads one row per run. Move these to SQL aggregation if histories grow long. Low effort.
 
 - **Prompt branching**: Duplication has no lineage; add parent/branch context if non-linear versioning becomes valuable. High effort.
 - **Full-fidelity backup restore through the UI**: Library JSON/Markdown import now creates new copies with title/folder preview and retries. It does not restore history, dates, notes or favorites. A complete restore would need explicit conflict and duplicate handling. Medium effort.

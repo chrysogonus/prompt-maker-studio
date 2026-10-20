@@ -1,18 +1,19 @@
 # Product Roadmap
 
-> Reviewed against the codebase: 2026-10-17. Latest published release: 0.6.0.
+> Reviewed against the codebase: 2026-10-20. Latest published release: 0.8.0.
 
 ## Now — Current Sprint / Active Development
 - [ ] **Deployment rehearsal and approval** — Release publication does not establish production deployment. Rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations; approve deployment separately. See [deployment](../docs/deployment.md).
 
 ## Next — Coming Soon (next 1–2 sprints)
 - [ ] **Recovered history cleanup** — Let users select several prompts, or find duplicates, to tidy "Recovered history" (see BACKLOG "Bulk Prompt Delete")
-- [ ] **Extend refinement controls** — Questions, section diffs and local Apply/Undo are restored in the editor. Direct change instructions and individual section acceptance remain open
+- [ ] **Extend refinement controls** — Questions, test-result evidence, draft checks, section diffs and local Apply/Undo exist. Direct change instructions and individual section acceptance remain open (evaluate → refine loop, phase 5)
 
 ## Later — Quarterly Horizon
 - [ ] **Calibrate evaluation scores** — Users can now rate AI-reviewed outputs and see the agreement rate; show it wherever AI-review scores are compared
 - [ ] **Markdown heading output option** — Plain-text copy is implemented; rendering named section headings remains open
 - [ ] **Version milestones** — One known-good version per prompt is implemented; several labelled milestones remain
+- [ ] **Persistent evaluation jobs** — Progress, cancellation and recovery for large suites; prerequisite for a user-started "find a better version" (evaluate → refine loop, phase 6)
 - [ ] **Prompt trash and restore** — A 30-day recovery window for deleted prompts and their history
 - [ ] **Full-fidelity backup restore through the UI** — Basic collection import is implemented; historical records and original dates remain out of scope
 
