@@ -204,7 +204,7 @@ LLM_API_KEY=
 # Public origin for reset links, MCP/OAuth discovery, canonical URL and sitemap.
 # Use the public HTTPS origin in production.
 FRONTEND_URL=http://localhost:3000
-OAUTH_REDIRECT_HOSTS=chatgpt.com
+OAUTH_REDIRECT_HOSTS=chatgpt.com,claude.ai
 
 # Password-reset email delivery
 SMTP_HOST=smtp.example.com

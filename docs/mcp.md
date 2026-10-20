@@ -1,9 +1,9 @@
-# MCP Endpoint (ChatGPT Integration)
+# MCP Endpoint (ChatGPT and Claude Integration)
 
 `POST /api/mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server
 that exposes a user's saved-prompt library as tools. It is the backend for the ChatGPT
-integration: ChatGPT writes and refines the prompt text in conversation, and
-these tools store and retrieve it. Nothing on this endpoint calls an LLM, so users need
+and Claude integrations: the assistant writes and refines the prompt text in conversation,
+on the user's own ChatGPT or Claude plan, and these tools store and retrieve it. Nothing on this endpoint calls an LLM, so users need
 no provider connection to use it.
 
 It is mounted inside the existing FastAPI app (`backend/app/api/mcp_routes.py`) and
@@ -48,7 +48,7 @@ Delete and version restore are intentionally not exposed.
 
 ## Authentication
 
-ChatGPT links a user's account through this backend's own OAuth 2.1 authorization
+ChatGPT and Claude link a user's account through this backend's own OAuth 2.1 authorization
 server (`backend/app/services/oauth_provider.py`, built on the MCP SDK's handlers):
 
 1. An unauthenticated call to `/api/mcp` returns `401` with
@@ -56,8 +56,9 @@ server (`backend/app/services/oauth_provider.py`, built on the MCP SDK's handler
 2. That document names the issuer `<FRONTEND_URL>/api/oauth`, whose metadata is at
    `/.well-known/oauth-authorization-server/api/oauth`.
 3. The client registers itself at `/api/oauth/register` (dynamic client registration).
-   Its redirect URIs must be on a host in `OAUTH_REDIRECT_HOSTS` (default `chatgpt.com`)
-   or loopback, so a look-alike app cannot use the consent screen to collect codes.
+   Its redirect URIs must be on a host in `OAUTH_REDIRECT_HOSTS` (default
+   `chatgpt.com,claude.ai`) or loopback on any port (Claude Code, the MCP Inspector), so a
+   look-alike app cannot use the consent screen to collect codes.
 4. `/api/oauth/authorize` validates the request (PKCE `S256` is required) and redirects
    the browser to the frontend's `/oauth/authorize` page with the request signed into a
    15-minute JWT. The user signs in or creates an account there, then allows or denies.
@@ -114,12 +115,13 @@ Per client address, using the same limiter as the rest of the API:
 | `GET /api/oauth/consent` | 30/minute | — |
 | `POST /api/oauth/consent` | 10/minute | — |
 
-ChatGPT calls `/register` and `/token` from OpenAI's servers, whose addresses all of its
-users share, so these limits are looser than the browser-facing login limits. Raise them if
+ChatGPT and Claude call `/register` and `/token` from their providers' servers (Anthropic's
+come from `160.79.104.0/21`), whose addresses all of their users share, so these limits are
+looser than the browser-facing login limits. Raise them if
 many users connect at the same time and some get `429`.
 
-Not implemented: client ID metadata documents (OpenAI's preferred registration method;
-ChatGPT also supports dynamic registration), the RFC 9207 `iss` response parameter (so
+Not implemented: client ID metadata documents (OpenAI's preferred registration method, and
+Claude's "published identity"; both fall back to dynamic registration, which works), the RFC 9207 `iss` response parameter (so
 ChatGPT uses a callback-specific redirect URI), and mTLS verification of ChatGPT's client
 certificate.
 
@@ -181,22 +183,49 @@ and start a new conversation.
 
 ### 4. Disconnect
 
-Removing the plugin in ChatGPT stops it from calling the server. **Settings → ChatGPT**
+Removing the plugin in ChatGPT stops it from calling the server. **Settings → ChatGPT and Claude**
 lists the connected apps with a **Disconnect** button for each; to cut off every linked
 client at once, use **Sign out everywhere** or change the password. Either way, access
 and refresh tokens are rejected immediately. The same Settings section shows users this
 server's connector address and the steps above.
 
+## Connecting Claude
+
+Claude uses the same server, discovery and OAuth flow, so prepare the server as in
+[step 1](#1-prepare-the-server) above. Its hosted apps (claude.ai, Desktop, mobile) redirect
+to `https://claude.ai/api/mcp/auth_callback`, which the default `OAUTH_REDIRECT_HOSTS`
+allows. Custom connectors are available on every Claude plan (one on Free); the AI work then
+runs on the user's own Claude subscription. This is the supported way to use a Claude plan
+with this app: Anthropic does not allow third-party apps to sign in with, store or route
+requests through Claude.ai credentials, so the in-app AI features still need an API key or a
+local model.
+
+1. In Claude, open **Customize → Connectors** and choose **Add custom connector**. On a Team
+   or Enterprise plan, an Owner adds it under **Organization settings → Connectors** and each
+   member then connects. See Anthropic's
+   [guide](https://claude.com/docs/connectors/custom/add-unlisted).
+2. Enter `https://yourdomain.com/api/mcp` as the server URL. Leave the OAuth client ID and
+   secret empty. If asked, choose **Sign in now** and **Register automatically**.
+3. Sign in on this site's consent page ("Connect Claude?") and allow access.
+4. In a conversation, turn the connector on from the **+** menu under **Connectors**.
+
+Claude Code can use it too: `claude mcp add --transport http prompt-maker
+https://yourdomain.com/api/mcp`, then authenticate with `/mcp`. It redirects to a loopback
+address, which is always allowed.
+
+Disconnect from Claude by removing the connector there, and from this side in
+**Settings → ChatGPT and Claude**.
+
 ### Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
-| Registration fails with `invalid_redirect_uri` | The client's callback host is not in `OAUTH_REDIRECT_HOSTS` (ChatGPT's is `chatgpt.com`). |
+| Registration fails with `invalid_redirect_uri`, or Claude says "Authorization with the MCP server failed" | The client's callback host is not in `OAUTH_REDIRECT_HOSTS` (ChatGPT's is `chatgpt.com`, Claude's is `claude.ai`). An `.env` copied from an older `.env.example` may still list only `chatgpt.com`. |
 | ChatGPT keeps asking to sign in, or every tool call gets `401` | `FRONTEND_URL` differs from the URL ChatGPT uses, so the token's audience does not match; or the account signed out everywhere. |
 | Discovery URLs return an HTML page | Caddy is still running the old `Caddyfile`: it reads the file only at start, and `up -d --build` does not restart it. Run `docker compose -f docker-compose.yml up -d --force-recreate caddy` (a `caddy reload` is not enough after `git pull`, because the single-file bind mount still points at the replaced file). |
 | Consent page says the request expired | More than 15 minutes passed since ChatGPT started the flow; connect again. |
 | "Registration is closed on this instance" | `REGISTRATION_MODE` is `closed`; create the account another way or open registration. |
-| `429` from `/api/oauth/register` or `/token` | Many users connecting at once from OpenAI's shared addresses; raise the limits above. |
+| `429` from `/api/oauth/register` or `/token` | Many users connecting at once from OpenAI's or Anthropic's shared addresses; raise the limits above. |
 | A tool is missing or outdated | Refresh the integration's tool catalogue. |
 
 

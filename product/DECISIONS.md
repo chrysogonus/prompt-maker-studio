@@ -1313,3 +1313,35 @@ exceed the two-minute client timeout (see the plan's persistent-jobs phase).
 
 **Sources**: `frontend/src/features/editor/RefineTests.tsx`, `frontend/src/features/editor/RefinePanel.tsx`,
 `backend/app/services/evaluation/results.py`, `backend/app/services/prompt_refiner.py`.
+
+---
+
+## Claude Subscriptions Reach the App Through the Connector, Not Sign-in
+
+**Status**: Accepted (2026-10-20)
+
+**Context**: The owner wanted the app's AI features to run on a Claude Pro/Max subscription
+instead of an API key. Anthropic's terms do not permit third-party developers to offer
+Claude.ai login, to route requests through Free, Pro or Max credentials on users' behalf, or
+to collect, store or intermediate Claude.ai credentials or session tokens
+(https://code.claude.com/docs/en/legal-and-compliance); since early 2026 this is enforced
+server-side.
+
+**Decision**: Do not add subscription sign-in, stored tokens or a server-side Claude Code
+bridge. Instead, support Claude as a client of the existing MCP server: allow
+`claude.ai` (Claude's hosted-app OAuth callback) in the default `OAUTH_REDIRECT_HOSTS`
+alongside `chatgpt.com`, and document connecting Claude in Settings and `docs/mcp.md`. The
+in-app AI features keep using an API key, the operator default, or a local model.
+
+**Rationale**: As a connector, Claude does the AI work inside Anthropic's own apps on the
+user's subscription, which the terms allow, and the server already met Claude's OAuth
+requirements (401 discovery, DCR, S256 PKCE, `offline_access`, rotating refresh tokens,
+form-encoded token requests, port-agnostic loopback, redirect host on the consent page).
+
+**Consequences**: Refine, Try once, Paste-a-prompt conversion and evaluations still need an
+API key or local model. Deployments with an explicit `OAUTH_REDIRECT_HOSTS` must add
+`claude.ai`. Client ID metadata documents remain unimplemented; Claude falls back to dynamic
+registration. Not yet verified against a live Claude account.
+
+**Sources**: `backend/app/services/oauth_provider.py`, `frontend/src/features/settings/ConnectedAppsSettings.tsx`,
+`docs/mcp.md`.

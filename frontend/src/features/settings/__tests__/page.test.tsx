@@ -343,26 +343,27 @@ describe('SettingsPage', () => {
   });
 });
 
-describe('ChatGPT', () => {
+describe('ChatGPT and Claude', () => {
   it('explains how to connect, with the server address to copy', async () => {
     const user = userEvent.setup();
     const clipboard = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
     renderSettings();
-    const section = await screen.findByRole('region', { name: 'ChatGPT' });
+    const section = await screen.findByRole('region', { name: 'ChatGPT and Claude' });
     expect(within(section).getByText(`${window.location.origin}/api/mcp`)).toBeInTheDocument();
     expect(within(section).getByRole('link', { name: /OpenAI's guide/ })).toHaveAttribute('href', expect.stringContaining('openai.com'));
+    expect(within(section).getByRole('link', { name: /Anthropic's guide/ })).toHaveAttribute('href', expect.stringContaining('claude.com'));
     expect(await within(section).findByText('No apps are connected yet.')).toBeInTheDocument();
     await user.click(within(section).getByRole('button', { name: 'Copy address' }));
     expect(clipboard).toHaveBeenCalledWith(`${window.location.origin}/api/mcp`);
     expect(within(section).getByRole('button', { name: 'Copied' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'ChatGPT' })).toHaveAttribute('href', '#s-chatgpt');
+    expect(screen.getByRole('link', { name: 'ChatGPT and Claude' })).toHaveAttribute('href', '#s-chatgpt');
   });
 
   it('lists connected apps and disconnects one', async () => {
     vi.mocked(AuthService.getConnectedApps).mockResolvedValue([{ client_id: 'abc', name: 'ChatGPT' }]);
     vi.mocked(AuthService.disconnectConnectedApp).mockResolvedValue(undefined);
     renderSettings();
-    const section = await screen.findByRole('region', { name: 'ChatGPT' });
+    const section = await screen.findByRole('region', { name: 'ChatGPT and Claude' });
     await userEvent.click(await within(section).findByRole('button', { name: 'Disconnect' }));
     expect(AuthService.disconnectConnectedApp).toHaveBeenCalledWith('abc');
     expect(await within(section).findByText('No apps are connected yet.')).toBeInTheDocument();

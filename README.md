@@ -6,7 +6,7 @@ refine the wording, and test how they perform before your next edit.
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/chrysogonus/prompt-maker-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/chrysogonus/prompt-maker-studio/actions/workflows/ci.yml)
 
-[Get started](#quick-start-with-docker) · [Connect to ChatGPT](./docs/mcp.md) · [Contribute](./CONTRIBUTING.md)
+[Get started](#quick-start-with-docker) · [Connect ChatGPT or Claude](./docs/mcp.md) · [Contribute](./CONTRIBUTING.md)
 
 ## Keep your useful prompts close
 
@@ -92,7 +92,7 @@ REST and MCP share the same prompt services. AI calls are optional.
 - [Monitoring](./docs/monitoring.md) — dashboards, metrics, alerts and operator logs.
 - [Configuration template](./.env.example) — available settings and defaults.
 - [API reference](./docs/api.md) — REST routes; interactive schemas at [localhost:8000/docs](http://localhost:8000/docs).
-- [MCP integration](./docs/mcp.md) — use your library from ChatGPT and other clients.
+- [MCP integration](./docs/mcp.md) — use your library from ChatGPT, Claude and other clients.
 - [Contributing](./CONTRIBUTING.md) · [Code of Conduct](./CODE_OF_CONDUCT.md) · [Security](./SECURITY.md).
 
 ## Project status

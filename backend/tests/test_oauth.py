@@ -162,8 +162,16 @@ class TestRegistration:
         assert _register(client, "http://chatgpt.com/callback").status_code == 400
 
     def test_extra_hosts_can_be_allowed(self, client, monkeypatch):
-        monkeypatch.setenv("OAUTH_REDIRECT_HOSTS", "chatgpt.com, claude.ai")
+        monkeypatch.setenv("OAUTH_REDIRECT_HOSTS", "chatgpt.com, example.org")
+        assert _register(client, "https://example.org/callback").status_code == 201
+
+    def test_claude_and_chatgpt_are_allowed_by_default(self, client, monkeypatch):
+        monkeypatch.delenv("OAUTH_REDIRECT_HOSTS", raising=False)
         assert _register(client, "https://claude.ai/api/mcp/auth_callback").status_code == 201
+        assert _register(client, "https://chatgpt.com/oauth/callback").status_code == 201
+
+    def test_claude_code_loopback_callback_is_allowed(self, client):
+        assert _register(client, "http://localhost:3118/callback").status_code == 201
 
 
 class TestAuthorizationFlow:

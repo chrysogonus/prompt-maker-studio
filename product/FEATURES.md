@@ -65,12 +65,12 @@ and the reasoning is in `product/DECISIONS.md`.
 | Empty library start | ✅ Implemented | A new account sees what the library is for and leads with Add existing prompts (naming Notion, Obsidian and Markdown notes), with New prompt beside it and the starter templates below | `frontend/src/features/library/LibraryPage.tsx` |
 | Data export | ✅ Implemented | Downloads every prompt with its folder, stored tags and full version history as JSON (10/min) | `GET /api/prompts/export`, `frontend/src/features/settings/` |
 
-## ChatGPT Plugin (MCP)
+## ChatGPT and Claude Connector (MCP)
 | Feature | Status | Description | Implemented in |
 |---|---|---|---|
 | MCP tools for the library | ✅ Implemented | `/api/mcp` exposes `list_saved_prompts` (filter by folder or favorites), `get_prompt` (including variable hints), `save_prompt`, `update_prompt` (optimistic concurrency, version kept) and `list_prompt_versions`. Both transports use the shared prompt services, so section rules and rendering are identical | `backend/app/api/mcp_routes.py`, `docs/mcp.md` |
-| OAuth account linking | ✅ Implemented | Dynamic client registration, PKCE, a consent page, rotating refresh tokens; linked clients are disconnected by sign-out-everywhere, password changes and account deletion | `backend/app/api/oauth_routes.py`, `backend/app/services/oauth_provider.py`, `frontend/src/app/oauth/authorize/page.tsx` |
-| Connect to ChatGPT in Settings | ✅ Implemented | Settings → ChatGPT shows the connector address with Copy, the three connection steps with OpenAI's guide, and the connected apps with a Disconnect button each (`GET`/`DELETE /api/auth/me/connected-apps`) | `frontend/src/features/settings/ConnectedAppsSettings.tsx`, `backend/app/api/account_routes.py`, `backend/app/services/oauth_provider.py` |
+| OAuth account linking | ✅ Implemented | Dynamic client registration with redirects to `chatgpt.com`, `claude.ai` (Claude's hosted apps) and loopback on any port (Claude Code, MCP Inspector) by default (`OAUTH_REDIRECT_HOSTS`), PKCE, a consent page, rotating refresh tokens; linked clients are disconnected by sign-out-everywhere, password changes and account deletion | `backend/app/api/oauth_routes.py`, `backend/app/services/oauth_provider.py`, `frontend/src/app/oauth/authorize/page.tsx` |
+| Connect ChatGPT or Claude in Settings | ✅ Implemented | Settings → ChatGPT and Claude shows the connector address with Copy, the three connection steps with OpenAI's and Anthropic's guides, and the connected apps with a Disconnect button each (`GET`/`DELETE /api/auth/me/connected-apps`) | `frontend/src/features/settings/ConnectedAppsSettings.tsx`, `backend/app/api/account_routes.py`, `backend/app/services/oauth_provider.py` |
 
 ## Shell & Visual System
 | Feature | Status | Description | Implemented in |

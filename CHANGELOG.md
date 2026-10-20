@@ -19,6 +19,11 @@ any release. See [Project status](./README.md#project-status).
   you to rerun a prompt whose current text was already tested (for example after
   restoring a version). The API can also evaluate unsaved sections, shown as "Unsaved
   draft" until the same text is saved.
+- Claude can use your library as a custom connector, the same way ChatGPT does: add
+  `<your site>/api/mcp` under Customize → Connectors in Claude (any plan) and the AI
+  work runs on your own Claude subscription. Settings → ChatGPT and Claude shows how.
+  `OAUTH_REDIRECT_HOSTS` now defaults to `chatgpt.com,claude.ai`; if your `.env` sets it
+  explicitly (older `.env.example` files set `chatgpt.com`), add `claude.ai` there.
 - Refine can use your test results: choose up to five results from the latest evaluation
   and the draft aims to improve on them. After reviewing a draft of a saved prompt, Check
   against test cases runs your cases on the draft (and on your current prompt, unless it
