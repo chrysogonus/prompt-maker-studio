@@ -1,5 +1,6 @@
 """Owned evaluation history and manual ratings."""
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.eval_run import EvalRun
@@ -121,3 +122,40 @@ def refinement_evidence(db: Session, user_id: int, evidence: RefineEvidence) -> 
         }
         for row in rows
     ]
+
+
+def annotate_eval_status(db: Session, user_id: int, prompts: list[Prompt]) -> list[Prompt]:
+    """Set each listed prompt's `eval_status` and `eval_score`: "current" with the
+    newest score for the current text, "stale" when only other text was tested,
+    "untested" without runs. Two queries for the whole library."""
+    # ponytail: reads one small row per run in the library; summarise in SQL if that grows large.
+    runs = (
+        db.query(
+            EvalRun.prompt_id,
+            EvalRun.score,
+            EvalRun.tested_prompt == Prompt.generated_prompt,
+            EvalRun.tested_prompt.is_(None),
+            EvalRun.prompt_version_number,
+        )
+        .join(Prompt, Prompt.id == EvalRun.prompt_id)
+        .filter(Prompt.user_id == user_id)
+        .order_by(EvalRun.id.desc())
+        .all()
+    )
+    latest_snapshot = dict(
+        db.query(PromptVersion.prompt_id, func.max(PromptVersion.version_number))
+        .join(Prompt, Prompt.id == PromptVersion.prompt_id)
+        .filter(Prompt.user_id == user_id)
+        .group_by(PromptVersion.prompt_id)
+        .all()
+    )
+    status: dict[int, tuple[str, float | None]] = {}
+    for prompt_id, score, same_text, legacy, version_number in runs:
+        # Before migration 031 a run kept only its version number.
+        current = same_text or (legacy and version_number == latest_snapshot.get(prompt_id, 0) + 1)
+        if current and status.get(prompt_id, ("stale",))[0] == "stale":
+            status[prompt_id] = ("current", score)
+        status.setdefault(prompt_id, ("stale", None))
+    for prompt in prompts:
+        prompt.eval_status, prompt.eval_score = status.get(prompt.id, ("untested", None))
+    return prompts

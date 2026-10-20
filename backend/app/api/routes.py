@@ -27,6 +27,7 @@ from app.schemas.prompts import (
     TryPromptResponse,
 )
 from app.services.budget_service import BudgetExceededError, BudgetService
+from app.services.evaluation import results
 from app.services.llm_client import (
     LLMResponseFormatError,
     active_provider_and_model,
@@ -157,13 +158,14 @@ def get_saved_prompts(
     Returns:
         List of named prompts ordered newest first
     """
-    return call_service(
+    prompts = call_service(
         library.get_saved_prompts,
         folder=folder,
         favorite_only=favorite_only,
         db=db,
         user_id=current_user.id,
     )
+    return results.annotate_eval_status(db, current_user.id, prompts)
 
 
 @router.get("/folders", response_model=list[str])

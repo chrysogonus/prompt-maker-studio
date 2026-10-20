@@ -13,6 +13,7 @@ import { judgeAgreement, runScoreLabel, runVersionLabel } from '@/lib/evaluation
 import { parseServerDate } from '@/lib/relativeTime';
 import { variablesIn } from '@/lib/sections';
 import CaseForm from './CaseForm';
+import type { EvalRun } from '@/types/evaluation';
 import RunResults from './RunResults';
 import CompareResults from './CompareResults';
 import { CASE_LIMIT, METHOD_LABELS, useEvaluation } from './useEvaluation';
@@ -56,6 +57,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
   const comparedRun = runs.find((item) => String(item.id) === comparisonId && item.id !== selectedRun?.id);
   // ponytail: counts only the loaded history pages; a server summary if long histories matter.
   const agreement = judgeAgreement(runs);
+  const knownGood = (item: EvalRun) => item.tested_version !== null && item.tested_version === prompt?.known_good_version;
   const closeImport = () => { setImportOpen(false); setError(''); };
 
   return (
@@ -182,7 +184,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
             {runs.map((item) => <button type="button" key={item.id} aria-pressed={selectedRun.id === item.id}
               onClick={() => { setSelectedRunId(item.id); setComparisonId(''); }}>
               <time dateTime={parseServerDate(item.created_at).toISOString()}>{runDate(item.created_at)}</time>
-              <span>{runVersionLabel(item)}</span>
+              <span>{runVersionLabel(item)}{knownGood(item) ? ' · known good' : ''}</span>
               <strong>{runScoreLabel(item)}</strong>
             </button>)}
             {hasMoreRuns && <Button variant="secondary" disabled={!!busy} onClick={() => void loadOlderRuns()}>
@@ -198,7 +200,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
               <label htmlFor="compare-run">Compare with</label>
               <Select id="compare-run" value={comparedRun ? comparisonId : ''} onChange={(event) => setComparisonId(event.target.value)}>
                 <option value="">Don’t compare</option>
-                {runs.filter((item) => item.id !== selectedRun.id).map((item) => <option key={item.id} value={item.id}>{runDate(item.created_at)} / {runVersionLabel(item).toLowerCase()}</option>)}
+                {runs.filter((item) => item.id !== selectedRun.id).map((item) => <option key={item.id} value={item.id}>{runDate(item.created_at)} / {runVersionLabel(item).toLowerCase()}{knownGood(item) ? ' (known good)' : ''}</option>)}
               </Select>
             </div>}
             {comparedRun ? <CompareResults selected={selectedRun} compared={comparedRun} /> : <RunResults key={selectedRun.id} run={selectedRun} busy={busy} onRate={rate} />}

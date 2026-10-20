@@ -84,6 +84,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
     discardEdits,
     reloadAfterConflict,
     restore,
+    markKnownGood,
     rename,
     move,
     updateSection,
@@ -448,6 +449,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
             dirty={dirty}
             onClose={() => { setHistoryOpen(false); toolsButtonRef.current?.focus(); }}
             onRestore={restore}
+            onMarkKnownGood={markKnownGood}
           />
         )}
       </div>

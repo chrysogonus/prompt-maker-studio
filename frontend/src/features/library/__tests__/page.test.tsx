@@ -108,6 +108,20 @@ async function renderLibrary(params = '') {
 }
 
 describe('LibraryPage', () => {
+  it('says whether evaluations tested the current text, and nothing for untested prompts', async () => {
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([
+      saved({ id: 1, name: 'Tested one', eval_status: 'current', eval_score: 82.4 }),
+      saved({ id: 2, name: 'Edited since', eval_status: 'stale' }),
+      saved({ id: 3, name: 'Never tested', eval_status: 'untested' }),
+    ]);
+    await renderLibrary();
+    const row = (name: string) => screen.getAllByRole('listitem').find((item) => item.textContent?.includes(name))!;
+    const [tested, edited, never] = ['Tested one', 'Edited since', 'Never tested'].map(row);
+    expect(within(tested).getByText('Tested · 82/100')).toBeInTheDocument();
+    expect(within(edited).getByText('Tests out of date')).toBeInTheDocument();
+    expect(within(never).queryByText(/Test/)).not.toBeInTheDocument();
+  });
+
   it('lists every prompt, most recently edited first, with its folder and variables', async () => {
     await renderLibrary();
 

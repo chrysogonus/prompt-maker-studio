@@ -19,6 +19,9 @@ any release. See [Project status](./README.md#project-status).
   you to rerun a prompt whose current text was already tested (for example after
   restoring a version). The API can also evaluate unsaved sections, shown as "Unsaved
   draft" until the same text is saved.
+- Mark one version of a prompt as known good from History. History also shows each
+  version's newest test result, Evaluate labels runs of the known-good version, and
+  library cards say "Tested · 82/100" or "Tests out of date" for prompts you evaluate.
 - Claude can use your library as a custom connector, the same way ChatGPT does: add
   `<your site>/api/mcp` under Customize → Connectors in Claude (any plan) and the AI
   work runs on your own Claude subscription. Settings → ChatGPT and Claude shows how.

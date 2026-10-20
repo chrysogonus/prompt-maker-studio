@@ -12,7 +12,7 @@
 ## Later — Quarterly Horizon
 - [ ] **Calibrate evaluation scores** — Users can now rate AI-reviewed outputs and see the agreement rate; show it wherever AI-review scores are compared
 - [ ] **Markdown heading output option** — Plain-text copy is implemented; rendering named section headings remains open
-- [ ] **Version milestones** — Pin and label important versions (notes on save shipped in 0.3.0)
+- [ ] **Version milestones** — One known-good version per prompt is implemented; several labelled milestones remain
 - [ ] **Prompt trash and restore** — A 30-day recovery window for deleted prompts and their history
 - [ ] **Full-fidelity backup restore through the UI** — Basic collection import is implemented; historical records and original dates remain out of scope
 

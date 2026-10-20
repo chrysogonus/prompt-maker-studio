@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
+import { ApiClient } from '@/lib/api';
 import { diffWords } from '@/lib/diff';
 import { parseServerDate } from '@/lib/relativeTime';
+import type { EvalRun } from '@/types/evaluation';
 import { PromptHistoryResponse, PromptVersionResponse } from '@/types/prompt';
 import styles from './PromptEditor.module.css';
 import { snapshot } from './editorState';
@@ -15,6 +17,22 @@ interface HistoryPanelProps {
   dirty: boolean;
   onClose: () => void;
   onRestore: (versionId: number, versionNumber: number) => Promise<void>;
+  /** Marks a version number as known good; 0 removes the mark. */
+  onMarkKnownGood: (versionNumber: number) => Promise<void>;
+}
+
+/** The newest evaluation of this exact text; older runs only recorded a version number. */
+function latestRun(runs: EvalRun[], text: string, versionNumber: number) {
+  return runs.find((run) => run.tested_prompt === text)
+    ?? runs.find((run) => run.tested_prompt === null && run.tested_version === versionNumber);
+}
+
+function TestSummary({ runs, text, versionNumber }: { runs: EvalRun[]; text: string; versionNumber: number }) {
+  if (!runs.length) return null;
+  const run = latestRun(runs, text, versionNumber);
+  return <span className={styles.versionMeta}>
+    {!run ? 'Not tested' : run.score === null ? 'Tested, no score yet' : `Tested · ${Math.round(run.score)}/100`}
+  </span>;
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -35,9 +53,36 @@ export default function HistoryPanel({
   dirty,
   onClose,
   onRestore,
+  onMarkKnownGood,
 }: HistoryPanelProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [marking, setMarking] = useState(false);
+  // ponytail: the newest 100 runs; older versions show "Not tested" beyond that.
+  const [runs, setRuns] = useState<EvalRun[]>([]);
+  const knownGood = current.known_good_version ?? null;
+
+  useEffect(() => {
+    let active = true;
+    ApiClient.getEvalRuns(current.id, 100)
+      .then((loaded) => { if (active) setRuns(loaded); })
+      .catch(() => { /* History works without test results. */ });
+    return () => { active = false; };
+  }, [current.id]);
+
+  const mark = async (versionNumber: number) => {
+    setMarking(true);
+    try {
+      await onMarkKnownGood(versionNumber);
+    } finally {
+      setMarking(false);
+    }
+  };
+  const markButton = (versionNumber: number) => (
+    <Button variant="ghost" disabled={marking} onClick={() => void mark(knownGood === versionNumber ? 0 : versionNumber)}>
+      {knownGood === versionNumber ? 'Remove known-good mark' : 'Mark as known good'}
+    </Button>
+  );
   const selected = versions.find((version) => version.id === selectedId) ?? null;
   // Version rows are the states before each edit, so the live prompt is one newer.
   const sameSettings = !selected || selected.variable_metadata == null || snapshot([], selected.variable_metadata) === snapshot([], current.variable_metadata);
@@ -72,6 +117,8 @@ export default function HistoryPanel({
             All versions
           </button>
           <h3 className={styles.diffTitle}>Version {selected.version_number} compared with current</h3>
+          {knownGood === selected.version_number && <p className={styles.diffMeta}>This is your known-good version.</p>}
+          <TestSummary runs={runs} text={selected.generated_prompt} versionNumber={selected.version_number} />
           <p className={styles.diffMeta}>
             {formatDate(writtenAt(selected.version_number) ?? selected.created_at)}
             {selected.note ? `. ${selected.note}` : ''}
@@ -116,22 +163,26 @@ export default function HistoryPanel({
                 : 'The current version stays in history, so you can undo this.'}
             </span>
           </div>
+          {markButton(selected.version_number)}
         </div>
       ) : (
         <ol className={styles.historyBody}>
           <li>
             <div className={styles.version} data-current="true">
-              <span className={styles.versionTitle}>Version {currentNumber}, current</span>
+              <span className={styles.versionTitle}>Version {currentNumber}, current{knownGood === currentNumber ? ' · known good' : ''}</span>
               <span className={styles.versionMeta}>{formatDate(writtenAt(currentNumber) ?? current.created_at)}</span>
               {current.current_note && <span className={styles.versionNote}>{current.current_note}</span>}
+              <TestSummary runs={runs} text={current.generated_prompt} versionNumber={currentNumber} />
+              {markButton(currentNumber)}
             </div>
           </li>
           {versions.map((version) => (
             <li key={version.id}>
               <button type="button" className={styles.version} onClick={() => setSelectedId(version.id)}>
-                <span className={styles.versionTitle}>Version {version.version_number}</span>
+                <span className={styles.versionTitle}>Version {version.version_number}{knownGood === version.version_number ? ' · known good' : ''}</span>
                 <span className={styles.versionMeta}>{formatDate(writtenAt(version.version_number) ?? version.created_at)}</span>
                 {version.note && <span className={styles.versionNote}>{version.note}</span>}
+                <TestSummary runs={runs} text={version.generated_prompt} versionNumber={version.version_number} />
               </button>
             </li>
           ))}

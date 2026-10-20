@@ -33,9 +33,9 @@
 
 ### Version Milestones
 
-- **Value**: Identify important snapshots such as "known good".
-- **Current gap**: Optional save notes, current-version notes, historical notes and variable metadata snapshots already exist. Named or pinned milestones do not.
-- **Suggested approach**: Add milestone labels to existing version history and show them consistently in comparisons and restore confirmation.
+- **Value**: Identify several important snapshots, not only one.
+- **Current gap**: One version per prompt can be marked known good. Several named milestones, and showing the known-good result beside a refinement check, do not exist.
+- **Suggested approach**: Extend the single `known_good_version` to labelled milestones only if people ask for more than one.
 - **Source**: `backend/app/services/prompt_version_service.py`, `frontend/src/features/editor/HistoryPanel.tsx`.
 - **Effort**: Low.
 
@@ -82,13 +82,6 @@
 Refinement and evaluation are implemented. These are extensions to their current
 workflows, rather than rebuild prerequisites.
 
-### Evaluation Health on Library Cards
-
-- **Value**: See whether a template is tested and whether its last run used the current version.
-- **Current gap**: The library shows no evaluation coverage or score badge; run version context exists. The product dashboard and its run-count service were retired.
-- **Suggested approach**: A grouped evaluation summary for library cards, with explicit untested/stale states.
-- **Effort**: Low.
-
 ### Eval Run Results Export (CSV)
 
 - **Value**: Analyze outputs and scores outside the app.
@@ -115,7 +108,7 @@ workflows, rather than rebuild prerequisites.
 ### Evaluation Baselines & Regression Gates
 
 - **Value**: Compare a change with an explicitly chosen known-good run.
-- **Current gap**: Historical run comparison exists; selected baselines, acceptable-drop thresholds and acceptance gates do not. Evaluation completion/regression emails were retired.
+- **Current gap**: Historical run comparison exists and runs of the known-good version are labelled; choosing it as the comparison by default, acceptable-drop thresholds and acceptance gates do not. Evaluation completion/regression emails were retired.
 - **Suggested approach**: Baseline selection, per-case/aggregate deltas and an overridable warning before accepting a regression.
 - **Effort**: Medium.
 

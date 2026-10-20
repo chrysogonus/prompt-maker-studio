@@ -260,6 +260,36 @@ it.each(['x', '😀'])('shows inline section length validation and prevents savi
   expect(text).toHaveAttribute('aria-invalid', 'false');
 });
 
+describe('known-good version and test results in History', () => {
+  it('shows each version\'s newest test result and marks a version as known good', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([version()]);
+    vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([
+      evalRun({ id: 9, score: 90, tested_prompt: prompt().generated_prompt }),
+      evalRun({ id: 8, score: 40, tested_prompt: prompt().generated_prompt }),
+    ]);
+    vi.mocked(ApiClient.updatePrompt).mockResolvedValue(prompt({ known_good_version: 2 }));
+    await renderSaved();
+    await openTool(user, 'History');
+    const history = screen.getByRole('complementary', { name: 'Version history' });
+    expect(await within(history).findByText('Tested · 90/100')).toBeInTheDocument();
+    expect(within(history).getByText('Not tested')).toBeInTheDocument();
+    await user.click(within(history).getByRole('button', { name: 'Mark as known good' }));
+    expect(ApiClient.updatePrompt).toHaveBeenCalledWith(1, expect.objectContaining({ known_good_version: 2 }));
+    expect(await within(history).findByText('Version 2, current · known good')).toBeInTheDocument();
+    expect(within(history).getByRole('button', { name: 'Remove known-good mark' })).toBeInTheDocument();
+  });
+
+  it('shows no test results when the prompt was never evaluated', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([version()]);
+    await renderSaved();
+    await openTool(user, 'History');
+    await waitFor(() => expect(ApiClient.getEvalRuns).toHaveBeenCalledWith(1, 100));
+    expect(screen.queryByText('Not tested')).not.toBeInTheDocument();
+  });
+});
+
 describe('variable inputs and reversible import', () => {
   it('allows restoring variable settings when the prompt text is unchanged', async () => {
     const user = userEvent.setup();

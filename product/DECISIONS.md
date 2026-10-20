@@ -1345,3 +1345,31 @@ registration. Not yet verified against a live Claude account.
 
 **Sources**: `backend/app/services/oauth_provider.py`, `frontend/src/features/settings/ConnectedAppsSettings.tsx`,
 `docs/mcp.md`.
+
+---
+
+## One Known-Good Version per Prompt, and Test Status Matched by Text
+
+**Status**: Accepted (2026-10-20)
+
+**Context**: With runs tied to the text they tested, versions could show whether they were
+tested, and users wanted a fixed point to compare edits against.
+
+**Decision**: A prompt stores one optional `known_good_version`, set through the existing
+PATCH (0 clears; validated against existing version numbers before anything changes; no new
+version or content timestamp). History matches each version to the newest run of its exact
+text (older runs by number) from the newest 100 runs, and shows nothing about tests when the
+prompt has none. The library list adds `eval_status`/`eval_score` from one pass over the
+user's runs and one grouped version query; untested prompts show nothing on their cards.
+
+**Rationale**: A single mark covers "known good" without a milestones table. Reusing PATCH
+kept one write path with the existing concurrency check. Hiding "untested" avoids labelling
+the many prompts nobody evaluates.
+
+**Consequences**: Runs of the known-good version are labelled in Evaluate but not chosen as
+the default comparison, and refinement checks do not yet show the known-good result. Very
+long run histories make the library query read more rows; it can move to SQL aggregation.
+Duplicates start without a mark, since their history starts fresh.
+
+**Sources**: `backend/app/services/prompts/library.py`, `backend/app/services/evaluation/results.py`,
+`frontend/src/features/editor/HistoryPanel.tsx`, `frontend/src/features/library/LibraryPage.tsx`.

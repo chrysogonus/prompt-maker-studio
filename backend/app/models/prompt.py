@@ -50,6 +50,8 @@ class Prompt(Base):
     variable_metadata = Column(JSONB().with_variant(JSON, "sqlite"), nullable=True)
 
     current_note = Column(String(255), nullable=True)
+    # A version number the user marked as known good; 0 is never stored.
+    known_good_version = Column(Integer, nullable=True)
 
     owner = relationship("User", back_populates="prompts")
     versions = relationship("PromptVersion", back_populates="prompt", cascade="all, delete-orphan")

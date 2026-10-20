@@ -217,6 +217,7 @@ interface PromptHistoryResponse {
   folder?: string | null;
   is_favorite?: boolean;
   current_note?: string | null;
+  known_good_version?: number | null; // the version the user marked as known good
   variable_metadata?: Record<string, {
     type: string; description?: string | null; required?: boolean; example?: string | null;
   }> | null;
