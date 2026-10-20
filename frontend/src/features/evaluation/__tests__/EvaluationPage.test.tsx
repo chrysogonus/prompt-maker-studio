@@ -22,7 +22,7 @@ const example: EvalCase = {
   created_at: '2026-10-01T10:00:00',
 };
 const run: EvalRun = {
-  id: 12, prompt_id: 1, prompt_version_number: 2, tested_version: 2, matches_current: false, score: null, created_at: '2026-10-12T10:00:00',
+  id: 12, prompt_id: 1, prompt_version_number: 2, tested_version: 2, matches_current: false, tested_prompt: null, score: null, created_at: '2026-10-12T10:00:00',
   model: 'example-model', total_latency_ms: 2200, total_prompt_tokens: 120,
   total_completion_tokens: 40, total_cost_usd: 0.0012,
   results: [{ id: 19, eval_case_id: 4, method: 'manual', label: 'Review tone',

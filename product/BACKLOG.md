@@ -82,14 +82,6 @@
 Refinement and evaluation are implemented. These are extensions to their current
 workflows, rather than rebuild prerequisites.
 
-### Evaluation-Informed Refinement
-
-- **Value**: Target observed failures when refining a prompt.
-- **Current gap**: The refiner receives sections and Q&A answers, without evaluation-result context.
-- **Suggested approach**: Explicitly opt into a bounded selection of failing outputs, criteria and judge feedback from the latest run.
-- **Source**: `backend/app/services/prompt_refiner.py`, `frontend/src/features/editor/RefinePanel.tsx`.
-- **Effort**: Medium.
-
 ### Evaluation Health on Library Cards
 
 - **Value**: See whether a template is tested and whether its last run used the current version.

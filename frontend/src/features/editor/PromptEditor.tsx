@@ -431,6 +431,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
 
         <RefinePanel
           open={refineOpen}
+          promptId={isNew ? undefined : promptId}
           fields={fields}
           aiAvailable={aiAvailable}
           aiConfig={aiConfig}

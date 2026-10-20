@@ -81,7 +81,7 @@ Prompt text is always rendered by the server from the prompt's sections (`fields
 | `GET` | `/api/prompts/{id}/versions` | Yes | Version history |
 | `POST` | `/api/prompts/{id}/versions/{version_id}/restore` | Yes | Restore a version (the replaced state becomes a version) |
 | `POST` | `/api/prompts/refine/questions` | Yes | Ask clarifying questions about current editor `fields`; optional `force` |
-| `POST` | `/api/prompts/refine/draft` | Yes | Revise current `fields` using `qa_pairs` (omit or send `[]` to improve without clarifications); returns validated section edits without saving |
+| `POST` | `/api/prompts/refine/draft` | Yes | Revise current `fields` using `qa_pairs` (omit or send `[]` to improve without clarifications); returns validated section edits without saving. Optional `evidence` `{prompt_id, run_id, result_ids}` (1–5 IDs) names results from one of the caller's eval runs; the server loads their inputs, criteria, scores, feedback and trimmed outputs and gives them to the refiner as untrusted data (404 if any is not the caller's) |
 | `POST` | `/api/prompts/{id}/refine/questions`, `/refine/draft` | Yes | Retained saved-prompt refinement API; draft returns text |
 
 For `PATCH`, null values leave fields unchanged; use `folder: ""` to unfile
@@ -118,7 +118,7 @@ saved through case creation rather than persisted by generation.
 | `GET` | `/api/prompts/{id}/eval/cases/export` | Yes | Export test cases as CSV |
 | `POST` | `/api/prompts/{id}/eval/cases/import` | Yes | Import test cases from CSV |
 | `POST` | `/api/prompts/{id}/eval/cases/generate` | Yes | Propose reviewable AI test cases |
-| `GET`, `POST` | `/api/prompts/{id}/eval/runs` | Yes | List runs (`limit` 1–100, default 50; `offset` ≥ 0) or run the suite. An optional POST body `{"fields": [...]}` tests those unsaved sections instead of the saved prompt and never saves them. Each run reports `tested_version` (the saved version with the tested text; `null` for an unsaved draft whose text was never saved) and `matches_current` (whether that text is the prompt's current text) |
+| `GET`, `POST` | `/api/prompts/{id}/eval/runs` | Yes | List runs (`limit` 1–100, default 50; `offset` ≥ 0) or run the suite. An optional POST body `{"fields": [...]}` tests those unsaved sections instead of the saved prompt and never saves them. Each run reports `tested_version` (the saved version with the tested text; `null` for an unsaved draft whose text was never saved) and `matches_current` (whether that text is the prompt's current text); `tested_prompt` is the text itself (`null` before migration 031) |
 | `POST` | `/api/prompts/{id}/eval/runs/{run_id}/results/{result_id}/rate` | Yes | 1–5 star rating: scores a pending Manual result, or records `human_score` beside a scored AI-review result without changing its score. Either rating is final (404 once rated) |
 
 ## MCP, OAuth & Admin Endpoints

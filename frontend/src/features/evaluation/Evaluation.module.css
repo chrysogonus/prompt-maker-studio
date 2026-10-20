@@ -521,6 +521,13 @@
   min-width: 0;
 }
 
+/* Embedded in a narrow container, such as the Refine panel. */
+@container (max-width: 640px) {
+  .comparisonColumns {
+    grid-template-columns: 1fr;
+  }
+}
+
 .compareText {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

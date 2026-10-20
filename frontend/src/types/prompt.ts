@@ -7,6 +7,13 @@ export interface PromptField {
   content: string;
 }
 
+/** Results from one of the user's eval runs; the server loads their content. */
+export interface RefineEvidence {
+  prompt_id: number;
+  run_id: number;
+  result_ids: number[];
+}
+
 export interface RefineQAPair {
   question: string;
   answer: string;

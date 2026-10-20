@@ -19,6 +19,10 @@ any release. See [Project status](./README.md#project-status).
   you to rerun a prompt whose current text was already tested (for example after
   restoring a version). The API can also evaluate unsaved sections, shown as "Unsaved
   draft" until the same text is saved.
+- Refine can use your test results: choose up to five results from the latest evaluation
+  and the draft aims to improve on them. After reviewing a draft of a saved prompt, Check
+  against test cases runs your cases on the draft (and on your current prompt, unless it
+  was already tested) and compares the outputs side by side before you apply anything.
 
 ### Changed
 

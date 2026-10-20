@@ -1285,3 +1285,31 @@ from. Draft runs appear in Run history; refinement will start them (planned).
 
 **Sources**: `backend/app/services/eval_service.py`, `backend/app/services/evaluation/results.py`,
 `frontend/src/features/evaluation/EvaluationPage.tsx`.
+
+---
+
+## Refinement Uses Chosen Test Results and Checks Drafts Before Apply
+
+**Status**: Accepted (2026-10-20)
+
+**Context**: Refinement changed wording without evidence that the result was better, and
+evaluation scores were not used anywhere else.
+
+**Decision**: On saved prompts, Refine lists the latest run's scored results, weakest first,
+with nothing preselected; the user chooses up to five. The draft request carries only their
+IDs and the server loads, ownership-checks and trims the content, which the refiner treats as
+untrusted data while counting what was checked as a requirement. After review, Check against
+test cases evaluates the unsaved draft, plus the current sections unless a run already tested
+that exact text, and shows the existing comparison view. Questions do not use test results.
+
+**Rationale**: User choice avoids an invented failure threshold; sending IDs keeps model
+outputs from being supplied or enlarged by the client. Reusing the unsaved-sections run and
+comparison view kept the check small. Each case runs once, so the UI says differences can be
+chance and reports AI-review agreement where AI review is involved.
+
+**Consequences**: A check costs one or two evaluation runs and adds them to Run history.
+Unsaved prompts have no test cases, so neither feature appears there. A long suite can still
+exceed the two-minute client timeout (see the plan's persistent-jobs phase).
+
+**Sources**: `frontend/src/features/editor/RefineTests.tsx`, `frontend/src/features/editor/RefinePanel.tsx`,
+`backend/app/services/evaluation/results.py`, `backend/app/services/prompt_refiner.py`.

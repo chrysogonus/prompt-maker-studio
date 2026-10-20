@@ -46,6 +46,7 @@ export interface EvalRun {
   prompt_version_number: number;
   tested_version: number | null;
   matches_current: boolean;
+  tested_prompt: string | null;
   score: number | null;
   created_at: string;
   results: EvalResult[];

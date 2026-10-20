@@ -123,6 +123,8 @@ class EvalRunResponse(BaseModel):
     # whether that text is the prompt's current text — see describe_runs.
     tested_version: int | None = None
     matches_current: bool = False
+    # Null for runs from before migration 031.
+    tested_prompt: str | None = None
     score: float | None
     created_at: datetime
     results: list[EvalRunResultResponse]

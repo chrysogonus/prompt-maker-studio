@@ -7,6 +7,7 @@ from app.models.eval_run_result import EvalRunResult
 from app.models.prompt import Prompt
 from app.models.prompt_version import PromptVersion
 from app.schemas.evaluation import EvalRunRateRequest
+from app.schemas.refinement import RefineEvidence
 from app.services.errors import OperationError
 from app.services.eval_service import EvalService
 from app.services.prompt_version_service import PromptVersionService
@@ -85,3 +86,38 @@ def rate_eval_result(
 
     run, _ = EvalService.submit_manual_rating(db, result, body.stars)
     return describe_runs(db, prompt, [run])[0]
+
+
+# Bounds what one refinement request can send: five results at these sizes.
+_EVIDENCE_OUTPUT_MAX_CHARS = 2_000
+_EVIDENCE_FEEDBACK_MAX_CHARS = 1_000
+
+
+def refinement_evidence(db: Session, user_id: int, evidence: RefineEvidence) -> list[dict]:
+    """Load the caller's chosen results from one of their runs, trimmed for the refiner."""
+    prompt = get_owned_prompt(evidence.prompt_id, user_id, db)
+    rows = (
+        db.query(EvalRunResult)
+        .join(EvalRun, EvalRunResult.eval_run_id == EvalRun.id)
+        .filter(
+            EvalRun.prompt_id == prompt.id,
+            EvalRun.id == evidence.run_id,
+            EvalRunResult.id.in_(evidence.result_ids),
+        )
+        .order_by(EvalRunResult.id)
+        .all()
+    )
+    if len(rows) != len(set(evidence.result_ids)):
+        raise OperationError(status_code=404, detail="Test result not found")
+    return [
+        {
+            "test": row.label,
+            "inputs": row.variables or {},
+            "checked": row.criteria,
+            "score": row.score,
+            "your_rating": row.human_score,
+            "feedback": (row.rationale or "")[:_EVIDENCE_FEEDBACK_MAX_CHARS],
+            "output": (row.output_text or "")[:_EVIDENCE_OUTPUT_MAX_CHARS],
+        }
+        for row in rows
+    ]

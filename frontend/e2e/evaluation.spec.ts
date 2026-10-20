@@ -65,7 +65,7 @@ test.beforeEach(async ({ page }) => {
     if (path.endsWith('/eval/runs')) {
       if (method === 'GET') return json(runs.map((item) => ({ ...item, matches_current: item.tested_version === liveVersion })));
       const result: EvalRun = {
-        id: 21 + runs.length, prompt_id: 1, prompt_version_number: 3, tested_version: 3, matches_current: true, created_at: '2026-10-12T10:32:00', score: null,
+        id: 21 + runs.length, prompt_id: 1, prompt_version_number: 3, tested_version: 3, matches_current: true, tested_prompt: null, created_at: '2026-10-12T10:32:00', score: null,
         model: 'gpt-4.1-mini', total_latency_ms: 3200, total_prompt_tokens: 870, total_completion_tokens: 260, total_cost_usd: 0.0016,
         results: cases.map((item) => ({ id: item.id + 30, eval_case_id: item.id, method: item.method,
           label: item.name!, criteria: item.criteria, variables: item.variables, judge_model: item.method === 'judge' ? 'gpt-4.1-mini' : null,
