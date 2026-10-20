@@ -64,6 +64,13 @@ Prepared for 0.9.0; see the [release candidate](./docs/releases/0.9.0.md).
   no longer offer "Keep the original note text" for an untouched note, several files
   preview in folder order, and a Notion HTML export explains how to export Markdown & CSV.
 
+### Security
+
+- The backend's `certifi` CA bundle is updated to 2026.10.19 for
+  [GHSA-6q48-6c7w-9gw2](https://github.com/advisories/GHSA-6q48-6c7w-9gw2): earlier
+  bundles trust a root whose intermediate CAs had compromised keys. Rebuilt images pick
+  it up; no configuration change.
+
 ## [0.8.0] - 2026-10-19
 
 See the [release record](./docs/releases/0.8.0.md).
