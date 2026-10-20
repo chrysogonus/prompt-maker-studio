@@ -9,7 +9,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import { PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
-import { judgeAgreement, runScoreLabel } from '@/lib/evaluationStatus';
+import { judgeAgreement, runScoreLabel, runVersionLabel } from '@/lib/evaluationStatus';
 import { parseServerDate } from '@/lib/relativeTime';
 import { variablesIn } from '@/lib/sections';
 import CaseForm from './CaseForm';
@@ -182,7 +182,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
             {runs.map((item) => <button type="button" key={item.id} aria-pressed={selectedRun.id === item.id}
               onClick={() => { setSelectedRunId(item.id); setComparisonId(''); }}>
               <time dateTime={parseServerDate(item.created_at).toISOString()}>{runDate(item.created_at)}</time>
-              <span>Version {item.prompt_version_number}</span>
+              <span>{runVersionLabel(item)}</span>
               <strong>{runScoreLabel(item)}</strong>
             </button>)}
             {hasMoreRuns && <Button variant="secondary" disabled={!!busy} onClick={() => void loadOlderRuns()}>
@@ -190,15 +190,15 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
             </Button>}
           </nav>
           <div className={styles.results}>
-            <p className={styles.banner}>Tested version {selectedRun.prompt_version_number}. Current saved version {currentVersion}.</p>
+            <p className={styles.banner}>Tested {selectedRun.tested_version === null ? 'an unsaved draft' : `version ${selectedRun.tested_version}`}. Current saved version {currentVersion}{selectedRun.matches_current && selectedRun.tested_version !== currentVersion ? ', with the same text' : ''}.</p>
             {agreement.rated > 0 && <p className={styles.hint}>AI review agreed with your own rating on {agreement.agreed} of {agreement.rated} {agreement.rated === 1 ? 'output' : 'outputs'} (within one star).</p>}
-            {selectedRun.prompt_version_number !== currentVersion && <Button variant="secondary" onClick={() => void run()}
+            {!selectedRun.matches_current && <Button variant="secondary" onClick={() => void run()}
               disabled={!!busy || !canUseAI || !cases.length || incomplete.length > 0}>Run current version</Button>}
             {runs.length > 1 && <div className={styles.compareControl}>
               <label htmlFor="compare-run">Compare with</label>
               <Select id="compare-run" value={comparedRun ? comparisonId : ''} onChange={(event) => setComparisonId(event.target.value)}>
                 <option value="">Don’t compare</option>
-                {runs.filter((item) => item.id !== selectedRun.id).map((item) => <option key={item.id} value={item.id}>{runDate(item.created_at)} / version {item.prompt_version_number}</option>)}
+                {runs.filter((item) => item.id !== selectedRun.id).map((item) => <option key={item.id} value={item.id}>{runDate(item.created_at)} / {runVersionLabel(item).toLowerCase()}</option>)}
               </Select>
             </div>}
             {comparedRun ? <CompareResults selected={selectedRun} compared={comparedRun} /> : <RunResults key={selectedRun.id} run={selectedRun} busy={busy} onRate={rate} />}

@@ -15,6 +15,10 @@ any release. See [Project status](./README.md#project-status).
 - AI-reviewed evaluation results can be rated with your own 1–5 stars. Your rating is
   kept beside the AI score without changing it, and Run history shows how often the AI
   review agreed with you (within one star).
+- Evaluations remember the exact prompt text they tested. Run history no longer asks
+  you to rerun a prompt whose current text was already tested (for example after
+  restoring a version). The API can also evaluate unsaved sections, shown as "Unsaved
+  draft" until the same text is saved.
 
 ### Changed
 

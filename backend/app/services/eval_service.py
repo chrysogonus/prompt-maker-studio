@@ -19,6 +19,7 @@ from app.models.eval_run import EvalRun
 from app.models.eval_run_result import EvalRunResult
 from app.models.prompt import Prompt
 from app.models.user import User
+from app.schemas.prompts import PromptField
 from app.services.budget_service import BudgetService
 from app.services.llm_client import (
     LLMConnection,
@@ -34,6 +35,7 @@ from app.services.playground_service import (
     PlaygroundService,
 )
 from app.services.prompt_compiler import compile_prompt
+from app.services.prompt_sections import render_sections
 from app.services.prompt_version_service import PromptVersionService
 from app.services.safe_regex import UnsafePatternError, safe_search
 from app.services.spend_ledger import LLMUsage, capture_llm_usage, record_billed_call
@@ -347,13 +349,34 @@ class EvalService:
         return _CaseOutcome(result=result, judge_result=judge_result)
 
     @staticmethod
+    def _tested_text(
+        db: Session, prompt: Prompt, fields: list[PromptField] | None
+    ) -> tuple[str, int]:
+        """Return the template text to test and its saved version number, where
+        0 marks text that is not the saved prompt: an unsaved draft."""
+        text = (
+            prompt.generated_prompt
+            if fields is None
+            else render_sections(field.model_dump() for field in fields)
+        )
+        if text != prompt.generated_prompt:
+            return text, 0
+        return text, PromptVersionService.live_version_number(db, prompt.id)
+
+    @staticmethod
     def run_evaluation(
-        db: Session, prompt: Prompt, user: User, max_workers: int = _DEFAULT_MAX_WORKERS
+        db: Session,
+        prompt: Prompt,
+        user: User,
+        max_workers: int = _DEFAULT_MAX_WORKERS,
+        *,
+        fields: list[PromptField] | None = None,
     ) -> EvalRun:
         """
         Compile and run every eval case attached to `prompt` against a real
         model (up to `max_workers` cases concurrently), score each by its
-        method, and persist the run + results.
+        method, and persist the run + results. `fields` tests unsaved sections
+        instead of the saved prompt; they are never saved to the prompt.
 
         Raises:
             BudgetExceededError: If a global/per-user spend ceiling is already
@@ -376,14 +399,14 @@ class EvalService:
             .all()
         )
 
-        version_number = PromptVersionService.live_version_number(db, prompt.id)
+        tested_prompt, version_number = EvalService._tested_text(db, prompt, fields)
 
         prepared = [
             (
                 case,
                 EvalService._label_for(case, index),
                 case.variables or {},
-                compile_prompt(prompt.generated_prompt, case.variables or {}),
+                compile_prompt(tested_prompt, case.variables or {}),
             )
             for index, case in enumerate(cases)
         ]
@@ -428,7 +451,10 @@ class EvalService:
 
         # Begin the write transaction only after all network work has finished.
         run = EvalRun(
-            prompt_id=prompt.id, prompt_version_number=version_number, model=connection.model
+            prompt_id=prompt.id,
+            prompt_version_number=version_number,
+            tested_prompt=tested_prompt,
+            model=connection.model,
         )
         db.add(run)
         db.flush()

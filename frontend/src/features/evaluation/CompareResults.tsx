@@ -1,5 +1,5 @@
 import type { EvalResult, EvalRun } from '@/types/evaluation';
-import { resultStatus, runScoreLabel } from '@/lib/evaluationStatus';
+import { resultStatus, runScoreLabel, runVersionLabel } from '@/lib/evaluationStatus';
 import { ResultFeedback } from './RunResults';
 import { METHOD_LABELS } from './useEvaluation';
 import styles from './Evaluation.module.css';
@@ -27,8 +27,8 @@ export default function CompareResults({ selected, compared }: { selected: EvalR
   for (const result of compared.results) {
     if (!rows.some((row) => row.compared?.id === result.id)) rows.push({ compared: result });
   }
-  const selectedTitle = `Selected run / version ${selected.prompt_version_number}`;
-  const comparedTitle = `Compared run / version ${compared.prompt_version_number}`;
+  const selectedTitle = `Selected run / ${runVersionLabel(selected).toLowerCase()}`;
+  const comparedTitle = `Compared run / ${runVersionLabel(compared).toLowerCase()}`;
   return <section aria-label="Run comparison">
     <h2>Compare outputs</h2>
     <p className={styles.hint}>Cases are matched by their saved identity. Deleted cases are shown separately. Return to a single run to add manual ratings.</p>

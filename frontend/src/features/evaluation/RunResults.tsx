@@ -64,7 +64,7 @@ export default function RunResults({ run, busy, onRate }: {
           <h2>{runScoreLabel(run)}</h2>
           <p className={styles.hint}>{pending ? `${pending} ${pending === 1 ? 'result needs' : 'results need'} your rating. The overall score appears after all ratings are saved.` : 'Average of scored results. Failed and unscored results are excluded.'}</p>
         </div>
-        <span className={styles.hint}>Saved prompt version {run.prompt_version_number}</span>
+        <span className={styles.hint}>{run.tested_version === null ? 'Unsaved draft' : `Saved prompt version ${run.tested_version}`}</span>
       </div>
       <details className={styles.runDetails}>
         <summary>Run details</summary>

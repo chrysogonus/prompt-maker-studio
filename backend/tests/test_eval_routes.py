@@ -59,7 +59,8 @@ def test_eval_history_loads_child_results_without_n_plus_one(db_session):
     db_session.add(prompt)
     db_session.flush()
     for _ in range(5):
-        run = EvalRun(prompt_id=prompt.id)
+        # Unsaved drafts: describing them looks up saved texts, once per list.
+        run = EvalRun(prompt_id=prompt.id, tested_prompt="draft")
         db_session.add(run)
         db_session.flush()
         db_session.add(EvalRunResult(eval_run_id=run.id, method="rule", label="case"))
@@ -79,7 +80,8 @@ def test_eval_history_loads_child_results_without_n_plus_one(db_session):
         assert len([EvalRunResponse.model_validate(row) for row in rows]) == 5
     finally:
         event.remove(engine, "before_cursor_execute", capture)
-    assert len(statements) == 3
+    # prompt, runs, results, live version number, saved version texts
+    assert len(statements) == 5
 
 
 def _generator_usage() -> LLMUsage:
@@ -537,6 +539,107 @@ class TestCreateEvalRun:
         assert resp.json()["budget"]["reason"] == "exhausted"
         assert resp.json()["budget"]["resets_at"].endswith("+00:00")
         assert int(resp.headers["Retry-After"]) > 0
+        mock_run.assert_not_called()
+
+
+class TestRunVersionIdentity:
+    def _run(self, client, auth_headers, prompt_id, body=None):
+        with patch("app.services.eval_service.PlaygroundService.run") as mock_run:
+            mock_run.return_value = _mock_playground_result()
+            response = client.post(
+                f"/api/prompts/{prompt_id}/eval/runs", headers=auth_headers, json=body
+            )
+        return response, mock_run
+
+    def _setup(self, client, auth_headers):
+        prompt_id = _create_saved_prompt(client, auth_headers)
+        client.post(
+            f"/api/prompts/{prompt_id}/eval/cases",
+            headers=auth_headers,
+            json={"method": "rule", "criteria": "hello", "variables": {"thing": "hi"}},
+        )
+        return prompt_id
+
+    def _list(self, client, auth_headers, prompt_id):
+        return client.get(f"/api/prompts/{prompt_id}/eval/runs", headers=auth_headers).json()
+
+    def test_saved_run_matches_current_until_the_prompt_changes(self, client, auth_headers):
+        prompt_id = self._setup(client, auth_headers)
+        response, _ = self._run(client, auth_headers, prompt_id)
+        run = response.json()
+        assert (run["tested_version"], run["matches_current"]) == (1, True)
+
+        client.patch(
+            f"/api/prompts/{prompt_id}",
+            headers=auth_headers,
+            json={"fields": [{"name": "goal", "content": "Shout {{thing}}"}]},
+        )
+        listed = self._list(client, auth_headers, prompt_id)[0]
+        assert (listed["tested_version"], listed["matches_current"]) == (1, False)
+
+    def test_unsaved_sections_are_tested_without_saving_them(self, client, auth_headers):
+        prompt_id = self._setup(client, auth_headers)
+        draft = [{"name": "goal", "content": "Whisper {{thing}}"}]
+
+        response, mock_run = self._run(client, auth_headers, prompt_id, {"fields": draft})
+
+        assert response.status_code == 200
+        assert "Whisper hi" in mock_run.call_args.args[0]
+        run = response.json()
+        assert run["prompt_version_number"] == 0
+        assert (run["tested_version"], run["matches_current"]) == (None, False)
+        saved = client.get(f"/api/prompts/{prompt_id}", headers=auth_headers).json()
+        assert "Say {{thing}}" in saved["generated_prompt"]
+
+        # Saving the draft's text gives the earlier run its version.
+        client.patch(f"/api/prompts/{prompt_id}", headers=auth_headers, json={"fields": draft})
+        listed = self._list(client, auth_headers, prompt_id)[0]
+        assert (listed["tested_version"], listed["matches_current"]) == (2, True)
+
+        # It stays attributed to that version after the prompt moves on.
+        client.patch(
+            f"/api/prompts/{prompt_id}",
+            headers=auth_headers,
+            json={"fields": [{"name": "goal", "content": "Sing {{thing}}"}]},
+        )
+        listed = self._list(client, auth_headers, prompt_id)[0]
+        assert (listed["tested_version"], listed["matches_current"]) == (2, False)
+
+    def test_sections_matching_the_saved_prompt_count_as_the_saved_version(
+        self, client, auth_headers
+    ):
+        prompt_id = self._setup(client, auth_headers)
+        response, _ = self._run(
+            client,
+            auth_headers,
+            prompt_id,
+            {"fields": [{"name": "goal", "content": "Say {{thing}}"}]},
+        )
+        run = response.json()
+        assert (run["prompt_version_number"], run["tested_version"]) == (1, 1)
+        assert run["matches_current"] is True
+
+    def test_runs_recorded_before_tested_text_keep_their_version_number(
+        self, client, auth_headers, db_session
+    ):
+        from app.models.eval_run import EvalRun
+
+        prompt_id = self._setup(client, auth_headers)
+        db_session.add(EvalRun(prompt_id=prompt_id, prompt_version_number=1))
+        db_session.commit()
+
+        listed = self._list(client, auth_headers, prompt_id)[0]
+        assert (listed["tested_version"], listed["matches_current"]) == (1, True)
+
+    def test_duplicate_section_tags_are_rejected(self, client, auth_headers):
+        prompt_id = self._setup(client, auth_headers)
+        response, mock_run = self._run(
+            client,
+            auth_headers,
+            prompt_id,
+            {"fields": [{"name": "Role", "content": "a"}, {"name": "role", "content": "b"}]},
+        )
+        assert response.status_code == 422
         mock_run.assert_not_called()
 
 

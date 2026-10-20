@@ -4,7 +4,7 @@ Database model for evaluation run records.
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database.connection import Base
@@ -25,6 +25,9 @@ class EvalRun(Base):
     )
     # Snapshot of the prompt's PromptVersion.version_number at run time.
     prompt_version_number = Column(Integer, nullable=False, default=0)
+    # The template text the run compiled. 0 above means it was not a saved
+    # version (an unsaved draft); null here means a run from before migration 031.
+    tested_prompt = Column(Text, nullable=True)
     score = Column(Float, nullable=True)
     # Resolved execution model plus aggregated cost/latency/tokens across every
     # case run (and judge grading call) in this run — lets a user tell whether

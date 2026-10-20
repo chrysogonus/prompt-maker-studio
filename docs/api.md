@@ -118,7 +118,7 @@ saved through case creation rather than persisted by generation.
 | `GET` | `/api/prompts/{id}/eval/cases/export` | Yes | Export test cases as CSV |
 | `POST` | `/api/prompts/{id}/eval/cases/import` | Yes | Import test cases from CSV |
 | `POST` | `/api/prompts/{id}/eval/cases/generate` | Yes | Propose reviewable AI test cases |
-| `GET`, `POST` | `/api/prompts/{id}/eval/runs` | Yes | List runs (`limit` 1–100, default 50; `offset` ≥ 0) or run the suite |
+| `GET`, `POST` | `/api/prompts/{id}/eval/runs` | Yes | List runs (`limit` 1–100, default 50; `offset` ≥ 0) or run the suite. An optional POST body `{"fields": [...]}` tests those unsaved sections instead of the saved prompt and never saves them. Each run reports `tested_version` (the saved version with the tested text; `null` for an unsaved draft whose text was never saved) and `matches_current` (whether that text is the prompt's current text) |
 | `POST` | `/api/prompts/{id}/eval/runs/{run_id}/results/{result_id}/rate` | Yes | 1–5 star rating: scores a pending Manual result, or records `human_score` beside a scored AI-review result without changing its score. Either rating is final (404 once rated) |
 
 ## MCP, OAuth & Admin Endpoints

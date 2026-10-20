@@ -22,7 +22,7 @@ const example: EvalCase = {
   created_at: '2026-10-01T10:00:00',
 };
 const run: EvalRun = {
-  id: 12, prompt_id: 1, prompt_version_number: 2, score: null, created_at: '2026-10-12T10:00:00',
+  id: 12, prompt_id: 1, prompt_version_number: 2, tested_version: 2, matches_current: false, score: null, created_at: '2026-10-12T10:00:00',
   model: 'example-model', total_latency_ms: 2200, total_prompt_tokens: 120,
   total_completion_tokens: 40, total_cost_usd: 0.0012,
   results: [{ id: 19, eval_case_id: 4, method: 'manual', label: 'Review tone',
@@ -91,13 +91,30 @@ it('labels historical results with tested and current versions and runs current 
   const user = userEvent.setup();
   vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([run]);
   vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([{ id: 1, version_number: 3, note: null, author: null, fields: [], generated_prompt: '', created_at: '' }]);
-  vi.mocked(ApiClient.runEvaluation).mockResolvedValue({ ...run, id: 13, prompt_version_number: 4 });
+  vi.mocked(ApiClient.runEvaluation).mockResolvedValue({ ...run, id: 13, prompt_version_number: 4, tested_version: 4, matches_current: true });
   await open([example]);
   await user.click(screen.getByRole('radio', { name: 'Run history' }));
   expect(screen.getByText('Tested version 2. Current saved version 4.')).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Run current version' }));
   await screen.findByText('Tested version 4. Current saved version 4.');
   expect(within(screen.getByRole('navigation', { name: 'Past evaluations' })).getAllByRole('button')).toHaveLength(2);
+});
+
+it('labels an unsaved draft run and hides Run current version when the text is current', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([
+    { ...run, prompt_version_number: 0, tested_version: null },
+    { ...run, id: 11, tested_version: 3, matches_current: true },
+  ]);
+  vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([{ id: 1, version_number: 4, note: null, author: null, fields: [], generated_prompt: '', created_at: '' }]);
+  await open([example]);
+  await user.click(screen.getByRole('radio', { name: 'Run history' }));
+  expect(screen.getByText('Tested an unsaved draft. Current saved version 5.')).toBeInTheDocument();
+  expect(within(screen.getByRole('navigation', { name: 'Past evaluations' })).getByText('Unsaved draft')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Run current version' })).toBeInTheDocument();
+  await user.click(within(screen.getByRole('navigation', { name: 'Past evaluations' })).getByText('Version 3'));
+  expect(screen.getByText('Tested version 3. Current saved version 5, with the same text.')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Run current version' })).not.toBeInTheDocument();
 });
 
 it('explains an empty evaluation and never starts a paid call automatically', async () => {
@@ -350,7 +367,7 @@ it('compares runs by case identity and warns when scoring has changed', async ()
   const user = userEvent.setup();
   vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([
     { ...run, score: 80, results: [{ ...run.results[0], is_pending: false, score: 80, criteria: 'Be concise' }] },
-    { ...run, id: 11, prompt_version_number: 1, score: 60, results: [
+    { ...run, id: 11, prompt_version_number: 1, tested_version: 1, score: 60, results: [
       { ...run.results[0], id: 18, is_pending: false, score: 60, criteria: 'Be friendly', output_text: 'Earlier release notes.' },
       { ...run.results[0], id: 17, eval_case_id: 5, label: 'Older test', is_pending: false, score: 60 },
     ] },

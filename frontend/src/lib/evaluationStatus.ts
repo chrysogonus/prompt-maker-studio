@@ -32,3 +32,8 @@ export function judgeAgreement(runs: EvalRun[]): { rated: number; agreed: number
     .filter((result) => result.method === 'judge' && result.score !== null && result.human_score !== null);
   return { rated: rated.length, agreed: rated.filter((result) => Math.abs(result.score! - result.human_score!) <= 20).length };
 }
+
+// A run of unsaved sections has no version until the same text is saved.
+export function runVersionLabel(run: EvalRun): string {
+  return run.tested_version === null ? 'Unsaved draft' : `Version ${run.tested_version}`;
+}

@@ -1257,3 +1257,31 @@ changed once saved. Migration 030 adds the column.
 
 **Sources**: `backend/app/services/evaluation/results.py`, `frontend/src/lib/evaluationStatus.ts`,
 `frontend/src/features/evaluation/RunResults.tsx`.
+
+---
+
+## Eval Runs Record the Text They Tested, Matched by Exact Text
+
+**Status**: Accepted (2026-10-20)
+
+**Context**: Refinement needs to test a draft before it is applied, and History needs to
+know which versions were tested. A run recorded only the live version number, so it could
+not test unsaved sections, and a restored version looked untested even when the same text
+had been evaluated.
+
+**Decision**: `POST /eval/runs` accepts optional unsaved `fields`, never saved. Every new
+run stores its rendered template in `eval_runs.tested_prompt`; a run of text other than
+the saved prompt records version number 0. Listing derives `tested_version` (the recorded
+number, or for a draft the first saved version with the same text) and `matches_current`
+by exact string comparison. Existing runs are not backfilled.
+
+**Rationale**: Exact text is the identity that matters to a model and needs no hash
+column; one extra query per list keeps it cheap. Version numbers recorded by older
+releases could be off by one, so reconstructing their text would invent history.
+
+**Consequences**: Supersedes the content-hash approach in the evaluation plan. Variable
+settings are not part of the identity because they do not change the text a case compiles
+from. Draft runs appear in Run history; refinement will start them (planned).
+
+**Sources**: `backend/app/services/eval_service.py`, `backend/app/services/evaluation/results.py`,
+`frontend/src/features/evaluation/EvaluationPage.tsx`.

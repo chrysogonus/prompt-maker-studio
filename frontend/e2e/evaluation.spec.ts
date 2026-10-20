@@ -3,7 +3,12 @@ import AxeBuilder from '@axe-core/playwright';
 import type { EvalCase, EvalRun } from '../src/types/evaluation';
 
 // Deterministic responses exercise the UI without making paid provider calls.
+// The saved version the mocked server treats as current; a test raises it to
+// simulate a later save.
+let liveVersion = 3;
+
 test.beforeEach(async ({ page }) => {
+  liveVersion = 3;
   // Audit the settled theme rather than colors midway through its transition.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(() => {
@@ -58,9 +63,9 @@ test.beforeEach(async ({ page }) => {
       method: 'rule', name: 'Very short notes', criteria: '!sorry', variables: { notes: 'Bug fixes.', audience: 'Customers' }, rationale: 'Checks that a short input still produces a useful summary.',
     }] });
     if (path.endsWith('/eval/runs')) {
-      if (method === 'GET') return json(runs);
+      if (method === 'GET') return json(runs.map((item) => ({ ...item, matches_current: item.tested_version === liveVersion })));
       const result: EvalRun = {
-        id: 21 + runs.length, prompt_id: 1, prompt_version_number: 3, created_at: '2026-10-12T10:32:00', score: null,
+        id: 21 + runs.length, prompt_id: 1, prompt_version_number: 3, tested_version: 3, matches_current: true, created_at: '2026-10-12T10:32:00', score: null,
         model: 'gpt-4.1-mini', total_latency_ms: 3200, total_prompt_tokens: 870, total_completion_tokens: 260, total_cost_usd: 0.0016,
         results: cases.map((item) => ({ id: item.id + 30, eval_case_id: item.id, method: item.method,
           label: item.name!, criteria: item.criteria, variables: item.variables, judge_model: item.method === 'judge' ? 'gpt-4.1-mini' : null,
@@ -147,6 +152,7 @@ test('historical results show tested and current versions on desktop and phones'
   await page.route('**/api/prompts/1/versions', (route) => route.fulfill({ json: [{
     id: 3, version_number: 3, note: null, author: null, fields: [], generated_prompt: '', created_at: '2026-10-12T10:00:00',
   }] }));
+  liveVersion = 4;
   await page.reload();
   await page.getByRole('radio', { name: 'Run history' }).click();
   for (const width of [1280, 390]) {
@@ -156,7 +162,7 @@ test('historical results show tested and current versions on desktop and phones'
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
   await page.route('**/api/prompts/1/eval/runs', (route) => route.fulfill({ json: {
-    id: 99, prompt_id: 1, prompt_version_number: 4, created_at: '2026-10-12T11:00:00',
+    id: 99, prompt_id: 1, prompt_version_number: 4, tested_version: 4, matches_current: true, created_at: '2026-10-12T11:00:00',
     score: null, model: 'gpt-4.1-mini', total_latency_ms: 1, total_prompt_tokens: 1,
     total_completion_tokens: 1, total_cost_usd: 0, results: [],
   } }));

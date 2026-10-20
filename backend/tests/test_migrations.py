@@ -180,6 +180,7 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
             "028_prompt_content_updated_at",
             "029_user_llm_workspace",
             "030_eval_human_score",
+            "031_eval_tested_prompt",
         }
         assert "updated_at" in _columns(connection, "prompts")
         assert _table_exists(connection, "prompt_versions")
@@ -335,7 +336,7 @@ def test_run_migrations_is_idempotent_on_current_database(tmp_path):
 
     with engine.connect() as connection:
         versions = connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
-        assert len(versions) == 30
+        assert len(versions) == 31
         assert {
             "fields",
             "user_id",
@@ -801,6 +802,25 @@ def test_eval_human_score_migration_is_idempotent_and_preserves_results():
         _migration_030_eval_human_score(connection)
         row = connection.execute(text("SELECT score, human_score FROM eval_run_results")).one()
         assert tuple(row) == (75, None)
+    engine.dispose()
+
+
+def test_eval_tested_prompt_migration_is_idempotent_and_preserves_runs():
+    from app.database.migrations.v031_eval_tested_prompt import _migration_031_eval_tested_prompt
+
+    engine = create_engine("sqlite://")
+    with engine.begin() as connection:
+        _migration_031_eval_tested_prompt(connection)
+        connection.execute(
+            text("CREATE TABLE eval_runs (id INTEGER PRIMARY KEY, prompt_version_number INTEGER)")
+        )
+        connection.execute(text("INSERT INTO eval_runs VALUES (1, 3)"))
+        _migration_031_eval_tested_prompt(connection)
+        _migration_031_eval_tested_prompt(connection)
+        row = connection.execute(
+            text("SELECT prompt_version_number, tested_prompt FROM eval_runs")
+        ).one()
+        assert tuple(row) == (3, None)
     engine.dispose()
 
 
