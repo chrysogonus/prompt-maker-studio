@@ -43,6 +43,7 @@ from app.database.migrations.v028_prompt_content_updated_at import (
     _migration_028_prompt_content_updated_at,
 )
 from app.database.migrations.v029_user_llm_workspace import _migration_029_user_llm_workspace
+from app.database.migrations.v030_eval_human_score import _migration_030_eval_human_score
 
 Migration = tuple[str, Callable]
 
@@ -76,4 +77,5 @@ _MIGRATIONS: tuple[Migration, ...] = (
     ("027_oauth_grants", _migration_027_oauth_grants),
     ("028_prompt_content_updated_at", _migration_028_prompt_content_updated_at),
     ("029_user_llm_workspace", _migration_029_user_llm_workspace),
+    ("030_eval_human_score", _migration_030_eval_human_score),
 )

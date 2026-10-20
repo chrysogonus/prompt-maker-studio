@@ -27,7 +27,8 @@ def list_eval_runs(prompt_id: int, db: Session, user_id: int, limit: int = 50, o
 def rate_eval_result(
     prompt_id: int, run_id: int, result_id: int, body: EvalRunRateRequest, db: Session, user_id: int
 ):
-    """Submit a 1-5 star manual rating for a pending Manual-method eval result."""
+    """Rate a pending Manual-method result, or record a person's own rating of
+    a judge-scored result beside the AI's score. Either rating is final."""
     prompt = get_owned_prompt(prompt_id, user_id, db)
 
     result = (
@@ -40,6 +41,14 @@ def rate_eval_result(
         )
         .first()
     )
+    if result and result.method == "judge" and result.score is not None:
+        if result.human_score is not None:
+            raise OperationError(status_code=404, detail="Unrated eval result not found")
+        # The run's aggregate stays the AI's: this rating only measures agreement.
+        result.human_score = body.stars * 20
+        db.commit()
+        db.refresh(result.run)
+        return result.run
     if not result or not result.is_pending:
         raise OperationError(status_code=404, detail="Pending eval result not found")
 

@@ -1230,3 +1230,30 @@ is by title only, so a renamed note still imports as new. Two-way sync stays out
 
 **Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/features/library/useLibrary.ts`,
 `frontend/src/app/page.tsx`.
+
+---
+
+## AI Review Agreement Is Measured with the User's Own Ratings
+
+**Status**: Accepted (2026-10-20)
+
+**Context**: AI-review scores are about to inform refinement and version comparisons, but
+nothing showed whether they match the user's judgement. Each test case uses one scoring
+method, so the same output never had both an AI score and a human rating.
+
+**Decision**: A scored AI-review result accepts an optional 1–5 star rating through the
+existing rate endpoint, stored in the new `eval_run_results.human_score` (stars × 20). The
+AI score and the run average stay unchanged. Like a manual rating, it is final. Run history
+reports "agreed on X of Y", where agreement means the AI score is within one star (20
+points) of the user's rating, counted in the browser over the loaded runs.
+
+**Rationale**: Re-using the rating endpoint and the existing star scale avoided a new
+endpoint, table or scale conversion. Showing a count rather than a correlation keeps the
+number readable and honest for the handful of ratings a person will give.
+
+**Consequences**: Agreement reflects only loaded history pages; a server-side summary can
+replace it if histories grow long. Failed AI reviews cannot be rated. Ratings cannot be
+changed once saved. Migration 030 adds the column.
+
+**Sources**: `backend/app/services/evaluation/results.py`, `frontend/src/lib/evaluationStatus.ts`,
+`frontend/src/features/evaluation/RunResults.tsx`.

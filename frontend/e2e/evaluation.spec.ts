@@ -65,7 +65,7 @@ test.beforeEach(async ({ page }) => {
         results: cases.map((item) => ({ id: item.id + 30, eval_case_id: item.id, method: item.method,
           label: item.name!, criteria: item.criteria, variables: item.variables, judge_model: item.method === 'judge' ? 'gpt-4.1-mini' : null,
           output_text: item.method === 'judge' ? 'Find what you need faster with improved search.' : 'Search is faster this week, and duplicate notifications have been fixed.',
-          score: item.method === 'manual' ? null : item.method === 'judge' ? 84 : 100,
+          score: item.method === 'manual' ? null : item.method === 'judge' ? 84 : 100, human_score: null,
           is_pending: item.method === 'manual', rationale: item.method === 'judge' ? JSON.stringify({ text: 'Clear benefit, but the summary could give more context.', strengths: ['Plain language', 'Focuses on the customer'], weaknesses: ['A little too brief'] }) : item.method === 'manual' ? null : '2/2 checks passed.',
         })),
       };
@@ -94,7 +94,7 @@ test('cases, suggestions, explicit runs and manual ratings form one workflow', a
   await page.getByRole('button', { name: 'Run evaluation', exact: true }).click();
   await expect(page.getByRole('radio', { name: 'Run history' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByText('Awaiting your rating', { exact: true }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Rate 4 out of 5' }).click();
+  await page.getByRole('group', { name: 'Rate Check the tone' }).getByRole('button', { name: 'Rate 4 out of 5' }).click();
   await expect(page.getByText('Awaiting your rating', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Scored · 91/100' })).toBeVisible();
 });

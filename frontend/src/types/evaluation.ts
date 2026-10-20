@@ -32,6 +32,7 @@ export interface EvalResult {
   label: string;
   rationale: string | null;
   score: number | null;
+  human_score: number | null;
   is_pending: boolean;
   output_text: string | null;
   criteria: string | null;

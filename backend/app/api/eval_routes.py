@@ -223,7 +223,7 @@ def rate_eval_result(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Submit a 1-5 star manual rating for a pending Manual-method eval result."""
+    """Rate a pending Manual-method result, or a judge-scored result to measure agreement."""
     return call_service(
         results.rate_eval_result, prompt_id, run_id, result_id, body, db, current_user.id
     )

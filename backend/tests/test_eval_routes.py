@@ -648,6 +648,67 @@ class TestRateEvalResult:
         )
         assert resp.status_code == 404
 
+    def _run_with_judge_case(self, client, auth_headers, prompt_id, judge_side_effect):
+        from app.services.eval_service import EvalService
+
+        client.post(
+            f"/api/prompts/{prompt_id}/eval/cases",
+            headers=auth_headers,
+            json={"method": "judge", "criteria": "be nice", "variables": {}},
+        )
+        with (
+            patch("app.services.eval_service.PlaygroundService.run") as mock_run,
+            patch.object(EvalService, "_score_judge", side_effect=judge_side_effect),
+        ):
+            mock_run.return_value = _mock_playground_result()
+            return client.post(f"/api/prompts/{prompt_id}/eval/runs", headers=auth_headers).json()
+
+    def test_rating_a_judged_result_records_agreement_without_changing_scores(
+        self, client, auth_headers
+    ):
+        from app.services.eval_service import JudgeResult
+
+        prompt_id = _create_saved_prompt(client, auth_headers)
+        judged = JudgeResult(
+            score=90.0,
+            rationale="ok",
+            provider="openai",
+            model="m",
+            latency_ms=1,
+            prompt_tokens=1,
+            completion_tokens=1,
+            cost_usd=0.0,
+        )
+        run = self._run_with_judge_case(client, auth_headers, prompt_id, [judged])
+        result_id = run["results"][0]["id"]
+        url = f"/api/prompts/{prompt_id}/eval/runs/{run['id']}/results/{result_id}/rate"
+
+        resp = client.post(url, headers=auth_headers, json={"stars": 2})
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["results"][0]["human_score"] == 40.0
+        assert data["results"][0]["score"] == 90.0
+        assert data["score"] == 90.0
+        listed = client.get(f"/api/prompts/{prompt_id}/eval/runs", headers=auth_headers).json()
+        assert listed[0]["results"][0]["human_score"] == 40.0
+        # A rating is final, like a manual one.
+        assert client.post(url, headers=auth_headers, json={"stars": 5}).status_code == 404
+
+    def test_failed_judge_result_cannot_be_rated(self, client, auth_headers):
+        from app.services.eval_service import JudgeError
+
+        prompt_id = _create_saved_prompt(client, auth_headers)
+        run = self._run_with_judge_case(client, auth_headers, prompt_id, JudgeError("bad"))
+        result_id = run["results"][0]["id"]
+
+        resp = client.post(
+            f"/api/prompts/{prompt_id}/eval/runs/{run['id']}/results/{result_id}/rate",
+            headers=auth_headers,
+            json={"stars": 3},
+        )
+        assert resp.status_code == 404
+
 
 @pytest.mark.parametrize(
     ("setting", "scope"),

@@ -179,6 +179,7 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
             "027_oauth_grants",
             "028_prompt_content_updated_at",
             "029_user_llm_workspace",
+            "030_eval_human_score",
         }
         assert "updated_at" in _columns(connection, "prompts")
         assert _table_exists(connection, "prompt_versions")
@@ -334,7 +335,7 @@ def test_run_migrations_is_idempotent_on_current_database(tmp_path):
 
     with engine.connect() as connection:
         versions = connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
-        assert len(versions) == 29
+        assert len(versions) == 30
         assert {
             "fields",
             "user_id",
@@ -783,6 +784,23 @@ def test_oauth_revocation_migration_invalidates_legacy_credentials_and_is_idempo
             connection.execute(text("SELECT token_hash FROM oauth_refresh_tokens")).scalar()
             == "new-refresh"
         )
+    engine.dispose()
+
+
+def test_eval_human_score_migration_is_idempotent_and_preserves_results():
+    from app.database.migrations.v030_eval_human_score import _migration_030_eval_human_score
+
+    engine = create_engine("sqlite://")
+    with engine.begin() as connection:
+        _migration_030_eval_human_score(connection)
+        connection.execute(
+            text("CREATE TABLE eval_run_results (id INTEGER PRIMARY KEY, score FLOAT)")
+        )
+        connection.execute(text("INSERT INTO eval_run_results VALUES (1, 75)"))
+        _migration_030_eval_human_score(connection)
+        _migration_030_eval_human_score(connection)
+        row = connection.execute(text("SELECT score, human_score FROM eval_run_results")).one()
+        assert tuple(row) == (75, None)
     engine.dispose()
 
 

@@ -119,7 +119,7 @@ saved through case creation rather than persisted by generation.
 | `POST` | `/api/prompts/{id}/eval/cases/import` | Yes | Import test cases from CSV |
 | `POST` | `/api/prompts/{id}/eval/cases/generate` | Yes | Propose reviewable AI test cases |
 | `GET`, `POST` | `/api/prompts/{id}/eval/runs` | Yes | List runs (`limit` 1–100, default 50; `offset` ≥ 0) or run the suite |
-| `POST` | `/api/prompts/{id}/eval/runs/{run_id}/results/{result_id}/rate` | Yes | Manual 1–5 star rating |
+| `POST` | `/api/prompts/{id}/eval/runs/{run_id}/results/{result_id}/rate` | Yes | 1–5 star rating: scores a pending Manual result, or records `human_score` beside a scored AI-review result without changing its score. Either rating is final (404 once rated) |
 
 ## MCP, OAuth & Admin Endpoints
 

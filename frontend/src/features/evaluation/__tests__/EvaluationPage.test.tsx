@@ -26,7 +26,7 @@ const run: EvalRun = {
   model: 'example-model', total_latency_ms: 2200, total_prompt_tokens: 120,
   total_completion_tokens: 40, total_cost_usd: 0.0012,
   results: [{ id: 19, eval_case_id: 4, method: 'manual', label: 'Review tone',
-    rationale: null, score: null, is_pending: true, output_text: 'Clear release notes.',
+    rationale: null, score: null, human_score: null, is_pending: true, output_text: 'Clear release notes.',
     criteria: null, variables: { topic: 'Release notes' }, judge_model: null }],
 };
 
@@ -212,6 +212,22 @@ it('rates a historical manual result and updates its score', async () => {
   await waitFor(() => expect(screen.queryByText('Awaiting your rating')).not.toBeInTheDocument());
   expect(ApiClient.rateEvalResult).toHaveBeenCalledWith(1, 12, 19, 4);
   expect(screen.getAllByText(/80\/100/).length).toBeGreaterThan(0);
+});
+
+it('rates an AI-reviewed output beside its AI score and reports agreement', async () => {
+  const user = userEvent.setup();
+  const judged = { ...run, score: 90, results: [{ ...run.results[0], method: 'judge' as const, score: 90, is_pending: false }] };
+  vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([judged]);
+  vi.mocked(ApiClient.rateEvalResult).mockResolvedValue({ ...judged, results: [{ ...judged.results[0], human_score: 40 }] });
+  await open();
+  await user.click(screen.getByRole('radio', { name: 'Run history' }));
+  expect(screen.queryByText(/AI review agreed/)).not.toBeInTheDocument();
+  const group = screen.getByRole('group', { name: 'Your rating of Review tone' });
+  await user.click(within(group).getByRole('button', { name: 'Rate 2 out of 5' }));
+  expect(ApiClient.rateEvalResult).toHaveBeenCalledWith(1, 12, 19, 2);
+  expect(await screen.findByText('You rated this output 2/5.')).toBeInTheDocument();
+  expect(screen.getByText('AI review agreed with your own rating on 0 of 1 output (within one star).')).toBeInTheDocument();
+  expect(screen.getAllByText(/90\/100/).length).toBeGreaterThan(0);
 });
 
 it('explains why an overall score waits for every manual rating', async () => {

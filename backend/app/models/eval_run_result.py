@@ -30,6 +30,9 @@ class EvalRunResult(Base):
     label = Column(Text, nullable=False)
     rationale = Column(Text, nullable=True)
     score = Column(Float, nullable=True)
+    # A person's own rating of a judge-scored output (stars * 20). Kept beside
+    # the AI's score, never replacing it, so the two can be compared.
+    human_score = Column(Float, nullable=True)
     is_pending = Column(Boolean, nullable=False, default=False, server_default="0")
     # The model's actual output for this case — lets a human rate Manual
     # cases against something real, and makes Rule/Judge rationales auditable.

@@ -9,7 +9,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import { PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
-import { runScoreLabel } from '@/lib/evaluationStatus';
+import { judgeAgreement, runScoreLabel } from '@/lib/evaluationStatus';
 import { parseServerDate } from '@/lib/relativeTime';
 import { variablesIn } from '@/lib/sections';
 import CaseForm from './CaseForm';
@@ -54,6 +54,8 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
   const incomplete = cases.filter((item) => !item.intentionally_empty && variables.some((name) => typeof item.variables[name] !== 'string' || !item.variables[name].trim()));
   const selectedRun = runs.find((item) => item.id === selectedRunId) ?? runs[0];
   const comparedRun = runs.find((item) => String(item.id) === comparisonId && item.id !== selectedRun?.id);
+  // ponytail: counts only the loaded history pages; a server summary if long histories matter.
+  const agreement = judgeAgreement(runs);
   const closeImport = () => { setImportOpen(false); setError(''); };
 
   return (
@@ -189,6 +191,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
           </nav>
           <div className={styles.results}>
             <p className={styles.banner}>Tested version {selectedRun.prompt_version_number}. Current saved version {currentVersion}.</p>
+            {agreement.rated > 0 && <p className={styles.hint}>AI review agreed with your own rating on {agreement.agreed} of {agreement.rated} {agreement.rated === 1 ? 'output' : 'outputs'} (within one star).</p>}
             {selectedRun.prompt_version_number !== currentVersion && <Button variant="secondary" onClick={() => void run()}
               disabled={!!busy || !canUseAI || !cases.length || incomplete.length > 0}>Run current version</Button>}
             {runs.length > 1 && <div className={styles.compareControl}>

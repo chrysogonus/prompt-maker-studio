@@ -17,8 +17,8 @@
 ### Calibrate Evaluation Scores
 
 - **Value**: Give scores an understood relationship to a user's goal.
-- **Current gap**: Explicit runs, reviewed suggestions, case CSV tools, historical outputs, run comparison and manual ratings are implemented; automated scores have not been calibrated against human judgments.
-- **Suggested approach**: Compare automatic and AI-review scores with human ratings on representative cases before treating them as quality gates. Keep automatic execution disabled.
+- **Current gap**: Users can rate AI-reviewed outputs themselves, and Run history reports how often the AI review agreed with them (within one star). Agreement is counted only over loaded history, is not shown where scores are compared, and does not yet change how AI-review scores are presented. Automatic checks are deterministic and not compared.
+- **Suggested approach**: Show the agreement next to AI-review scores wherever they are compared (run comparison, refinement checks), and warn when agreement is low. Keep automatic execution disabled.
 - **Source**: `frontend/src/features/evaluation/`, `backend/app/services/eval_service.py`.
 - **Effort**: High.
 

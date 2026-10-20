@@ -24,3 +24,11 @@ export function runScoreLabel(run: EvalRun): string {
   return status === 'Scored' ? `Scored · ${Math.round(run.score!)}/100`
     : `${status}${run.score === null ? '' : ` · ${Math.round(run.score)}/100`}`;
 }
+
+// "Agreed" means the AI review's score is within one star (20 points) of the
+// person's own rating of the same output.
+export function judgeAgreement(runs: EvalRun[]): { rated: number; agreed: number } {
+  const rated = runs.flatMap((run) => run.results)
+    .filter((result) => result.method === 'judge' && result.score !== null && result.human_score !== null);
+  return { rated: rated.length, agreed: rated.filter((result) => Math.abs(result.score! - result.human_score!) <= 20).length };
+}

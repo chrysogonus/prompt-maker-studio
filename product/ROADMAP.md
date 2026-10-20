@@ -10,7 +10,7 @@
 - [ ] **Extend refinement controls** — Questions, section diffs and local Apply/Undo are restored in the editor. Direct change instructions and individual section acceptance remain open
 
 ## Later — Quarterly Horizon
-- [ ] **Calibrate evaluation scores** — The evaluation workspace is restored; validate automated scores against human judgment
+- [ ] **Calibrate evaluation scores** — Users can now rate AI-reviewed outputs and see the agreement rate; show it wherever AI-review scores are compared
 - [ ] **Markdown heading output option** — Plain-text copy is implemented; rendering named section headings remains open
 - [ ] **Version milestones** — Pin and label important versions (notes on save shipped in 0.3.0)
 - [ ] **Prompt trash and restore** — A 30-day recovery window for deleted prompts and their history

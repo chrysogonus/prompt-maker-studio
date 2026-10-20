@@ -10,6 +10,12 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- AI-reviewed evaluation results can be rated with your own 1–5 stars. Your rating is
+  kept beside the AI score without changing it, and Run history shows how often the AI
+  review agreed with you (within one star).
+
 ### Changed
 
 - Importing a note again can update its library prompt when the text changed, saving

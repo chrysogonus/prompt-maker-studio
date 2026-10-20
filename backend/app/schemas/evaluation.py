@@ -99,6 +99,7 @@ class EvalRunResultResponse(BaseModel):
     label: str
     rationale: str | None
     score: float | None
+    human_score: float | None = None
     is_pending: bool
     output_text: str | None
     # Snapshot of the case's criteria/variables at run time, and the judge

@@ -65,6 +65,7 @@ Migration 020 preserves the pre-025 note schema during its rebuild, so an upgrad
 
 - `028_prompt_content_updated_at` — separates library content recency from the optimistic-concurrency update stamp. Existing rows keep their last known update (or creation) time; past organization-only activity cannot be reconstructed. New favorites, renames and folder changes leave content recency alone; section/variable edits and restores advance it.
 - `029_user_llm_workspace` — adds nullable `users.llm_workspace_id` for optional Anthropic workspace selection. Existing connections retain their key and need no workspace unless the key grants access to multiple workspaces.
+- `030_eval_human_score` — adds nullable `eval_run_results.human_score`: a person's own 1–5 star rating of an AI-reviewed result, stored as 20–100 beside the unchanged AI score. Existing results stay unrated; scores and run averages are untouched.
 
 ## Production Migration Checklist
 
