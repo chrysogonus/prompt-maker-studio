@@ -461,7 +461,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Rationale**: Review-before-save keeps the user in control while reusing the existing ownership, validation, ordering, and case-limit behavior of normal case creation. It also avoids creating a second bulk-write path with different persistence semantics.
 
-**Consequences**: Unsaved proposals disappear on navigation or reload. Generation is a billed, budget-checked OpenAI call and is rate-limited to 10/minute. The backend caps proposals to the remaining capacity under the 20-case limit, but accepted cases can still require user refinement before they are useful quality gates.
+**Consequences**: Unsaved proposals are kept in this browser, per account and prompt, until saved or discarded (since 2026-10-21; earlier they disappeared on navigation or reload), and are wiped on sign-out with other drafts. Generation is a billed, budget-checked OpenAI call and is rate-limited to 10/minute. The backend caps proposals to the remaining capacity under the 20-case limit, but accepted cases can still require user refinement before they are useful quality gates.
 
 **Source**: `backend/app/api/eval_routes.py`, `backend/app/services/eval_generator_service.py`, `backend/app/schemas/`, `frontend/src/features/evaluation/EvaluationPage.tsx`
 

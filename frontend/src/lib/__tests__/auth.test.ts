@@ -102,6 +102,7 @@ describe('AuthService sign-out', () => {
     newPrompt: 'prompt-maker-studio:draft:alex',
     editor: 'prompt-maker-studio:editor-draft:alex:59',
     refine: 'prompt-maker-studio:refine:alex:41',
+    evalSuggestions: 'prompt-maker-studio:eval-suggestions:alex:41',
     legacyUnscoped: 'prompt-maker-studio:editor-draft:67',
   };
 
