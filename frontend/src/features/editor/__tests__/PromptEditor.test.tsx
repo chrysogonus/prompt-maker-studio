@@ -497,14 +497,25 @@ describe('prompt refinement', () => {
     expect(ApiClient.getRefinementQuestions).toHaveBeenCalledTimes(2);
   });
 
-  it('requires an answer, allows skipping individual questions and returning from review', async () => {
+  it('creates a draft with every question left blank', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValueOnce({ questions: ['Audience?', 'Tone?'] });
     await renderSaved();
     await user.click(screen.getByRole('button', { name: 'Refine' }));
     await user.click(screen.getByRole('button', { name: 'Find questions' }));
     await screen.findByLabelText('Audience?');
-    expect(screen.getByRole('button', { name: 'Create draft' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
+    await screen.findByRole('button', { name: 'Apply changes' });
+    expect(ApiClient.createRefinementDraft).toHaveBeenCalledWith(prompt().fields, [], undefined);
+  });
+
+  it('allows skipping individual questions and returning from review', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValueOnce({ questions: ['Audience?', 'Tone?'] });
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await screen.findByLabelText('Audience?');
     await user.type(screen.getByLabelText('Audience?'), 'Managers');
     await user.click(screen.getByRole('button', { name: 'Create draft' }));
     await screen.findByRole('button', { name: 'Apply changes' });

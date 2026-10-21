@@ -294,7 +294,7 @@ export default function RefinePanel({ open, promptId, fields, aiAvailable, aiCon
                   </Button>
                 </>
               ) : (
-                <Button variant="primary" disabled={busy !== null || !answers.some((answer) => answer.trim())} onClick={createDraft}>Create draft</Button>
+                <Button variant="primary" disabled={busy !== null} onClick={createDraft}>Create draft</Button>
               )
             )}
           </>
