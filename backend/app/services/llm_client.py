@@ -264,6 +264,24 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
     )
 
 
+def unsaved_connection(
+    provider: Provider,
+    model: str,
+    base_url: str,
+    api_key: str | None,
+    workspace_id: str | None = None,
+) -> LLMConnection:
+    """A connection the user is checking in Settings before saving it. Never trusted:
+    the egress policy for user-supplied URLs applies as for a saved connection."""
+    return _build_connection(
+        provider,
+        model,
+        base_url,
+        api_key or _LOCAL_API_KEY_PLACEHOLDER,
+        workspace_id=workspace_id,
+    )
+
+
 def _build_connection(
     provider: Provider,
     model: str,

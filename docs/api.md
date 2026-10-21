@@ -29,7 +29,7 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 | `GET` | `/api/auth/me/llm-connection/models` | Yes | List curated OpenAI/Anthropic/Gemini models, or discover local/custom models, with estimated input/output pricing |
 | `PUT` | `/api/auth/me/llm-connection` | Yes | Create or replace the connection; hosted models must be in the curated catalogue |
 | `DELETE` | `/api/auth/me/llm-connection` | Yes | Disconnect the provider and erase the stored key |
-| `POST` | `/api/auth/me/llm-connection/test` | Yes | Send a tiny probe to verify the configured endpoint, key, and model |
+| `POST` | `/api/auth/me/llm-connection/test` | Yes | Send a tiny probe to verify the configured endpoint, key, and model; an optional body with the `PUT` fields tests those unsaved values without storing them (omitting `api_key` reuses the stored key, only for the same provider; an empty string tests without a key) |
 | `GET` | `/api/auth/me/connected-apps` | Yes | List the MCP clients (such as ChatGPT) that still hold a valid connection to the caller's account: `[{client_id, name}]` |
 | `DELETE` | `/api/auth/me/connected-apps/{client_id}` | Yes | Disconnect one client (10/min): its access and refresh tokens stop working at once; 404 if it is not connected to the caller |
 | `POST` | `/api/auth/change-password` | Yes | Change password after verifying current password; revokes all other sessions |

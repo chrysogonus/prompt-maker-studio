@@ -247,6 +247,11 @@ def validate_base_url(raw: str) -> str:
     if parsed.username or parsed.password:
         msg = "Base URL must not embed a username or password — use the API key field."
         raise InvalidConnectionError(msg)
+    try:
+        parsed.port  # noqa: B018 - raises for a non-numeric or out-of-range port
+    except ValueError as exc:
+        msg = "Base URL has an invalid port. Use a number such as :11434."
+        raise InvalidConnectionError(msg) from exc
     if parsed.query or parsed.fragment:
         msg = "Base URL must not include a query string or fragment."
         raise InvalidConnectionError(msg)

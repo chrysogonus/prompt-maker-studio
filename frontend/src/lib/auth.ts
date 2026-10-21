@@ -310,11 +310,12 @@ export class AuthService {
 
   /**
    * Send a tiny probe to the configured provider so a wrong key, endpoint, or
-   * model name surfaces here rather than inside a feature. Always resolves —
-   * failures come back as `{ ok: false, message }`.
+   * model name surfaces here rather than inside a feature. With `data`, tests
+   * those unsaved values without storing them. Always resolves — failures come
+   * back as `{ ok: false, message }`.
    */
-  static async testLLMConnection(): Promise<LLMConnectionTestResult> {
-    return this.llmConnectionRequest('POST', undefined, '/test');
+  static async testLLMConnection(data?: LLMConnectionUpdate): Promise<LLMConnectionTestResult> {
+    return this.llmConnectionRequest('POST', data, '/test');
   }
 
   /** List models the configured provider exposes, with estimated token prices. */

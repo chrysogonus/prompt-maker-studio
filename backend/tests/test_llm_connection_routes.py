@@ -192,6 +192,16 @@ class TestUpdateConnection:
         assert resp.status_code == 422
         assert "http://" in resp.json()["detail"]
 
+    def test_rejects_a_base_url_with_an_invalid_port(self, client, auth_headers):
+        resp = client.put(
+            "/api/auth/me/llm-connection",
+            headers=auth_headers,
+            json={"provider": "custom", "model": "m", "base_url": "https://example.com:invalid/v1"},
+        )
+
+        assert resp.status_code == 422
+        assert "invalid port" in resp.json()["detail"]
+
     def test_rejects_a_base_url_with_embedded_credentials(self, client, auth_headers):
         resp = client.put(
             "/api/auth/me/llm-connection",
@@ -323,6 +333,129 @@ class TestConnectionProbe:
         assert resp.status_code == 200
         assert resp.json()["ok"] is False
         assert "budget" in resp.json()["message"].lower()
+
+    def test_probes_unsaved_values_without_storing_them(
+        self, client, auth_headers, mock_llm, db_session
+    ):
+        mock_llm.return_value.chat.completions.create.return_value = make_chat_response("ok")
+        before = client.get("/api/auth/me/llm-connection", headers=auth_headers).json()
+
+        resp = client.post(
+            "/api/auth/me/llm-connection/test",
+            headers=auth_headers,
+            json={"provider": "anthropic", "model": "claude-haiku-5-5", "api_key": "sk-ant-new"},
+        )
+
+        assert resp.json()["ok"] is True
+        assert "Anthropic" in resp.json()["message"]
+        assert mock_llm.call_args.kwargs["api_key"] == "sk-ant-new"
+        assert mock_llm.call_args.kwargs["base_url"] == "https://api.anthropic.com/v1/"
+        assert client.get("/api/auth/me/llm-connection", headers=auth_headers).json() == before
+        assert db_session.query(BilledCall).filter_by(source="connection_test").count() == 1
+
+    def test_unsaved_probe_reuses_the_stored_key_for_the_same_provider(
+        self, client, auth_headers, mock_llm
+    ):
+        mock_llm.return_value.chat.completions.create.return_value = make_chat_response("ok")
+
+        resp = client.post(
+            "/api/auth/me/llm-connection/test",
+            headers=auth_headers,
+            json={"provider": "openai", "model": "gpt-6-luna"},
+        )
+
+        assert resp.json()["ok"] is True
+        assert mock_llm.call_args.kwargs["api_key"] == TEST_LLM_API_KEY
+
+    def test_unsaved_probe_never_sends_the_stored_key_to_another_provider(
+        self, client, auth_headers, mock_llm
+    ):
+        resp = client.post(
+            "/api/auth/me/llm-connection/test",
+            headers=auth_headers,
+            json={"provider": "anthropic", "model": "claude-haiku-5-5"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is False
+        assert "API key" in resp.json()["message"]
+        mock_llm.return_value.chat.completions.create.assert_not_called()
+
+    def test_unsaved_probe_applies_the_private_url_policy(self, client, auth_headers, mock_llm):
+        resp = client.post(
+            "/api/auth/me/llm-connection/test",
+            headers=auth_headers,
+            json={"provider": "ollama", "model": "llama3", "base_url": "http://127.0.0.1:11434/v1"},
+        )
+
+        assert resp.json()["ok"] is False
+        assert "ALLOW_PRIVATE_LLM_URLS" in resp.json()["message"]
+        mock_llm.return_value.chat.completions.create.assert_not_called()
+
+    def test_unsaved_probe_reports_a_malformed_endpoint_inline(self, client, auth_headers):
+        resp = client.post(
+            "/api/auth/me/llm-connection/test",
+            headers=auth_headers,
+            json={
+                "provider": "custom",
+                "model": "gpt-6-luna",
+                "base_url": "https://example.com:invalid/v1",
+            },
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is False
+        assert "invalid port" in resp.json()["message"]
+
+    def test_unsaved_probe_reports_an_unreadable_stored_key(
+        self, client, auth_headers, mock_llm, db_session
+    ):
+        user = db_session.query(User).filter_by(username="testuser").one()
+        user.llm_api_key_encrypted = "not-a-valid-ciphertext"
+        db_session.commit()
+
+        resp = client.post(
+            "/api/auth/me/llm-connection/test",
+            headers=auth_headers,
+            json={"provider": "openai", "model": "gpt-6-luna"},
+        )
+
+        assert resp.json()["ok"] is False
+        assert "Re-enter" in resp.json()["message"]
+
+    def test_unsaved_probe_is_refused_once_a_ceiling_is_exhausted(
+        self, client, auth_headers, mock_llm, monkeypatch
+    ):
+        monkeypatch.setenv("USER_MONTHLY_BUDGET_USD", "0.0000001")
+        mock_llm.return_value.chat.completions.create.return_value = make_chat_response("ok")
+        client.post("/api/auth/me/llm-connection/test", headers=auth_headers)
+
+        resp = client.post(
+            "/api/auth/me/llm-connection/test",
+            headers=auth_headers,
+            json={"provider": "openai", "model": "gpt-6-luna"},
+        )
+
+        assert resp.json()["ok"] is False
+        assert "budget" in resp.json()["message"].lower()
+
+    def test_unsaved_anthropic_probe_sends_the_workspace(self, client, auth_headers, mock_llm):
+        mock_llm.return_value.chat.completions.create.return_value = make_chat_response("ok")
+
+        client.post(
+            "/api/auth/me/llm-connection/test",
+            headers=auth_headers,
+            json={
+                "provider": "anthropic",
+                "model": "claude-haiku-5-5",
+                "api_key": "sk-ant-new",
+                "workspace_id": "wrkspc_abc",
+            },
+        )
+
+        assert mock_llm.call_args.kwargs["default_headers"] == {
+            "anthropic-workspace-id": "wrkspc_abc"
+        }
 
     def test_probe_response_never_contains_the_key(self, client, auth_headers, mock_llm):
         mock_llm.return_value.chat.completions.create.return_value = make_chat_response("ok")
