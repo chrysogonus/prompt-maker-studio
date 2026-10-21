@@ -28,7 +28,7 @@ services:
       # sits in the volume, and the app looks healthy while doing it.
       - DATABASE_URL=sqlite:////app/data/prompts.db
       - CORS_ORIGINS=${CORS_ORIGINS:-http://frontend:3000,http://localhost:3000}
-      - REGISTRATION_MODE=${REGISTRATION_MODE:-closed}
+      - REGISTRATION_MODE=${REGISTRATION_MODE:-open}
       - ALLOW_PRIVATE_LLM_URLS=${ALLOW_PRIVATE_LLM_URLS:-false}
       - SECRET_KEY=${SECRET_KEY}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}

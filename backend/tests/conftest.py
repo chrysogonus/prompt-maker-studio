@@ -20,9 +20,9 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-that-is-long-enough-1234567
 # TestClient (plain http://testserver) would never send back. Production keeps
 # the default; only this in-process transport opts out.
 os.environ.setdefault("COOKIE_SECURE", "false")
-# Registration is closed by default in production (only the first account gets
-# through). The suite registers many users per test, so it opts in explicitly;
-# the closed-mode behaviour has its own tests in test_auth.py.
+# Registration is open by default, but a developer's shell may set
+# REGISTRATION_MODE=closed. The suite registers many users per test, so it opts
+# in explicitly; the closed-mode behaviour has its own tests in test_auth.py.
 os.environ.setdefault("REGISTRATION_MODE", "open")
 
 

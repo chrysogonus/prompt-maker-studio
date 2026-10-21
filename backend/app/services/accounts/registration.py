@@ -21,9 +21,10 @@ logger = logging.getLogger(__name__)
 
 
 def _registration_mode() -> str:
-    """`open` or `closed`; anything unrecognised is treated as closed."""
-    mode = os.getenv("REGISTRATION_MODE", "closed").strip().lower()
-    return "open" if mode == "open" else "closed"
+    """`open` (also when unset or empty) or `closed`. Any other value is treated
+    as closed, so a typo in an attempt to close sign-up never leaves it open."""
+    mode = os.getenv("REGISTRATION_MODE", "").strip().lower()
+    return "open" if mode in ("", "open") else "closed"
 
 
 def _assert_registration_allowed(db: Session) -> None:

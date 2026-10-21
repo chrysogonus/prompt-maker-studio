@@ -10,6 +10,12 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Changed
+
+- Registration is open by default. Operators who relied on the implicit closed default must now
+  set `REGISTRATION_MODE=closed`, which still admits only the first account; any unrecognised
+  value is also treated as closed.
+
 ## [0.9.0] - 2026-10-20
 
 See the [release record](./docs/releases/0.9.0.md).

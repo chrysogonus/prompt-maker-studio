@@ -900,7 +900,7 @@ quietly outliving its reason.
 
 **Decision**: Serve a server-rendered landing page at `/` for visitors without a session cookie, and redirect those with one to `/library`. Add `robots.txt` and `sitemap.xml`, and build the canonical link and social previews from `FRONTEND_URL` at request time. Screenshots are plain `<img>` copies under `frontend/public/landing/`.
 
-**Rationale**: Checking the httpOnly session cookie on the server keeps returning users one hop from their library without client code on the landing page. The published image is domain-agnostic, so anything naming the public origin must be rendered per request. The image ships without sharp, so `next/image` would add nothing. The call to action says "Open the app", not "Create account", because `REGISTRATION_MODE` defaults to `closed`.
+**Rationale**: Checking the httpOnly session cookie on the server keeps returning users one hop from their library without client code on the landing page. The published image is domain-agnostic, so anything naming the public origin must be rendered per request. The image ships without sharp, so `next/image` would add nothing. The call to action says "Open the app", not "Create account", because `REGISTRATION_MODE` defaulted to `closed` at the time (it defaults to `open` since "Registration Opens by Default").
 
 **Consequences**: Every deployment, self-hosted ones included, shows the landing page to signed-out visitors. The screenshots are copies of `docs/assets/` and must be refreshed by hand when those are regenerated. A stale cookie costs one extra redirect to the sign-in form.
 
@@ -1374,3 +1374,30 @@ Duplicates start without a mark, since their history starts fresh.
 
 **Sources**: `backend/app/services/prompts/library.py`, `backend/app/services/evaluation/results.py`,
 `frontend/src/features/editor/HistoryPanel.tsx`, `frontend/src/features/library/LibraryPage.tsx`.
+
+---
+
+## Registration Opens by Default
+
+**Status**: Accepted (2026-10-21)
+
+**Context**: Signed-out visitors are getting free tools, guides and templates that lead to
+"save to your library". With `REGISTRATION_MODE` defaulting to `closed`, a fresh install
+turned that step into a 403 for everyone but the first account, and the hosted instance
+already runs with registration open.
+
+**Decision**: An unset or empty `REGISTRATION_MODE` means `open`. `closed` keeps the
+first-account bootstrap and then blocks sign-up; any other value is also treated as
+`closed`, so a mistyped attempt to close sign-up fails safe.
+
+**Rationale**: The default should match how the product is meant to be used. The risk the
+closed default guarded against — every account can make the server call a user-supplied
+provider URL — is contained by `ALLOW_PRIVATE_LLM_URLS=false`, which keeps private and
+loopback addresses unreachable regardless of who registers.
+
+**Consequences**: Self-hosters who relied on the implicit closed default must now set
+`REGISTRATION_MODE=closed` (called out in the changelog). Registration and login rate limits
+remain the guard against scripted sign-ups.
+
+**Sources**: `backend/app/services/accounts/registration.py`, `docker-compose.yml`, `.env.example`,
+`SECURITY.md`.

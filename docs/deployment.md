@@ -65,8 +65,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 COOKIE_DOMAIN=
 COOKIE_SECURE=true
 
-# Default registration admits only the first account, then closes.
-REGISTRATION_MODE=closed
+# Registration is open by default; `closed` admits only the first account.
+REGISTRATION_MODE=open
 # Keep user-supplied private provider URLs disabled unless every account is trusted.
 ALLOW_PRIVATE_LLM_URLS=false
 

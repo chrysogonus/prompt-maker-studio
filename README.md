@@ -59,7 +59,7 @@ make up
 ```
 
 Open **[localhost:3000](http://localhost:3000)** and create your account.
-The first account can register; further registration is closed by default.
+Registration is open by default; set `REGISTRATION_MODE=closed` to admit only the first account.
 For AI features, connect a provider under **Settings → AI connection**, or use
 the operator's optional server default when configured.
 

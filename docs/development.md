@@ -84,9 +84,8 @@ inside a container it means that container. Use an address reachable from the
 backend container for a Docker setup. An operator-configured server default
 can reach private addresses without this opt-in.
 
-Registration defaults to `closed`: the first account can register, then new
-signups are blocked. Set `REGISTRATION_MODE=open` only for a deliberate
-multi-account development setup.
+Registration defaults to `open`. Set `REGISTRATION_MODE=closed` to admit only
+the first account and then block new signups.
 
 > If you copy `.env.example` by hand instead of running `make setup`, generate
 > the signing key yourself with `openssl rand -hex 32`. The backend refuses to

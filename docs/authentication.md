@@ -47,8 +47,8 @@ Content-Type: application/json
 ```
 
 The response contains `id`, `username`, `email`, `created_at`, and library/evaluation
-preferences. `REGISTRATION_MODE` defaults to `closed`: the first account can
-always register, then registration returns 403 unless the operator sets `open`.
+preferences. `REGISTRATION_MODE` defaults to `open`. With `closed` (or any unrecognised
+value), the first account can still register, then registration returns 403.
 Usernames are normalized with `.strip().lower()` during registration and login.
 Duplicate usernames and emails receive the same generic 400 response.
 The login `username` field accepts either the username or the account email:

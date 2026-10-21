@@ -169,8 +169,8 @@ DEV_BIND_ADDRESS=127.0.0.1
 BACKEND_PORT=8000
 FRONTEND_PORT=3000
 
-# Registration admits the first account, then closes by default.
-REGISTRATION_MODE=closed
+# Registration is open by default; `closed` admits only the first account.
+REGISTRATION_MODE=open
 # Permit user-supplied private provider URLs only on a trusted instance.
 ALLOW_PRIVATE_LLM_URLS=false
 

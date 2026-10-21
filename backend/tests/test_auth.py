@@ -1307,10 +1307,25 @@ def test_registration_closed_allows_only_the_first_account(client, monkeypatch):
     assert "closed" in second.json()["detail"].lower()
 
 
-def test_registration_defaults_to_closed(client, monkeypatch):
-    """An unset REGISTRATION_MODE must not mean open. Anything unrecognised is
-    treated as closed too, so a typo fails safe."""
-    monkeypatch.delenv("REGISTRATION_MODE", raising=False)
+def test_registration_defaults_to_open(client, monkeypatch):
+    """An unset or empty REGISTRATION_MODE admits new accounts; closing sign-up
+    is the explicit operator choice."""
+    for value in (None, ""):
+        if value is None:
+            monkeypatch.delenv("REGISTRATION_MODE", raising=False)
+        else:
+            monkeypatch.setenv("REGISTRATION_MODE", value)
+        for name in (f"user{value is None}a", f"user{value is None}b"):
+            resp = client.post(
+                "/api/auth/register",
+                json={"username": name, "password": "testpass123!", "email": f"{name}@example.com"},
+            )
+            assert resp.status_code == status.HTTP_201_CREATED
+
+
+def test_unrecognised_registration_mode_fails_closed(client, monkeypatch):
+    """A typo in an attempt to close sign-up must not leave it open."""
+    monkeypatch.setenv("REGISTRATION_MODE", "clsoed")
     client.post(
         "/api/auth/register",
         json={"username": "operator", "password": "testpass123!", "email": "op@example.com"},
