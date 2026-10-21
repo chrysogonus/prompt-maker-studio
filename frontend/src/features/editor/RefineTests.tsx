@@ -19,6 +19,13 @@ export function evidenceCandidates(run: EvalRun | undefined): EvalResult[] {
     .sort((a, b) => a.score! - b.score!);
 }
 
+/** The run whose results describe these sections: the latest that tested this exact text,
+ * otherwise the latest of a saved version — never a check of some other unsaved draft. */
+export function evidenceRun(runs: EvalRun[], fields: PromptField[]): EvalRun | undefined {
+  const text = renderSections(fields);
+  return runs.find((run) => run.tested_prompt === text) ?? runs.find((run) => run.tested_version !== null);
+}
+
 export function TestResultPicker({ run, chosen, disabled, onChange }: {
   run: EvalRun;
   chosen: number[];

@@ -1295,8 +1295,9 @@ from. Draft runs appear in Run history; refinement will start them (planned).
 **Context**: Refinement changed wording without evidence that the result was better, and
 evaluation scores were not used anywhere else.
 
-**Decision**: On saved prompts, Refine lists the latest run's scored results, weakest first,
-with nothing preselected; the user chooses up to five. The draft request carries only their
+**Decision**: On saved prompts, Refine lists the scored results, weakest first, of the latest
+run of the editor's current text, or else of the latest run of a saved version (a check of some
+other unsaved draft never qualifies), with nothing preselected; the user chooses up to five. The draft request carries only their
 IDs and the server loads, ownership-checks and trims the content, which the refiner treats as
 untrusted data while counting what was checked as a requirement. After review, Check against
 test cases evaluates the unsaved draft, plus the current sections unless a run already tested

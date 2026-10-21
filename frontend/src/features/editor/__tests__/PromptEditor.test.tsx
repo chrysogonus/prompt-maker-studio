@@ -405,6 +405,31 @@ describe('refinement with test results', () => {
     expect(ApiClient.createRefinementDraft).toHaveBeenCalledWith(prompt().fields, [], { prompt_id: 1, run_id: 7, result_ids: [32] });
   });
 
+  it('skips a newer check of another unsaved draft for the run of the text being refined', async () => {
+    const user = userEvent.setup();
+    const otherDraft = evalRun({ id: 9, tested_version: null, tested_prompt: 'Discarded draft', results: [evalResult({ id: 41, label: 'Draft case', score: 100 })] });
+    vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([otherDraft, latest]);
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    const picker = await screen.findByRole('group', { name: 'Improve using test results (optional)' });
+    expect(within(picker).queryByText('Draft case · 100/100')).not.toBeInTheDocument();
+    await user.click(within(picker).getByRole('checkbox', { name: 'Empty notes · 20/100' }));
+    await user.click(screen.getByRole('button', { name: 'Improve without questions' }));
+    await screen.findByRole('button', { name: 'Apply changes' });
+    expect(ApiClient.createRefinementDraft).toHaveBeenCalledWith(prompt().fields, [], { prompt_id: 1, run_id: 7, result_ids: [32] });
+  });
+
+  it('finds the saved-version run behind many checks of other drafts', async () => {
+    const user = userEvent.setup();
+    const drafts = Array.from({ length: 25 }, (_, i) => evalRun({ id: 100 + i, tested_version: null, tested_prompt: `Draft ${i}`, results: [evalResult({ id: 200 + i, label: 'Draft case', score: 100 })] }));
+    vi.mocked(ApiClient.getEvalRuns).mockResolvedValue([...drafts, latest]);
+    await renderSaved();
+    await user.click(screen.getByRole('button', { name: 'Refine' }));
+    const picker = await screen.findByRole('group', { name: 'Improve using test results (optional)' });
+    expect(within(picker).getByRole('checkbox', { name: 'Empty notes · 20/100' })).toBeInTheDocument();
+    expect(ApiClient.getEvalRuns).toHaveBeenCalledWith(1, 100);
+  });
+
   it('checks a draft against the test cases, reusing a run of the current text', async () => {
     const user = userEvent.setup();
     const current = evalRun({ id: 8, tested_prompt: prompt().generated_prompt, results: [evalResult({ output_text: 'Before.' })] });

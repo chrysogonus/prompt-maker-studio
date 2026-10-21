@@ -9,7 +9,7 @@ import { ApiClient } from '@/lib/api';
 import { diffWords } from '@/lib/diff';
 import type { EvalRun } from '@/types/evaluation';
 import type { PromptField, PromptsConfigResponse } from '@/types/prompt';
-import { DraftCheck, TestResultPicker, evidenceCandidates } from './RefineTests';
+import { DraftCheck, TestResultPicker, evidenceCandidates, evidenceRun } from './RefineTests';
 import styles from './RefinePanel.module.css';
 
 interface RefinePanelProps {
@@ -51,9 +51,11 @@ export default function RefinePanel({ open, promptId, fields, aiAvailable, aiCon
   // Applying keeps the session: after Undo in the editor the same draft can be applied again.
   const plain = (list: PromptField[]) => JSON.stringify(list.map(({ name, content }) => ({ name, content })));
   const applied = !!draft && changed && plain(draft) === plain(fields);
-  const latestRun = tests?.runs[0];
-  const evidence = promptId !== undefined && latestRun && chosen.length
-    ? { prompt_id: promptId, run_id: latestRun.id, result_ids: chosen } : undefined;
+  const latestRun = tests ? evidenceRun(tests.runs, fields) : undefined;
+  // Choices from another run (after an edit or a new run) no longer apply.
+  const picked = chosen.filter((id) => latestRun?.results.some((result) => result.id === id));
+  const evidence = promptId !== undefined && latestRun && picked.length
+    ? { prompt_id: promptId, run_id: latestRun.id, result_ids: picked } : undefined;
 
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
@@ -61,12 +63,12 @@ export default function RefinePanel({ open, promptId, fields, aiAvailable, aiCon
   useEffect(() => {
     if (!open || promptId === undefined || !aiAvailable) return;
     let active = true;
-    Promise.all([ApiClient.getEvalRuns(promptId, 20), ApiClient.getEvalCases(promptId)])
+    // ponytail: evidence comes from the newest 100 runs (the API page maximum); page
+    // further if over 100 checks of other drafts can bury the last saved-version run.
+    Promise.all([ApiClient.getEvalRuns(promptId, 100), ApiClient.getEvalCases(promptId)])
       .then(([runs, cases]) => {
         if (!active) return;
         setTests({ runs, caseCount: cases.length });
-        // A new latest run makes earlier choices meaningless.
-        setChosen((current) => runs[0] && current.every((id) => runs[0].results.some((r) => r.id === id)) ? current : []);
       })
       .catch(() => { /* Refinement works without test results. */ });
     return () => { active = false; };
@@ -265,7 +267,7 @@ export default function RefinePanel({ open, promptId, fields, aiAvailable, aiCon
           </>
         )}
         {aiAvailable && !applied && !stale && !review && latestRun && evidenceCandidates(latestRun).length > 0 && (
-          <TestResultPicker run={latestRun} chosen={chosen} disabled={busy !== null} onChange={setChosen} />
+          <TestResultPicker run={latestRun} chosen={picked} disabled={busy !== null} onChange={setChosen} />
         )}
         {error && <p className={styles.error} role="alert">{error}{error.includes('Settings →') && <> <Link href="/settings#s-api" className={styles.link}>Open Settings</Link></>}</p>}
         {busy && <p className={styles.hint} role="status">{busy === 'questions' ? 'Finding questions…' : 'Creating draft…'}</p>}
