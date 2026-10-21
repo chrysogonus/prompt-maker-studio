@@ -79,7 +79,7 @@
 .question textarea:disabled { opacity: 0.7; }
 
 .section { padding-top: var(--space-4); border-top: 1px solid var(--color-border); }
-.section h3, .section summary { font-size: var(--text-base-size); font-weight: var(--weight-medium); }
+.section h2, .section h3, .section summary { font-size: var(--text-base-size); font-weight: var(--weight-medium); }
 .section summary { cursor: pointer; }
 .unchanged { margin-left: var(--space-2); font-weight: var(--weight-regular); }
 

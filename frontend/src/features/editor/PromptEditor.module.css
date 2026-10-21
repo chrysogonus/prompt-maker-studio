@@ -1201,6 +1201,8 @@ button.version:hover {
 
 @media (min-width: 1201px) {
   .editor[data-focused='true'] .history { grid-column: 1; width: 100%; max-width: 960px; justify-self: center; }
+  /* Sized by the title, so the actions wrap to a second row before it truncates. */
+  .crumbs { flex: 1 1 auto; }
 }
 
 .outputFormat {

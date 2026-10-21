@@ -24,7 +24,8 @@
   background: var(--pv-bg); color: var(--pv-text); padding: var(--space-4); border-radius: var(--radius-md);
   margin: var(--space-3) 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 13px;
 }
-.actions { position: sticky; bottom: 0; padding: var(--space-3) 0; background: var(--color-panel); border-top: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+/* Covers the dialog's bottom padding too, so content never shows below the bar while scrolling. */
+.actions { position: sticky; bottom: calc(-1 * var(--space-6)); margin-bottom: calc(-1 * var(--space-6)); padding: var(--space-3) 0 calc(var(--space-3) + var(--space-6)); background: var(--color-panel); border-top: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
 .error { color: var(--color-danger); }
 @media (max-width: 760px) {
   .reviewLayout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "preview" "variables"; }

@@ -347,7 +347,7 @@ describe('variable inputs and reversible import', () => {
     expect(screen.getByText(/current draft stays as it is/)).toBeInTheDocument();
     expect(within(screen.getByRole('dialog', { name: 'Paste a prompt' })).getByText(/Uses your connection \(OpenAI \/ gpt-4.1-mini\)/)).toBeInTheDocument();
     await user.type(screen.getByLabelText('Prompt to convert'), 'New text');
-    await user.click(screen.getByRole('button', { name: 'Create template' }));
+    await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
     await user.click(await screen.findByRole('button', { name: 'Use in editor' }));
     expect(await screen.findByLabelText('Imported text')).toHaveValue('New text');
     await user.click(screen.getByRole('button', { name: 'Undo' }));
@@ -1021,6 +1021,9 @@ describe('PromptEditor with a new prompt', () => {
     const user = userEvent.setup();
     render(<PromptEditor />);
 
+    // Nothing to save until a section has text.
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await user.type(screen.getByRole('textbox', { name: 'Task text' }), 'Summarize the notes.');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     const dialog = await screen.findByRole('dialog', { name: 'Save prompt' });
     await user.click(within(dialog).getByRole('button', { name: 'Save prompt' }));
@@ -1058,7 +1061,7 @@ describe('PromptEditor with a new prompt', () => {
     await openTool(user, 'Paste a prompt');
     const dialog = await screen.findByRole('dialog', { name: 'Paste a prompt' });
     await user.type(within(dialog).getByLabelText('Prompt to convert'), 'Proofread my text, typos only');
-    await user.click(within(dialog).getByRole('button', { name: 'Create template' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Create template with AI' }));
     await user.click(await screen.findByRole('button', { name: 'Use in editor' }));
 
     await waitFor(() => expect(screen.getByLabelText('role text')).toHaveValue('A careful proofreader'));
@@ -1083,7 +1086,7 @@ describe('PromptEditor with a new prompt', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Paste a prompt' });
     expect(within(dialog).getByRole('button', { name: 'Save as written' })).toBeDisabled();
-    expect(within(dialog).getByRole('button', { name: 'Create template' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Create template with AI' })).toBeDisabled();
     expect(ApiClient.parsePromptText).not.toHaveBeenCalled();
   });
 });
@@ -1134,7 +1137,7 @@ describe('paste a prompt recovery and save handoff', () => {
     vi.mocked(ApiClient.parsePromptText).mockResolvedValue(conversion);
     await openTool(user, 'Paste a prompt');
     fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: 'Plan a trip to Lisbon.' } });
-    await user.click(screen.getByRole('button', { name: 'Create template' }));
+    await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
     await screen.findByRole('button', { name: 'Use in editor' });
   }
 
@@ -1269,7 +1272,7 @@ it('offers the library title and folder on Save and drops a stale draft notice a
   const { rerender } = render(<PromptEditor openImport />);
   expect(await screen.findByLabelText('Prompt to convert')).toHaveValue('Outline [TOPIC].');
   expect(screen.getByText('Your unsaved changes were restored.')).toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Create template' }));
+  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
   expect(await screen.findByText('Some inputs have no value yet. They stay as placeholders when copied.')).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Use in editor' }));
   // Applying drops ?import=1 from the URL, which re-renders without openImport.
@@ -1290,7 +1293,7 @@ it('consumes the library import URL when applying so reload opens the recovered 
   });
   render(<PromptEditor openImport />);
   fireEvent.change(await screen.findByLabelText('Prompt to convert'), { target: { value: 'Go to Lisbon.' } });
-  await user.click(screen.getByRole('button', { name: 'Create template' }));
+  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
   await user.click(await screen.findByRole('button', { name: 'Use in editor' }));
   expect(routerReplace).toHaveBeenCalledWith('/editor/new', { scroll: false });
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -1310,7 +1313,7 @@ it('keeps import Undo available when loading unchanged example inputs', async ()
   });
   await openTool(user, 'Paste a prompt');
   fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: 'Plan a 3-day trip to Lisbon.' } });
-  await user.click(screen.getByRole('button', { name: 'Create template' }));
+  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
   await user.click(await screen.findByRole('checkbox', { name: 'Keep these inputs as examples' }));
   await user.click(screen.getByRole('button', { name: 'Use in editor' }));
   await user.click(screen.getByRole('button', { name: 'Load example inputs' }));

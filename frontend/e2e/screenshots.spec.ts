@@ -111,7 +111,7 @@ test('captures the README screenshots', async ({ page }) => {
   await page.getByRole('button', { name: 'Paste a prompt' }).click();
   const importDialog = page.getByRole('dialog', { name: 'Paste a prompt' });
   await importDialog.getByLabel('Prompt to convert').fill(IMPORT_TEXT);
-  await importDialog.getByRole('button', { name: 'Create template' }).click();
+  await importDialog.getByRole('button', { name: 'Create template with AI' }).click();
   await page.getByRole('dialog', { name: 'Review your template' }).getByRole('button', { name: 'Use in editor' }).click();
   await expect(page.getByLabel('Task text')).toHaveValue(/late order/);
   expect(importHits).toBe(1);

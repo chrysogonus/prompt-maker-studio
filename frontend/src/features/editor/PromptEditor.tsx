@@ -246,7 +246,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               }} aria-pressed={historyOpen}>History</Button>
             </div>}
           </div>}
-          {(!focusedUse || dirty) && <Button variant="primary" onClick={save} disabled={saving || refineOpen || (!!prompt && !dirty)}>
+          {(!focusedUse || dirty) && <Button variant="primary" onClick={save} disabled={saving || refineOpen || !hasContent || (!!prompt && !dirty)}>
             {saving ? 'Saving…' : prompt && !dirty ? 'Saved' : 'Save'}
           </Button>}
         </div>

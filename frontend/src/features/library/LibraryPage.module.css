@@ -334,11 +334,6 @@
   box-shadow: var(--shadow-float);
 }
 
-.head .menu {
-  left: 0;
-  right: auto;
-}
-
 .menu button {
   display: block;
   width: 100%;

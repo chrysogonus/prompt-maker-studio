@@ -33,7 +33,7 @@ async function convert() {
   const user = userEvent.setup();
   render(<Host />);
   fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: source } });
-  await user.click(screen.getByRole('button', { name: 'Create template' }));
+  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
   await screen.findByRole('button', { name: 'Use in editor' });
   return user;
 }
@@ -92,10 +92,10 @@ it('keeps source text after errors and supports an explicit retry', async () => 
   vi.mocked(ApiClient.parsePromptText).mockRejectedValueOnce(new Error('Provider unavailable'));
   render(<Host />);
   fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: source } });
-  await user.click(screen.getByRole('button', { name: 'Create template' }));
+  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Provider unavailable');
   expect(screen.getByLabelText('Prompt to convert')).toHaveValue(source);
-  await user.click(screen.getByRole('button', { name: 'Create template' }));
+  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
   expect(await screen.findByRole('button', { name: 'Use in editor' })).toBeEnabled();
 });
 

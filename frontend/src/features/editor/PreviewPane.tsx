@@ -271,7 +271,7 @@ export default function PreviewPane({
             {tryError && <p className={styles.tryResult} role="alert">{tryError}{tryError.includes('Settings →') && <> <Link href="/settings#s-api">Open Settings</Link></>}</p>}
             {result && <section ref={resultRef} className={styles.tryResult} aria-label="Try once output">
               <h3>Output</h3>
-              <p>{result.response.provider} / {result.response.model}</p>
+              <p>{aiConfig?.provider === result.response.provider ? aiConfig.provider_label : result.response.provider} / {result.response.model}</p>
               {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier inputs. Run again to try the current prompt.</p>}
               <pre tabIndex={0}>{result.response.output_text || 'The model returned no text.'}</pre>
               {result.response.output_text && (

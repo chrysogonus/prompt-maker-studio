@@ -59,7 +59,7 @@ for (const width of [1440, 390]) {
       await paste.getByLabel('Prompt to convert').fill(source);
       await page.reload();
       await expect(paste.getByLabel('Prompt to convert')).toHaveValue(source);
-      await paste.getByRole('button', { name: 'Create template' }).focus();
+      await paste.getByRole('button', { name: 'Create template with AI' }).focus();
       await page.keyboard.press('Enter');
       const review = page.getByRole('dialog', { name: 'Review your template' });
       await expect(review.getByRole('heading', { name: 'Your template is ready to review' })).toBeFocused();
@@ -151,7 +151,7 @@ test('shows pending conversion and errors without losing the source or double ch
   });
   await openPaste(page);
   const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
-  await paste.getByRole('button', { name: 'Create template' }).click();
+  await paste.getByRole('button', { name: 'Create template with AI' }).click();
   await expect(paste.getByRole('button', { name: 'Creating template…' })).toBeDisabled();
   await expect(paste.getByRole('button', { name: 'Close', exact: true })).toBeDisabled();
   await page.keyboard.press('Escape');
@@ -159,7 +159,7 @@ test('shows pending conversion and errors without losing the source or double ch
   release();
   await expect(paste.getByRole('alert')).toContainText('Provider unavailable');
   await expect(paste.getByLabel('Prompt to convert')).toHaveValue(source);
-  await paste.getByRole('button', { name: 'Create template' }).click();
+  await paste.getByRole('button', { name: 'Create template with AI' }).click();
   await expect(page.getByRole('dialog', { name: 'Review your template' })).toBeVisible();
   expect(calls).toBe(2);
 });

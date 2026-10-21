@@ -402,7 +402,7 @@ test('offers capture and connection settings when no AI connection exists', asyn
   );
   await dialog.getByLabel('Prompt to convert').fill('Keep my existing prompt.');
   await expect(dialog.getByRole('button', { name: 'Save as written' })).toBeEnabled();
-  await expect(dialog.getByRole('button', { name: 'Create template', exact: true })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Create template with AI', exact: true })).toBeDisabled();
 });
 
 test('files prompts into folders from the library and keeps Settings preferences', async ({
