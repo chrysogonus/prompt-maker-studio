@@ -307,15 +307,14 @@ def test_one_per_visitor_limit_covers_both_steps(client, public_refine, monkeypa
             patch(f"{_SERVICE}.generate_clarifying_questions", return_value=([], _USAGE)),
             patch(f"{_SERVICE}.generate_section_draft", return_value=(draft, _USAGE)),
         ):
+            # Three question-and-draft rounds fit in the default 6/minute; the seventh call does not.
             statuses = [
-                client.post("/api/public/refine/questions", json=_PROMPT).status_code,
-                client.post("/api/public/refine/draft", json=_PROMPT).status_code,
-                client.post("/api/public/refine/questions", json=_PROMPT).status_code,
-                client.post("/api/public/refine/draft", json=_PROMPT).status_code,
+                client.post(f"/api/public/refine/{step}", json=_PROMPT).status_code
+                for step in ["questions", "draft"] * 3 + ["questions"]
             ]
     finally:
         limiter.reset()
-    assert statuses == [200, 200, 200, 429]
+    assert statuses == [200] * 6 + [429]
 
 
 def test_public_calls_cap_the_answer_length(client, public_refine, mock_llm, monkeypatch):

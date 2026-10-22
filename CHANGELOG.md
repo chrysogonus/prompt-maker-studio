@@ -24,7 +24,8 @@ any release. See [Project status](./README.md#project-status).
 - A free AI prompt refiner at `/tools/prompt-refiner` for visitors without an account, off by
   default. Operators enable it with `PUBLIC_REFINE_ENABLED=true`; it runs on the server-default
   connection with per-visitor, daily and monthly limits (`PUBLIC_REFINE_RATE_LIMIT`,
-  `PUBLIC_REFINE_DAILY_LIMIT`, `PUBLIC_MONTHLY_BUDGET_USD`) and can use another model on the same
+  `PUBLIC_REFINE_DAILY_LIMIT`, `PUBLIC_MONTHLY_BUDGET_USD`; by default 6 requests a minute and 30 a
+  day per visitor, so a few question-and-draft rounds fit in a minute) and can use another model on the same
   provider (`PUBLIC_REFINE_MODEL`). "Improve now" fills in an audience, format, length and how to
   handle missing information. Migration 033 adds its spend ledger.
 

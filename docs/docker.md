@@ -213,7 +213,7 @@ LLM_API_KEY=
 # addresses (Caddy's X-Forwarded-For through uvicorn's trusted proxy). Mention
 # the free refiner in your privacy policy before enabling it.
 # PUBLIC_REFINE_ENABLED=true
-# PUBLIC_REFINE_RATE_LIMIT=3/minute;20/day
+# PUBLIC_REFINE_RATE_LIMIT=6/minute;30/day
 # PUBLIC_REFINE_DAILY_LIMIT=200
 # PUBLIC_MONTHLY_BUDGET_USD=10
 

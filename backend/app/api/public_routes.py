@@ -22,7 +22,7 @@ from app.services import public_refine, public_tools
 router = APIRouter(prefix="/api/public", tags=["public"])
 
 # Per visitor IP; the daily cap and budgets in services/public_refine.py bound the total.
-_PUBLIC_REFINE_RATE_LIMIT = os.getenv("PUBLIC_REFINE_RATE_LIMIT", "3/minute;20/day")
+_PUBLIC_REFINE_RATE_LIMIT = os.getenv("PUBLIC_REFINE_RATE_LIMIT", "6/minute;30/day")
 
 
 @router.get("/model-prices", response_model=list[PublicModelPrice])

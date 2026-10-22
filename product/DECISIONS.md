@@ -1417,7 +1417,7 @@ a model, and visitors have no account, provider or budget of their own.
 refiner service and its draft validation. It is off unless `PUBLIC_REFINE_ENABLED` is set, and
 `GET /api/public/refine` tells the page whether it is offered. Guards, cheapest first: a
 honeypot field and size limits (422), a per-IP rate limit (`PUBLIC_REFINE_RATE_LIMIT`, default
-3/minute and 20/day), the shared and public monthly ceilings (`GLOBAL_MONTHLY_BUDGET_USD`,
+6/minute and 30/day, so a few question-and-draft rounds fit in a minute), the shared and public monthly ceilings (`GLOBAL_MONTHLY_BUDGET_USD`,
 `PUBLIC_MONTHLY_BUDGET_USD`; 402) and a daily call cap across all visitors
 (`PUBLIC_REFINE_DAILY_LIMIT`, default 200; 429). The per-IP limit is one bucket for both
 steps, and only questions a draft request can carry back are returned. Each admitted call reserves its row in a separate `public_billed_calls` ledger

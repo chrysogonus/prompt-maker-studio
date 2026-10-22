@@ -11,7 +11,7 @@ export function generateMetadata() {
 const FAQ = [
   { question: 'What does the refiner change?', answer: 'It makes the prompt clearer and more specific: who the answer is for, what shape and length it should have, and what to do with missing information. It keeps your {{variables}} and your intent, and shows every added and removed word so you can judge the change.' },
   { question: 'Should I answer the questions?', answer: 'Answers make the result fit your situation instead of a generic guess. Answer the ones that matter and leave the rest blank, or skip questions and choose Improve now.' },
-  { question: 'Is it really free?', answer: 'Yes, within limits: a few refinements per minute and per day for each visitor, and a daily limit for the whole site. Sign in and connect your own AI provider to refine without these limits.' },
+  { question: 'Is it really free?', answer: 'Yes, within limits. Each request, for questions or for a refined prompt, counts toward a per-minute and a daily limit for each visitor, and the site has its own daily limit and may set a monthly budget. Sign in and connect your own AI provider to refine without these limits.' },
   { question: 'What happens to my prompt?', answer: 'It is sent to this site\'s AI provider to produce the refinement and is not stored here. Your IP address is used only briefly, in memory, to apply the limits. Avoid pasting personal or confidential information into any AI tool.' },
 ];
 
