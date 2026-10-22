@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.api import deps
 from app.auth.cookies import (
+    CSRF_COOKIE_NAME,
     SESSION_COOKIE_NAME,
     clear_session,
     issue_session,
@@ -156,7 +157,12 @@ def refresh_access_token(
         token_version=current_user.token_version or 0,
         auth_time=auth_time,
     )
-    issue_session(response, access_token)
+    # With cookie auth, get_current_user has checked this CSRF token against the
+    # header. Keeping it means writes sent alongside the refresh still match.
+    checked_csrf = (
+        request.cookies.get(CSRF_COOKIE_NAME) if request.cookies.get(SESSION_COOKIE_NAME) else None
+    )
+    issue_session(response, access_token, csrf_token=checked_csrf)
     return {"token_type": "bearer", "expires_at": now + lifetime}
 
 

@@ -163,7 +163,7 @@ export class AuthService {
         });
       };
       // Refresh can set httpOnly cookies even if its body is ignored. Clear
-      // them afterward, reading the CSRF cookie that refresh may have rotated.
+      // them afterward, reading the CSRF cookie as it is then.
       this.logoutPromise = (this.refreshPromise
         ? this.refreshPromise.catch(() => {}).then(clearCookies)
         : clearCookies())

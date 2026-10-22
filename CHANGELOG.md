@@ -26,6 +26,9 @@ any release. See [Project status](./README.md#project-status).
 
 ### Fixed
 
+- Saving right after loading a page could fail with "Missing or invalid CSRF token": the
+  session refresh started by the first click replaced the token a save in flight was using.
+  Refreshing now keeps the token.
 - Splitting a section over 10,000 characters (when importing notes, or saving from a free tool)
   no longer cuts through a `{{placeholder}}` or an emoji.
 - A variable named like a built-in property, such as `{{constructor}}`, is no longer filled in
