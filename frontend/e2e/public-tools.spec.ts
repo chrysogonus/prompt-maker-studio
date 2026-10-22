@@ -85,16 +85,18 @@ test('a filled template saves into a new library after signing up', async ({ pag
   await page.getByRole('button', { name: 'Save to my library' }).click();
   await expect(page).toHaveURL(/\/editor\/new\?import=1$/);
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('Sign in or create a free account to save your prompt to your library.');
+  await expect(page.getByRole('link', { name: 'Go back without signing in' })).toHaveAttribute('href', '/tools/prompt-template-filler');
   await page.getByRole('button', { name: 'Create account' }).click();
   await page.locator('#username').fill(`tools${suffix}`);
   await page.locator('#password').fill('E2ePass123!');
   await page.locator('#reg-email').fill(`tools${suffix}@example.com`);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  const review = page.getByRole('dialog', { name: 'Review your template' });
-  await expect(review).toBeVisible();
-  await expect(review.getByRole('textbox', { name: 'Value for customer_name' })).toHaveValue('Dana');
-  await review.getByRole('button', { name: 'Use in editor' }).click();
+  // Already structured: straight into the draft, no review.
+  await expect(page.getByText('Imported 1 section into draft—save to keep.')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByLabel('customer_name', { exact: true })).toHaveValue('Dana');
   await expect(page.getByLabel('Task text')).toHaveValue(/\{\{customer_name\}\}/);
 });
 

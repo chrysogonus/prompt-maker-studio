@@ -7,6 +7,7 @@ import { ApiClient, ApiError, PROMPT_NOT_FOUND_MESSAGE, isValidPromptId } from '
 import { useAuth } from '@/lib/auth-context';
 import { pageTitle, storageKey } from '@/lib/branding';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
+import { isAppHandoff, type AppHandoff } from '@/lib/openInApp';
 import { pasteHandoffKey } from '@/lib/promptImport';
 import { sectionNameError, suggestTitle, variablesIn } from '@/lib/sections';
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
@@ -63,6 +64,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
   const noticeTimer = useRef<number | null>(null);
   const [saveDialog, setSaveDialog] = useState<{ name: string; folder: string; error: string } | null>(null);
   const saveDefaults = useRef({ name: '', folder: '' });
+  const pendingHandoff = useRef<AppHandoff | null>(null);
   const hydratedFor = useRef('');
   const [moveDialog, setMoveDialog] = useState<string | null>(null);
   const [folders, setFolders] = useState<string[]>([]);
@@ -204,9 +206,11 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
         let session: ImportSession = { text: handoff };
         try {
           const parsed: unknown = JSON.parse(handoff);
-          if (parsed && typeof parsed === 'object' && typeof (parsed as ImportSession).text === 'string') session = parsed as ImportSession;
+          // A public page's sections open straight in the draft (applied below, once importSections exists).
+          if (isAppHandoff(parsed)) pendingHandoff.current = parsed;
+          else if (parsed && typeof parsed === 'object' && typeof (parsed as ImportSession).text === 'string') session = parsed as ImportSession;
         } catch { /* A plain-text handoff is the note itself. */ }
-        setImportSession(session);
+        if (!pendingHandoff.current) setImportSession(session);
       }
     }
   }, [draftKey, initialStarter, isNew, openImport, restoreInputs]);
@@ -512,7 +516,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     setMode('filled');
     setMobileTab('use');
     setPreviewOpen(true);
-    if (isNew) saveDefaults.current = { name: importSession.title ?? '', folder: importSession.folder ?? '' };
+    if (isNew) saveDefaults.current = { name: next.title ?? importSession.title ?? '', folder: importSession.folder ?? '' };
     // The imported sections replace any restored draft; Undo brings it back.
     setRestoredDraft(false);
     setImportSession({ text: '' });
@@ -544,6 +548,12 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
       } },
     });
   };
+  useEffect(() => {
+    const handoff = pendingHandoff.current;
+    if (!handoff) return;
+    pendingHandoff.current = null;
+    importSections(handoff);
+  });
   return {
     router,
     isNew,

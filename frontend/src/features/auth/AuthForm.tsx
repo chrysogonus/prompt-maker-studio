@@ -5,6 +5,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { AuthService } from '@/lib/auth';
 import { APP_NAME } from '@/lib/branding';
 import Wordmark from '@/components/ui/Wordmark';
@@ -15,6 +16,10 @@ import { PASSWORD_HINT, passwordPolicyError } from './passwordPolicy';
 
 interface AuthFormProps {
   onSuccess: () => void;
+  /** Why sign-in is needed right now, such as a template waiting to be saved. */
+  notice?: string;
+  /** A way back for visitors who came from a public page. */
+  backHref?: string;
 }
 
 type View = 'login' | 'register' | 'forgot-password';
@@ -28,7 +33,7 @@ const FIELD_ORDER: FieldName[] = ['username', 'password', 'email'];
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function AuthForm({ onSuccess }: AuthFormProps) {
+export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps) {
   const [view, setView] = useState<View>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -222,6 +227,12 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} className={styles.form} noValidate>
+        {notice && (
+          <div className={styles.sessionNotice} role="status">
+            {notice}
+            {backHref && <> <Link href={backHref}>Go back without signing in</Link></>}
+          </div>
+        )}
         {view === 'login' && sessionNotice && (
           <div className={styles.sessionNotice} role="status">{sessionNotice}</div>
         )}

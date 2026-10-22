@@ -1261,6 +1261,23 @@ it('opens Paste a prompt with a note handed over from the library, once', async 
   expect(sessionStorage.getItem(pasteHandoffKey())).toBeNull();
 });
 
+it('opens a public page hand-off straight in the draft, with its title offered on Save', async () => {
+  const user = userEvent.setup();
+  sessionStorage.setItem(pasteHandoffKey(), JSON.stringify({
+    origin: 'handoff', title: 'Trip plan', returnTo: '/gallery/trip',
+    fields: [{ name: 'Task', content: 'Plan {{days}} days.' }],
+    values: { days: '3' }, metadata: { days: { type: 'text', description: 'How long' } },
+  }));
+  render(<PromptEditor openImport />);
+  expect(await screen.findByText('Imported 1 section into draft—save to keep.')).toBeInTheDocument();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(sessionStorage.getItem(pasteHandoffKey())).toBeNull();
+  expect(routerReplace).toHaveBeenCalledWith('/editor/new', { scroll: false });
+  expect(screen.getByLabelText('days', { exact: true })).toHaveValue('3');
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(within(screen.getByRole('dialog', { name: 'Save prompt' })).getByLabelText('Name')).toHaveValue('Trip plan');
+});
+
 it('offers the library title and folder on Save and drops a stale draft notice after import', async () => {
   const user = userEvent.setup();
   localStorage.setItem(draftKey('new'), JSON.stringify({ sections: [{ name: 'Task', content: 'Old unsaved idea' }], metadata: {}, values: {} }));

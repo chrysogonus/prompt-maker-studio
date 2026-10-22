@@ -1434,7 +1434,7 @@ stronger model on the same provider.
 limits over a third-party challenge, which keeps the CSP and the privacy policy small. A
 separate ledger avoids rebuilding `billed_calls` to make `user_id` nullable, and lets public
 rows deliberately carry no user, IP address or prompt text. Results are handed to the app
-through the existing Paste a prompt review, so saving needs no new endpoint. A visitor pasting a
+straight into an unsaved editor draft (already structured, so no review), so saving needs no new endpoint. A visitor pasting a
 one-line prompt expects a visibly better prompt, while an editor user refining a saved template
 expects their requirements to stay theirs, hence the two draft modes.
 

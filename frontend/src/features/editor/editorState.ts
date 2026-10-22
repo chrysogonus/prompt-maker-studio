@@ -112,6 +112,8 @@ export interface ImportSession {
 
 export interface ImportedPrompt {
   saveAsWritten?: boolean;
+  /** Offered as the name on Save when the import session has none. */
+  title?: string;
   fields: PromptField[];
   metadata: Metadata;
   values: Record<string, string>;

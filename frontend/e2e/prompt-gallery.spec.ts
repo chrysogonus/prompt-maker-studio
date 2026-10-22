@@ -27,15 +27,15 @@ test('a template fills in with example inputs, saves into a new library and reop
   await page.getByRole('button', { name: 'Save to my library' }).click();
 
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('save “Bug fix brief for a coding agent” to your library');
   await page.getByRole('button', { name: 'Create account' }).click();
   await page.locator('#username').fill(`gallery${suffix}`);
   await page.locator('#password').fill('E2ePass123!');
   await page.locator('#reg-email').fill(`gallery${suffix}@example.com`);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  const review = page.getByRole('dialog', { name: 'Review your template' });
-  await expect(review.getByRole('textbox', { name: 'Value for check_command' })).toHaveValue('make test');
-  await review.getByRole('button', { name: 'Use in editor' }).click();
+  await expect(page.getByText(/^Imported \d+ sections into draft—save to keep\.$/)).toBeVisible();
+  await expect(page.getByLabel('check_command', { exact: true })).toHaveValue('make test');
   await expect(page.getByLabel('Goal text')).toHaveValue(/\{\{symptom\}\}/);
 
   // Save, then reload: the sections and the template's hints are in the library.

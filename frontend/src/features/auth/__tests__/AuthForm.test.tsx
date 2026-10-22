@@ -50,6 +50,14 @@ describe('AuthForm — login view', () => {
     );
   });
 
+  it('explains a waiting hand-off in both views and links back to the page it came from', async () => {
+    render(<AuthForm onSuccess={mockOnSuccess} notice="Sign in to save “Trip” to your library." backHref="/gallery/trip" />);
+    expect(screen.getByRole('status')).toHaveTextContent('Sign in to save “Trip” to your library.');
+    expect(screen.getByRole('link', { name: 'Go back without signing in' })).toHaveAttribute('href', '/gallery/trip');
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+    expect(screen.getByRole('status')).toHaveTextContent('Sign in to save “Trip” to your library.');
+  });
+
   it('keeps the prompt workspace preview decorative', () => {
     render(<AuthForm onSuccess={mockOnSuccess} />);
     const preview = screen.getByText('<ROLE>');
