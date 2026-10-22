@@ -44,6 +44,7 @@ any release. See [Project status](./README.md#project-status).
 
 ### Changed
 
+- The app uses British spelling throughout: the Favorites view is now Favourites.
 - Public pages (landing page, guides, tools, gallery, legal pages) follow your system's light or
   dark setting until you choose a theme; the app itself stays light by default.
 - Registration is open by default. Operators who relied on the implicit closed default must now

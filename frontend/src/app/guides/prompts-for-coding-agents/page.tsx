@@ -5,11 +5,12 @@ import { renderSections } from '@/lib/sections';
 import { TOOLS } from '@/lib/tools';
 
 const example = renderSections([
-  { name: 'Goal', content: 'Fix the bug where {{symptom}}.' },
+  { name: 'Goal', content: 'Fix the bug where {{symptom}}. Expected behaviour: {{expected}}.' },
   { name: 'Context', content: 'Repository: {{repo}}. The relevant code is in {{files}}. Read the project instructions file before you start.' },
   { name: 'Constraints', content: 'Find the root cause before editing. Keep the change minimal and match the surrounding code. Do not change public APIs, dependencies or unrelated files. Do not commit or push.' },
   { name: 'Done when', content: 'A regression test fails before the fix and passes after it, and {{check_command}} passes.' },
-  { name: 'Report', content: 'Summarize the cause, the change, the tests you ran with their results, and anything you could not verify.' },
+  { name: 'Stop and ask', content: 'Before deleting data, changing a schema or touching other modules, or if the cause turns out to be different from this description.' },
+  { name: 'Report', content: 'Summarize the cause, the change, the commands you ran with their results, and anything you could not verify.' },
 ]);
 
 export function generateMetadata() {

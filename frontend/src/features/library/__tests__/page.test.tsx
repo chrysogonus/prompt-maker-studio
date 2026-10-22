@@ -140,7 +140,7 @@ describe('LibraryPage', () => {
   });
 
   it.each([
-    ['view=favorites', 'Favorites', ['Reply to a tricky email']],
+    ['view=favorites', 'Favourites', ['Reply to a tricky email']],
     ['view=unfiled', 'Unfiled', ['LinkedIn post']],
     ['folder=Work', 'Work', ['Weekly status update']],
   ])('narrows to %s', async (params, title, names) => {
@@ -257,8 +257,8 @@ describe('LibraryPage', () => {
     vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue(LIBRARY.map(prompt => ({ ...prompt, content_updated_at: prompt.updated_at })));
     vi.mocked(ApiClient.updatePrompt).mockResolvedValue(saved({ is_favorite: true, updated_at: '2026-10-17T12:00:00Z', content_updated_at: LIBRARY[0].updated_at }));
     await renderLibrary();
-    await user.click(screen.getByRole('button', { name: 'Add Weekly status update to favorites' }));
-    await screen.findByRole('button', { name: 'Remove Weekly status update from favorites' });
+    await user.click(screen.getByRole('button', { name: 'Add Weekly status update to favourites' }));
+    await screen.findByRole('button', { name: 'Remove Weekly status update from favourites' });
     expect(rowNames()[0]).toBe('Reply to a tricky email');
   });
 
@@ -481,11 +481,11 @@ describe('LibraryPage', () => {
     vi.mocked(ApiClient.updatePrompt).mockResolvedValue(saved({ is_favorite: true }));
     await renderLibrary();
 
-    await user.click(screen.getByRole('button', { name: 'Add Weekly status update to favorites' }));
+    await user.click(screen.getByRole('button', { name: 'Add Weekly status update to favourites' }));
 
     expect(ApiClient.updatePrompt).toHaveBeenCalledWith(1, { is_favorite: true });
     expect(
-      await screen.findByRole('button', { name: 'Remove Weekly status update from favorites' }),
+      await screen.findByRole('button', { name: 'Remove Weekly status update from favourites' }),
     ).toHaveAttribute('aria-pressed', 'true');
   });
 

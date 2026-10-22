@@ -171,7 +171,7 @@ export function useLibrary() {
       notifyLibraryChanged();
     } catch {
       replace(prompt);
-      showToast({ text: 'Could not update favorites. Try again.' });
+      showToast({ text: 'Could not update favourites. Try again.' });
     }
   };
 

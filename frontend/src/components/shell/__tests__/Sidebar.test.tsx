@@ -97,7 +97,7 @@ describe('Sidebar', () => {
     expect(await screen.findByRole('link', { name: /Work/ })).toHaveTextContent('Work2');
     expect(navLabels()).toEqual([
       'All prompts5',
-      'Favorites1',
+      'Favourites1',
       'Learning1',
       'Work2',
       'Recovered history1',
@@ -149,7 +149,7 @@ describe('Sidebar', () => {
     render(<Sidebar open onNavigate={onNavigate} />);
     await screen.findByRole('link', { name: /Work/ });
 
-    await user.click(screen.getByRole('link', { name: /Favorites/ }));
+    await user.click(screen.getByRole('link', { name: /Favourites/ }));
     expect(onNavigate).toHaveBeenCalled();
 
     expect(screen.getByText('Signed in as alex')).toBeInTheDocument();

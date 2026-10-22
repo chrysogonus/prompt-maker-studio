@@ -14,7 +14,7 @@ export default function ImagePromptsPage() {
   return (
     <GuideArticle guide={GUIDES.imagePrompts}>
       <p>
-        Image models such as DALL·E, Midjourney, Stable Diffusion or Gemini turn a description into
+        Image models such as ChatGPT (GPT Image), Midjourney, Stable Diffusion or Gemini turn a description into
         a picture. They follow concrete visual words far better than abstract ones: &quot;a lighthouse
         at dusk, warm window light&quot; works; &quot;a hopeful image&quot; leaves almost everything to
         chance.

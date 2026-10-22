@@ -13,6 +13,8 @@ export type GalleryCategoryId = 'coding' | 'image' | 'research' | 'everyday';
 export interface GalleryCategory {
   id: GalleryCategoryId;
   label: string;
+  /** Lowercase, for running text: "a free {noun} prompt template". */
+  noun: string;
   description: string;
 }
 
@@ -31,10 +33,10 @@ export interface GalleryTemplate {
 }
 
 export const GALLERY_CATEGORIES: GalleryCategory[] = [
-  { id: 'coding', label: 'Coding agents', description: 'Task briefs for Claude Code, Codex, Cursor and other agents that edit your repository.' },
-  { id: 'image', label: 'Image generation', description: 'Structured prompts for DALL·E, Midjourney, Stable Diffusion and Gemini.' },
-  { id: 'research', label: 'Research & writing', description: 'Summaries, reports and drafts that stay close to your sources.' },
-  { id: 'everyday', label: 'Everyday work', description: 'Email, meetings, planning and learning.' },
+  { id: 'coding', label: 'Coding agents', noun: 'coding-agent', description: 'Task briefs for Claude Code, Codex, Cursor and other agents that edit your repository.' },
+  { id: 'image', label: 'Image generation', noun: 'image generation', description: 'Structured prompts for ChatGPT (GPT Image), Midjourney, Stable Diffusion and Gemini.' },
+  { id: 'research', label: 'Research & writing', noun: 'research and writing', description: 'Summaries, reports and drafts that stay close to your sources.' },
+  { id: 'everyday', label: 'Everyday work', noun: 'everyday', description: 'Email, meetings, planning and learning.' },
 ];
 
 export const GALLERY: GalleryTemplate[] = [
@@ -50,10 +52,11 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Context', content: 'Start in {{files}}. Read the project instructions file before changing anything.' },
       { name: 'Constraints', content: 'Find the root cause before editing. Keep the change minimal and match the surrounding code. Do not change public APIs, dependencies or unrelated files. Do not commit or push.' },
       { name: 'Done when', content: 'A new regression test fails before the fix and passes after it, and {{check_command}} passes.' },
+      { name: 'Stop and ask', content: 'Before deleting data, changing a schema or touching other modules, or if the cause turns out to be different from this description.' },
       { name: 'Report', content: 'Explain the cause, the change, the commands you ran with their results, and anything you could not verify.' },
     ],
     hints: { symptom: 'What goes wrong, and how to reproduce it', expected: 'What should happen instead', files: 'Files or modules to start in', check_command: 'Test or lint command' },
-    examples: { symptom: 'saving a prompt with an emoji in its name returns a 500 error', expected: 'the prompt saves and keeps the emoji', files: 'backend/app/services/prompts/', check_command: 'make test' },
+    examples: { symptom: 'saving a note with an emoji in its title returns a 500 error', expected: 'the note saves and keeps the emoji', files: 'src/api/notes/', check_command: 'npm test' },
     tips: ['Describe the symptom, not your guess at the fix.', 'Ask for one bug per prompt so each change stays reviewable.'],
     guide: 'codingAgents',
   },
@@ -88,7 +91,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Constraints', content: 'Do not comment on formatting a linter handles. Do not invent problems to fill the list.' },
     ],
     hints: { change: 'Branch, pull request or pasted diff', purpose: 'What the change is meant to do' },
-    examples: { change: 'the diff of the current branch against dev', purpose: 'let users test an AI connection before saving it' },
+    examples: { change: 'the diff of the current branch against main', purpose: 'let users reset their password by email' },
     tips: ['A failure scenario per finding separates real bugs from style opinions.'],
     guide: 'codingAgents',
   },
@@ -105,7 +108,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Done when', content: '{{test_command}} passes and each new test fails if the behaviour it describes breaks.' },
     ],
     hints: { target: 'Module or function', test_location: 'Where similar tests live', edge_cases: 'Empty input, limits, unusual values', test_command: 'Command that runs the tests' },
-    examples: { target: 'the CSV import of test cases', test_location: 'backend/tests/', edge_cases: 'empty file, a quoted comma, 21 rows', test_command: 'make test' },
+    examples: { target: 'the CSV import of contacts', test_location: 'tests/', edge_cases: 'empty file, a quoted comma, a missing column', test_command: 'npm test' },
     tips: ['Ask the agent to show each new test failing against a deliberately broken copy of the code, then revert it.'],
   },
   {
@@ -120,7 +123,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Report', content: 'List each step and why it helps. Flag anything you were unsure was behaviour-preserving instead of changing it.' },
     ],
     hints: { target: 'File, class or function', problems: 'Duplication, long functions, unclear names', test_command: 'Command that runs the tests' },
-    examples: { target: 'the settings form component', problems: 'save and test build the same request twice', test_command: 'npm test' },
+    examples: { target: 'the settings form component', problems: 'the save and preview handlers duplicate the same validation', test_command: 'npm test' },
     tips: ['Make sure the area is covered by tests before refactoring; ask for those first if not.'],
   },
   {
@@ -205,7 +208,7 @@ export const GALLERY: GalleryTemplate[] = [
     ],
     hints: { theme: 'Topic of the post', motif: 'A visual element', style: 'Flat, photographic, 3D', brand_colours: 'Colour names or hex values', text_area: 'Top, left, centre', aspect: '1:1 for posts, 9:16 for stories' },
     examples: { theme: 'a product launch', motif: 'rising paper planes', style: 'Soft 3D render', brand_colours: 'coral and deep plum', text_area: 'top', aspect: '1:1' },
-    tips: ['Image models are unreliable with text; add the headline in a design tool.'],
+    tips: ['Image models can still misspell text; for exact wording, add the headline in a design tool.'],
     guide: 'imagePrompts',
   },
   {
@@ -228,7 +231,7 @@ export const GALLERY: GalleryTemplate[] = [
     slug: 'interior-concept',
     title: 'Interior design concept',
     category: 'image',
-    summary: 'A room visualised with style, materials, light and camera position.',
+    summary: 'A room visualized with style, materials, light and camera position.',
     sections: [
       { name: 'Subject', content: 'A {{room}} in {{style}} style, for {{who}}.' },
       { name: 'Materials', content: '{{materials}}, a palette of {{palette}}.' },
@@ -256,7 +259,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Constraints', content: 'Separate what the sources agree on from where they disagree. If they do not answer part of the question, say so. Never invent sources, numbers or quotes.' },
     ],
     hints: { audience: 'Who will read it', sources: 'Paste each source after a number: [1] …', question: 'What you want to know', word_limit: 'For example 300' },
-    examples: { audience: 'a product manager new to the topic', question: 'What limits battery life in cold weather?', word_limit: '300' },
+    examples: { audience: 'a product manager new to the topic', sources: '[1] Lithium-ion cells lose capacity in the cold because the electrolyte thickens and ions move more slowly.\n[2] Below 0 °C, charging can plate lithium on the anode, so many devices limit charging in the cold.', question: 'What limits battery life in cold weather?', word_limit: '300' },
     tips: ['Check the cited passages for anything you will repeat or publish.'],
     guide: 'researchWriting',
   },
@@ -274,7 +277,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Constraints', content: 'No superlatives you cannot prove, no invented quotes or numbers. If a key point is vague, write around it and list it under "Needs detail" after the post.' },
     ],
     hints: { audience: 'Readers', voice_sample: 'One or two sentences in your voice', key_points: 'Bullet list of facts and claims', title: 'Working title', word_count: 'For example 800' },
-    examples: { audience: 'small-business owners', voice_sample: 'We keep things simple: you get one invoice a month, and that is it.', title: 'Why we switched to monthly billing', word_count: '700' },
+    examples: { audience: 'small-business owners', voice_sample: 'We keep things simple: you get one invoice a month, and that is it.', key_points: '- Customers asked for one predictable bill\n- Monthly billing cut support emails about invoices by a third\n- Annual plans stay available at the same discount', title: 'Why we switched to monthly billing', word_count: '700' },
     tips: [],
     guide: 'researchWriting',
   },
@@ -306,7 +309,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Constraints', content: 'Keep every fact, number and name. Explain terms they would not know the first time they appear. Reading level: {{reading_level}}. Length: about {{length}}.' },
       { name: 'Format', content: 'The rewritten text, then a short list of anything you removed or simplified.' },
     ],
-    hints: { text: 'Paste the original', audience: 'New readers', reader_goal: 'What they will do with it', reading_level: 'For example general public', length: 'Same, shorter, one paragraph' },
+    hints: { text: 'Paste the original', audience: 'New readers', reader_goal: 'What they will do with it', reading_level: 'For example general public', length: 'For example half the original, one paragraph' },
     examples: { audience: 'customers with no technical background', reader_goal: 'understand what changes for them', reading_level: 'general public', length: 'half the original' },
     tips: [],
     guide: 'researchWriting',
@@ -339,7 +342,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Constraints', content: 'Do not say whether claims are true unless the draft itself provides the evidence; your job is to find what needs checking.' },
     ],
     hints: { draft: 'Paste the text to check' },
-    examples: {},
+    examples: { draft: 'Our app now has 2 million users, up from 1.2 million last year, and it was named the best budgeting app of 2025.' },
     tips: ['Use it before publishing anything an AI helped write.'],
     guide: 'researchWriting',
   },
@@ -357,7 +360,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Constraints', content: 'Separate what was decided from what was only discussed. Do not attribute opinions to people unless the notes name them. At most {{word_limit}} words.' },
     ],
     hints: { transcript: 'Paste the transcript or notes', word_limit: 'For example 250' },
-    examples: { word_limit: '250' },
+    examples: { transcript: 'Ana: Launch moves to 14 Nov, QA needs another week.\nBen: I will update the release notes by Friday.\nAna: Pricing page still open; marketing to propose two options.', word_limit: '250' },
     tips: [],
     guide: 'goodPrompt',
   },
@@ -389,7 +392,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Format', content: 'Three sections with plain headings: Shipped, At risk, Asks. At most five bullets per section. No intro or sign-off.' },
     ],
     hints: { team: 'Team or project', week: 'Dates', notes: 'Stand-up notes, ticket titles, chat snippets' },
-    examples: { team: 'Payments', week: '6–10 Oct' },
+    examples: { team: 'Payments', week: '6–10 Oct', notes: 'Shipped refund API v2. Card form bug fixed. Waiting on legal for the new terms. Load test slipped to next week.' },
     tips: [],
     guide: 'reusable',
   },
@@ -404,7 +407,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Format', content: 'Three short steps, each with one everyday example, then one question that checks understanding. Wait for my answer before going further.' },
       { name: 'Constraints', content: 'Define any technical term the first time you use it. Keep it under 250 words.' },
     ],
-    hints: { topic: 'What to learn', background: 'What the learner already knows' },
+    hints: { topic: 'What to learn', background: 'What they already know, such as "is good with budgets but has never invested"' },
     examples: { topic: 'compound interest', background: 'is good with everyday budgeting but has never invested' },
     tips: [],
     guide: 'goodPrompt',
@@ -436,7 +439,7 @@ export const GALLERY: GalleryTemplate[] = [
       { name: 'Constraints', content: 'Do not invent experience, titles or numbers.' },
     ],
     hints: { job_description: 'Paste the job ad', cv: 'Paste your CV' },
-    examples: {},
+    examples: { job_description: 'Data analyst. Required: SQL, dashboards in Tableau or Power BI, 2+ years of experience. Nice to have: Python.', cv: 'Analyst, 3 years. Built weekly sales dashboards in Power BI. Daily SQL. Some Excel macros.' },
     tips: ['Remove personal contact details before pasting a CV into any AI tool.'],
   },
 ];
@@ -463,7 +466,7 @@ export function featuredTemplates(): GalleryTemplate[] {
 /** The summary plus what the page offers, long enough for a search snippet. */
 export function galleryDescription(template: GalleryTemplate): string {
   const category = GALLERY_CATEGORIES.find((item) => item.id === template.category)!;
-  return `${template.summary} A free ${category.label.toLowerCase()} prompt template, ready to fill in and copy.`;
+  return `${template.summary} A free ${category.noun} prompt template, ready to fill in and copy.`;
 }
 
 export function galleryMetadata(template?: GalleryTemplate) {

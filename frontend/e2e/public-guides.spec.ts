@@ -23,7 +23,7 @@ test('visitors can follow the guides from the homepage into the app', async ({ p
   await expect(page).toHaveURL(/\/guides\/prompt-template-variables$/);
   await page.getByRole('region', { name: 'Keep learning' })
     .getByRole('link', { name: 'How to organize and reuse your ChatGPT prompts' }).click();
-  await page.getByRole('link', { name: 'Open Prompt Maker Studio', exact: true }).click();
+  await page.getByRole('link', { name: 'Open the app', exact: true }).click();
   await expect(page).toHaveURL(/\/library$/);
 });
 

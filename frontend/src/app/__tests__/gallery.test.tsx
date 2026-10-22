@@ -41,7 +41,7 @@ describe('Prompt gallery', () => {
     expect(screen.getByRole('textbox', { name: 'symptom' })).toHaveAttribute('placeholder', 'What goes wrong, and how to reproduce it');
     expect(screen.getByRole('button', { name: 'Use example inputs' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'how to write prompts for coding agents' })).toHaveAttribute('href', '/guides/prompts-for-coding-agents');
-    expect(within(screen.getByRole('region', { name: 'More coding agents templates' })).getAllByRole('link')).toHaveLength(4);
+    expect(within(screen.getByRole('region', { name: 'More coding-agent templates' })).getAllByRole('link')).toHaveLength(4);
   });
 
   it('gives every template a search-length description and structured data', async () => {

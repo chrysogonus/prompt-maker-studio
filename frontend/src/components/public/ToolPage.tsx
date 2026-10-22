@@ -61,7 +61,7 @@ export default function ToolPage({ tool, widget, faq, children, local = true }: 
           history. Creating an account is free, and saving or filling in prompts needs no AI provider.
         </p>
         <div className={styles.actions}>
-          <ButtonLink href="/library" variant="primary">Open {APP_NAME}</ButtonLink>
+          <ButtonLink href="/library" variant="primary">Open the app</ButtonLink>
           <ButtonLink href="/gallery">Browse free templates</ButtonLink>
         </div>
       </section>

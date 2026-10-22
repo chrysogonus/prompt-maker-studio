@@ -151,7 +151,7 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
 
       <nav aria-label="Library" className={styles.nav}>
         {item({ type: 'all' }, 'All prompts', <AllPromptsIcon tone="inherit" />, counts.all)}
-        {item({ type: 'favorites' }, 'Favorites', <FavoriteIcon tone="inherit" />, counts.favorites)}
+        {item({ type: 'favorites' }, 'Favourites', <FavoriteIcon tone="inherit" />, counts.favorites)}
 
         <h2 className={styles.heading}>Folders</h2>
         {counts.folders.map(({ name, count }) =>

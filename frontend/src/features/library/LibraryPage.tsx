@@ -162,7 +162,7 @@ function LibraryContent() {
       type="button"
       className={styles.star}
       aria-pressed={prompt.is_favorite}
-      aria-label={prompt.is_favorite ? `Remove ${prompt.name} from favorites` : `Add ${prompt.name} to favorites`}
+      aria-label={prompt.is_favorite ? `Remove ${prompt.name} from favourites` : `Add ${prompt.name} to favourites`}
       onClick={(e) => {
         e.stopPropagation();
         void toggleFavorite(prompt);
@@ -204,7 +204,7 @@ function LibraryContent() {
   } else if (visible.length === 0 && view.type === 'favorites') {
     body = (
       <div className={styles.empty}>
-        <h2>No favorites yet</h2>
+        <h2>No favourites yet</h2>
         <p>Star the prompts you use most and they’ll be collected here.</p>
       </div>
     );

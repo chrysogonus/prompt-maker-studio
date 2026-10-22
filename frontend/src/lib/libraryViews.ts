@@ -34,7 +34,7 @@ export function viewTitle(view: LibraryView): string {
     case 'all':
       return 'All prompts';
     case 'favorites':
-      return 'Favorites';
+      return 'Favourites';
     case 'unfiled':
       return 'Unfiled';
     case 'folder':

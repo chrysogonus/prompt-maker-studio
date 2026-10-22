@@ -37,11 +37,11 @@ export default function GuideArticle({ guide, children }: {
       <section className={styles.next} aria-labelledby="put-it-to-use">
         <h2 id="put-it-to-use">Put it to use</h2>
         <p>
-          Sign in to keep your own library. Writing, saving, filling in, and copying prompts needs
-          no AI provider connection. Paste a prompt, Refine, and Try once are optional actions
+          Sign in to keep your own library. Writing, saving, filling in and copying prompts need
+          no AI provider. Paste a prompt, Refine, and Try once are optional actions
           that use the provider you connect.
         </p>
-        <ButtonLink href="/library" variant="primary">Open {APP_NAME}</ButtonLink>
+        <ButtonLink href="/library" variant="primary">Open the app</ButtonLink>
       </section>
       <section className={styles.next} aria-labelledby="keep-learning">
         <h2 id="keep-learning">Keep learning</h2>

@@ -42,7 +42,7 @@ describe('Free tools', () => {
       ? /your prompt is sent to its AI provider/ : /Runs in your browser; nothing is uploaded\.$/);
     expect(screen.getByRole('heading', { name: 'Questions' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'All tools' })).toHaveAttribute('href', '/tools');
-    expect(screen.getByRole('link', { name: 'Open Prompt Maker Studio' })).toHaveAttribute('href', '/library');
+    expect(screen.getByRole('link', { name: 'Open the app' })).toHaveAttribute('href', '/library');
     const more = screen.getByRole('region', { name: 'More free tools' });
     expect(within(more).getAllByRole('link')).toHaveLength(tools.length - 1);
     expect(more.querySelector(`a[href="${path}"]`)).not.toBeInTheDocument();

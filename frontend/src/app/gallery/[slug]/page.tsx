@@ -71,7 +71,7 @@ export default async function GalleryTemplatePage({ params }: Params) {
       </div>
       {related.length > 0 && (
         <section className={guideStyles.next} aria-labelledby="more-templates">
-          <h2 id="more-templates">More {category.label.toLowerCase()} templates</h2>
+          <h2 id="more-templates">More {category.noun} templates</h2>
           <ul className={guideStyles.guideList}>
             {related.map((item) => (
               <li key={item.slug}>

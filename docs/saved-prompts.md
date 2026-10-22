@@ -188,7 +188,7 @@ above both panes as stored only in the current browser.
   section, preserving its text. Prompts with a single section copy as plain text by
   default; Output options can add the section tags.
   Optional AI conversion still offers review before applying.
-- The sidebar narrows it to **Favorites**, a **folder**, or **Unfiled**.
+- The sidebar narrows it to **Favourites**, a **folder**, or **Unfiled**.
 - Library cards expose Copy template and, for prompts with variables, Fill and copy, which opens
   the filling view directly on desktop and phones. Each prompt's menu: Copy template, Rename,
   Move to folder, Duplicate, Delete. Delete takes effect

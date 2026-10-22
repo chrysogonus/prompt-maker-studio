@@ -34,7 +34,7 @@ describe('Public guides', () => {
     render(<Page />);
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole('link', { name: 'Open Prompt Maker Studio' })).toHaveAttribute('href', '/library');
+    expect(screen.getByRole('link', { name: 'Open the app' })).toHaveAttribute('href', '/library');
     expect(screen.getByRole('link', { name: 'All guides' })).toHaveAttribute('href', '/guides');
     const related = screen.getByRole('region', { name: 'Keep learning' });
     for (const other of articles.filter((article) => article.path !== path)) {

@@ -65,11 +65,11 @@ export default async function LandingPage() {
               </ButtonLink>
               <RepositoryLink className={styles.sourceLink} />
             </div>
-            <p className={styles.heroNote}>Save, fill and copy. No AI connection needed.</p>
+            <p className={styles.heroNote}>Save, fill in and copy. No AI provider needed.</p>
           </div>
           <figure className={styles.demo}>
             <div className={styles.demoTemplate}>
-              <h2>Write it once</h2>
+              <p className={styles.demoTitle}>Write it once</p>
               <pre><span className={styles.demoTag}>{'<TASK>\n'}</span>
                 {'Write a '}
                 <span className={styles.demoVariable}>{'{{tone}}'}</span>
@@ -84,7 +84,7 @@ export default async function LandingPage() {
               <div><dt>days_late</dt><dd>3</dd></div>
             </dl>
             <div className={styles.demoResult}>
-              <h2>Make it yours</h2>
+              <p className={styles.demoTitle}>Make it yours</p>
               <pre><span className={styles.demoTag}>{'<TASK>\n'}</span>
                 {'Write a '}
                 <mark>warm and direct</mark>
@@ -142,14 +142,14 @@ export default async function LandingPage() {
               </dd>
             </div>
             <div>
-              <dt>Folders, favorites and search</dt>
+              <dt>Folders, favourites and search</dt>
               <dd>Find a prompt by its name, its folder or any text inside it.</dd>
             </div>
             <div>
-              <dt>Your library in ChatGPT</dt>
+              <dt>Your library in ChatGPT and Claude</dt>
               <dd>
-                Connect your account to ChatGPT to list, open and save prompts without leaving the
-                chat.
+                Connect your account to ChatGPT or Claude to list, open, save and update prompts
+                without leaving the chat.
               </dd>
             </div>
           </dl>
@@ -161,7 +161,7 @@ export default async function LandingPage() {
             width={1440}
             height={900}
             loading="lazy"
-            alt="The prompt library: prompts sorted into folders, with favorites and search."
+            alt="The prompt library: prompts sorted into folders, with favourites and search."
           />
         </figure>
 

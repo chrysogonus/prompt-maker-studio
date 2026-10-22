@@ -135,7 +135,7 @@ export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps)
         );
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
+      const errorMessage = err instanceof Error ? err.message : 'Authentication failed.';
       setError(errorMessage);
     } finally {
       setIsLoading(false);

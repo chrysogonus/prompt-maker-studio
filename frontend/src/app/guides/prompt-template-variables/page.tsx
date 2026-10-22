@@ -9,7 +9,7 @@ const template = renderSections([
 ]);
 const exampleInputs = {
   team: 'Customer support',
-  notes: 'Updated the help center. Waiting for approval of the refund policy. Next: train the team.',
+  notes: 'Updated the help centre. Waiting for approval of the refund policy. Next: train the team.',
 };
 
 export function generateMetadata() {
@@ -28,7 +28,7 @@ export default function TemplateVariablesPage() {
       <h2>Turn changing details into variables</h2>
       <p>Start with an ordinary request:</p>
       <pre><code>
-        Write a weekly update for Customer support using these notes: Updated the help center.
+        Write a weekly update for Customer support using these notes: Updated the help centre.
         Waiting for approval of the refund policy. Next: train the team.
       </code></pre>
       <p>
@@ -82,7 +82,7 @@ export default function TemplateVariablesPage() {
         </li>
         <li>
           Check the preview, choose <strong>Copy filled prompt</strong>, and paste the result into
-          your assistant. Filling and copying needs no AI provider connection.
+          your assistant. Filling in and copying need no AI provider.
         </li>
       </ol>
       <p>With the sample inputs above, the copied prompt is:</p>

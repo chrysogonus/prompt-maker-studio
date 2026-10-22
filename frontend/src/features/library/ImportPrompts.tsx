@@ -290,7 +290,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
             <summary>Format details</summary>
             <p>A note without a heading is kept in one Prompt section. Note metadata is tidied first: YAML front matter, Notion page properties and callouts, Obsidian callouts, comments, Dataview queries, embedded files and trailing #tags are removed, [[links]] and ==highlights== read as text, the front matter title or first heading becomes the title, the first tag suggests a folder, and a Notion favourite stays a favourite. You can keep the original text in the preview.</p>
             <p>For several prompts in one note, start each with a heading and optionally add smaller headings for sections; a pasted page that starts at ## works the same way. Headings inside code fences remain text. Up to 1,000 prompts at a time.</p>
-            <p>JSON files use the Prompt Maker Studio export format: titles, sections, folders, variable settings and favorites are copied. Version history, dates and notes are not imported; this is not a full archive restore.</p>
+            <p>JSON files use the Prompt Maker Studio export format: titles, sections, folders, variable settings and favourites are copied. Version history, dates and notes are not imported; this is not a full archive restore.</p>
           </details>
           <Button variant="primary" disabled={busy || (!source.trim() && !files.length)} onClick={() => showPreview(keepOriginal)}>Preview</Button>
         </>}

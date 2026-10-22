@@ -27,12 +27,12 @@ export const GUIDES = {
   organize: {
     path: '/guides/organize-chatgpt-prompts',
     title: 'How to organize and reuse your ChatGPT prompts',
-    description: 'Keep useful ChatGPT prompts in a personal library with clear names, folders, favorites, search, and version history.',
+    description: 'Keep useful ChatGPT prompts in a personal library with clear names, folders, favourites, search and version history.',
   },
   goodPrompt: {
     path: '/guides/what-makes-a-good-prompt',
     title: 'What makes a good AI prompt',
-    description: 'The six parts most prompts need, role, context, task, format, constraints and examples, with a complete example and how to test and improve a prompt.',
+    description: 'The six parts most prompts need (role, context, task, format, constraints and examples), with a complete example and how to test and improve a prompt.',
   },
   codingAgents: {
     path: '/guides/prompts-for-coding-agents',
@@ -42,7 +42,7 @@ export const GUIDES = {
   imagePrompts: {
     path: '/guides/image-generation-prompts',
     title: 'How to write image generation prompts',
-    description: 'Describe subject, setting, composition, style, lighting and format so DALL·E, Midjourney, Stable Diffusion or Gemini produce the picture you have in mind.',
+    description: 'Describe subject, setting, composition, style, lighting and format so ChatGPT (GPT Image), Midjourney, Stable Diffusion or Gemini produce the picture you have in mind.',
   },
   researchWriting: {
     path: '/guides/research-and-writing-prompts',

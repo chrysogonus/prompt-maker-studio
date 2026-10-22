@@ -25,7 +25,7 @@ describe('TemplateFiller', () => {
     expect(screen.getAllByRole('textbox', { name: /name|issue/ })).toHaveLength(2);
     await user.type(screen.getByRole('textbox', { name: 'name' }), 'Dana');
     expect(screen.getByLabelText('Filled prompt')).toHaveTextContent('Reply to Dana about {{issue}}, Dana.');
-    await user.click(screen.getByRole('button', { name: 'Copy prompt' }));
+    await user.click(screen.getByRole('button', { name: 'Copy filled prompt' }));
     expect(writeText).toHaveBeenCalledWith('Reply to Dana about {{issue}}, Dana.');
     expect(screen.getByRole('status')).toHaveTextContent('Copied with 1 unfilled placeholder.');
   });

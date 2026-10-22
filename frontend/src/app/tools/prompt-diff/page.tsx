@@ -20,7 +20,7 @@ export default function PromptDiffPage() {
       <h2>See what changed between two prompts</h2>
       <p>
         When a prompt starts giving better or worse answers, the reason is often one changed
-        sentence. Paste the earlier version on the left and the newer one on the right to see the
+        sentence. Paste the earlier version in Before and the newer one in After to see the
         added and removed words.
       </p>
       <h2>Example</h2>

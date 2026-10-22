@@ -74,7 +74,7 @@ export default function TemplateFiller({ initialText = '', fields, title, hints 
         <>
           <pre className={styles.output} aria-label="Filled prompt" tabIndex={0}>{filled}</pre>
           <div className={styles.actions}>
-            <Button variant="primary" onClick={copy}>Copy prompt</Button>
+            <Button variant="primary" onClick={copy}>{names.length ? 'Copy filled prompt' : 'Copy prompt'}</Button>
             <Button onClick={() => openInApp({ title, fields: fields ?? [{ name: 'Task', content: text }], values, hints })}>
               Save to my library
             </Button>

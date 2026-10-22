@@ -9,7 +9,7 @@ interface ToolSummary {
 export const TOOLS_INDEX: ToolSummary = {
   path: '/tools',
   title: 'Free prompt tools',
-  description: 'Free tools for writing better AI prompts: fill in prompt templates, compare two prompts, check a prompt for missing parts and estimate its tokens and cost. No account needed.',
+  description: 'Free tools for writing better AI prompts: fill in prompt templates, check a prompt for missing parts, refine it with AI, compare two versions and estimate its tokens and cost. No account needed.',
 };
 
 export const TOOLS = {
@@ -25,7 +25,7 @@ export const TOOLS = {
   },
   refiner: {
     path: '/tools/prompt-refiner',
-    title: 'Free AI prompt refiner',
+    title: 'Prompt refiner',
     description: 'Paste a prompt and get a clearer, more specific version, with optional questions about what you need. Free to try without an account, within daily limits, where this site offers it.',
   },
   diff: {

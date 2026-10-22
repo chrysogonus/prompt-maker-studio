@@ -75,7 +75,7 @@ describe('AuthForm — login view', () => {
         'href',
         '/impressum',
       );
-      expect(screen.getByRole('link', { name: 'Datenschutz' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: 'Privacy policy' })).toHaveAttribute(
         'href',
         '/datenschutz',
       );

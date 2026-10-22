@@ -35,7 +35,7 @@ for (const width of [1440, 390, 320]) {
     const metadata = await folder.locator('..').boundingBox();
     const actions = await card.getByRole('button', { name: 'Copy the Customer support response template' }).boundingBox();
     expect(metadata!.y + metadata!.height).toBeLessThanOrEqual(actions!.y);
-    for (const button of [page.getByRole('button', { name: 'Grid', exact: true }), card.getByRole('button', { name: 'Add Customer support response to favorites' }), card.getByRole('button', { name: 'More actions for Customer support response' })]) {
+    for (const button of [page.getByRole('button', { name: 'Grid', exact: true }), card.getByRole('button', { name: 'Add Customer support response to favourites' }), card.getByRole('button', { name: 'More actions for Customer support response' })]) {
       const box = (await button.boundingBox())!;
       expect(box.width).toBeGreaterThanOrEqual(44);
       expect(box.height).toBeGreaterThanOrEqual(44);
