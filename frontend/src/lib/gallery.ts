@@ -106,7 +106,7 @@ export const GALLERY: GalleryTemplate[] = [
     ],
     hints: { target: 'Module or function', test_location: 'Where similar tests live', edge_cases: 'Empty input, limits, unusual values', test_command: 'Command that runs the tests' },
     examples: { target: 'the CSV import of test cases', test_location: 'backend/tests/', edge_cases: 'empty file, a quoted comma, 21 rows', test_command: 'make test' },
-    tips: ['Ask the agent to break the code briefly and confirm the new test fails.'],
+    tips: ['Ask the agent to show each new test failing against a deliberately broken copy of the code, then revert it.'],
   },
   {
     slug: 'refactor-without-behaviour-change',
@@ -251,12 +251,12 @@ export const GALLERY: GalleryTemplate[] = [
     sections: [
       { name: 'Role', content: 'You are a careful research assistant writing for {{audience}}.' },
       { name: 'Sources', content: 'Use only these numbered sources:\n{{sources}}' },
-      { name: 'Task', content: 'Answer: {{question}}. Cite every claim with the source number in brackets, such as [2].' },
+      { name: 'Task', content: 'Question: {{question}}\nAnswer it and cite every claim with the source number in brackets, such as [2].' },
       { name: 'Format', content: 'A two-sentence answer, then up to four short sections with headings. At most {{word_limit}} words.' },
       { name: 'Constraints', content: 'Separate what the sources agree on from where they disagree. If they do not answer part of the question, say so. Never invent sources, numbers or quotes.' },
     ],
     hints: { audience: 'Who will read it', sources: 'Paste each source after a number: [1] …', question: 'What you want to know', word_limit: 'For example 300' },
-    examples: { audience: 'a product manager new to the topic', question: 'what limits battery life in cold weather?', word_limit: '300' },
+    examples: { audience: 'a product manager new to the topic', question: 'What limits battery life in cold weather?', word_limit: '300' },
     tips: ['Check the cited passages for anything you will repeat or publish.'],
     guide: 'researchWriting',
   },

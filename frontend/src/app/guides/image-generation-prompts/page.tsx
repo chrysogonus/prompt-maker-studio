@@ -3,7 +3,7 @@ import GuideArticle from '@/components/guides/GuideArticle';
 import { GUIDES, guideMetadata } from '@/lib/guides';
 import { TOOLS } from '@/lib/tools';
 
-const template = 'A {{shot}} of {{subject}}, {{action}}, in {{setting}}. {{style}} style, {{lighting}} lighting, {{palette}} colour palette. {{aspect}} aspect ratio. Avoid: {{avoid}}.';
+const template = 'A {{shot}} of {{subject}}, {{action}}, {{setting}}. {{style}} style, {{lighting}} lighting, {{palette}} colour palette. {{aspect}} aspect ratio. Avoid: {{avoid}}.';
 const filled = 'A close-up of an old ceramic teapot, steam rising, on a wooden kitchen table by a window. Soft watercolour style, early-morning lighting, muted green and cream colour palette. 3:2 aspect ratio. Avoid: text, logos, extra cups.';
 
 export function generateMetadata() {

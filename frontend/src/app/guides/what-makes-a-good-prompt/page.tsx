@@ -38,7 +38,7 @@ export default function GoodPromptPage() {
       <p>A quick question does not need all six. A prompt you reuse every week usually does.</p>
 
       <h2>A complete example</h2>
-      <p>Here the five parts are separate sections, and the notes that change each week are a variable:</p>
+      <p>Here five of the six parts are separate sections (this one needs no example), and the notes that change each week are a variable:</p>
       <pre><code>{example}</code></pre>
       <p>
         Compare it with &quot;Summarize these notes&quot;: the reader, the length, the structure and
@@ -59,8 +59,8 @@ export default function GoodPromptPage() {
         <li>Keep the earlier version so you can compare. The <Link href={TOOLS.diff.path}>prompt diff</Link> shows exactly what changed.</li>
       </ul>
       <p>
-        Paste your own prompt into the <Link href={TOOLS.linter.path}>prompt checker</Link> to see which
-        of these parts it is missing, or let the <Link href={TOOLS.refiner.path}>prompt refiner</Link>{' '}
+        Paste your own prompt into the <Link href={TOOLS.linter.path}>prompt checker</Link> to see whether
+        it states a role or audience, a format, a length and an example, or let the <Link href={TOOLS.refiner.path}>prompt refiner</Link>{' '}
         suggest a clearer version.
       </p>
     </GuideArticle>

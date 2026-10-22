@@ -93,7 +93,7 @@ describe('PromptLinter', () => {
     const box = screen.getByRole('textbox', { name: 'Your prompt' });
     await user.clear(box);
     await user.type(box, 'You are an editor. Summarize it in at most five bullets, for example "Decision: ship".');
-    expect(screen.getByRole('status')).toHaveTextContent('No issues found.');
+    expect(screen.getByRole('status')).toHaveTextContent('No issues found by these checks.');
     await user.click(screen.getByRole('button', { name: 'Save to my library' }));
     expect(openInApp).toHaveBeenCalled();
   });

@@ -15,7 +15,7 @@ describe('Prompt gallery', () => {
   it('lists every template under its category, with popular ones first', () => {
     render(<GalleryPage />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Free prompt templates');
-    expect(within(screen.getByRole('region', { name: 'Popular' })).getAllByRole('link')).toHaveLength(6);
+    expect(within(screen.getByRole('region', { name: 'Featured' })).getAllByRole('link')).toHaveLength(6);
     for (const category of GALLERY_CATEGORIES) {
       const section = screen.getByRole('region', { name: category.label });
       for (const template of GALLERY.filter((item) => item.category === category.id)) {

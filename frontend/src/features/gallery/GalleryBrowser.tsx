@@ -48,8 +48,8 @@ export default function GalleryBrowser() {
           <nav aria-label="Categories" className={styles.categories}>
             {GALLERY_CATEGORIES.map((category) => <a key={category.id} href={`#${category.id}`}>{category.label}</a>)}
           </nav>
-          <section aria-labelledby="popular-title">
-            <h2 id="popular-title" className={styles.heading}>Popular</h2>
+          <section aria-labelledby="featured-title">
+            <h2 id="featured-title" className={styles.heading}>Featured</h2>
             <TemplateList templates={featuredTemplates()} />
           </section>
           {GALLERY_CATEGORIES.map((category) => (

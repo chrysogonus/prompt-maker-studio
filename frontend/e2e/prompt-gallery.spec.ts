@@ -20,7 +20,7 @@ test('gallery pages serve their templates and metadata without JavaScript', asyn
 test('a template fills in with example inputs, saves into a new library and reopens intact', async ({ page }) => {
   const suffix = String(Date.now()) + String(Math.floor(Math.random() * 10_000));
   await page.goto('/gallery');
-  await page.getByRole('region', { name: 'Popular' }).getByRole('link', { name: 'Bug fix brief for a coding agent' }).click();
+  await page.getByRole('region', { name: 'Featured' }).getByRole('link', { name: 'Bug fix brief for a coding agent' }).click();
   await expect(page).toHaveURL(/\/gallery\/bug-fix-brief$/);
   await page.getByRole('button', { name: 'Use example inputs' }).click();
   await expect(page.getByLabel('Filled prompt')).toContainText('make test passes');

@@ -23,7 +23,7 @@ export default function PromptLinter() {
       {text.trim() && (
         <>
           <p className={styles.status} role="status">
-            {findings.length === 0 ? 'No issues found. The prompt states a role, a format, a length and an example.'
+            {findings.length === 0 ? 'No issues found by these checks.'
               : `${problems ? `${problems} ${problems === 1 ? 'problem' : 'problems'}, ` : ''}${findings.length - problems} ${findings.length - problems === 1 ? 'suggestion' : 'suggestions'}.`}
           </p>
           {findings.length > 0 && (

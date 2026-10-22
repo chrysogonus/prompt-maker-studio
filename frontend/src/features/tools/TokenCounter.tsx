@@ -53,7 +53,7 @@ export default function TokenCounter() {
         // Focusable: it scrolls sideways on narrow screens.
         <div className={styles.tableWrap} role="region" aria-label="Cost by model" tabIndex={0}>
           <table className={styles.table}>
-            <caption className={styles.status}>Estimated input cost of this prompt, at list prices</caption>
+            <caption className={styles.status}>Estimated input cost of this prompt, at estimated list prices</caption>
             <thead>
               <tr><th scope="col">Model</th><th scope="col">Input per 1M tokens</th><th scope="col">This prompt</th><th scope="col">{RUNS.toLocaleString('en')} runs</th></tr>
             </thead>

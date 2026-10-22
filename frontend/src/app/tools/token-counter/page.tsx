@@ -9,7 +9,7 @@ export function generateMetadata() {
 
 const FAQ = [
   { question: 'How accurate is the estimate?', answer: 'It assumes about four characters per token, a common average for English text. Real counts depend on each model\'s tokenizer and can differ, especially for code, numbers and other languages. Treat it as a guide for size and cost, not a bill.' },
-  { question: 'Which prices are used?', answer: 'Current list prices for the models this app supports, per million input tokens. Output tokens, caching and discounts are not included.' },
+  { question: 'Which prices are used?', answer: 'Estimated list prices for the hosted OpenAI, Anthropic and Gemini models this app offers, per million input tokens. Output tokens, caching and discounts are not included.' },
   { question: 'Why does token count matter?', answer: 'Models have a context limit, and you pay per token. A prompt you run many times, or one that includes long documents, adds up quickly.' },
   { question: 'Is my prompt sent anywhere?', answer: 'No. Counting happens in your browser. The page only downloads the price list.' },
 ];
