@@ -163,7 +163,7 @@ class PromptRefinerService:
         usable = [
             q
             for q in asked
-            if not _ASKS_ABOUT_PLACEHOLDER.search(q) and len(q) <= MAX_QUESTION_CHARS
+            if q.strip() and len(q) <= MAX_QUESTION_CHARS and not _ASKS_ABOUT_PLACEHOLDER.search(q)
         ]
         return usable[:MAX_QUESTIONS], usage
 

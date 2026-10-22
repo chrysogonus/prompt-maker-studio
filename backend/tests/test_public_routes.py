@@ -331,3 +331,34 @@ def test_returned_questions_can_all_be_answered_in_a_draft(client, public_refine
         )
     assert questions == asked[:5]
     assert resp.status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("provider", "model"), [("openai", "gpt-6-luna"), ("openai", "not-a-listed-model")]
+)
+def test_missing_usage_keeps_the_reserved_estimate(
+    db_session, priced_public_refine, monkeypatch, provider, model
+):
+    from app.services import public_refine as service
+
+    monkeypatch.setenv("PUBLIC_MONTHLY_BUDGET_USD", "1000")
+    row = service.reserve_call(
+        db_session, service.available_connection(), service.DRAFT_SOURCE, 100
+    )
+    reserved = row.cost_usd
+    assert reserved > 0
+    service.settle_call(db_session, row, [LLMUsage(provider, model, 0, 0)])
+    assert row.cost_usd >= reserved
+    assert (row.prompt_tokens, row.completion_tokens) == (0, 0)
+
+
+def test_reported_usage_replaces_the_estimate(db_session, priced_public_refine, monkeypatch):
+    from app.services import public_refine as service
+
+    monkeypatch.setenv("PUBLIC_MONTHLY_BUDGET_USD", "1000")
+    row = service.reserve_call(
+        db_session, service.available_connection(), service.DRAFT_SOURCE, 100
+    )
+    reserved = row.cost_usd
+    service.settle_call(db_session, row, [_USAGE])
+    assert 0 < row.cost_usd < reserved

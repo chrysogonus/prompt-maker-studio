@@ -67,7 +67,7 @@ class TestGenerateClarifyingQuestions:
     def test_returns_only_questions_a_draft_request_can_carry(self):
         too_long = "Why " + "really " * 80 + "?"
         asked = [f"Question {i}?" for i in range(12)]
-        connection, _ = _connection_returning({"questions": [too_long, *asked]})
+        connection, _ = _connection_returning({"questions": ["", "  ", too_long, *asked]})
 
         result, _ = PromptRefinerService.generate_clarifying_questions("template", connection)
 

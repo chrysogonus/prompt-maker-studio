@@ -132,13 +132,17 @@ def reserve_call(
 
 def settle_call(db: Session, row: PublicBilledCall, usages: list[LLMUsage]) -> None:
     """Replace the reservation's estimate with the spend the provider reported
-    (none for a call that failed before any response)."""
+    (none for a call that failed before any response). When an attempt came back
+    without token counts its real cost is unknown, so the estimate stays the floor."""
     if usages:
         row.provider, row.model = usages[-1].provider, usages[-1].model
     priced = [priced_usage(usage) for usage in usages]
+    cost = sum(tokens[2] for tokens in priced)
+    if any(usage.prompt_tokens == 0 and usage.completion_tokens == 0 for usage in usages):
+        cost = max(cost, row.cost_usd or 0.0)
     row.prompt_tokens = sum(tokens[0] for tokens in priced)
     row.completion_tokens = sum(tokens[1] for tokens in priced)
-    row.cost_usd = sum(tokens[2] for tokens in priced)
+    row.cost_usd = cost
     db.commit()
 
 
