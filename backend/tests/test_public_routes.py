@@ -133,6 +133,18 @@ def test_public_refine_model_overrides_the_server_default_model(
     assert ask.call_args.args[1].model == "gpt-6.1-sol"
 
 
+def test_a_blank_public_refine_model_keeps_the_server_default_model(
+    client, db_session, public_refine, monkeypatch
+):
+    monkeypatch.setenv("PUBLIC_REFINE_MODEL", "   ")
+    with patch(
+        f"{_SERVICE}.generate_clarifying_questions", return_value=(["Who reads it?"], _USAGE)
+    ) as ask:
+        assert client.post("/api/public/refine/questions", json=_PROMPT).status_code == 200
+
+    assert ask.call_args.args[1].model == "gpt-6-luna"
+
+
 def test_a_draft_that_drops_variables_is_rejected_but_still_billed(
     client, db_session, public_refine
 ):

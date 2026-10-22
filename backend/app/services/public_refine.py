@@ -95,7 +95,7 @@ def available_connection() -> LLMConnection:
     PUBLIC_REFINE_MODEL picks another model on the same provider."""
     if not is_enabled():
         raise OperationError(status_code=HTTPStatus.NOT_FOUND, detail="Not Found")
-    connection = server_default_connection(os.getenv("PUBLIC_REFINE_MODEL") or None)
+    connection = server_default_connection(os.getenv("PUBLIC_REFINE_MODEL", "").strip() or None)
     if connection is None:
         raise OperationError(
             status_code=HTTPStatus.SERVICE_UNAVAILABLE,
