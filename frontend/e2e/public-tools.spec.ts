@@ -66,11 +66,11 @@ test('a filled template saves into a new library after signing up', async ({ pag
   await expect(page.getByLabel('Task text')).toHaveValue(/\{\{customer_name\}\}/);
 });
 
-test('tool pages fit phones and desktops with accessible content in both themes', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  for (const width of [320, 1440]) {
-    await page.setViewportSize({ width, height: 900 });
-    for (const path of paths) {
+for (const path of paths) {
+  test(`${path} fits phones and desktops with accessible content in both themes`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
       await page.goto(path);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       for (const theme of ['light', 'dark']) {
@@ -79,5 +79,5 @@ test('tool pages fit phones and desktops with accessible content in both themes'
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
       }
     }
-  }
-});
+  });
+}

@@ -6,6 +6,10 @@ const paths = [
   '/guides/reusable-ai-prompts',
   '/guides/prompt-template-variables',
   '/guides/organize-chatgpt-prompts',
+  '/guides/what-makes-a-good-prompt',
+  '/guides/prompts-for-coding-agents',
+  '/guides/image-generation-prompts',
+  '/guides/research-and-writing-prompts',
 ];
 
 test('visitors can follow the guides from the homepage into the app', async ({ page }) => {
@@ -42,15 +46,16 @@ test('guides serve article text and unique metadata without JavaScript, even wit
       if (!withSession) titles.add(html.match(/<title>(.*?)<\/title>/)?.[1] ?? '');
     }
   }
-  expect(titles.size).toBe(4);
+  expect(titles.size).toBe(paths.length);
   expect(titles.has('')).toBe(false);
 });
 
-test('guides fit phones and desktops with accessible content in both themes', async ({ page }, testInfo) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  for (const width of [320, 1440]) {
-    await page.setViewportSize({ width, height: 900 });
-    for (const path of paths) {
+// One test per page keeps each within the default timeout as guides are added.
+for (const path of paths) {
+  test(`${path} fits phones and desktops with accessible content in both themes`, async ({ page }, testInfo) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
       await page.goto(path);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       for (const theme of ['light', 'dark']) {
@@ -64,5 +69,5 @@ test('guides fit phones and desktops with accessible content in both themes', as
         await page.screenshot({ path: testInfo.outputPath(`guides-${width}.png`), fullPage: true });
       }
     }
-  }
-});
+  });
+}

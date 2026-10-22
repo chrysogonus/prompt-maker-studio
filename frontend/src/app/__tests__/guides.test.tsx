@@ -4,6 +4,10 @@ import GuidesPage, { generateMetadata as indexMetadata } from '../guides/page';
 import ReusablePromptsPage, { generateMetadata as reusableMetadata } from '../guides/reusable-ai-prompts/page';
 import TemplateVariablesPage, { generateMetadata as variablesMetadata } from '../guides/prompt-template-variables/page';
 import OrganizePromptsPage, { generateMetadata as organizeMetadata } from '../guides/organize-chatgpt-prompts/page';
+import GoodPromptPage, { generateMetadata as goodPromptMetadata } from '../guides/what-makes-a-good-prompt/page';
+import CodingAgentsPage, { generateMetadata as codingAgentsMetadata } from '../guides/prompts-for-coding-agents/page';
+import ImagePromptsPage, { generateMetadata as imagePromptsMetadata } from '../guides/image-generation-prompts/page';
+import ResearchWritingPage, { generateMetadata as researchWritingMetadata } from '../guides/research-and-writing-prompts/page';
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -11,6 +15,10 @@ const articles = [
   { Page: ReusablePromptsPage, metadata: reusableMetadata, path: '/guides/reusable-ai-prompts' },
   { Page: TemplateVariablesPage, metadata: variablesMetadata, path: '/guides/prompt-template-variables' },
   { Page: OrganizePromptsPage, metadata: organizeMetadata, path: '/guides/organize-chatgpt-prompts' },
+  { Page: GoodPromptPage, metadata: goodPromptMetadata, path: '/guides/what-makes-a-good-prompt' },
+  { Page: CodingAgentsPage, metadata: codingAgentsMetadata, path: '/guides/prompts-for-coding-agents' },
+  { Page: ImagePromptsPage, metadata: imagePromptsMetadata, path: '/guides/image-generation-prompts' },
+  { Page: ResearchWritingPage, metadata: researchWritingMetadata, path: '/guides/research-and-writing-prompts' },
 ];
 
 describe('Public guides', () => {
@@ -32,7 +40,7 @@ describe('Public guides', () => {
     for (const other of articles.filter((article) => article.path !== path)) {
       expect(related.querySelector(`a[href="${other.path}"]`)).toBeInTheDocument();
     }
-    expect(within(related).getAllByRole('link')).toHaveLength(2);
+    expect(within(related).getAllByRole('link')).toHaveLength(articles.length - 1);
   });
 
   it.each([

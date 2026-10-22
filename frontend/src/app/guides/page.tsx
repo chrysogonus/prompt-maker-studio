@@ -12,9 +12,9 @@ export default function GuidesPage() {
     <div className={styles.index}>
       <h1>{GUIDES_INDEX.title}</h1>
       <p className={styles.intro}>
-        Keep the prompts that work, change their inputs, and find them again when you need them.
-        These guides walk through real tasks in {APP_NAME}. Start with a reusable prompt,
-        then learn how to fill it in and organize your library.
+        Learn what makes a prompt work, how to brief coding agents and image models, and how to
+        get research and writing that stays close to your sources. Then keep the prompts that work
+        in {APP_NAME}: reuse them, fill in their inputs and find them again when you need them.
       </p>
       <GuideList />
       <p className={styles.intro}>
