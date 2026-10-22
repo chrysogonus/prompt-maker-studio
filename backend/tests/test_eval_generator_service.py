@@ -80,7 +80,20 @@ class TestGenerateProposals:
             None,
             5,
             connection,
-            existing=[("Happy path: space", "Mentions planets"), (None, None)],
+            existing=[
+                {
+                    "name": "Happy path: space",
+                    "method": "judge",
+                    "criteria": "Mentions planets",
+                    "variables": {"topic": "space"},
+                },
+                {
+                    "name": None,
+                    "method": "manual",
+                    "criteria": None,
+                    "variables": {"topic": "deep sea"},
+                },
+            ],
         )
 
         messages = mock_create.call_args.kwargs["messages"]
@@ -89,8 +102,46 @@ class TestGenerateProposals:
             in messages[0]["content"]
         )
         assert messages[1]["content"].endswith(
-            "Existing test cases:\n- Happy path: space: Mentions planets\n- Unnamed"
+            "Existing test cases:\n"
+            "- Happy path: space (judge): Mentions planets | inputs: topic=space\n"
+            "- Unnamed (manual) | inputs: topic=deep sea"
         )
+
+    def test_drops_a_suggestion_with_exactly_the_inputs_of_a_saved_case(self):
+        payload = {
+            "cases": [
+                {
+                    "method": "judge",
+                    "criteria": "c",
+                    "variables": {"topic": " deep  sea"},
+                    "rationale": "Copy.",
+                },
+                {
+                    "method": "judge",
+                    "criteria": "c",
+                    "variables": {"topic": "volcanoes"},
+                    "rationale": "New.",
+                },
+            ]
+        }
+        connection, _ = _connection_for(_make_openai_response(payload))
+        result, _ = EvalGeneratorService.generate_proposals(
+            "Write about {{topic}}",
+            None,
+            None,
+            5,
+            connection,
+            existing=[
+                {
+                    "name": None,
+                    "method": "manual",
+                    "criteria": None,
+                    "variables": {"topic": "deep sea"},
+                }
+            ],
+        )
+
+        assert [proposal.rationale for proposal in result] == ["New."]
 
     def test_converts_structural_literal_rule_checks_to_judge(self):
         mock_response = _make_openai_response(

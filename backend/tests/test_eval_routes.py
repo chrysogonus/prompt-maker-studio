@@ -271,7 +271,14 @@ class TestGenerateEvalCases:
                 f"/api/prompts/{prompt_id}/eval/cases/generate", headers=auth_headers, json={}
             )
 
-        assert mock_generate.call_args.kwargs["existing"] == [("Greeting", "hello")]
+        assert mock_generate.call_args.kwargs["existing"] == [
+            {
+                "name": "Greeting",
+                "method": "rule",
+                "criteria": "hello",
+                "variables": {"thing": "hello"},
+            }
+        ]
 
     def test_requires_auth(self, client, auth_headers):
         prompt_id = _create_saved_prompt(client, auth_headers)

@@ -106,7 +106,7 @@ def generate_eval_cases(
     prompt = get_owned_prompt(prompt_id, current_user.id, db)
 
     existing = (
-        db.query(EvalCase.name, EvalCase.criteria)
+        db.query(EvalCase.name, EvalCase.method, EvalCase.criteria, EvalCase.variables)
         .filter(EvalCase.prompt_id == prompt.id)
         .order_by(EvalCase.position)
         .all()
@@ -133,7 +133,7 @@ def generate_eval_cases(
                 body.goal,
                 max_cases,
                 connection,
-                existing=[(row.name, row.criteria) for row in existing],
+                existing=[row._asdict() for row in existing],
             )
     except Exception as exc:
         raise llm_http_error(exc, connection, "eval/cases/generate") from exc
