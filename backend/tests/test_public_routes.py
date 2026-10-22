@@ -117,7 +117,20 @@ def test_draft_returns_the_refined_text_using_answered_questions(client, db_sess
     assert resp.status_code == 200
     assert resp.json() == {"text": "Summarize {{notes}} for my team in five bullets."}
     assert write.call_args.args[1] == [("Length?", "Five bullets")]
+    assert write.call_args.kwargs == {"expand": True}
     assert db_session.query(PublicBilledCall).one().source == "public_refine_draft"
+
+
+def test_public_refine_model_overrides_the_server_default_model(
+    client, db_session, public_refine, monkeypatch
+):
+    monkeypatch.setenv("PUBLIC_REFINE_MODEL", "gpt-6.1-sol")
+    with patch(
+        f"{_SERVICE}.generate_clarifying_questions", return_value=(["Who reads it?"], _USAGE)
+    ) as ask:
+        assert client.post("/api/public/refine/questions", json=_PROMPT).status_code == 200
+
+    assert ask.call_args.args[1].model == "gpt-6.1-sol"
 
 
 def test_a_draft_that_drops_variables_is_rejected_but_still_billed(

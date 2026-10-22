@@ -22,10 +22,14 @@ any release. See [Project status](./README.md#project-status).
 - A free AI prompt refiner at `/tools/prompt-refiner` for visitors without an account, off by
   default. Operators enable it with `PUBLIC_REFINE_ENABLED=true`; it runs on the server-default
   connection with per-visitor, daily and monthly limits (`PUBLIC_REFINE_RATE_LIMIT`,
-  `PUBLIC_REFINE_DAILY_LIMIT`, `PUBLIC_MONTHLY_BUDGET_USD`). Migration 033 adds its spend ledger.
+  `PUBLIC_REFINE_DAILY_LIMIT`, `PUBLIC_MONTHLY_BUDGET_USD`) and can use another model on the same
+  provider (`PUBLIC_REFINE_MODEL`). "Improve now" fills in an audience, format, length and how to
+  handle missing information. Migration 033 adds its spend ledger.
 
 ### Fixed
 
+- Refine no longer drops clarifying questions that mention an input such as "the article",
+  which could leave a vague prompt with no questions at all.
 - Saving right after loading a page could fail with "Missing or invalid CSRF token": the
   session refresh started by the first click replaced the token a save in flight was using.
   Refreshing now keeps the token.

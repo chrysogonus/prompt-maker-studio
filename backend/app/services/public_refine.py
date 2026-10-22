@@ -91,10 +91,11 @@ def estimated_cost_usd(connection: LLMConnection, input_chars: int) -> float:
 
 
 def available_connection() -> LLMConnection:
-    """The server default, capped in output length, when the free refiner is on."""
+    """The server default, capped in output length, when the free refiner is on.
+    PUBLIC_REFINE_MODEL picks another model on the same provider."""
     if not is_enabled():
         raise OperationError(status_code=HTTPStatus.NOT_FOUND, detail="Not Found")
-    connection = server_default_connection()
+    connection = server_default_connection(os.getenv("PUBLIC_REFINE_MODEL") or None)
     if connection is None:
         raise OperationError(
             status_code=HTTPStatus.SERVICE_UNAVAILABLE,
@@ -172,7 +173,9 @@ def refine_draft(
     fields = [PromptField(name="Task", content=text)]
     with capture_llm_usage() as captured:
         try:
-            draft, usage = PromptRefinerService.generate_section_draft(fields, qa_pairs, connection)
+            draft, usage = PromptRefinerService.generate_section_draft(
+                fields, qa_pairs, connection, expand=True
+            )
         except Exception:
             settle_call(db, row, captured)
             raise

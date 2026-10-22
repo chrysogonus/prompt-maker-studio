@@ -207,7 +207,8 @@ LLM_API_KEY=
 # (PUBLIC_REFINE_RATE_LIMIT, in memory), per UTC day across all visitors
 # (PUBLIC_REFINE_DAILY_LIMIT) and per month (PUBLIC_MONTHLY_BUDGET_USD, which
 # also counts toward GLOBAL_MONTHLY_BUDGET_USD). PUBLIC_REFINE_MAX_OUTPUT_TOKENS
-# (default 8000) caps each answer's length. Its spend is recorded without
+# (default 8000) caps each answer's length, and PUBLIC_REFINE_MODEL picks another
+# model on the LLM_PROVIDER (empty uses LLM_MODEL). Its spend is recorded without
 # any visitor data. Per-IP limits only work when the backend sees real client
 # addresses (Caddy's X-Forwarded-For through uvicorn's trusted proxy). Mention
 # the free refiner in your privacy policy before enabling it.

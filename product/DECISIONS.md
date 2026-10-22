@@ -1425,13 +1425,18 @@ steps, and only questions a draft request can carry back are returned. Each admi
 `PUBLIC_REFINE_MAX_OUTPUT_TOKENS`, default 8,000, on each of up to four attempts: two JSON
 attempts, each retried once by the SDK) before the provider is contacted, under a process lock, and is settled to the reported usage afterwards
 (the estimate stays the floor when an attempt reports no token counts);
-the ledger counts toward the shared ceiling.
+the ledger counts toward the shared ceiling. Without answers, the public draft asks the model to
+state an audience, format, length and how to handle missing information as labelled lines
+(`expand`); the editor's refine keeps to what the text implies. `PUBLIC_REFINE_MODEL` may pick a
+stronger model on the same provider.
 
 **Rationale**: The user chose the server default over separate hardware and self-contained
 limits over a third-party challenge, which keeps the CSP and the privacy policy small. A
 separate ledger avoids rebuilding `billed_calls` to make `user_id` nullable, and lets public
 rows deliberately carry no user, IP address or prompt text. Results are handed to the app
-through the existing Paste a prompt review, so saving needs no new endpoint.
+through the existing Paste a prompt review, so saving needs no new endpoint. A visitor pasting a
+one-line prompt expects a visibly better prompt, while an editor user refining a saved template
+expects their requirements to stay theirs, hence the two draft modes.
 
 **Consequences**: The per-IP limit is in memory (one backend process) and only meaningful
 when the backend sees real client addresses behind the proxy; restarts reset it. Because calls
