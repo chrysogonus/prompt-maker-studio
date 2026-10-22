@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ButtonLink } from '@/components/ui/Button';
-import { APP_NAME } from '@/lib/branding';
 import { galleryPath, templatesForGuide } from '@/lib/gallery';
 import { GUIDES } from '@/lib/guides';
 import GuideList from './GuideList';

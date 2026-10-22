@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ButtonLink } from '@/components/ui/Button';
-import { APP_NAME } from '@/lib/branding';
 import type { Tool } from '@/lib/tools';
 import guideStyles from '@/components/guides/Guides.module.css';
 import ToolList from './ToolList';
