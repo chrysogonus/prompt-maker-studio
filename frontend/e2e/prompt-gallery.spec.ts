@@ -23,7 +23,7 @@ test('a template fills in with example inputs, saves into a new library and reop
   await page.getByRole('region', { name: 'Featured' }).getByRole('link', { name: 'Bug fix brief for a coding agent' }).click();
   await expect(page).toHaveURL(/\/gallery\/bug-fix-brief$/);
   await page.getByRole('button', { name: 'Use example inputs' }).click();
-  await expect(page.getByLabel('Filled prompt')).toContainText('make test passes');
+  await expect(page.getByLabel('Filled prompt')).toContainText('npm test passes');
   await page.getByRole('button', { name: 'Save to my library' }).click();
 
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
@@ -35,7 +35,7 @@ test('a template fills in with example inputs, saves into a new library and reop
   await page.getByRole('button', { name: 'Create account' }).click();
 
   await expect(page.getByText(/^Imported \d+ sections into draft—save to keep\.$/)).toBeVisible();
-  await expect(page.getByLabel('check_command', { exact: true })).toHaveValue('make test');
+  await expect(page.getByLabel('check_command', { exact: true })).toHaveValue('npm test');
   await expect(page.getByLabel('Goal text')).toHaveValue(/\{\{symptom\}\}/);
 
   // Save, then reload: the sections and the template's hints are in the library.
