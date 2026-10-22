@@ -251,6 +251,28 @@ class TestGenerateEvalCases:
         listed = client.get(f"/api/prompts/{prompt_id}/eval/cases", headers=auth_headers).json()
         assert listed == []
 
+    def test_sends_existing_cases_so_suggestions_do_not_repeat_them(self, client, auth_headers):
+        prompt_id = _create_saved_prompt(client, auth_headers)
+        client.post(
+            f"/api/prompts/{prompt_id}/eval/cases",
+            headers=auth_headers,
+            json={
+                "method": "rule",
+                "criteria": "hello",
+                "variables": {"thing": "hello"},
+                "name": "Greeting",
+            },
+        )
+        usage = LLMUsage(TEST_LLM_PROVIDER, TEST_LLM_MODEL, prompt_tokens=1, completion_tokens=1)
+        with patch(
+            "app.api.eval_routes.EvalGeneratorService.generate_proposals", return_value=([], usage)
+        ) as mock_generate:
+            client.post(
+                f"/api/prompts/{prompt_id}/eval/cases/generate", headers=auth_headers, json={}
+            )
+
+        assert mock_generate.call_args.kwargs["existing"] == [("Greeting", "hello")]
+
     def test_requires_auth(self, client, auth_headers):
         prompt_id = _create_saved_prompt(client, auth_headers)
         resp = client.post(f"/api/prompts/{prompt_id}/eval/cases/generate", json={})

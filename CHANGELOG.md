@@ -28,6 +28,7 @@ any release. See [Project status](./README.md#project-status).
 
 ### Fixed
 
+- Suggested test cases no longer repeat or rephrase the prompt's existing cases.
 - Refine no longer drops clarifying questions that mention an input such as "the article",
   which could leave a vague prompt with no questions at all.
 - Saving right after loading a page could fail with "Missing or invalid CSRF token": the

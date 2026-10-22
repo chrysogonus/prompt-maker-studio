@@ -72,6 +72,26 @@ class TestGenerateProposals:
 
         assert len(result) == 2
 
+    def test_lists_existing_cases_so_they_are_not_repeated(self):
+        connection, mock_create = _connection_for(_make_openai_response({"cases": []}))
+        EvalGeneratorService.generate_proposals(
+            "Write about {{topic}}",
+            None,
+            None,
+            5,
+            connection,
+            existing=[("Happy path: space", "Mentions planets"), (None, None)],
+        )
+
+        messages = mock_create.call_args.kwargs["messages"]
+        assert (
+            "Never repeat or rephrase a case listed under Existing test cases"
+            in messages[0]["content"]
+        )
+        assert messages[1]["content"].endswith(
+            "Existing test cases:\n- Happy path: space: Mentions planets\n- Unnamed"
+        )
+
     def test_converts_structural_literal_rule_checks_to_judge(self):
         mock_response = _make_openai_response(
             {

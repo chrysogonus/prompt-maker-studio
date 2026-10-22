@@ -57,8 +57,9 @@ _SYSTEM_PROMPT = (
     "rationale for why the case is useful. Never create a Rule check for the name of a "
     "structural or qualitative instruction (for example 'tagline', 'summary', 'tone', "
     "'call-to-action', 'paragraph', or 'word count'); those concepts require Judge grading "
-    "unless the prompt explicitly requires that exact word to appear. Propose at most "
-    "{max_cases} cases."
+    "unless the prompt explicitly requires that exact word to appear. Never repeat or "
+    "rephrase a case listed under Existing test cases; cover something they miss. "
+    "Propose at most {max_cases} cases."
 )
 
 
@@ -192,6 +193,7 @@ class EvalGeneratorService:
         goal: str | None,
         max_cases: int,
         connection: LLMConnection,
+        existing: list[tuple[str | None, str | None]] | None = None,
     ) -> tuple[list[EvalCaseProposal], LLMUsage]:
         """
         Propose up to `max_cases` eval cases covering happy-path, edge-case,
@@ -220,6 +222,12 @@ class EvalGeneratorService:
             user_content += f"\n\nDeclared variables:\n{variable_lines}"
         if goal and goal.strip():
             user_content += f"\n\nTesting goal: {goal.strip()}"
+        existing_lines = "\n".join(
+            f"- {name or 'Unnamed'}" + (f": {_shorten_to_words(criteria, 160)}" if criteria else "")
+            for name, criteria in existing or []
+        )
+        if existing_lines:
+            user_content += f"\n\nExisting test cases:\n{existing_lines}"
 
         raw, usage = json_completion(
             connection,

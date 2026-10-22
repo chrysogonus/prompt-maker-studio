@@ -105,7 +105,13 @@ def generate_eval_cases(
     """
     prompt = get_owned_prompt(prompt_id, current_user.id, db)
 
-    existing_count = db.query(EvalCase).filter(EvalCase.prompt_id == prompt.id).count()
+    existing = (
+        db.query(EvalCase.name, EvalCase.criteria)
+        .filter(EvalCase.prompt_id == prompt.id)
+        .order_by(EvalCase.position)
+        .all()
+    )
+    existing_count = len(existing)
     if existing_count >= MAX_EVAL_CASES_PER_PROMPT:
         raise HTTPException(
             status_code=422,
@@ -122,7 +128,12 @@ def generate_eval_cases(
     try:
         with bill_failed_attempts(db, current_user.id, "eval_generate"):
             proposals, usage = EvalGeneratorService.generate_proposals(
-                prompt.generated_prompt, prompt.variable_metadata, body.goal, max_cases, connection
+                prompt.generated_prompt,
+                prompt.variable_metadata,
+                body.goal,
+                max_cases,
+                connection,
+                existing=[(row.name, row.criteria) for row in existing],
             )
     except Exception as exc:
         raise llm_http_error(exc, connection, "eval/cases/generate") from exc
