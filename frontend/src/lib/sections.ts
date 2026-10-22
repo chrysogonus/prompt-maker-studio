@@ -79,9 +79,17 @@ export function insertVariable(text: string, start: number, end: number, name: s
   return { text: text.slice(0, start) + token + text.slice(end), replaced: text.slice(start, end), caret: start + token.length };
 }
 
+/**
+ * The value stored for a variable name. Names are user text, and `{{constructor}}` or
+ * `{{toString}}` are valid, so never read what a plain object inherits.
+ */
+export function valueFor(record: Record<string, string>, name: string): string | undefined {
+  return Object.hasOwn(record, name) ? record[name] : undefined;
+}
+
 /** Replace each filled-in variable; unfilled ones stay as `{{name}}`. */
 export function fillVariables(text: string, values: Record<string, string>): string {
-  return text.replace(VARIABLE, (token, name: string) => (values[name] ? values[name] : token));
+  return text.replace(VARIABLE, (token, name: string) => valueFor(values, name) || token);
 }
 
 export interface TextPart {
