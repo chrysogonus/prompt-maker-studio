@@ -50,7 +50,8 @@ export default function TokenCounter() {
         </div>
       )}
       {priceError ? <p className={styles.status}>{priceError}</p> : prices && (
-        <div className={styles.tableWrap}>
+        // Focusable: it scrolls sideways on narrow screens.
+        <div className={styles.tableWrap} role="region" aria-label="Cost by model" tabIndex={0}>
           <table className={styles.table}>
             <caption className={styles.status}>Estimated input cost of this prompt, at list prices</caption>
             <thead>
