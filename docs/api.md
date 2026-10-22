@@ -7,7 +7,7 @@ start the app.
 
 All user-data endpoints require authentication. Public health (`GET /`),
 OpenAPI (`GET /docs`, `/redoc`, `/openapi.json`), discovery and authentication
-entry points are exceptions; `/metrics` is an unauthenticated internal endpoint
+entry points, and the free-tool endpoints under `/api/public`, are exceptions; `/metrics` is an unauthenticated internal endpoint
 blocked by the production Caddy configuration. Browsers use the httpOnly session
 cookie set by `/api/auth/login` (plus an `X-CSRF-Token` header on writes);
 scripts and CI can still send `Authorization: Bearer <token>`. See
@@ -120,6 +120,14 @@ saved through case creation rather than persisted by generation.
 | `POST` | `/api/prompts/{id}/eval/cases/generate` | Yes | Propose reviewable AI test cases |
 | `GET`, `POST` | `/api/prompts/{id}/eval/runs` | Yes | List runs (`limit` 1–100, default 50; `offset` ≥ 0) or run the suite. An optional POST body `{"fields": [...]}` tests those unsaved sections instead of the saved prompt and never saves them. Each run reports `tested_version` (the saved version with the tested text; `null` for an unsaved draft whose text was never saved) and `matches_current` (whether that text is the prompt's current text); `tested_prompt` is the text itself (`null` before migration 031) |
 | `POST` | `/api/prompts/{id}/eval/runs/{run_id}/results/{result_id}/rate` | Yes | 1–5 star rating: scores a pending Manual result, or records `human_score` beside a scored AI-review result without changing its score. Either rating is final (404 once rated) |
+
+## Public Endpoints
+
+Used by the free tools for signed-out visitors; no session needed.
+
+| Method | Endpoint | Auth Required | Description |
+|---|---|---|---|
+| `GET` | `/api/public/model-prices` | No | Curated hosted models (`provider`, `provider_label`, `id`, `label`) with estimated input/output prices per million tokens (60/min) |
 
 ## MCP, OAuth & Admin Endpoints
 

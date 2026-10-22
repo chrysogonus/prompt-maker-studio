@@ -8,6 +8,7 @@ import RepositoryLink from '@/components/RepositoryLink';
 import { ButtonLink } from '@/components/ui/Button';
 import Wordmark from '@/components/ui/Wordmark';
 import GuideList from '@/components/guides/GuideList';
+import ToolList from '@/components/public/ToolList';
 import { APP_NAME, siteUrl } from '@/lib/branding';
 import styles from './page.module.css';
 
@@ -42,6 +43,7 @@ export default async function LandingPage() {
         </Link>
         <nav aria-label="Main navigation" className={styles.navigation}>
           <Link href="/guides" className={styles.signIn}>Guides</Link>
+          <Link href="/tools" className={styles.signIn}>Tools</Link>
           <Link href="/library" className={styles.signIn}>Sign in</Link>
         </nav>
       </header>
@@ -163,6 +165,11 @@ export default async function LandingPage() {
         <section className={styles.features} aria-labelledby="guides-title">
           <h2 id="guides-title">Learn with examples</h2>
           <GuideList />
+        </section>
+
+        <section className={styles.features} aria-labelledby="tools-title">
+          <h2 id="tools-title">Free prompt tools</h2>
+          <ToolList />
         </section>
 
         <section className={styles.openSource} aria-labelledby="open-source-title">

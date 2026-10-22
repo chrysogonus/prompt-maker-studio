@@ -10,6 +10,19 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- Free prompt tools at `/tools` that work without an account and upload nothing: a template filler
+  for `{{variables}}`, a prompt checker, a word-level prompt diff and a token counter with
+  estimated costs. Each can save its prompt to your library after you sign in or sign up.
+
+### Fixed
+
+- Splitting a section over 10,000 characters (when importing notes, or saving from a free tool)
+  no longer cuts through a `{{placeholder}}` or an emoji.
+- A variable named like a built-in property, such as `{{constructor}}`, is no longer filled in
+  with stray text in the preview.
+
 ### Changed
 
 - Registration is open by default. Operators who relied on the implicit closed default must now

@@ -75,6 +75,11 @@ describe('robots.txt and sitemap.xml', () => {
       { url: 'https://prompts.example/guides/reusable-ai-prompts' },
       { url: 'https://prompts.example/guides/prompt-template-variables' },
       { url: 'https://prompts.example/guides/organize-chatgpt-prompts' },
+      { url: 'https://prompts.example/tools' },
+      { url: 'https://prompts.example/tools/prompt-template-filler' },
+      { url: 'https://prompts.example/tools/prompt-linter' },
+      { url: 'https://prompts.example/tools/prompt-diff' },
+      { url: 'https://prompts.example/tools/token-counter' },
     ]);
   });
 });

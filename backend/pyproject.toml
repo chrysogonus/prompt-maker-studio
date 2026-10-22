@@ -140,6 +140,7 @@ line-ending = "auto"
 "app/api/account_routes.py" = ["ARG001"]
 "app/api/llm_connection_routes.py" = ["ARG001", "PT028"]
 "app/api/password_routes.py" = ["ARG001"]
+"app/api/public_routes.py" = ["ARG001"]  # slowapi Request injection
 "app/api/routes.py" = [
     "ARG001",  # Unused function arguments (slowapi Request injection)
 ]
