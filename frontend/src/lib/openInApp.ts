@@ -28,8 +28,10 @@ export function pendingHandoff(): AppHandoff | null {
   try {
     const parsed: unknown = JSON.parse(sessionStorage.getItem(pasteHandoffKey()) ?? 'null');
     if (!isAppHandoff(parsed)) return null;
-    // Only a path on this site is offered as the way back.
-    return /^\/(?!\/)/.test(parsed.returnTo ?? '') ? parsed : { ...parsed, returnTo: '' };
+    // Only a path on this site is offered as the way back; URL parsing catches "/\\host" and the like.
+    const back = new URL(String(parsed.returnTo ?? ''), window.location.origin);
+    const local = back.origin === window.location.origin && String(parsed.returnTo ?? '').startsWith('/');
+    return { ...parsed, returnTo: local ? back.pathname : '' };
   } catch {
     return null;
   }

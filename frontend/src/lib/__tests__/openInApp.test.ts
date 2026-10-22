@@ -23,8 +23,12 @@ describe('openInApp', () => {
   });
 
   it('offers only a path on this site as the way back', () => {
-    sessionStorage.setItem(pasteHandoffKey(), JSON.stringify({ origin: 'handoff', fields: [], values: {}, metadata: {}, returnTo: '//evil.example' }));
-    expect(pendingHandoff()?.returnTo).toBe('');
+    for (const returnTo of ['//evil.example', '/\\evil.example', '/\t/evil.example', 'https://evil.example/x', 'javascript:alert(1)']) {
+      sessionStorage.setItem(pasteHandoffKey(), JSON.stringify({ origin: 'handoff', fields: [], values: {}, metadata: {}, returnTo }));
+      expect(pendingHandoff()?.returnTo, returnTo).toBe('');
+    }
+    sessionStorage.setItem(pasteHandoffKey(), JSON.stringify({ origin: 'handoff', fields: [], values: {}, metadata: {}, returnTo: '/gallery/trip' }));
+    expect(pendingHandoff()?.returnTo).toBe('/gallery/trip');
     sessionStorage.setItem(pasteHandoffKey(), 'A plain library note');
     expect(pendingHandoff()).toBeNull();
   });
