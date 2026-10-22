@@ -142,7 +142,7 @@ def test_a_blank_public_refine_model_keeps_the_server_default_model(
     ) as ask:
         assert client.post("/api/public/refine/questions", json=_PROMPT).status_code == 200
 
-    assert ask.call_args.args[1].model == "gpt-6-luna"
+    assert ask.call_args.args[1].model == "served-model"
 
 
 def test_a_draft_that_drops_variables_is_rejected_but_still_billed(
