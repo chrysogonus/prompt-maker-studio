@@ -173,6 +173,22 @@ describe('prompt import', () => {
     expect(importProblem(split)).toBeNull();
     // One paragraph with no breaks is cut every 10,000 characters.
     expect(splitLongSections({ ...prompt, fields: [{ name: 'Blob', content: 'x'.repeat(25000) }] }).fields.map(field => field.content.length)).toEqual([10000, 10000, 5000]);
+
+    // A cut never lands inside a {{placeholder}}; it moves to just before it.
+    const crossing = splitLongSections({ ...prompt, fields: [{ name: 'Blob', content: `${'a'.repeat(9998)}{{topic}} end` }] }).fields;
+    expect(crossing.map(field => field.content)).toEqual(['a'.repeat(9998), '{{topic}} end']);
+    // Placeholders may contain line breaks; the paragraph break inside one is not a cut.
+    const multiline = splitLongSections({ ...prompt, fields: [{ name: 'Blob', content: `${'a'.repeat(9998)}{{\n\ntopic}}` }] }).fields;
+    expect(multiline.map(field => field.content)).toEqual(['a'.repeat(9998), '{{\n\ntopic}}']);
+    // …also when the placeholder starts the text, or a later section, followed by more text.
+    const leading = splitLongSections({ ...prompt, fields: [{ name: 'Blob', content: `{{\n\ntopic}}${'x'.repeat(10001)}` }] }).fields;
+    expect(leading.map(field => field.content)).toEqual([`{{\n\ntopic}}${'x'.repeat(9989)}`, 'x'.repeat(12)]);
+    const middle = splitLongSections({ ...prompt, fields: [{ name: 'Blob', content: `${'a'.repeat(9998)}{{\n\ntopic}}${'x'.repeat(10001)}` }] }).fields;
+    expect(middle.map(field => field.content)).toEqual(['a'.repeat(9998), `{{\n\ntopic}}${'x'.repeat(9989)}`, 'x'.repeat(12)]);
+    for (const fields of [leading, middle]) expect(fields.some(field => field.content.includes('{{\n\ntopic}}'))).toBe(true);
+    // An emoji (two UTF-16 units) is never split between sections.
+    const emoji = splitLongSections({ ...prompt, fields: [{ name: 'Blob', content: `${'a'.repeat(9999)}😀b` }] }).fields;
+    expect(emoji.map(field => field.content)).toEqual(['a'.repeat(9999), '😀b']);
   });
   it.each([
     '', '{broken', '{"prompts":[]}',

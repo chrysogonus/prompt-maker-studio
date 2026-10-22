@@ -1,5 +1,5 @@
 import { storageKey } from '@/lib/branding';
-import { suggestTitle } from '@/lib/sections';
+import { splitVariables, suggestTitle } from '@/lib/sections';
 import type { PromptCreateRequest, VariableMetadataItem } from '@/types/prompt';
 
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
@@ -253,22 +253,45 @@ export function importProblem(prompt: ImportPrompt): string | null {
 /**
  * Split each over-long section at paragraph breaks (or, failing that, every 10,000
  * characters) into numbered sections, so no text is lost: "Reference", "Reference 2".
+ * A cut never lands inside a {{placeholder}} or between the halves of an emoji.
  */
 export function splitLongSections(prompt: ImportPrompt): ImportPrompt {
   const taken = new Set<string>();
   const fields = prompt.fields.flatMap(field => {
     if (field.content.length <= MAX_SECTION) return [field];
-    const parts = [''];
-    for (const paragraph of field.content.split(/(?<=\n\n)/)) {
-      for (let i = 0; i < paragraph.length; i += MAX_SECTION) {
-        const piece = paragraph.slice(i, i + MAX_SECTION);
-        if (parts[parts.length - 1].length + piece.length > MAX_SECTION) parts.push('');
-        parts[parts.length - 1] += piece;
-      }
-    }
-    return parts.map(content => ({ name: field.name, content: content.trim() }));
+    return splitText(field.content).map(content => ({ name: field.name, content: content.trim() }));
   });
   return { ...prompt, fields: fields.map(field => ({ ...field, name: sectionName(field.name, taken) })) };
+}
+
+function splitText(text: string): string[] {
+  // Placeholder spans over the whole text, since {{ name }} may contain line breaks.
+  const spans: [number, number][] = [];
+  let offset = 0;
+  for (const part of splitVariables(text)) {
+    if (part.kind === 'variable') spans.push([offset, offset + part.text.length]);
+    offset += part.text.length;
+  }
+  const inside = (at: number) => spans.find(([from, to]) => from < at && to > at);
+  const parts: string[] = [];
+  let start = 0;
+  while (text.length - start > MAX_SECTION) {
+    let end = start + MAX_SECTION;
+    // The last paragraph break that fits, skipping breaks inside a placeholder.
+    let paragraph = text.lastIndexOf('\n\n', end - 2);
+    while (paragraph !== -1 && paragraph + 2 > start && inside(paragraph + 2)) paragraph = text.lastIndexOf('\n\n', paragraph - 1);
+    if (paragraph !== -1 && paragraph + 2 > start) end = paragraph + 2;
+    const span = inside(end);
+    // Cut before the placeholder, or after it when it starts this section.
+    // ponytail: a single placeholder padded past 10,000 characters still yields one over-long section.
+    if (span) end = span[0] > start ? span[0] : span[1];
+    // A low surrogate continues the character before it; keep the pair together.
+    if (/[\uDC00-\uDFFF]/.test(text[end]) && end - 1 > start) end -= 1;
+    parts.push(text.slice(start, end));
+    start = end;
+  }
+  parts.push(text.slice(start));
+  return parts;
 }
 
 /**
