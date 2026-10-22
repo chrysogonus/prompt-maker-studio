@@ -1448,3 +1448,27 @@ limited only by the daily cap and budgets. Operators must mention the refiner in
 **Sources**: `backend/app/api/public_routes.py`, `backend/app/services/public_refine.py`,
 `backend/app/models/public_billed_call.py`, `backend/app/services/budget_service.py`,
 `frontend/src/features/tools/PromptRefiner.tsx`.
+
+## Public Pages Follow the Visitor's System Theme
+
+**Status**: Accepted (2026-10-22)
+
+**Context**: Light is the app's default theme, and the theme control lives in the app's sidebar.
+Signed-out visitors on the landing page, guides, tools, gallery and legal pages therefore always
+saw light mode, whatever their system preferred, with no way to change it.
+
+**Decision**: When no theme is stored, public pages follow `prefers-color-scheme`; app pages stay
+light. A stored `light`, `dark` or `system` choice wins everywhere. The rule lives in
+`frontend/src/lib/theme.ts` (`isPublicPath`, `applyTheme`), is applied before first paint by
+`THEME_SCRIPT`, and is re-applied by `ThemeSync` on every route change, so a client navigation
+from a dark public page into the app returns to light.
+
+**Rationale**: Visitors get the reading mode their system asks for without a new control, and
+the app keeps the light default that its screenshots, sign-in screen and first-run experience
+were designed around.
+
+**Consequences**: A signed-out visitor with a dark system sees dark public pages and a light
+sign-in screen; choosing a theme in the app applies to both.
+
+**Sources**: `frontend/src/lib/theme.ts`, `frontend/src/components/ui/ThemeSync.tsx`,
+`frontend/src/app/layout.tsx`.

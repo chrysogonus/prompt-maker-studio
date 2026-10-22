@@ -23,7 +23,8 @@ Use it for shared library loading/invalidation; keep pending undo mutations loca
 until they commit. Never use a global cache for account data.
 
 `src/app/layout.tsx` applies the stored theme before first paint on every route.
-Light is the default; preserve the unnamespaced `theme` key and explicit light/dark choices.
+Light is the app default; with no stored choice, public pages (`isPublicPath` in `src/lib/theme.ts`)
+follow the system. Preserve the unnamespaced `theme` key and explicit light/dark choices.
 The JWT stays in an HttpOnly cookie; browser storage contains session-expiry hints,
 preferences, and account-scoped drafts. Preserve draft recovery on session expiry
 and content cleanup on explicit sign-out.

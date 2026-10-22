@@ -43,6 +43,8 @@ any release. See [Project status](./README.md#project-status).
 
 ### Changed
 
+- Public pages (landing page, guides, tools, gallery, legal pages) follow your system's light or
+  dark setting until you choose a theme; the app itself stays light by default.
 - Registration is open by default. Operators who relied on the implicit closed default must now
   set `REGISTRATION_MODE=closed`, which still admits only the first account; any unrecognised
   value is also treated as closed.
