@@ -216,3 +216,17 @@
   .widget { padding: var(--space-4); }
   .columns { grid-template-columns: minmax(0, 1fr); }
 }
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--text-sm-size);
+}
+
+/* Hidden from people and assistive tech; only form-filling bots see it. */
+.honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

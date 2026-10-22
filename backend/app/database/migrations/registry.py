@@ -48,6 +48,7 @@ from app.database.migrations.v031_eval_tested_prompt import _migration_031_eval_
 from app.database.migrations.v032_prompt_known_good_version import (
     _migration_032_prompt_known_good_version,
 )
+from app.database.migrations.v033_public_billed_calls import _migration_033_public_billed_calls
 
 Migration = tuple[str, Callable]
 
@@ -84,4 +85,5 @@ _MIGRATIONS: tuple[Migration, ...] = (
     ("030_eval_human_score", _migration_030_eval_human_score),
     ("031_eval_tested_prompt", _migration_031_eval_tested_prompt),
     ("032_prompt_known_good_version", _migration_032_prompt_known_good_version),
+    ("033_public_billed_calls", _migration_033_public_billed_calls),
 )

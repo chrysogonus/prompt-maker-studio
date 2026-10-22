@@ -12,6 +12,9 @@ export type { PublicModelPrice } from './api/public';
 
 export class ApiClient {
   static getPublicModelPrices = publicTools.getPublicModelPrices;
+  static getPublicRefineStatus = publicTools.getPublicRefineStatus;
+  static getPublicRefineQuestions = publicTools.getPublicRefineQuestions;
+  static createPublicRefineDraft = publicTools.createPublicRefineDraft;
   static tryPrompt = prompts.tryPrompt;
   static getEvalCases = evaluation.getEvalCases;
   static createEvalCase = evaluation.createEvalCase;

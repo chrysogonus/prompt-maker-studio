@@ -189,6 +189,21 @@ def timeout_seconds_for(provider: Provider) -> float:
     return provider.timeout_seconds
 
 
+def server_default_connection(model: str | None = None) -> LLMConnection | None:
+    """The operator's shared connection, or None when the server has none. Used for
+    users without their own connection and for signed-out visitors (the free refiner)."""
+    default = server_default()
+    if default is None:
+        return None
+    return _build_connection(
+        default.provider,
+        (model or default.model).strip(),
+        default.base_url,
+        default.api_key or _LOCAL_API_KEY_PLACEHOLDER,
+        trusted=True,
+    )
+
+
 def client_for(user: User, model: str | None = None) -> LLMConnection:
     """
     Build the LLM client for `user`'s own provider connection, or for the
@@ -205,15 +220,9 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
         StoredKeyUnreadableError: If the stored key cannot be decrypted
     """
     if not has_own_connection(user):
-        default = server_default()
-        if default is not None:
-            return _build_connection(
-                default.provider,
-                (model or default.model).strip(),
-                default.base_url,
-                default.api_key or _LOCAL_API_KEY_PLACEHOLDER,
-                trusted=True,
-            )
+        connection = server_default_connection(model)
+        if connection is not None:
+            return connection
 
     if not user.llm_provider:
         msg = (

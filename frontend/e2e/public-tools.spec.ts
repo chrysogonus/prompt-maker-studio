@@ -7,6 +7,7 @@ const paths = [
   '/tools/prompt-linter',
   '/tools/prompt-diff',
   '/tools/token-counter',
+  '/tools/prompt-refiner',
 ];
 
 test('tool pages serve their text, FAQ and metadata without JavaScript', async ({ request }) => {
@@ -18,12 +19,43 @@ test('tool pages serve their text, FAQ and metadata without JavaScript', async (
     expect(html).toMatch(new RegExp(`<link rel="canonical" href="https?://[^"\\s]+${path}"`));
     expect(html).toContain('name="description"');
     if (path !== '/tools') {
-      expect(html).toContain('Runs in your browser. Nothing you enter is uploaded.');
+      expect(html).toContain(path.endsWith('prompt-refiner')
+        ? 'Your prompt is sent to this site’s AI provider' : 'Runs in your browser. Nothing you enter is uploaded.');
       expect(html).toContain('"@type":"FAQPage"');
     }
   }
   const sitemap = await (await request.get('/sitemap.xml')).text();
   for (const path of paths) expect(sitemap).toContain(`${path}</loc>`);
+});
+
+test('the refiner says when it is off, and refines after the checker hands over a prompt', async ({ page }) => {
+  // The e2e stack leaves PUBLIC_REFINE_ENABLED unset.
+  await page.goto('/tools/prompt-refiner');
+  await expect(page.getByRole('status')).toContainText('not offered on this server');
+
+  const sent: unknown[] = [];
+  await page.route('**/api/public/refine', (route) => route.fulfill({ json: { available: true, max_chars: 8000 } }));
+  await page.route('**/api/public/refine/questions', async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ json: { questions: ['Who reads it?'] } });
+  });
+  await page.route('**/api/public/refine/draft', async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ json: { text: 'You are an editor. Summarize this article about {{topic}} in five bullets.' } });
+  });
+  await page.goto('/tools/prompt-linter');
+  await page.getByRole('link', { name: 'Refine this prompt' }).click();
+  await expect(page).toHaveURL(/\/tools\/prompt-refiner$/);
+  await expect(page.getByRole('textbox', { name: 'Your prompt' })).toHaveValue('Summarize this article about {{topic}}.');
+  await page.getByRole('button', { name: 'Ask me questions first' }).click();
+  await page.getByRole('textbox', { name: 'Who reads it?' }).fill('Product managers');
+  await page.getByRole('button', { name: 'Refine with my answers' }).click();
+  await expect(page.getByLabel('Changes from your prompt')).toContainText('five bullets');
+  expect(sent).toEqual([
+    { text: 'Summarize this article about {{topic}}.', website: '', force: false },
+    { text: 'Summarize this article about {{topic}}.', website: '', qa_pairs: [{ question: 'Who reads it?', answer: 'Product managers' }] },
+  ]);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
 test('browser-only tools send nothing they are given', async ({ page }) => {

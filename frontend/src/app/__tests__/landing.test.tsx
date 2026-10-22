@@ -83,6 +83,7 @@ describe('robots.txt and sitemap.xml', () => {
       { url: 'https://prompts.example/tools' },
       { url: 'https://prompts.example/tools/prompt-template-filler' },
       { url: 'https://prompts.example/tools/prompt-linter' },
+      { url: 'https://prompts.example/tools/prompt-refiner' },
       { url: 'https://prompts.example/tools/prompt-diff' },
       { url: 'https://prompts.example/tools/token-counter' },
       { url: 'https://prompts.example/gallery' },

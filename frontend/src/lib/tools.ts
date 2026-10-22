@@ -23,6 +23,11 @@ export const TOOLS = {
     title: 'Prompt checker',
     description: 'Check a prompt for a missing role, output format, length or example, and for broken tags and variables. Runs in your browser; nothing is uploaded.',
   },
+  refiner: {
+    path: '/tools/prompt-refiner',
+    title: 'Free AI prompt refiner',
+    description: 'Paste a prompt and get a clearer, more specific version, with optional questions about what you need. Free to try without an account, within daily limits.',
+  },
   diff: {
     path: '/tools/prompt-diff',
     title: 'Prompt diff',

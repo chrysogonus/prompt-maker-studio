@@ -86,6 +86,14 @@ LLM_API_KEY=
 # GLOBAL_MONTHLY_BUDGET_USD=50
 # USER_MONTHLY_BUDGET_USD=5
 
+# Optional free refiner for signed-out visitors, on the server default (off by
+# default). Before enabling: update the privacy policy and confirm the backend
+# sees real client IPs (see docs/docker.md).
+# PUBLIC_REFINE_ENABLED=true
+# PUBLIC_REFINE_RATE_LIMIT=3/minute;20/day
+# PUBLIC_REFINE_DAILY_LIMIT=200
+# PUBLIC_MONTHLY_BUDGET_USD=10
+
 # Frontend Configuration
 # No API URL to set — browsers call /api on YOUR_DOMAIN and Caddy routes it to
 # the backend. FRONTEND_URL also supplies reset links, MCP/OAuth discovery,

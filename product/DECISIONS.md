@@ -1401,3 +1401,43 @@ remain the guard against scripted sign-ups.
 
 **Sources**: `backend/app/services/accounts/registration.py`, `docker-compose.yml`, `.env.example`,
 `SECURITY.md`.
+
+---
+
+## A Free Refiner for Signed-out Visitors, on the Server Default
+
+**Status**: Accepted (2026-10-22)
+
+**Context**: Signed-out visitors now get free browser-only tools, guides and templates.
+Refinement is the one AI feature that shows the product's value in a single step, but it needs
+a model, and visitors have no account, provider or budget of their own.
+
+**Decision**: `POST /api/public/refine/questions` and `/draft` refine one pasted prompt (up to
+8,000 characters, as a single Task section) on the operator's server default, reusing the
+refiner service and its draft validation. It is off unless `PUBLIC_REFINE_ENABLED` is set, and
+`GET /api/public/refine` tells the page whether it is offered. Guards, cheapest first: a
+honeypot field and size limits (422), a per-IP rate limit (`PUBLIC_REFINE_RATE_LIMIT`, default
+3/minute and 20/day), the shared and public monthly ceilings (`GLOBAL_MONTHLY_BUDGET_USD`,
+`PUBLIC_MONTHLY_BUDGET_USD`; 402) and a daily call cap across all visitors
+(`PUBLIC_REFINE_DAILY_LIMIT`, default 200; 429). The per-IP limit is one bucket for both
+steps. Each admitted call reserves its row in a separate `public_billed_calls` ledger
+(migration 033) at a pessimistic estimate (two attempts, for the SDK's one retry) before the
+provider is contacted, under a process lock, and is settled to the reported usage afterwards;
+the ledger counts toward the shared ceiling.
+
+**Rationale**: The user chose the server default over separate hardware and self-contained
+limits over a third-party challenge, which keeps the CSP and the privacy policy small. A
+separate ledger avoids rebuilding `billed_calls` to make `user_id` nullable, and lets public
+rows deliberately carry no user, IP address or prompt text. Results are handed to the app
+through the existing Paste a prompt review, so saving needs no new endpoint.
+
+**Consequences**: The per-IP limit is in memory (one backend process) and only meaningful
+when the backend sees real client addresses behind the proxy; restarts reset it. Because calls
+in flight hold a reservation, the daily cap is exact and the monthly ceilings can be exceeded
+only when a call costs more than its estimate. The admission lock assumes one backend process;
+several workers would need a database-level counter. Determined abuse from many addresses is
+limited only by the daily cap and budgets. Operators must mention the refiner in their privacy policy before enabling it.
+
+**Sources**: `backend/app/api/public_routes.py`, `backend/app/services/public_refine.py`,
+`backend/app/models/public_billed_call.py`, `backend/app/services/budget_service.py`,
+`frontend/src/features/tools/PromptRefiner.tsx`.

@@ -5,11 +5,15 @@ import FillerPage, { generateMetadata as fillerMetadata } from '../tools/prompt-
 import LinterPage, { generateMetadata as linterMetadata } from '../tools/prompt-linter/page';
 import DiffPage, { generateMetadata as diffMetadata } from '../tools/prompt-diff/page';
 import TokensPage, { generateMetadata as tokensMetadata } from '../tools/token-counter/page';
+import RefinerPage, { generateMetadata as refinerMetadata } from '../tools/prompt-refiner/page';
 import ToolsLayout from '../tools/layout';
 
 vi.mock('@/lib/api', async () => ({
   ...(await vi.importActual<typeof import('@/lib/api')>('@/lib/api')),
-  ApiClient: { getPublicModelPrices: vi.fn(() => Promise.resolve([])) },
+  ApiClient: {
+    getPublicModelPrices: vi.fn(() => Promise.resolve([])),
+    getPublicRefineStatus: vi.fn(() => Promise.resolve({ available: true, max_chars: 8000 })),
+  },
 }));
 
 afterEach(() => vi.unstubAllEnvs());
@@ -19,6 +23,7 @@ const tools = [
   { Page: LinterPage, metadata: linterMetadata, path: '/tools/prompt-linter' },
   { Page: DiffPage, metadata: diffMetadata, path: '/tools/prompt-diff' },
   { Page: TokensPage, metadata: tokensMetadata, path: '/tools/token-counter' },
+  { Page: RefinerPage, metadata: refinerMetadata, path: '/tools/prompt-refiner' },
 ];
 
 describe('Free tools', () => {
@@ -32,7 +37,9 @@ describe('Free tools', () => {
     await act(async () => {}); // The token counter loads prices on mount.
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(screen.getByText('Runs in your browser. Nothing you enter is uploaded.')).toBeInTheDocument();
+    // The refiner is the one tool that sends text, and says so.
+    expect(screen.getByText(path.endsWith('prompt-refiner')
+      ? /Your prompt is sent to this site’s AI provider/ : 'Runs in your browser. Nothing you enter is uploaded.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Questions' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'All tools' })).toHaveAttribute('href', '/tools');
     expect(screen.getByRole('link', { name: 'Open Prompt Maker Studio' })).toHaveAttribute('href', '/library');

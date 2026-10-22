@@ -60,7 +60,8 @@ export default function GoodPromptPage() {
       </ul>
       <p>
         Paste your own prompt into the <Link href={TOOLS.linter.path}>prompt checker</Link> to see which
-        of these parts it is missing.
+        of these parts it is missing, or let the <Link href={TOOLS.refiner.path}>prompt refiner</Link>{' '}
+        suggest a clearer version.
       </p>
     </GuideArticle>
   );

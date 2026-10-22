@@ -23,6 +23,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.billed_call import BilledCall
+from app.models.public_billed_call import PublicBilledCall
 from app.services.llm_pricing import ASSUMED_TOKENS_WHEN_USAGE_MISSING, cost_usd_for
 
 
@@ -77,13 +78,26 @@ class BudgetService:
         return _limit_from_env("USER_MONTHLY_BUDGET_USD")
 
     @staticmethod
+    def public_limit_usd() -> float | None:
+        return _limit_from_env("PUBLIC_MONTHLY_BUDGET_USD")
+
+    @staticmethod
+    def _public_spent_since(db: Session, start: datetime) -> float:
+        query = db.query(func.coalesce(func.sum(PublicBilledCall.cost_usd), 0.0)).filter(
+            PublicBilledCall.created_at >= start
+        )
+        return float(query.scalar() or 0.0)
+
+    @staticmethod
     def _spent_since(db: Session, start: datetime, user_id: int | None) -> float:
+        """A user's spend, or with `user_id=None` everyone's, signed-out visitors included."""
         query = db.query(func.coalesce(func.sum(BilledCall.cost_usd), 0.0)).filter(
             BilledCall.created_at >= start
         )
         if user_id is not None:
             query = query.filter(BilledCall.user_id == user_id)
-        return float(query.scalar() or 0.0)
+            return float(query.scalar() or 0.0)
+        return float(query.scalar() or 0.0) + BudgetService._public_spent_since(db, start)
 
     @staticmethod
     def any_limit_configured() -> bool:
@@ -96,6 +110,7 @@ class BudgetService:
         return (
             BudgetService.global_limit_usd() is not None
             or BudgetService.user_limit_usd() is not None
+            or BudgetService.public_limit_usd() is not None
         )
 
     @staticmethod
@@ -118,19 +133,7 @@ class BudgetService:
         """
         window_start = _month_start(datetime.now(UTC))
         estimate = max(0.0, estimated_cost_usd)
-
-        global_limit = BudgetService.global_limit_usd()
-        if global_limit is not None:
-            global_spent = BudgetService._spent_since(db, window_start, user_id=None)
-            if global_spent + estimate >= global_limit:
-                msg = (
-                    "The shared monthly API budget has been reached. "
-                    "Please try again after the budget resets next month."
-                )
-                exhausted = global_spent >= global_limit
-                if not exhausted:
-                    msg = "The estimated request cost exceeds the remaining shared monthly API budget. Please try a smaller request or wait until the budget resets next month."
-                raise BudgetExceededError(msg, scope="shared", exhausted=exhausted)
+        BudgetService._check_global(db, window_start, estimate)
 
         user_limit = BudgetService.user_limit_usd()
         if user_limit is not None:
@@ -144,6 +147,40 @@ class BudgetService:
                 if not exhausted:
                     msg = "The estimated request cost exceeds your remaining monthly API budget. Please try a smaller request or wait until the budget resets next month."
                 raise BudgetExceededError(msg, scope="user", exhausted=exhausted)
+
+    @staticmethod
+    def check_public(db: Session, estimated_cost_usd: float = 0.0) -> None:
+        """Like `check`, for a signed-out visitor: the shared ceiling, then the
+        separate PUBLIC_MONTHLY_BUDGET_USD ceiling on public spend alone, each
+        with the cost of the call about to be made."""
+        window_start = _month_start(datetime.now(UTC))
+        estimate = max(0.0, estimated_cost_usd)
+        BudgetService._check_global(db, window_start, estimate)
+        public_limit = BudgetService.public_limit_usd()
+        if (
+            public_limit is not None
+            and BudgetService._public_spent_since(db, window_start) + estimate >= public_limit
+        ):
+            msg = (
+                "The free refiner's monthly budget has been used up. Please try again next month, "
+                "or sign in and connect your own AI provider."
+            )
+            raise BudgetExceededError(msg, scope="public")
+
+    @staticmethod
+    def _check_global(db: Session, window_start: datetime, estimate: float) -> None:
+        global_limit = BudgetService.global_limit_usd()
+        if global_limit is not None:
+            global_spent = BudgetService._spent_since(db, window_start, user_id=None)
+            if global_spent + estimate >= global_limit:
+                msg = (
+                    "The shared monthly API budget has been reached. "
+                    "Please try again after the budget resets next month."
+                )
+                exhausted = global_spent >= global_limit
+                if not exhausted:
+                    msg = "The estimated request cost exceeds the remaining shared monthly API budget. Please try a smaller request or wait until the budget resets next month."
+                raise BudgetExceededError(msg, scope="shared", exhausted=exhausted)
 
     @staticmethod
     def estimated_batch_cost_usd(provider: str, model: str, calls: int) -> float:

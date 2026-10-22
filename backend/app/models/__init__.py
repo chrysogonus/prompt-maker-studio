@@ -25,6 +25,7 @@ from app.models.playground_run import PlaygroundRun
 from app.models.prompt import Prompt
 from app.models.prompt_id_sequence import PromptIdSequence
 from app.models.prompt_version import PromptVersion
+from app.models.public_billed_call import PublicBilledCall
 from app.models.user import User
 
 __all__ = [
@@ -40,5 +41,6 @@ __all__ = [
     "Prompt",
     "PromptIdSequence",
     "PromptVersion",
+    "PublicBilledCall",
     "User",
 ]

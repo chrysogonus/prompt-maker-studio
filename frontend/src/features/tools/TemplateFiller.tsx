@@ -43,12 +43,12 @@ export default function TemplateFiller({ initialText = '', fields, title, hints 
   return (
     <>
       {!fields && (
-        <label className={styles.field}>
-          Prompt template
-          <textarea className={styles.textarea} value={text} onChange={(event) => { setText(event.target.value); setStatus(''); }}
-            placeholder="Write a weekly update for {{team}} using these notes: {{notes}}" maxLength={50_000} />
-          <small>Put the parts that change in double braces, such as {'{{audience}}'}.</small>
-        </label>
+        <div className={styles.field}>
+          <label htmlFor="filler-template">Prompt template</label>
+          <textarea id="filler-template" className={styles.textarea} value={text} onChange={(event) => { setText(event.target.value); setStatus(''); }}
+            placeholder="Write a weekly update for {{team}} using these notes: {{notes}}" maxLength={50_000} aria-describedby="filler-template-hint" />
+          <small id="filler-template-hint">Put the parts that change in double braces, such as {'{{audience}}'}.</small>
+        </div>
       )}
       {names.length > 0 ? (
         <fieldset className={styles.field}>

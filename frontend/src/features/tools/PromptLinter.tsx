@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import Button from '@/components/ui/Button';
+import Button, { ButtonLink } from '@/components/ui/Button';
 import { openInApp } from '@/lib/openInApp';
 import { lintPrompt } from '@/lib/promptLint';
+import { TOOLS } from '@/lib/tools';
+import { refinerInputKey } from './PromptRefiner';
 import styles from '@/components/public/Tools.module.css';
 
 const EXAMPLE = 'Summarize this article about {{topic}}.';
@@ -35,6 +37,9 @@ export default function PromptLinter() {
             </ul>
           )}
           <div className={styles.actions}>
+            <ButtonLink href={TOOLS.refiner.path} variant="primary" onClick={() => {
+              try { sessionStorage.setItem(refinerInputKey(), text); } catch { /* The refiner opens with its example. */ }
+            }}>Refine this prompt</ButtonLink>
             <Button onClick={() => openInApp({ fields: [{ name: 'Task', content: text }] })}>Save to my library</Button>
           </div>
         </>
