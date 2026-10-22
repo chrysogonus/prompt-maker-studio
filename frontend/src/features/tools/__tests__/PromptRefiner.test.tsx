@@ -31,6 +31,17 @@ describe('PromptRefiner', () => {
     expect(screen.queryByRole('button', { name: 'Improve now' })).not.toBeInTheDocument();
   });
 
+  it('offers a retry when availability cannot be checked', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getPublicRefineStatus).mockRejectedValueOnce(new Error('offline'));
+    render(<PromptRefiner />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not check whether free refinement is available.');
+    expect(screen.getByRole('button', { name: 'Improve now' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Improve now' })).toBeEnabled());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('improves a prompt straight away and shows, copies and saves the result', async () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();

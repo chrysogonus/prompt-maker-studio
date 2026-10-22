@@ -140,7 +140,8 @@ Anyone self-hosting Prompt Maker Studio is responsible for their own deployment:
   default for refinement. It is bounded per visitor IP (`PUBLIC_REFINE_RATE_LIMIT`,
   in memory), per day across all visitors (`PUBLIC_REFINE_DAILY_LIMIT`) and per
   month (`PUBLIC_MONTHLY_BUDGET_USD`, also counted toward
-  `GLOBAL_MONTHLY_BUDGET_USD`), with a honeypot field against simple bots. Its
+  `GLOBAL_MONTHLY_BUDGET_USD`), with answers capped at
+  `PUBLIC_REFINE_MAX_OUTPUT_TOKENS` and a honeypot field against simple bots. Its
   spend is recorded without user, IP address or prompt text. Per-IP limits rely
   on the backend seeing real client addresses behind the proxy.
 - **Content-Security-Policy.** `'unsafe-eval'` has been removed; scripts, frames,

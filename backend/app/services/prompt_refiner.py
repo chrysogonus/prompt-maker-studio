@@ -125,6 +125,10 @@ _SECTION_DRAFT_RESPONSE_SCHEMA = {
 }
 
 
+MAX_QUESTIONS = 10
+MAX_QUESTION_CHARS = 500
+
+
 class PromptRefinerService:
     """Generates clarifying questions and draft revisions via the user's LLM provider."""
 
@@ -155,7 +159,13 @@ class PromptRefinerService:
             msg = "Provider response did not contain a questions list"
             raise ValueError(msg)
         asked = [str(question) for question in questions]
-        return [q for q in asked if not _ASKS_ABOUT_PLACEHOLDER.search(q)], usage
+        # Only questions a draft request can carry back (schemas/refinement.py RefineQAPair).
+        usable = [
+            q
+            for q in asked
+            if not _ASKS_ABOUT_PLACEHOLDER.search(q) and len(q) <= MAX_QUESTION_CHARS
+        ]
+        return usable[:MAX_QUESTIONS], usage
 
     @staticmethod
     def generate_draft(

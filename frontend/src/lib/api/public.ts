@@ -26,9 +26,10 @@ export interface PublicRefineStatus {
   max_chars: number;
 }
 
+/** Rejects when the server cannot be asked, so the page can offer a retry. */
 export async function getPublicRefineStatus(): Promise<PublicRefineStatus> {
   const response = await fetch(`${API_URL}/api/public/refine`);
-  if (!response.ok) return { available: false, max_chars: 0 };
+  if (!response.ok) throw new ApiError('Could not check whether free refinement is available.', response.status);
   return response.json();
 }
 

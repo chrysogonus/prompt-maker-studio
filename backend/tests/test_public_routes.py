@@ -10,6 +10,7 @@ from app.models.billed_call import BilledCall
 from app.models.public_billed_call import PublicBilledCall
 from app.services.llm_providers import PROVIDERS
 from app.services.spend_ledger import LLMUsage
+from tests.conftest import make_chat_response
 
 
 def test_model_prices_need_no_session(client):
@@ -212,10 +213,10 @@ def test_a_call_in_flight_already_counts_against_the_daily_cap(
 
     monkeypatch.setenv("PUBLIC_REFINE_DAILY_LIMIT", "1")
     connection = server_default_connection()
-    row = service.reserve_call(db_session, connection, service.QUESTIONS_SOURCE)
+    row = service.reserve_call(db_session, connection, service.QUESTIONS_SOURCE, 100)
     # Not settled yet, as while the provider is still answering.
     with pytest.raises(OperationError) as refused:
-        service.reserve_call(db_session, connection, service.DRAFT_SOURCE)
+        service.reserve_call(db_session, connection, service.DRAFT_SOURCE, 100)
     assert refused.value.status_code == 429
     service.settle_call(db_session, row, [])
     assert (row.prompt_tokens, row.cost_usd) == (0, 0.0)
@@ -251,10 +252,11 @@ def test_a_reservation_holds_its_estimate_until_settled(
     db_session, priced_public_refine, monkeypatch
 ):
     from app.services import public_refine as service
-    from app.services.llm_client import server_default_connection
 
     monkeypatch.setenv("PUBLIC_MONTHLY_BUDGET_USD", "1000")
-    row = service.reserve_call(db_session, server_default_connection(), service.DRAFT_SOURCE)
+    row = service.reserve_call(
+        db_session, service.available_connection(), service.DRAFT_SOURCE, 100
+    )
     assert row.cost_usd > 0
     service.settle_call(db_session, row, [_USAGE])
     assert (row.prompt_tokens, row.completion_tokens) == (1000, 500)
@@ -289,3 +291,43 @@ def test_one_per_visitor_limit_covers_both_steps(client, public_refine, monkeypa
     finally:
         limiter.reset()
     assert statuses == [200, 200, 200, 429]
+
+
+def test_public_calls_cap_the_answer_length(client, public_refine, mock_llm, monkeypatch):
+    monkeypatch.setenv("PUBLIC_REFINE_MAX_OUTPUT_TOKENS", "1234")
+    mock_llm.return_value.chat.completions.create.return_value = make_chat_response(
+        '{"questions": ["Who reads it?"]}'
+    )
+
+    resp = client.post("/api/public/refine/questions", json=_PROMPT)
+
+    assert resp.status_code == 200
+    # The server default in these tests is a vLLM endpoint, which takes max_tokens.
+    assert mock_llm.return_value.chat.completions.create.call_args.kwargs["max_tokens"] == 1234
+
+
+def test_the_estimate_covers_the_input_and_the_capped_answer(priced_public_refine, monkeypatch):
+    from app.services import public_refine as service
+
+    monkeypatch.setenv("PUBLIC_MONTHLY_BUDGET_USD", "1000")
+    connection = service.available_connection()
+    short, long = (service.estimated_cost_usd(connection, chars) for chars in (100, 8000))
+    assert 0 < short < long
+    monkeypatch.setenv("PUBLIC_REFINE_MAX_OUTPUT_TOKENS", "100")
+    assert service.estimated_cost_usd(service.available_connection(), 100) < short
+
+
+def test_returned_questions_can_all_be_answered_in_a_draft(client, public_refine):
+    asked = [f"Question {i}?" for i in range(8)]
+    draft = {"fields": [{"name": "Task", "content": _PROMPT["text"]}]}
+    with (
+        patch(f"{_SERVICE}.generate_clarifying_questions", return_value=(asked, _USAGE)),
+        patch(f"{_SERVICE}.generate_section_draft", return_value=(draft, _USAGE)),
+    ):
+        questions = client.post("/api/public/refine/questions", json=_PROMPT).json()["questions"]
+        resp = client.post(
+            "/api/public/refine/draft",
+            json={**_PROMPT, "qa_pairs": [{"question": q, "answer": "yes"} for q in questions]},
+        )
+    assert questions == asked[:5]
+    assert resp.status_code == 200

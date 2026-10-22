@@ -1420,9 +1420,10 @@ honeypot field and size limits (422), a per-IP rate limit (`PUBLIC_REFINE_RATE_L
 3/minute and 20/day), the shared and public monthly ceilings (`GLOBAL_MONTHLY_BUDGET_USD`,
 `PUBLIC_MONTHLY_BUDGET_USD`; 402) and a daily call cap across all visitors
 (`PUBLIC_REFINE_DAILY_LIMIT`, default 200; 429). The per-IP limit is one bucket for both
-steps. Each admitted call reserves its row in a separate `public_billed_calls` ledger
-(migration 033) at a pessimistic estimate (two attempts, for the SDK's one retry) before the
-provider is contacted, under a process lock, and is settled to the reported usage afterwards;
+steps, and only questions a draft request can carry back are returned. Each admitted call reserves its row in a separate `public_billed_calls` ledger
+(migration 033) at a pessimistic estimate (the whole input and an answer capped at
+`PUBLIC_REFINE_MAX_OUTPUT_TOKENS`, default 8,000, on each of up to four attempts: two JSON
+attempts, each retried once by the SDK) before the provider is contacted, under a process lock, and is settled to the reported usage afterwards;
 the ledger counts toward the shared ceiling.
 
 **Rationale**: The user chose the server default over separate hardware and self-contained

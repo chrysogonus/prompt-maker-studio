@@ -52,7 +52,9 @@ def public_refine_questions(
     """Clarifying questions for a pasted prompt, without an account. Off unless
     PUBLIC_REFINE_ENABLED is set; uses the server default connection."""
     connection = call_service(public_refine.available_connection)
-    row = call_service(public_refine.reserve_call, db, connection, public_refine.QUESTIONS_SOURCE)
+    row = call_service(
+        public_refine.reserve_call, db, connection, public_refine.QUESTIONS_SOURCE, len(body.text)
+    )
     try:
         questions = public_refine.refine_questions(db, connection, row, body.text, body.force)
     except Exception as exc:
@@ -68,8 +70,11 @@ def public_refine_draft(
 ):
     """A refined version of a pasted prompt, using any answered questions."""
     connection = call_service(public_refine.available_connection)
-    row = call_service(public_refine.reserve_call, db, connection, public_refine.DRAFT_SOURCE)
     pairs = [(pair.question, pair.answer) for pair in body.qa_pairs if pair.answer.strip()]
+    input_chars = len(body.text) + sum(len(question) + len(answer) for question, answer in pairs)
+    row = call_service(
+        public_refine.reserve_call, db, connection, public_refine.DRAFT_SOURCE, input_chars
+    )
     try:
         text = public_refine.refine_draft(db, connection, row, body.text, pairs)
     except Exception as exc:

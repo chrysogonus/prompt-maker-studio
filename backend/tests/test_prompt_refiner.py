@@ -64,6 +64,16 @@ class TestGenerateClarifyingQuestions:
         system_message = create.call_args.kwargs["messages"][0]["content"]
         assert "never ask what value" in system_message
 
+    def test_returns_only_questions_a_draft_request_can_carry(self):
+        too_long = "Why " + "really " * 80 + "?"
+        asked = [f"Question {i}?" for i in range(12)]
+        connection, _ = _connection_returning({"questions": [too_long, *asked]})
+
+        result, _ = PromptRefinerService.generate_clarifying_questions("template", connection)
+
+        assert len(too_long) > 500
+        assert result == asked[:10]
+
     def test_propagates_provider_errors(self):
         connection = make_connection(MagicMock(side_effect=OpenAIError("boom")))
 

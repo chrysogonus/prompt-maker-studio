@@ -8,8 +8,10 @@ estimate, before contacting the provider, so calls still in flight count
 against both. Nothing about the visitor is stored (models/public_billed_call.py).
 """
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from http import HTTPStatus
+import math
 import os
 import threading
 
@@ -20,6 +22,7 @@ from app.schemas.prompts import PromptField
 from app.services.budget_service import BudgetExceededError, BudgetService
 from app.services.errors import OperationError
 from app.services.llm_client import LLMConnection, server_default, server_default_connection
+from app.services.llm_pricing import cost_usd_for
 from app.services.prompt_refiner import PromptRefinerService
 from app.services.prompt_sections import render_sections
 from app.services.spend_ledger import LLMUsage, capture_llm_usage, priced_usage
@@ -27,8 +30,14 @@ from app.services.spend_ledger import LLMUsage, capture_llm_usage, priced_usage
 QUESTIONS_SOURCE = "public_refine_questions"
 DRAFT_SOURCE = "public_refine_draft"
 _DEFAULT_DAILY_LIMIT = 200
-# The SDK retries a failed request once (llm_client: max_retries=1).
-_ATTEMPTS_PER_CALL = 2
+_DEFAULT_MAX_OUTPUT_TOKENS = 8000
+# Draft requests carry at most this many answered questions (schemas/public.py).
+MAX_PUBLIC_QUESTIONS = 5
+# Worst case per call: json_completion tries twice, and the SDK retries each once.
+_ATTEMPTS_PER_CALL = 4
+# Generous on purpose: few characters per token, plus the system prompt and schema.
+_CHARS_PER_TOKEN = 3
+_PROMPT_OVERHEAD_TOKENS = 3000
 
 # ponytail: one backend process (run.py), so a lock makes check-and-reserve atomic;
 # a database-level counter is needed if the backend ever runs several workers.
@@ -57,8 +66,32 @@ def _calls_today(db: Session) -> int:
     return db.query(PublicBilledCall).filter(PublicBilledCall.created_at >= start).count()
 
 
+def max_output_tokens() -> int:
+    """The answer length one anonymous call may ask the provider for."""
+    try:
+        return max(1, int(os.getenv("PUBLIC_REFINE_MAX_OUTPUT_TOKENS", _DEFAULT_MAX_OUTPUT_TOKENS)))
+    except ValueError:
+        return _DEFAULT_MAX_OUTPUT_TOKENS
+
+
+def estimated_cost_usd(connection: LLMConnection, input_chars: int) -> float:
+    """A pessimistic cost for one call: the whole input and the capped output on
+    every possible attempt. Zero without a ceiling, like BudgetService's estimates."""
+    if not BudgetService.any_limit_configured():
+        return 0.0
+    input_tokens = math.ceil(input_chars / _CHARS_PER_TOKEN) + _PROMPT_OVERHEAD_TOKENS
+    per_attempt = cost_usd_for(
+        connection.provider_handle,
+        connection.model,
+        input_tokens,
+        connection.max_output_tokens or max_output_tokens(),
+        assume_cost_when_unknown=True,
+    )
+    return per_attempt * _ATTEMPTS_PER_CALL
+
+
 def available_connection() -> LLMConnection:
-    """The server default, when the free refiner is switched on."""
+    """The server default, capped in output length, when the free refiner is on."""
     if not is_enabled():
         raise OperationError(status_code=HTTPStatus.NOT_FOUND, detail="Not Found")
     connection = server_default_connection()
@@ -67,15 +100,15 @@ def available_connection() -> LLMConnection:
             status_code=HTTPStatus.SERVICE_UNAVAILABLE,
             detail="Free refinement is unavailable on this server. Sign in to use your own AI provider.",
         )
-    return connection
+    return replace(connection, max_output_tokens=max_output_tokens())
 
 
-def reserve_call(db: Session, connection: LLMConnection, source: str) -> PublicBilledCall:
+def reserve_call(
+    db: Session, connection: LLMConnection, source: str, input_chars: int
+) -> PublicBilledCall:
     """Admit one call under the daily cap and budgets, and hold its place in the
     ledger at an estimated cost until `settle_call` records what it really cost."""
-    estimate = BudgetService.estimated_batch_cost_usd(
-        connection.provider_handle, connection.model, _ATTEMPTS_PER_CALL
-    )
+    estimate = estimated_cost_usd(connection, input_chars)
     with _admission:
         if _calls_today(db) >= daily_limit():
             raise OperationError(
@@ -121,7 +154,8 @@ def refine_questions(
             settle_call(db, row, captured)
             raise
         settle_call(db, row, captured or [usage])
-    return questions
+    # Every question returned can be answered in a public draft request.
+    return questions[:MAX_PUBLIC_QUESTIONS]
 
 
 def refine_draft(

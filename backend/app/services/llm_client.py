@@ -91,6 +91,9 @@ class LLMConnection:
     provider: Provider
     model: str
     client: OpenAI
+    # Set for calls the operator pays for on behalf of anonymous visitors, so one
+    # request cannot ask for an arbitrarily long (and costly) answer.
+    max_output_tokens: int | None = None
 
     @property
     def provider_handle(self) -> str:
@@ -484,6 +487,12 @@ def json_completion(
     for degraded in (False, True):
         response_format = _response_format_for(connection.provider, schema, degraded=degraded)
         kwargs = {"response_format": response_format} if response_format else {}
+        if connection.max_output_tokens:
+            # ponytail: OpenAI's newer models reject max_tokens; compat endpoints take it.
+            cap = (
+                "max_completion_tokens" if connection.provider_handle == "openai" else "max_tokens"
+            )
+            kwargs[cap] = connection.max_output_tokens
         try:
             with provider_attempt(connection) as attempt:
                 response = connection.client.chat.completions.create(

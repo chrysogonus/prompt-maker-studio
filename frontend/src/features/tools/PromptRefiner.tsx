@@ -25,22 +25,28 @@ export default function PromptRefiner() {
   const [busy, setBusy] = useState<'questions' | 'draft' | null>(null);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [statusFailed, setStatusFailed] = useState(false);
+  const [statusAttempt, setStatusAttempt] = useState(0);
 
   useEffect(() => {
-    let active = true;
     try {
       const handed = sessionStorage.getItem(refinerInputKey());
       sessionStorage.removeItem(refinerInputKey());
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Browser-only handoff from the prompt checker.
       if (handed) setText(handed);
     } catch { /* Storage unavailable: keep the example. */ }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
     ApiClient.getPublicRefineStatus().then((state) => {
       if (!active) return;
       setAvailable(state.available);
+      setStatusFailed(false);
       if (state.max_chars) setMaxChars(state.max_chars);
-    });
+    }).catch(() => { if (active) setStatusFailed(true); });
     return () => { active = false; };
-  }, []);
+  }, [statusAttempt]);
 
   const run = async <T,>(step: 'questions' | 'draft', work: () => Promise<T>, done: (value: T) => void) => {
     setBusy(step);
@@ -86,6 +92,12 @@ export default function PromptRefiner() {
   }
 
   const tooLong = text.length > maxChars;
+  const statusNotice = statusFailed && (
+    <p className={styles.error} role="alert">
+      Could not check whether free refinement is available.{' '}
+      <Button variant="ghost" onClick={() => { setStatusFailed(false); setStatusAttempt((n) => n + 1); }}>Try again</Button>
+    </p>
+  );
   return (
     <>
       <div className={styles.field}>
@@ -94,6 +106,7 @@ export default function PromptRefiner() {
           onChange={(event) => { setText(event.target.value); setQuestions(null); setResult(null); }} />
         <small id="refiner-prompt-limit">{tooLong ? `Shorten it to ${maxChars.toLocaleString('en')} characters.` : `Up to ${maxChars.toLocaleString('en')} characters. Free within daily limits.`}</small>
       </div>
+      {statusNotice}
       <label className={styles.honeypot} aria-hidden="true">
         Website
         <input tabIndex={-1} autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} />
