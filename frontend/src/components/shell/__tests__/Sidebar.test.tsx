@@ -108,6 +108,8 @@ describe('Sidebar', () => {
       '/library?folder=Learning',
     );
     expect(screen.getByRole('link', { name: 'New prompt' })).toHaveAttribute('href', '/editor/new');
+    expect(screen.getByRole('link', { name: 'Free tools' })).toHaveAttribute('href', '/tools');
+    expect(screen.getByRole('link', { name: 'Template gallery' })).toHaveAttribute('href', '/gallery');
     expect(screen.getByRole('link', { name: 'Open source on GitHub' })).toHaveAttribute(
       'href',
       'https://github.com/chrysogonus/prompt-maker-studio',

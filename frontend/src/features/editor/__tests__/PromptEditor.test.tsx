@@ -1037,6 +1037,7 @@ describe('PromptEditor with a new prompt', () => {
     render(<PromptEditor />);
 
     await user.click(screen.getByRole('button', { name: 'Starter templates' }));
+    expect(screen.getByRole('link', { name: /Browse the template gallery/ })).toHaveAttribute('href', '/gallery');
     await user.click(screen.getByRole('button', { name: /Rewrite my text/ }));
 
     expect(screen.getAllByLabelText('Section name').map((el) => (el as HTMLInputElement).value)).toEqual([

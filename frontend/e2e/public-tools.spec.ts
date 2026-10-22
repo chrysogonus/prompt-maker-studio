@@ -20,7 +20,7 @@ test('tool pages serve their text, FAQ and metadata without JavaScript', async (
     expect(html).toContain('name="description"');
     if (path !== '/tools') {
       expect(html).toContain(path.endsWith('prompt-refiner')
-        ? 'Your prompt is sent to this site’s AI provider' : 'Runs in your browser. Nothing you enter is uploaded.');
+        ? 'Your prompt is sent to this site’s AI provider' : 'Runs in your browser; nothing is uploaded.');
       expect(html).toContain('"@type":"FAQPage"');
     }
   }

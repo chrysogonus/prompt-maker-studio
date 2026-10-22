@@ -39,10 +39,8 @@ export default function ToolPage({ tool, widget, faq, children, local = true }: 
       <header>
         <h1>{tool.title}</h1>
         <p className={guideStyles.intro}>{tool.description}</p>
-        <p className={styles.local}>
-          {local ? 'Runs in your browser. Nothing you enter is uploaded.'
-            : 'Your prompt is sent to this site’s AI provider to refine it. It is not stored, and no account is needed.'}
-        </p>
+        {/* Local tools say so in their description. */}
+        {!local && <p className={styles.local}>Your prompt is sent to this site’s AI provider to refine it and is not stored.</p>}
       </header>
       <section className={styles.widget} aria-label={tool.title}>{widget}</section>
       <div className={guideStyles.prose}>

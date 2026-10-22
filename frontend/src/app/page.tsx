@@ -47,7 +47,7 @@ export default async function LandingPage() {
           <Link href="/guides" className={styles.signIn}>Guides</Link>
           <Link href="/tools" className={styles.signIn}>Tools</Link>
           <Link href="/gallery" className={styles.signIn}>Templates</Link>
-          <Link href="/library" className={styles.signIn}>Sign in</Link>
+          <Link href="/library" className={styles.signIn}>Open the app</Link>
         </nav>
       </header>
 

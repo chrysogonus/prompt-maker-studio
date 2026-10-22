@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BookOpen, CodeXml } from 'lucide-react';
+import { BookOpen, CodeXml, LayoutTemplate, Wrench } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { PromptMakerTile } from '@/components/brand/PromptMakerMark';
@@ -169,6 +169,14 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
         <Link href="/guides" className={styles.item} onClick={onNavigate}>
           <BookOpen size={16} aria-hidden="true" />
           <span className={styles.label}>Guides</span>
+        </Link>
+        <Link href="/tools" className={styles.item} onClick={onNavigate}>
+          <Wrench size={16} aria-hidden="true" />
+          <span className={styles.label}>Free tools</span>
+        </Link>
+        <Link href="/gallery" className={styles.item} onClick={onNavigate}>
+          <LayoutTemplate size={16} aria-hidden="true" />
+          <span className={styles.label}>Template gallery</span>
         </Link>
         <Link
           href="/settings"

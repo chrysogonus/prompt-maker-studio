@@ -323,6 +323,12 @@ function LibraryContent() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link href="/gallery" className={styles.starter}>
+                <strong>Browse the template gallery</strong>
+                <span>24 more templates for coding agents, images, writing and everyday work.</span>
+              </Link>
+            </li>
           </ul>
         </section>
         {toast && <ToastView toast={toast} onDone={() => setToast(null)} />}

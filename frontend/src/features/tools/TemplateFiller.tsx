@@ -51,11 +51,11 @@ export default function TemplateFiller({ initialText = '', fields, title, hints 
         </div>
       )}
       {names.length > 0 ? (
-        <fieldset className={styles.field}>
+        <fieldset className={`${styles.field} ${styles.fieldset}`}>
           <legend>Fill in</legend>
           {hasExamples && (
             <div className={styles.actions}>
-              <Button variant="ghost" onClick={() => setValues({ ...values, ...exampleValues })}>Use example inputs</Button>
+              <Button onClick={() => setValues({ ...values, ...exampleValues })}>Use example inputs</Button>
             </div>
           )}
           {names.map((name) => (

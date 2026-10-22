@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 
 import Button, { ButtonLink } from '@/components/ui/Button';
@@ -336,6 +337,10 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
                         <span>{template.description}</span>
                       </button>
                     ))}
+                    <Link href="/gallery" className={styles.menuItem}>
+                      <strong>Browse the template gallery</strong>
+                      <span>24 more templates for coding agents, images, writing and everyday work.</span>
+                    </Link>
                   </div>
                 )}
               </div>

@@ -279,7 +279,7 @@ export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps)
                 clearFieldError('password');
               }}
               className={styles.input}
-              placeholder={view === 'login' ? 'Enter your password' : PASSWORD_HINT}
+              placeholder={view === 'login' ? 'Enter your password' : undefined}
               required
               minLength={view === 'login' ? 1 : 10}
               autoComplete={view === 'login' ? 'current-password' : 'new-password'}

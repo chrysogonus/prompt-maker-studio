@@ -14,7 +14,9 @@ any release. See [Project status](./README.md#project-status).
 
 - Free prompt tools at `/tools` that work without an account and upload nothing: a template filler
   for `{{variables}}`, a prompt checker, a word-level prompt diff and a token counter with
-  estimated costs. Each can save its prompt to your library after you sign in or sign up.
+  estimated costs. Each can save its prompt to your library after you sign in or sign up. The
+  app's sidebar, the editor's starter templates and the empty library link to the tools and the
+  gallery.
 - Four new guides: what makes a good AI prompt, prompts for coding agents, image generation
   prompts, and prompts for research and writing.
 - A free prompt template gallery at `/gallery`: 24 curated templates for coding agents, image

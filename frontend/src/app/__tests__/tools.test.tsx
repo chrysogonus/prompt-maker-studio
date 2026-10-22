@@ -38,8 +38,8 @@ describe('Free tools', () => {
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     // The refiner is the one tool that sends text, and says so.
-    expect(screen.getByText(path.endsWith('prompt-refiner')
-      ? /Your prompt is sent to this site’s AI provider/ : 'Runs in your browser. Nothing you enter is uploaded.')).toBeInTheDocument();
+    expect(container.querySelector('header')).toHaveTextContent(path.endsWith('prompt-refiner')
+      ? /Your prompt is sent to this site’s AI provider/ : /Runs in your browser; nothing is uploaded\.$/);
     expect(screen.getByRole('heading', { name: 'Questions' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'All tools' })).toHaveAttribute('href', '/tools');
     expect(screen.getByRole('link', { name: 'Open Prompt Maker Studio' })).toHaveAttribute('href', '/library');

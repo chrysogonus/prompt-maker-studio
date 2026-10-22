@@ -104,7 +104,7 @@ export default function PromptRefiner() {
         <label htmlFor="refiner-prompt">Your prompt</label>
         <textarea id="refiner-prompt" className={styles.textarea} value={text} disabled={busy !== null} aria-describedby="refiner-prompt-limit"
           onChange={(event) => { setText(event.target.value); setQuestions(null); setResult(null); }} />
-        <small id="refiner-prompt-limit">{tooLong ? `Shorten it to ${maxChars.toLocaleString('en')} characters.` : `Up to ${maxChars.toLocaleString('en')} characters. Free within daily limits.`}</small>
+        <small id="refiner-prompt-limit">{tooLong ? `Shorten it to ${maxChars.toLocaleString('en')} characters.` : `Up to ${maxChars.toLocaleString('en')} characters.`}</small>
       </div>
       {statusNotice}
       <label className={styles.honeypot} aria-hidden="true">
@@ -113,7 +113,7 @@ export default function PromptRefiner() {
       </label>
 
       {questions && questions.length > 0 && (
-        <fieldset className={styles.field}>
+        <fieldset className={`${styles.field} ${styles.fieldset}`}>
           <legend>Answer what matters; leave the rest blank</legend>
           {questions.map((question, i) => (
             <label key={question} className={styles.field}>

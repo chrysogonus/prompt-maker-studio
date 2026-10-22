@@ -314,6 +314,7 @@ button.title:hover {
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font: inherit;
+  text-decoration: none;
   cursor: pointer;
 }
 

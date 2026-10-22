@@ -36,6 +36,24 @@
   font-weight: var(--weight-medium);
 }
 
+/* Fieldsets lay out like .field; the floated legend joins the grid gap. */
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.fieldset legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+
+.fieldset legend + * {
+  clear: both;
+}
+
 .field small {
   color: var(--text-secondary);
   font-weight: var(--weight-regular);
@@ -185,6 +203,8 @@
 
 .table {
   width: 100%;
+  /* .toolArticle's anywhere would let columns shrink until headers break mid-word. */
+  overflow-wrap: normal;
   border-collapse: collapse;
   font-size: var(--text-sm-size);
 }
