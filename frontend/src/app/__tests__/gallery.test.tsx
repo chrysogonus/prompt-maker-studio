@@ -44,6 +44,19 @@ describe('Prompt gallery', () => {
     expect(within(screen.getByRole('region', { name: 'More coding agents templates' })).getAllByRole('link')).toHaveLength(4);
   });
 
+  it('gives every template a search-length description and structured data', async () => {
+    for (const template of GALLERY) {
+      const { description } = await templateMetadata(params(template.slug));
+      expect(description!.length, template.slug).toBeGreaterThanOrEqual(110);
+      expect(description!.length, template.slug).toBeLessThanOrEqual(160);
+    }
+    vi.stubEnv('FRONTEND_URL', 'https://gallery.example');
+    const { container } = render(await TemplatePage(params('bug-fix-brief')));
+    const [breadcrumbs, work] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(breadcrumbs.itemListElement.map((crumb: { name: string }) => crumb.name)).toEqual(['Templates', 'Coding agents', 'Bug fix brief for a coding agent']);
+    expect(work).toMatchObject({ '@type': 'CreativeWork', name: 'Bug fix brief for a coding agent', url: 'https://gallery.example/gallery/bug-fix-brief', isAccessibleForFree: true });
+  });
+
   it('answers an unknown template with not found', async () => {
     await expect(TemplatePage(params('missing'))).rejects.toThrow('NEXT_NOT_FOUND');
     expect(await templateMetadata(params('missing'))).toEqual({});

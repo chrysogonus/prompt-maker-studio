@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import guideStyles from '@/components/guides/Guides.module.css';
 import styles from '@/components/public/Tools.module.css';
 import TemplateFiller from '@/features/tools/TemplateFiller';
-import { GALLERY, GALLERY_CATEGORIES, galleryMetadata, galleryPath, galleryTemplate } from '@/lib/gallery';
+import { siteUrl } from '@/lib/branding';
+import { GALLERY, GALLERY_CATEGORIES, galleryDescription, galleryMetadata, galleryPath, galleryTemplate } from '@/lib/gallery';
 import { GUIDES } from '@/lib/guides';
 import { TOOLS } from '@/lib/tools';
 
@@ -20,6 +21,22 @@ export default async function GalleryTemplatePage({ params }: Params) {
   const category = GALLERY_CATEGORIES.find((item) => item.id === template.category)!;
   const guide = template.guide ? GUIDES[template.guide] : undefined;
   const related = GALLERY.filter((item) => item.category === template.category && item.slug !== template.slug).slice(0, 4);
+  const url = `${siteUrl()}${galleryPath(template.slug)}`;
+  const structuredData = [
+    {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { name: 'Templates', item: `${siteUrl()}/gallery` },
+        { name: category.label, item: `${siteUrl()}/gallery#${category.id}` },
+        { name: template.title, item: url },
+      ].map((crumb, index) => ({ '@type': 'ListItem', position: index + 1, ...crumb })),
+    },
+    {
+      '@context': 'https://schema.org', '@type': 'CreativeWork',
+      name: template.title, description: galleryDescription(template), url,
+      inLanguage: 'en', isAccessibleForFree: true, genre: category.label,
+    },
+  ];
   return (
     <article className={styles.toolArticle}>
       <nav aria-label="Breadcrumb" className={guideStyles.breadcrumb}>
@@ -30,6 +47,7 @@ export default async function GalleryTemplatePage({ params }: Params) {
         <p className={guideStyles.intro}>{template.summary}</p>
         <p className={styles.local}>Free to use and change. Filling in and copying happen in your browser.</p>
       </header>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <section className={styles.widget} aria-label="Fill in this template">
         <TemplateFiller title={template.title} fields={template.sections} hints={template.hints} examples={template.examples} />
       </section>

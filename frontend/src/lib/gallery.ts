@@ -460,9 +460,15 @@ export function featuredTemplates(): GalleryTemplate[] {
     .sort((a, b) => (a.featured ?? 0) - (b.featured ?? 0));
 }
 
+/** The summary plus what the page offers, long enough for a search snippet. */
+export function galleryDescription(template: GalleryTemplate): string {
+  const category = GALLERY_CATEGORIES.find((item) => item.id === template.category)!;
+  return `${template.summary} A free ${category.label.toLowerCase()} prompt template, ready to fill in and copy.`;
+}
+
 export function galleryMetadata(template?: GalleryTemplate) {
   return guideMetadata(template
-    ? { path: galleryPath(template.slug), title: `${template.title}: free prompt template`, description: template.summary }
+    ? { path: galleryPath(template.slug), title: `${template.title}: free prompt template`, description: galleryDescription(template) }
     : GALLERY_INDEX);
 }
 
