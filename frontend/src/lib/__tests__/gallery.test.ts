@@ -22,6 +22,8 @@ describe('gallery data', () => {
     const variables = variablesIn(template.sections);
     expect(variables.length).toBeGreaterThan(0);
     for (const key of [...Object.keys(template.hints), ...Object.keys(template.examples)]) expect(variables).toContain(key);
+    // Use example inputs then fills every field, so the demo prompt is complete.
+    expect(variables.filter((name) => !template.examples[name]?.trim())).toEqual([]);
     expect(lintPrompt(renderSections(template.sections)).filter((finding) => finding.severity === 'problem')).toEqual([]);
     if (template.guide) expect(GUIDES[template.guide]).toBeDefined();
   });
