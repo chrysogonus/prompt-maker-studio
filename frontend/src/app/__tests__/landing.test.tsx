@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { GALLERY } from '@/lib/gallery';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import LandingPage, { generateMetadata } from '../page';
 import robots from '../robots';
@@ -84,6 +85,8 @@ describe('robots.txt and sitemap.xml', () => {
       { url: 'https://prompts.example/tools/prompt-linter' },
       { url: 'https://prompts.example/tools/prompt-diff' },
       { url: 'https://prompts.example/tools/token-counter' },
+      { url: 'https://prompts.example/gallery' },
+      ...GALLERY.map(({ slug }) => ({ url: `https://prompts.example/gallery/${slug}` })),
     ]);
   });
 });

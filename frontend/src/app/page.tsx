@@ -9,6 +9,8 @@ import { ButtonLink } from '@/components/ui/Button';
 import Wordmark from '@/components/ui/Wordmark';
 import GuideList from '@/components/guides/GuideList';
 import ToolList from '@/components/public/ToolList';
+import guideStyles from '@/components/guides/Guides.module.css';
+import { featuredTemplates, galleryPath } from '@/lib/gallery';
 import { APP_NAME, siteUrl } from '@/lib/branding';
 import styles from './page.module.css';
 
@@ -44,6 +46,7 @@ export default async function LandingPage() {
         <nav aria-label="Main navigation" className={styles.navigation}>
           <Link href="/guides" className={styles.signIn}>Guides</Link>
           <Link href="/tools" className={styles.signIn}>Tools</Link>
+          <Link href="/gallery" className={styles.signIn}>Templates</Link>
           <Link href="/library" className={styles.signIn}>Sign in</Link>
         </nav>
       </header>
@@ -165,6 +168,19 @@ export default async function LandingPage() {
         <section className={styles.features} aria-labelledby="guides-title">
           <h2 id="guides-title">Learn with examples</h2>
           <GuideList />
+        </section>
+
+        <section className={styles.features} aria-labelledby="templates-title">
+          <h2 id="templates-title">Free prompt templates</h2>
+          <ul className={guideStyles.guideList}>
+            {featuredTemplates().map((template) => (
+              <li key={template.slug}>
+                <Link href={galleryPath(template.slug)}>{template.title}</Link>
+                <p>{template.summary}</p>
+              </li>
+            ))}
+          </ul>
+          <p><Link href="/gallery" className={styles.signIn}>All templates</Link></p>
         </section>
 
         <section className={styles.features} aria-labelledby="tools-title">

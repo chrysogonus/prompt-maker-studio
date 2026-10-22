@@ -30,6 +30,15 @@ describe('TemplateFiller', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Copied with 1 unfilled placeholder.');
   });
 
+  it('keeps line breaks in pasted inputs, in the output and the handoff', async () => {
+    const user = userEvent.setup();
+    render(<TemplateFiller initialText={'Notes:\n{{notes}}'} />);
+    await user.type(screen.getByRole('textbox', { name: 'notes' }), 'First line{Enter}Second line');
+    expect(screen.getByLabelText('Filled prompt').textContent).toBe('Notes:\nFirst line\nSecond line');
+    await user.click(screen.getByRole('button', { name: 'Save to my library' }));
+    expect(vi.mocked(openInApp).mock.calls[0][0].values).toEqual({ notes: 'First line\nSecond line' });
+  });
+
   it('saves the template with its inputs to the library', async () => {
     const user = userEvent.setup();
     render(<TemplateFiller initialText="Explain {{topic}}." />);

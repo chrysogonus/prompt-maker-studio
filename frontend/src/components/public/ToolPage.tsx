@@ -59,7 +59,10 @@ export default function ToolPage({ tool, widget, faq, children, local = true }: 
           Save prompts you reuse in your own library: sections, {'{{variables}}'}, folders and version
           history. Creating an account is free, and saving or filling in prompts needs no AI provider.
         </p>
-        <ButtonLink href="/library" variant="primary">Open {APP_NAME}</ButtonLink>
+        <div className={styles.actions}>
+          <ButtonLink href="/library" variant="primary">Open {APP_NAME}</ButtonLink>
+          <ButtonLink href="/gallery">Browse free templates</ButtonLink>
+        </div>
       </section>
       <section className={guideStyles.next} aria-labelledby="more-tools">
         <h2 id="more-tools">More free tools</h2>

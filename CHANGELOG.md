@@ -17,6 +17,8 @@ any release. See [Project status](./README.md#project-status).
   estimated costs. Each can save its prompt to your library after you sign in or sign up.
 - Four new guides: what makes a good AI prompt, prompts for coding agents, image generation
   prompts, and prompts for research and writing.
+- A free prompt template gallery at `/gallery`: 24 curated templates for coding agents, image
+  generation, research and writing, and everyday work, to fill in, copy or save to your library.
 
 ### Fixed
 

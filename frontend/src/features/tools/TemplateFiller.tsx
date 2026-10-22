@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
 import { openInApp } from '@/lib/openInApp';
 import { fillVariables, renderSections, valueFor, variablesIn } from '@/lib/sections';
 import type { PromptField } from '@/types/prompt';
@@ -62,8 +61,9 @@ export default function TemplateFiller({ initialText = '', fields, title, hints 
           {names.map((name) => (
             <label key={name} className={styles.field}>
               <code>{name}</code>
-              <Input value={valueFor(values, name) ?? ''} placeholder={valueFor(hints, name) || 'Type the value'}
-                onChange={(event) => { setValues({ ...values, [name]: event.target.value }); setStatus(''); }} />
+              {/* Multiline: inputs are often pasted notes, sources or code. */}
+              <textarea className={`${styles.textarea} ${styles.short}`} value={valueFor(values, name) ?? ''} placeholder={valueFor(hints, name) || 'Type the value'}
+                onChange={(event) => { setValues({ ...values, [name]: event.target.value }); setStatus(''); }} maxLength={50_000} />
             </label>
           ))}
         </fieldset>

@@ -5,7 +5,7 @@ import Wordmark from '@/components/ui/Wordmark';
 import { APP_NAME } from '@/lib/branding';
 import styles from '@/app/page.module.css';
 
-/** Header and footer for public pages (guides, tools), which stay public with a session too. */
+/** Header and footer for public pages (guides, tools, templates), which stay public with a session too. */
 export default function PublicShell({ children, contentId, homeLabel, homeHref }: {
   children: ReactNode;
   contentId: string;
@@ -23,6 +23,7 @@ export default function PublicShell({ children, contentId, homeLabel, homeHref }
         <nav aria-label="Main navigation" className={styles.navigation}>
           <Link href="/guides" className={styles.signIn}>Guides</Link>
           <Link href="/tools" className={styles.signIn}>Tools</Link>
+          <Link href="/gallery" className={styles.signIn}>Templates</Link>
           <Link href="/library" className={styles.signIn}>Open the app</Link>
         </nav>
       </header>
