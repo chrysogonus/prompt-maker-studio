@@ -15,7 +15,8 @@ export default function ImportReview({ session, onChange, onImport, onClose }: {
   onImport: (result: ImportedPrompt) => void;
   onClose: () => void;
 }) {
-  const [view, setView] = useState<'filled' | 'template'>('filled');
+  // Placeholder text such as [TOPIC] comes back with no value, so Filled would show only {{inputs}}.
+  const [view, setView] = useState<'filled' | 'template'>(() => session.variables?.some((variable) => variable.value) ? 'filled' : 'template');
   const [copied, setCopied] = useState('');
   const [copyError, setCopyError] = useState('');
   const heading = useRef<HTMLHeadingElement>(null);

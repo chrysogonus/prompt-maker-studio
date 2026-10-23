@@ -86,3 +86,24 @@ class TestValidationExceptionHandler:
         assert rejected_password not in caplog.text
         assert rejected_password not in response.text
         assert "string_too_short" in caplog.text
+
+    def test_reserved_email_domain_gets_a_plain_message(self, client):
+        response = client.post(
+            "/api/auth/register",
+            json={"username": "qa_user", "password": "long-enough-1!", "email": "qa@example.test"},
+        )
+
+        assert response.status_code == 422
+        assert response.json()["detail"][0]["msg"] == (
+            "Enter an email address you can receive mail at."
+        )
+        assert "@-sign" not in response.text
+
+    def test_validator_messages_drop_the_value_error_prefix(self, client):
+        response = client.post(
+            "/api/auth/register",
+            json={"username": "qa_user", "password": "no-digits-here!", "email": "qa@gmail.com"},
+        )
+
+        assert response.status_code == 422
+        assert response.json()["detail"][0]["msg"] == "Password must contain at least one number"

@@ -31,6 +31,19 @@ any release. See [Project status](./README.md#project-status).
 
 ### Fixed
 
+- Insert input turns a name such as `max rows!` into `max_rows`, and its error sits on its own
+  line instead of squeezing the name field.
+- Inputs filled in before a new prompt's first save are kept after saving.
+- Opening a prompt that does not exist says "Prompt not found" instead of "Failed to fetch
+  prompt versions", and signing up with an unusable email domain says "Enter an email address you
+  can receive mail at." instead of the validator's technical text.
+- History on narrow screens is a dialog: Escape closes it, focus stays in it after Restore, and
+  restore results and errors are shown inside it (a failed restore keeps the comparison).
+- Make reusable with AI goes straight to the AI conversion instead of asking again; the review
+  opens on Template when no input has a value yet.
+- Editor polish: italic hints in Fill mode, a clearer example-value label, a warning when Try once
+  would run with no inputs filled in, an aligned Mark as known good button, and Prompt details now
+  shows created and edited dates, the current version, the known-good version and the inputs.
 - Re-importing a changed note and choosing Update no longer turns inputs made on the first
   import back into placeholder text: `{{focus_area}}` stays an input with its settings, and only
   new placeholders are offered.

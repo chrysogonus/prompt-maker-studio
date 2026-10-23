@@ -73,6 +73,11 @@ export function isVariableName(name: string): boolean {
   return /^[A-Za-z_][A-Za-z0-9_-]*$/.test(name);
 }
 
+/** Typed or placeholder text as an input name: "Max rows!" becomes `max_rows`; may still be invalid ("1st"). */
+export function toVariableName(text: string): string {
+  return text.trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/[^a-z0-9_]/g, '');
+}
+
 /** Replace `text[start, end)` with `{{name}}`; the replaced text can become the input's example. */
 export function insertVariable(text: string, start: number, end: number, name: string) {
   const token = `{{${name}}}`;

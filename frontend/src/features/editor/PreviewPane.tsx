@@ -262,6 +262,8 @@ export default function PreviewPane({
             <div className={styles.tryControls}>
               <>{aiConfigLoading ? <p role="status">Checking AI connection…</p> : aiConfigError ? <p role="status">Could not check the AI connection. Reload to retry.</p> : <AICallContext config={aiConfig} />}</>
               {filledText.length > TRY_PROMPT_CHARS && <p className={styles.previewWarning}>Try once accepts up to 100,000 characters. Shorten the prompt before running.</p>}
+              {/* A run with only placeholders usually just asks for the inputs, wasting a call. */}
+              {variables.length > 0 && unfilled.length === variables.length && <p className={styles.previewWarning}>No inputs are filled in, so the model will see only placeholders.</p>}
               <button type="button" className={styles.copyButton} data-secondary="true" onClick={tryOnce}
                 disabled={filledText.length > TRY_PROMPT_CHARS || trying || !hasContent || missingRequired.length > 0 || !aiConfig?.provider_connected || aiConfig.budget_exhausted}>
                 {trying ? 'Running…' : 'Try once'}

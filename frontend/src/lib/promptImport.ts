@@ -1,5 +1,5 @@
 import { storageKey } from '@/lib/branding';
-import { splitVariables, suggestTitle, variablesIn } from '@/lib/sections';
+import { splitVariables, suggestTitle, toVariableName, variablesIn } from '@/lib/sections';
 import type { PromptCreateRequest, PromptField, VariableMetadataItem } from '@/types/prompt';
 
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
@@ -317,14 +317,12 @@ function sectionName(heading: string, taken: Set<string>): string {
 // ponytail: heuristic; people see the list and choose before anything changes.
 const PLACEHOLDER = /(?<![\w\][])\[([A-Za-z][\w -]{1,40})\](?![\](])|(?<![{\w])\{([A-Za-z][\w -]{0,40})\}(?!\})|<([a-z][a-z0-9_ -]{1,40})>/g;
 
-const placeholderName = (inner: string) => inner.trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/[^a-z0-9_]/g, '');
-
 function placeholdersIn(content: string): Map<string, string> {
   const found = new Map<string, string>();
   for (const match of content.matchAll(PLACEHOLDER)) {
     const inner = match[1] ?? match[2] ?? match[3];
     if (match[3] && content.includes(`</${match[3]}>`)) continue;
-    const name = placeholderName(inner);
+    const name = toVariableName(inner);
     if (/^[a-z_][a-z0-9_]*$/.test(name)) found.set(match[0], name);
   }
   return found;

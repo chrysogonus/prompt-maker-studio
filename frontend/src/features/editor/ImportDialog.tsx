@@ -35,9 +35,8 @@ export default function ImportDialog({
   const request = useRef(0);
   useEffect(() => () => { request.current += 1; }, []);
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!session.text.trim() || busyRef.current || !aiAvailable) return;
+  const convert = async (from: ImportSession) => {
+    if (!from.text.trim() || busyRef.current || !aiAvailable) return;
     const id = ++request.current;
     busyRef.current = true;
     setBusy(true);
@@ -46,7 +45,7 @@ export default function ImportDialog({
       const result = await ApiClient.parsePromptText({ text: session.text, extract_variables: true });
       if (id !== request.current) return;
       const variables = result.variables ?? variablesIn(result.fields).map((name) => ({ name, value: '', description: '', source_text: null }));
-      onSessionChange({ ...session, conversion: result, reviewing: true, keepExamples: false,
+      onSessionChange({ ...from, conversion: result, reviewing: true, keepExamples: false,
         variables: variables.map((variable) => ({ ...variable, originalName: variable.name, reuse: true })),
       });
     } catch (failure) {
@@ -55,6 +54,15 @@ export default function ImportDialog({
       if (id === request.current) { busyRef.current = false; setBusy(false); }
     }
   };
+  const submit = (event: FormEvent) => { event.preventDefault(); void convert(session); };
+  // Started once; without an AI connection the form explains why and offers Save as written.
+  useEffect(() => {
+    if (!isOpen || !session.convert || aiConfigLoading) return;
+    const from = { ...session, convert: undefined };
+    onSessionChange(from);
+    if (aiAvailable) void convert(from);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, session.convert, aiConfigLoading, aiAvailable]);
 
   return <Dialog isOpen={isOpen} title={session.reviewing ? 'Review your template' : 'Paste a prompt'}
     className={importStyles.dialog} onClose={() => !busyRef.current && onClose()}>

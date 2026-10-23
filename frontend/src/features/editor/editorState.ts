@@ -99,11 +99,16 @@ export interface ImportVariable extends ExtractedVariable {
   reuse: boolean;
 }
 
+/** What a History action did, in the words the page's notice used. */
+export interface OperationResult { ok: boolean; text: string }
+
 export interface ImportSession {
   text: string;
   /** Title and folder chosen in the library's import preview, offered again on Save. */
   title?: string;
   folder?: string | null;
+  /** The library's Make reusable with AI already chose AI, so the conversion starts by itself. */
+  convert?: boolean;
   conversion?: ParseTextResponse;
   variables?: ImportVariable[];
   keepExamples?: boolean;

@@ -153,6 +153,9 @@ it('opens full prompt details without beginning a rename', async () => {
   const details = screen.getByRole('dialog', { name: 'Prompt details' });
   expect(details).toHaveTextContent('Weekly status update');
   expect(details).toHaveTextContent('Work');
+  expect(details).toHaveTextContent('Current version1');
+  expect(details).toHaveTextContent('Known goodNot marked');
+  expect(details).toHaveTextContent('Inputsteam, notes');
   expect(screen.queryByRole('textbox', { name: 'Prompt name' })).not.toBeInTheDocument();
 });
 
@@ -171,14 +174,14 @@ it('closes secondary tools on Escape, outside input and opening history', async 
   expect(tools).toHaveAttribute('aria-expanded', 'false');
   await user.click(tools);
   await openTool(user, 'History');
-  expect(screen.getByRole('complementary', { name: 'Version history' })).toBeInTheDocument();
+  expect(screen.getByRole('dialog', { name: 'Version history' })).toBeInTheDocument();
   expect(tools).toHaveAttribute('aria-expanded', 'false');
   expect(screen.getByRole('button', { name: 'Close history' })).toHaveFocus();
   await user.click(screen.getByRole('button', { name: 'Close history' }));
   expect(tools).toHaveFocus();
   await openTool(user, 'History');
   await openTool(user, 'History');
-  expect(screen.queryByRole('complementary', { name: 'Version history' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('dialog', { name: 'Version history' })).not.toBeInTheDocument();
   expect(tools).toHaveFocus();
 });
 
@@ -186,8 +189,10 @@ it('keeps AI testing open with its output across a Template and Filled switch', 
   const user = userEvent.setup();
   vi.mocked(ApiClient.tryPrompt).mockResolvedValueOnce({ output_text: 'One output', provider: 'openai', model: 'gpt-4.1-mini' });
   await renderSaved();
-  await user.type(screen.getByPlaceholderText('Team or project name'), 'Platform');
   await user.click(screen.getByText('Test with AI'));
+  expect(screen.getByText('No inputs are filled in, so the model will see only placeholders.')).toBeVisible();
+  await user.type(screen.getByPlaceholderText('Team or project name'), 'Platform');
+  expect(screen.queryByText('No inputs are filled in, so the model will see only placeholders.')).not.toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Try once' }));
   await screen.findByRole('region', { name: 'Try once output' });
   await user.click(screen.getByRole('radio', { name: 'Template' }));
@@ -271,7 +276,7 @@ describe('known-good version and test results in History', () => {
     vi.mocked(ApiClient.updatePrompt).mockResolvedValue(prompt({ known_good_version: 2 }));
     await renderSaved();
     await openTool(user, 'History');
-    const history = screen.getByRole('complementary', { name: 'Version history' });
+    const history = screen.getByRole('dialog', { name: 'Version history' });
     expect(await within(history).findByText('Tested · 90/100')).toBeInTheDocument();
     expect(within(history).getByText('Not tested')).toBeInTheDocument();
     await user.click(within(history).getByRole('button', { name: 'Mark as known good' }));
@@ -859,7 +864,7 @@ describe('PromptEditor with a saved prompt', () => {
     await renderSaved();
 
     await openTool(user, 'History');
-    const history = screen.getByRole('complementary', { name: 'Version history' });
+    const history = screen.getByRole('dialog', { name: 'Version history' });
     expect(within(history).getByText('Version 2, current')).toBeInTheDocument();
     await user.click(within(history).getByRole('button', { name: /Version 1/ }));
     expect(within(history).getByLabelText('Changes since this version')).toHaveTextContent('concise');
@@ -867,7 +872,41 @@ describe('PromptEditor with a saved prompt', () => {
 
     await waitFor(() => expect(ApiClient.restorePromptVersion).toHaveBeenCalledWith(1, 11));
     expect(screen.getByLabelText('Role text')).toHaveValue('You are an engineering lead.');
-    expect(screen.getByText('Restored version 1')).toBeInTheDocument();
+    // jsdom is narrow, so History is modal and says the result itself; the page's notice is behind it.
+    expect(within(history).getByRole('status')).toHaveTextContent('Restored version 1');
+    // Focus stays in the panel after Restore, and Escape closes it.
+    expect(within(history).getByRole('heading', { name: 'History' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Version history' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tools' })).toHaveFocus();
+  });
+
+  it('keeps the comparison and says why when a restore fails', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getPromptVersions).mockResolvedValue([version()]);
+    vi.mocked(ApiClient.restorePromptVersion).mockRejectedValue(new Error('The server is unavailable.'));
+    await renderSaved();
+    await openTool(user, 'History');
+    const history = screen.getByRole('dialog', { name: 'Version history' });
+    await user.click(within(history).getByRole('button', { name: /Version 1/ }));
+    await user.click(within(history).getByRole('button', { name: 'Restore version 1' }));
+    expect(await within(history).findByRole('alert')).toHaveTextContent('The server is unavailable.');
+    expect(within(history).getByRole('button', { name: 'Restore version 1' })).toBeEnabled();
+    expect(screen.getByLabelText('Role text')).toHaveValue('You are a concise engineering lead.');
+  });
+
+  it('reports a restore as done when only reloading the version list fails', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getPromptVersions).mockResolvedValueOnce([version()]).mockRejectedValueOnce(new Error('History unavailable'));
+    vi.mocked(ApiClient.restorePromptVersion).mockResolvedValue(prompt({ fields: version().fields, generated_prompt: version().generated_prompt }));
+    await renderSaved();
+    await openTool(user, 'History');
+    const history = screen.getByRole('dialog', { name: 'Version history' });
+    await user.click(within(history).getByRole('button', { name: /Version 1/ }));
+    await user.click(within(history).getByRole('button', { name: 'Restore version 1' }));
+    expect(await within(history).findByRole('status')).toHaveTextContent('Restored version 1. Version history is unavailable; reload to retry.');
+    expect(within(history).queryByRole('button', { name: 'Restore version 1' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Role text')).toHaveValue('You are an engineering lead.');
   });
 
   it('dates each version by when it was written, not when it was replaced', async () => {
@@ -881,7 +920,7 @@ describe('PromptEditor with a saved prompt', () => {
     ]);
     await renderSaved();
     await openTool(user, 'History');
-    const history = screen.getByRole('complementary', { name: 'Version history' });
+    const history = screen.getByRole('dialog', { name: 'Version history' });
     expect(within(history).getByText('Version 3, current').parentElement).toHaveTextContent(shown('2026-07-05T00:00:00Z'));
     expect(within(history).getByRole('button', { name: /Version 2/ })).toHaveTextContent(shown('2026-07-03T00:00:00Z'));
     expect(within(history).getByRole('button', { name: /Version 1/ })).toHaveTextContent(shown('2026-07-01T00:00:00Z'));
@@ -997,6 +1036,8 @@ describe('PromptEditor with a new prompt', () => {
     render(<PromptEditor />);
 
     await user.type(screen.getByLabelText('Task text'), 'Summarise {{{{text}}');
+    await user.click(screen.getByRole('radio', { name: 'Filled' }));
+    await user.type(screen.getByLabelText('text', { exact: true }), 'Meeting notes');
     expect(localStorage.getItem(draftKey('new'))).not.toBeNull();
     fireEvent.keyDown(window, { key: 's', ctrlKey: true });
 
@@ -1015,6 +1056,8 @@ describe('PromptEditor with a new prompt', () => {
     );
     expect(routerReplace).toHaveBeenCalledWith('/editor/42');
     expect(localStorage.getItem(draftKey('new'))).toBeNull();
+    // Inputs filled in before the first save stay, as they do for saved prompts.
+    expect(JSON.parse(localStorage.getItem(draftKey(42))!).values).toEqual({ text: 'Meeting notes' });
   });
 
   it('requires a name before creating', async () => {
@@ -1408,7 +1451,14 @@ it('turns selected text into an input and keeps it as the example', async () => 
   expect(text).toHaveFocus();
   expect(screen.getByLabelText('Example input for destination_city')).toHaveValue('Lisbon');
 
+  // Punctuation is dropped like spaces; letters outside ASCII are not silently removed.
   await user.click(screen.getByRole('button', { name: 'Insert input in Task' }));
+  await user.type(screen.getByLabelText('New input name'), 'max rows!{Enter}');
+  expect(text.value).toContain('{{max_rows}}');
+  await user.click(screen.getByRole('button', { name: 'Insert input in Task' }));
+  await user.type(screen.getByLabelText('New input name'), 'Größe{Enter}');
+  expect(screen.getByRole('alert')).toHaveTextContent('Start with a letter');
+  expect(screen.getByLabelText('New input name')).toHaveAccessibleDescription(/Start with a letter/);
   await user.keyboard('{Escape}');
   expect(screen.queryByLabelText('New input name')).not.toBeInTheDocument();
   expect(ApiClient.updatePrompt).not.toHaveBeenCalled();

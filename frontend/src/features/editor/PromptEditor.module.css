@@ -430,6 +430,9 @@ button.title:hover {
 
 .insertForm label { flex-basis: 100%; color: var(--text-secondary); overflow-wrap: anywhere; }
 
+/* The error gets its own line so it never squeezes the name input. */
+.insertForm .sectionError { flex-basis: 100%; }
+
 .insertForm input {
   flex: 1;
   min-width: 0;
@@ -702,6 +705,8 @@ button.title:hover {
 
 .valueField textarea::placeholder {
   color: var(--pv-muted);
+  /* Hints are italic so they never read as a typed value. */
+  font-style: italic;
 }
 
 .previewText {
@@ -814,11 +819,22 @@ button.title:hover {
   z-index: 5;
   display: flex;
   flex-direction: column;
+  /* A <dialog>: drop the browser's centring, padding and size limits. */
+  inset-inline: auto;
+  margin: 0;
+  padding: 0;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  color: var(--text-primary);
+  font: inherit;
   background: var(--color-panel);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-float);
   animation: historyIn 0.16s ease-out;
 }
+
+.history:not([open]) { display: none; }
 
 @keyframes historyIn {
   from {
@@ -833,6 +849,15 @@ button.title:hover {
   padding: 12px 12px 12px 20px;
   border-bottom: 1px solid var(--color-border);
 }
+
+.historyStatus {
+  margin: 0;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm-size);
+}
+
+.historyStatus[data-tone='error'] { border-left: 4px solid var(--color-danger); }
 
 .historyHead h2 {
   flex: 1;
@@ -862,6 +887,9 @@ button.title:hover {
   padding: 10px 14px 24px;
   list-style: none;
 }
+
+/* Sits under the version's text instead of centred across the row. */
+.versionAction { justify-self: start; align-self: flex-start; }
 
 .version {
   display: grid;

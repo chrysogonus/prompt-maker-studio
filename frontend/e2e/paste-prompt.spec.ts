@@ -51,16 +51,8 @@ for (const width of [1440, 390]) {
         expect(route.request().postDataJSON()).toEqual({ text: source, extract_variables: true });
         return route.fulfill({ json: conversion });
       });
+      // Make reusable with AI already chose AI, so the editor converts without asking again.
       await openPaste(page);
-      const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
-      await expect(paste.getByLabel('Prompt to convert')).toHaveValue(source);
-      await expect(paste).toContainText('Ollama / local');
-      await expect(paste).toContainText('Your provider may charge for these calls');
-      await paste.getByLabel('Prompt to convert').fill(source);
-      await page.reload();
-      await expect(paste.getByLabel('Prompt to convert')).toHaveValue(source);
-      await paste.getByRole('button', { name: 'Create template with AI' }).focus();
-      await page.keyboard.press('Enter');
       const review = page.getByRole('dialog', { name: 'Review your template' });
       await expect(review.getByRole('heading', { name: 'Your template is ready to review' })).toBeFocused();
       await page.keyboard.press('Shift+Tab');
@@ -149,10 +141,13 @@ test('shows pending conversion and errors without losing the source or double ch
       await route.fulfill({ status: 502, json: { detail: 'Provider unavailable. Try again.' } });
     } else await route.fulfill({ json: conversion });
   });
+  // The conversion starts by itself; while it runs, the form shows the source and what it may cost.
   await openPaste(page);
   const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
-  await paste.getByRole('button', { name: 'Create template with AI' }).click();
   await expect(paste.getByRole('button', { name: 'Creating template…' })).toBeDisabled();
+  await expect(paste.getByLabel('Prompt to convert')).toHaveValue(source);
+  await expect(paste).toContainText('Ollama / local');
+  await expect(paste).toContainText('Your provider may charge for these calls');
   await expect(paste.getByRole('button', { name: 'Close', exact: true })).toBeDisabled();
   await page.keyboard.press('Escape');
   await expect(paste).toBeVisible();

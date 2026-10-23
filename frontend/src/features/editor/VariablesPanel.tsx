@@ -58,7 +58,7 @@ export default function VariablesPanel({
               Required {name}
             </label>
             <textarea value={metadata[name]?.example ?? ''} maxLength={10_000} rows={2}
-              aria-label={`Example input for ${name}`} placeholder="Example input (loaded only when requested)"
+              aria-label={`Example input for ${name}`} placeholder="Example value (used by Load example inputs)"
               onChange={(event) => onChangeMetadata(name, { example: event.target.value || null })} />
             </div>
           </details>

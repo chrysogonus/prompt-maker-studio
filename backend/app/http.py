@@ -142,6 +142,17 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
+def _plain_message(error: dict) -> str:
+    """Pydantic's message without wording people cannot act on."""
+    message = str(error.get("msg", ""))
+    loc = error.get("loc") or ()
+    # email-validator explains DNS and special-use domains (".test"); the person needs only this.
+    if loc and loc[-1] == "email" and message.startswith("value is not a valid email address"):
+        return "Enter an email address you can receive mail at."
+    # A validator's own ValueError text is already written for people.
+    return message.removeprefix("Value error, ")
+
+
 async def validation_exception_handler(_request: Request, exc: RequestValidationError):
     errors = exc.errors()
     error_types = sorted({str(error.get("type", "unknown")) for error in errors})
@@ -171,7 +182,11 @@ async def validation_exception_handler(_request: Request, exc: RequestValidation
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"detail": [{"loc": e["loc"], "msg": e["msg"], "type": e["type"]} for e in errors]},
+        content={
+            "detail": [
+                {"loc": e["loc"], "msg": _plain_message(e), "type": e["type"]} for e in errors
+            ]
+        },
     )
 
 

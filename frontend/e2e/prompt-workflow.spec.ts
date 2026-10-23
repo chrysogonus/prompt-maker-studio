@@ -285,7 +285,7 @@ test('edits a saved prompt twice and restores an earlier version', async ({ page
   await page.getByRole('button', { name: 'Tools', exact: true }).click();
 
   await page.getByRole('button', { name: 'History' }).click();
-  const history = page.getByRole('complementary', { name: 'Version history' });
+  const history = page.getByRole('dialog', { name: 'Version history' });
   await expect(history.getByText('Version 3, current')).toBeVisible();
   await expect(history.getByText('Third pass')).toBeVisible();
 
@@ -297,6 +297,47 @@ test('edits a saved prompt twice and restores an earlier version', async ({ page
   // And it is what the server now holds, not just what is on screen.
   await page.reload();
   await expect(page.getByLabel('Task text')).toHaveValue('version two content');
+});
+
+test('shows restore results inside History when it covers the page', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 800 });
+  const user = uniqueUser('narrowhistory');
+  await register(page, user);
+  const promptId = await createSavedPrompt(page, 'Narrow History ' + user.username, 'version one content');
+  // At this width the editor has Edit and Fill and copy tabs, and a saved prompt opens ready to fill.
+  await page.getByRole('tab', { name: 'Edit', exact: true }).click();
+  const task = page.getByLabel('Task text');
+  await task.fill('version two content');
+  const save = promptPatch(page, promptId);
+  await page.keyboard.press('Control+s');
+  expect((await save).status()).toBe(200);
+
+  await page.getByRole('button', { name: 'Tools', exact: true }).click();
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  const history = page.getByRole('dialog', { name: 'Version history' });
+  await expect(history).toHaveAttribute('aria-modal', 'true');
+  await history.getByRole('button', { name: /^Version 1/ }).click();
+
+  // A failed restore keeps the comparison and says why, inside the modal panel.
+  await page.route('**/api/prompts/*/versions/*/restore', (route) => route.fulfill({ status: 503, json: { detail: 'Restoring is unavailable right now.' } }), { times: 1 });
+  await history.getByRole('button', { name: 'Restore version 1' }).click();
+  await expect(history.getByRole('alert')).toHaveText('Failed to restore prompt version');
+  await expect(history.getByRole('button', { name: 'Restore version 1' })).toBeEnabled();
+
+  await history.getByRole('button', { name: 'Restore version 1' }).click();
+  await expect(history.getByRole('status')).toHaveText('Restored version 1');
+  await expect(history.getByRole('heading', { name: 'History' })).toBeFocused();
+  // Closing returns focus to Tools, whether by Escape or the close button.
+  const tools = page.getByRole('button', { name: 'Tools', exact: true });
+  await page.keyboard.press('Escape');
+  await expect(history).not.toBeVisible();
+  await expect(tools).toBeFocused();
+  await expect(task).toHaveValue('version one content');
+  await tools.click();
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  await history.getByRole('button', { name: 'Close history' }).click();
+  await expect(history).not.toBeVisible();
+  await expect(tools).toBeFocused();
 });
 
 test('blocks section names that render to the same tag and saves spaced names', async ({

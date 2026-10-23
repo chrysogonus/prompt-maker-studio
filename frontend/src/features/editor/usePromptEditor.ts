@@ -21,6 +21,7 @@ import {
   ImportSession,
   Metadata,
   Notice,
+  OperationResult,
   toEditorSections,
   blankSections,
   toFields,
@@ -258,12 +259,15 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     [applyPrompt, enqueue],
   );
 
-  const reportError = (err: unknown, fallback: string) => {
+  /** Shows the failure and returns its text, for panels that cover the page's notice. */
+  const reportError = (err: unknown, fallback: string): string => {
     if (err instanceof ApiError && err.status === 409) {
       setConflict(true);
-      return;
+      return 'This prompt changed elsewhere. Close History to choose which version to keep.';
     }
-    showNotice({ text: err instanceof Error ? err.message : fallback, tone: 'error' }, 8000);
+    const text = err instanceof Error ? err.message : fallback;
+    showNotice({ text, tone: 'error' }, 8000);
+    return text;
   };
 
   const save = async () => {
@@ -348,7 +352,8 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
         folder: saveDialog.folder.trim() || null,
         variable_metadata: metadata,
       });
-      if (currentUser && rememberValues) {
+      // Saved prompts keep filled inputs, so values typed before the first save carry over too.
+      if (currentUser && (rememberValues || Object.values(values).some(Boolean))) {
         const savedDraft: Draft = {
           base: snapshot(created.fields, created.variable_metadata), sections: created.fields,
           metadata: created.variable_metadata ?? {}, values, note: '',
@@ -399,20 +404,28 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     }
   };
 
-  const restore = async (versionId: number, versionNumber: number) => {
+  const restore = async (versionId: number, versionNumber: number): Promise<OperationResult> => {
+    let restored: PromptHistoryResponse;
     try {
-      const restored = await enqueue(async () => {
+      restored = await enqueue(async () => {
         const updated = await ApiClient.restorePromptVersion(promptRef.current!.id, versionId);
         applyPrompt(updated);
         return updated;
       });
-      setSections(toEditorSections(restored.fields, true));
-      setMetadata(restored.variable_metadata ?? {});
-      setVersions(await ApiClient.getPromptVersions(restored.id));
-      showNotice({ text: `Restored version ${versionNumber}` });
     } catch (err) {
-      reportError(err, 'Failed to restore that version.');
+      return { ok: false, text: reportError(err, 'Failed to restore that version.') };
     }
+    setSections(toEditorSections(restored.fields, true));
+    setMetadata(restored.variable_metadata ?? {});
+    // The restore stands even if the version list cannot be reloaded, as after a save.
+    let text = `Restored version ${versionNumber}`;
+    try {
+      setVersions(await ApiClient.getPromptVersions(restored.id));
+    } catch {
+      text += '. Version history is unavailable; reload to retry.';
+    }
+    showNotice({ text }, 8000);
+    return { ok: true, text };
   };
 
   const rename = async (value: string) => {
@@ -427,12 +440,14 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     }
   };
 
-  const markKnownGood = async (versionNumber: number) => {
+  const markKnownGood = async (versionNumber: number): Promise<OperationResult> => {
     try {
       await patch({ known_good_version: versionNumber });
-      showNotice({ text: versionNumber ? `Version ${versionNumber} marked as known good` : 'Known-good mark removed' });
+      const text = versionNumber ? `Version ${versionNumber} marked as known good` : 'Known-good mark removed';
+      showNotice({ text });
+      return { ok: true, text };
     } catch (err) {
-      reportError(err, 'Failed to update the known-good version.');
+      return { ok: false, text: reportError(err, 'Failed to update the known-good version.') };
     }
   };
 
