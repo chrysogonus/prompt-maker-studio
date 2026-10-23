@@ -92,6 +92,12 @@ any release. See [Project status](./README.md#project-status).
   set `REGISTRATION_MODE=closed`, which still admits only the first account; any unrecognised
   value is also treated as closed.
 
+### Security
+
+- The backend's `opentelemetry-api` is updated from 1.45.0 to 1.45.1 for CVE-2026-114603: an
+  inbound `tracestate` header could make parsing take quadratic time and stall a worker.
+  Rebuilt images pick it up; no configuration change.
+
 ## [0.9.0] - 2026-10-20
 
 See the [release record](./docs/releases/0.9.0.md).
