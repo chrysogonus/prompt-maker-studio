@@ -50,6 +50,14 @@ Phase 5 of the evaluate → refine loop (see [below](#evaluate--refine-loop-plan
 - **Source**: `frontend/src/features/library/useLibrary.ts`, `backend/app/services/prompts/library.py`.
 - **Effort**: Medium.
 
+### Import Source Key & Remembered Choices
+
+- **Value**: Re-importing an Obsidian vault or Notion export behaves like a sync: a renamed note updates its prompt, and notes left out or placeholders kept as text stay that way.
+- **Current gap**: Re-import matches by title only. Inputs the library prompt already has are converted again, and Update is offered only when one prompt has the title, but nothing about the source is stored, so unticked notes are ticked again on every import and renamed notes import as new.
+- **Suggested approach**: Store a source key per imported prompt (vault-relative path or Notion page ID; migration), match on it before the title, and keep per-source choices (left out, placeholders kept).
+- **Source**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`, `backend/app/models/prompt.py`.
+- **Effort**: Medium.
+
 ### Variable Defaults & Typed Validation
 
 - **Value**: Reuse predictable inputs without confusing examples with defaults.

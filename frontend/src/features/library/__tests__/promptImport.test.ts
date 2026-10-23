@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertPlaceholders, findPlaceholders, importProblem, isImportableFile, parseCsvPrompts, parseImportFiles, parsePromptImport, splitLongSections, titleFromFileName } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, importProblem, isImportableFile, parseCsvPrompts, parseImportFiles, parsePromptImport, reapplyConversions, splitLongSections, titleFromFileName, withoutTitleLine } from '@/lib/promptImport';
 
 describe('prompt import', () => {
   it('restores export sections, folder and variable metadata without server-only data', () => {
@@ -67,7 +67,7 @@ describe('prompt import', () => {
       { name: 'Empty.md', path: 'Vault/Empty.md', text: '   ' },
     ]);
     expect(prompts.map(prompt => [prompt.name, prompt.folder])).toEqual([['Blog', 'Prompts'], ['One', null], ['Two', null]]);
-    expect(skipped).toEqual(['Empty.md: Include some note text or a JSON export.']);
+    expect(skipped).toEqual(['Empty.md: This note is empty.']);
     const many = Array.from({ length: 1001 }, (_, i) => ({ name: `${i}.md`, path: `${i}.md`, text: `Prompt ${i}` }));
     expect(() => parseImportFiles(many)).toThrow('1,001 prompts');
     expect(parseImportFiles(many.slice(0, 1000)).prompts).toHaveLength(1000);
@@ -87,6 +87,47 @@ describe('prompt import', () => {
     expect(parsePromptImport(note, 'Note')[0]).toEqual({ name: 'Note', folder: 'Prompt', fields: [{ name: 'Prompt', content:
       'See Style guide and our voice.\nUse #fff for the background.\n```\nkeep #tag and [[link]]\n```' }] });
     expect(parsePromptImport(note, 'Note', true)[0].fields[0].content).toBe(note);
+  });
+  it('reads links to other Notion pages as their text, keeping web links', () => {
+    expect(parsePromptImport('See [Style guide](Style%20guide%20b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7.md), [Data](Prompts%20ab12.csv#row), [docs](https://example.com/a.md) and [guide](//example.org/guide.md).', 'Note')[0].fields[0].content)
+      .toBe('See Style guide, Data, [docs](https://example.com/a.md) and [guide](//example.org/guide.md).');
+  });
+  it('files a note with a nested tag by the tag\'s last part', () => {
+    expect(parsePromptImport('Review this code. #prompts/engineering', 'Note')[0].folder).toBe('Engineering');
+  });
+  it('keeps a pasted first line in the text, and takes it out only when asked', () => {
+    // A title and an instruction look alike, so parsing never drops the first line.
+    expect(parsePromptImport('Do not reveal secrets\nSummarize the document', '')[0]).toEqual({ name: 'Do not reveal secrets', folder: null, fields: [{ name: 'Prompt', content: 'Do not reveal secrets\nSummarize the document' }] });
+    expect(parsePromptImport('```python\nprint(1)\n```', '')[0].fields[0].content).toBe('```python\nprint(1)\n```');
+    const [titled] = parsePromptImport('LinkedIn post writer\nWrite a post about {{topic}}.', '');
+    expect(withoutTitleLine(titled)).toEqual({ name: 'LinkedIn post writer', folder: null, fields: [{ name: 'Prompt', content: 'Write a post about {{topic}}.' }] });
+    expect(withoutTitleLine(parsePromptImport('```python\nprint(1)\n```', '')[0])).toBeNull();
+    expect(withoutTitleLine(parsePromptImport('Plan a trip to Lisbon.', '')[0])).toBeNull();
+    expect(withoutTitleLine({ ...titled, name: 'Post writer' })).toBeNull();
+  });
+  it('converts placeholders again where the library prompt already has their input, keeping its hint', () => {
+    const current = { fields: [{ name: 'Task', content: 'Review {{focus_area}}.' }], variable_metadata: { focus_area: { type: 'text' as const, description: 'What to look at' } } };
+    expect(reapplyConversions({ name: 'Review', folder: null, fields: [{ name: 'Task', content: 'Review [focus area] in a [tone] voice.' }] }, current)).toEqual({
+      name: 'Review', folder: null, fields: [{ name: 'Task', content: 'Review {{focus_area}} in a [tone] voice.' }], variable_metadata: current.variable_metadata,
+    });
+    // Settings made in the library win over hints generated on this import.
+    expect(reapplyConversions({ name: 'Review', folder: null, fields: [{ name: 'Task', content: 'Review [focus area].' }], variable_metadata: { focus_area: { type: 'text', description: 'Focus area' } } }, current).variable_metadata)
+      .toEqual(current.variable_metadata);
+    const unrelated = { name: 'Other', folder: null, fields: [{ name: 'Task', content: 'Use [tone].' }] };
+    expect(reapplyConversions(unrelated, current)).toBe(unrelated);
+  });
+  it('flags note templates and pages of only links so they start unticked', () => {
+    const { prompts } = parseImportFiles([
+      { name: 'Daily note.md', path: 'Templates/Daily note.md', text: '# {{date:YYYY-MM-DD}}\nPlan the day.' },
+      { name: 'Standup.md', path: 'Notes/Standup.md', text: 'Created <% tp.date.now() %>\nWhat did I do?' },
+      { name: 'Prompts.md', path: 'Prompts.md', text: '# Prompts\n\n[Code review](Prompts/Code%20review%20ab12.md)\n- [[Blog draft]]' },
+      { name: 'Index.md', path: 'Index.md', text: '# Index\n\nTags: Prompts\n\n[One](One%20abcd.md)' },
+      { name: 'Brief.md', path: 'Notes/Brief.md', text: 'Write a brief for {{date}}. See [[Style guide]].' },
+    ]);
+    expect(prompts.map(prompt => prompt.flag)).toEqual([
+      'This looks like a note template, so it starts unticked.', 'This looks like a note template, so it starts unticked.',
+      'This page only links to other pages, so it starts unticked.', 'This page only links to other pages, so it starts unticked.', undefined,
+    ]);
   });
   it('files a note by its first front matter tag, written as a list or inline', () => {
     expect(parsePromptImport('---\ntags:\n  - writing\n  - blog\n---\nBody')[0].folder).toBe('Writing');

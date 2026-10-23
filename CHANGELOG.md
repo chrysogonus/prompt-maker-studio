@@ -31,6 +31,22 @@ any release. See [Project status](./README.md#project-status).
 
 ### Fixed
 
+- Re-importing a changed note and choosing Update no longer turns inputs made on the first
+  import back into placeholder text: `{{focus_area}}` stays an input with its settings, and only
+  new placeholders are offered.
+- Re-import compares a note with every library prompt of the same title, so a prompt that
+  shares its title with another is no longer flagged as changed, and Update is offered only
+  when exactly one prompt has that title.
+- Obsidian note templates (Templater, `{{date:…}}`, the Templates folder) and pages that only
+  link to other pages start unticked, with the reason shown.
+- Links to other Notion pages, such as `[Style guide](Style%20guide%20b2c3….md)`, are imported
+  as their text, and a nested tag such as `#prompts/engineering` suggests the folder
+  "Engineering" rather than a folder named with a slash.
+- When pasted text starts with the line used as its title, the preview offers to take that line
+  out of the text; it is never removed automatically, since a title and an instruction look alike.
+- Import messages are plainer: "Imported 7 prompts, skipped 1 already in your library", ignored
+  files are named, an empty note says "This note is empty", and each prompt's tick box is
+  labelled with its title.
 - Suggested test cases no longer repeat or rephrase the prompt's existing cases.
 - Refine no longer drops clarifying questions that mention an input such as "the article",
   which could leave a vague prompt with no questions at all.

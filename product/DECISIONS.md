@@ -1231,6 +1231,18 @@ is by title only, so a renamed note still imports as new. Two-way sync stays out
 **Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/features/library/useLibrary.ts`,
 `frontend/src/app/page.tsx`.
 
+**Amended (2026-10-23)**: A UI/UX test found that Update put back placeholder text such as
+`[focus area]` that the first import had turned into `{{focus_area}}`, and that a prompt sharing
+its title with another was compared only with the newest and offered for an Update that would
+overwrite the wrong one. Placeholders whose input the library prompt already has are now
+converted again before comparing and updating, and the library prompt's settings win for
+inputs it already has, so converting in the preview never replaces them. A note is compared with every
+library prompt of its title: matching any of them is "already in your library", and Update is
+offered only when exactly one prompt has that title. Note templates (Templater, core
+`{{date:…}}`, a Templates folder) and pages of only links start unticked with the reason shown.
+Matching stays by title, with no stored source path, so choices are not remembered between
+imports.
+
 ---
 
 ## AI Review Agreement Is Measured with the User's Own Ratings
