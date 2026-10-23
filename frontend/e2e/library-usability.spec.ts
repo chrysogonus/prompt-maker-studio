@@ -15,6 +15,8 @@ for (const width of [1440, 390, 320]) {
       const path = new URL(route.request().url()).pathname;
       let body: unknown = {};
       if (path === '/api/auth/me') body = { id: 1, username: 'alex', email: 'alex@example.com', default_library_view: 'grid', created_at: '2026-10-01T00:00:00Z' };
+      // Clicks and typing renew the session; a reply without an expiry would sign the page out.
+      else if (path === '/api/auth/refresh') body = { expires_at: new Date(Date.now() + 3_600_000).toISOString() };
       else if (path === '/api/prompts/saved') body = prompts;
       else if (path === '/api/prompts/1' && route.request().method() === 'PATCH') {
         prompts = [{ ...prompts[0], ...route.request().postDataJSON() }];
@@ -94,6 +96,8 @@ test('keeps the search in the address across folders, a prompt and Back', async 
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     const body = path === '/api/auth/me' ? { id: 1, username: 'alex', email: 'alex@example.com', default_library_view: 'list', created_at: '2026-10-01T00:00:00Z' }
+      // Clicks and typing renew the session; a reply without an expiry would sign the page out.
+      : path === '/api/auth/refresh' ? { expires_at: new Date(Date.now() + 3_600_000).toISOString() }
       : path === '/api/prompts/saved' ? prompts
       : path === '/api/prompts/1' ? prompts[0]
       : /\/(versions|runs|cases)$/.test(path) ? [] : {};
