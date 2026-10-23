@@ -4,10 +4,10 @@
 
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AuthService } from '@/lib/auth';
-import { APP_NAME } from '@/lib/branding';
+import { APP_NAME, pageTitle } from '@/lib/branding';
 import Wordmark from '@/components/ui/Wordmark';
 import LegalLinks from '@/components/LegalLinks';
 import RepositoryLink from '@/components/RepositoryLink';
@@ -48,6 +48,12 @@ export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps)
   const usernameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+
+  // The page behind sign-in (e.g. Settings) is not shown, so its title must not stay in the tab.
+  useEffect(() => {
+    document.title = pageTitle(view === 'login' ? 'Sign in' : view === 'register' ? 'Create account' : 'Reset password');
+    return () => { document.title = pageTitle(); };
+  }, [view]);
   const inputRefs = { username: usernameRef, password: passwordRef, email: emailRef };
 
   const switchView = (next: View) => {

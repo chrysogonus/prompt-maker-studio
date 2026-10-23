@@ -50,6 +50,16 @@ describe('AuthForm — login view', () => {
     );
   });
 
+  it('names the tab after the form, not the page behind it, and resets it when done', async () => {
+    document.title = 'Settings · Prompt Maker Studio';
+    const view = render(<AuthForm onSuccess={mockOnSuccess} />);
+    expect(document.title).toBe('Sign in · Prompt Maker Studio');
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+    expect(document.title).toBe('Create account · Prompt Maker Studio');
+    view.unmount();
+    expect(document.title).toBe('Prompt Maker Studio');
+  });
+
   it('explains a waiting hand-off in both views and links back to the page it came from', async () => {
     render(<AuthForm onSuccess={mockOnSuccess} notice="Sign in to save “Trip” to your library." backHref="/gallery/trip" />);
     expect(screen.getByRole('status')).toHaveTextContent('Sign in to save “Trip” to your library.');

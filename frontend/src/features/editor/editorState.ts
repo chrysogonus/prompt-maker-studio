@@ -1,3 +1,4 @@
+import { storageKey } from '@/lib/branding';
 import { normalizeSectionName } from '@/lib/sections';
 
 import { PromptField, VariableMetadataItem, ParseTextResponse, ExtractedVariable } from '@/types/prompt';
@@ -60,6 +61,12 @@ export function snapshot(fields: PromptField[], metadata: Metadata | null | unde
         ...(item.required ? { required: true } : {}), ...(item.example ? { example: item.example } : {}) }];
     });
   return JSON.stringify({ fields, metadata: sorted });
+}
+
+/** Whether opening this saved prompt restores unsaved edits: a draft made against its current text that differs from it. */
+export function hasUnsavedDraft(user: string, prompt: { id: number; fields: PromptField[]; variable_metadata?: Metadata | null }): boolean {
+  const draft = readDraft(storageKey(`editor-draft:${user}:${prompt.id}`));
+  return !!draft && draft.base === snapshot(prompt.fields, prompt.variable_metadata) && snapshot(draft.sections, draft.metadata) !== draft.base;
 }
 
 export function readDraft(key: string | null): Draft | null {

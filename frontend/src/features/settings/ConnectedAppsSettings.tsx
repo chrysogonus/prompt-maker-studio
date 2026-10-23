@@ -23,6 +23,9 @@ export function ConnectedAppsSettings() {
     AuthService.getConnectedApps().then(setApps).catch(() => setError('Could not load connected apps. Reload to try again.'));
   }, []);
 
+  // ChatGPT and Claude connect from the internet, over HTTPS only.
+  const unreachable = !!url && (!url.startsWith('https:') || /^https?:\/\/(localhost|127\.|\[::1\])/.test(url));
+
   const copy = async () => {
     try { await navigator.clipboard.writeText(url); setCopied(true); } catch { setError('Copying failed. Select the address and copy it.'); }
   };
@@ -63,6 +66,10 @@ export function ConnectedAppsSettings() {
             Use this server address with OAuth sign-in:{' '}
             <code className={styles.connectUrl}>{url}</code>{' '}
             <Button variant="secondary" onClick={() => void copy()}>{copied ? 'Copied' : 'Copy address'}</Button>
+            {unreachable && <p className={styles.error}>
+              ChatGPT and Claude cannot reach this address: it is on this computer or not HTTPS.
+              Open the app at its public HTTPS address to connect them.
+            </p>}
           </li>
           <li>When the app asks, sign in here and allow access.</li>
         </ol>

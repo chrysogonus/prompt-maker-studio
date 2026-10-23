@@ -5,6 +5,8 @@ import LibraryPage from '../LibraryPage';
 import { ApiClient } from '@/lib/api';
 import { AuthService } from '@/lib/auth';
 import { pasteHandoffKey } from '@/lib/promptImport';
+import { storageKey } from '@/lib/branding';
+import { snapshot } from '@/features/editor/editorState';
 import type { PromptHistoryResponse } from '@/types/prompt';
 
 import { LibraryDataProvider } from '@/features/library/LibraryData';
@@ -33,6 +35,8 @@ vi.mock('@/lib/api', () => ({
     removeFolder: vi.fn(),
   },
 }));
+
+vi.mock('@/lib/auth-context', () => ({ useAuth: () => ({ currentUser: 'alex' }) }));
 
 vi.mock('@/lib/auth', () => ({
   AuthService: { getCurrentUser: vi.fn(), updateProfile: vi.fn() },
@@ -963,6 +967,54 @@ describe('LibraryPage', () => {
     vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [{ name: 'Task', content: 'Summarise {{notes}} for {{team}}.' }] })]);
     const { container } = await renderLibrary();
     expect([...container.querySelectorAll('li p span')].map(span => span.textContent)).toEqual(['{{notes}}', '{{team}}']);
+  });
+
+  it('marks prompts with unsaved edits in this browser, but not stale drafts', async () => {
+    const [weekly, tricky] = LIBRARY;
+    const draft = (base: string) => JSON.stringify({ base, sections: [{ name: 'Task', content: 'Edited' }], metadata: {} });
+    localStorage.setItem(storageKey(`editor-draft:alex:${weekly.id}`), draft(snapshot(weekly.fields, weekly.variable_metadata)));
+    // Made against older text: the editor discards it, so nothing is shown.
+    localStorage.setItem(storageKey(`editor-draft:alex:${tricky.id}`), draft(snapshot([{ name: 'Role', content: 'Old' }], {})));
+    await renderLibrary();
+    const row = (name: string) => screen.getAllByRole('listitem').find((item) => within(item).queryByRole('link', { name }))!;
+    expect(within(row('Weekly status update')).getByText('Unsaved draft')).toBeInTheDocument();
+    expect(within(row('Reply to a tricky email')).queryByText('Unsaved draft')).not.toBeInTheDocument();
+    localStorage.clear();
+  });
+
+  it('previews imported Markdown as plain words', async () => {
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [{ name: 'Task', content: '### Steps\n- **Read** the `diff`\n```ts\nconst a = 1;\n```' }] })]);
+    const { container } = await renderLibrary();
+    expect(container.querySelector('li p')).toHaveTextContent(/^Steps Read the diff const a = 1;$/);
+  });
+
+  it('keeps the search in the address, so Back and links restore it', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/library?view=favorites');
+    await renderLibrary('view=favorites&q=firm');
+    expect(screen.getByLabelText('Search prompts')).toHaveValue('firm');
+    expect(rowNames()).toEqual(['Reply to a tricky email']);
+    await user.clear(screen.getByLabelText('Search prompts'));
+    expect(window.location.search).toBe('?view=favorites');
+    await user.type(screen.getByLabelText('Search prompts'), 'warm');
+    expect(window.location.search).toBe('?view=favorites&q=warm');
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('takes the query from the address when the view changes without remounting', async () => {
+    const user = userEvent.setup();
+    const view = await renderLibrary('q=firm');
+    await user.clear(screen.getByLabelText('Search prompts'));
+    await user.type(screen.getByLabelText('Search prompts'), 'warm');
+    // A folder link carries no query.
+    currentParams = new URLSearchParams('folder=Writing');
+    view.rerender(<LibraryPage />);
+    expect(screen.getByLabelText('Search prompts')).toHaveValue('');
+    // Back to the search, whose address now holds what was typed.
+    currentParams = new URLSearchParams('q=warm');
+    view.rerender(<LibraryPage />);
+    expect(screen.getByLabelText('Search prompts')).toHaveValue('warm');
+    window.history.replaceState(null, '', '/');
   });
 
   it('invites a first prompt when the library is empty', async () => {

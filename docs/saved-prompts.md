@@ -192,7 +192,7 @@ above both panes as stored only in the current browser.
 - Library cards expose Copy template and, for prompts with variables, Fill and copy, which opens
   the filling view directly on desktop and phones. Each prompt's menu: Copy template, Rename,
   Move to folder, Duplicate, Delete. Delete takes effect
-  at once with a 5-second Undo and only then calls the server; a delete still waiting is sent if
+  at once with a 10-second Undo and only then calls the server; a delete still waiting is sent if
   the page is left.
 - **Folders** are labels on prompts (`prompts.folder`). A folder exists while a prompt is filed in
   it. A folder view can rename the folder (`PATCH /api/prompts/folders?name=`, merging onto an

@@ -83,3 +83,39 @@ for (const width of [1440, 390, 320]) {
     await page.screenshot({ path: testInfo.outputPath(`library-${width}.png`), fullPage: true });
   });
 }
+
+test('keeps the search in the address across folders, a prompt and Back', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('prompt-maker-studio:client-session-expiry', String(Date.now() + 3_600_000)));
+  const prompt = (id: number, name: string, folder: string) => ({
+    id, name, folder, fields: [{ name: 'Task', content: `Write the ${name.toLowerCase()}.` }], generated_prompt: '', is_favorite: false,
+    created_at: '2026-10-01T12:00:00Z', updated_at: '2026-10-01T12:00:00Z', content_updated_at: '2026-10-01T12:00:00Z',
+  });
+  const prompts = [prompt(1, 'Café menu', 'Food'), prompt(2, 'Status update', 'Work')];
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    const body = path === '/api/auth/me' ? { id: 1, username: 'alex', email: 'alex@example.com', default_library_view: 'list', created_at: '2026-10-01T00:00:00Z' }
+      : path === '/api/prompts/saved' ? prompts
+      : path === '/api/prompts/1' ? prompts[0]
+      : /\/(versions|runs|cases)$/.test(path) ? [] : {};
+    await route.fulfill({ json: body });
+  });
+  await page.goto('/library');
+  const search = page.getByLabel('Search prompts');
+  await search.fill('cafe');
+  await expect(page).toHaveURL(/\/library\?q=cafe$/);
+  await expect(page.getByRole('link', { name: 'Status update', exact: true })).toHaveCount(0);
+
+  // A folder link has no query; Back returns to the search.
+  await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('link', { name: /^Work/ }).click();
+  await expect(page).toHaveURL(/folder=Work/);
+  await expect(search).toHaveValue('');
+  await page.goBack();
+  await expect(page).toHaveURL(/\/library\?q=cafe$/);
+  await expect(search).toHaveValue('cafe');
+
+  await page.getByRole('link', { name: 'Café menu', exact: true }).click();
+  await expect(page).toHaveURL(/\/editor\/1/);
+  await page.goBack();
+  await expect(search).toHaveValue('cafe');
+  await expect(page.getByRole('link', { name: 'Status update', exact: true })).toHaveCount(0);
+});

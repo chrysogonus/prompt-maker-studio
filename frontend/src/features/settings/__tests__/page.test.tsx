@@ -350,6 +350,8 @@ describe('ChatGPT and Claude', () => {
     renderSettings();
     const section = await screen.findByRole('region', { name: 'ChatGPT and Claude' });
     expect(within(section).getByText(`${window.location.origin}/api/mcp`)).toBeInTheDocument();
+    // The test page runs on http://localhost, which the apps cannot reach.
+    expect(within(section).getByText(/cannot reach this address/)).toBeInTheDocument();
     expect(within(section).getByRole('link', { name: /OpenAI's guide/ })).toHaveAttribute('href', expect.stringContaining('openai.com'));
     expect(within(section).getByRole('link', { name: /Anthropic's guide/ })).toHaveAttribute('href', expect.stringContaining('claude.com'));
     expect(await within(section).findByText('No apps are connected yet.')).toBeInTheDocument();

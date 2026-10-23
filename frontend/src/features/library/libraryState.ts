@@ -1,6 +1,7 @@
 import type { PromptHistoryResponse } from '@/types/prompt';
 
-export const UNDO_MS = 5000;
+// Long enough to notice the toast and reach Undo; the delete is sent when it ends.
+export const UNDO_MS = 10000;
 
 export type Prompt = PromptHistoryResponse;
 
@@ -14,7 +15,16 @@ export function excerpt(prompt: Prompt): string {
   const readable = prompt.fields.filter((f) => f.content.trim() && !/^\s*\{\{[^}]+\}\}\s*$/.test(f.content));
   const section =
     readable.find((f) => f.name.trim().toLowerCase() === 'task') ?? readable[0] ?? prompt.fields[0];
-  return section ? section.content.replace(/\s+/g, ' ').trim() : '';
+  return section ? plainText(section.content).replace(/\s+/g, ' ').trim() : '';
+}
+
+/** Imported notes are Markdown; a card preview shows their words, not fences, # or **. */
+function plainText(markdown: string): string {
+  return markdown
+    .replace(/^\s*(`{3,}|~{3,}).*$/gm, '')
+    .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+|\d+[.)]\s+)/gm, '')
+    .replace(/(\*\*|__)(?=\S)(.+?)(?<=\S)\1/g, '$2')
+    .replace(/`([^`\n]+)`/g, '$1');
 }
 
 export function editedAt(prompt: Prompt): string {

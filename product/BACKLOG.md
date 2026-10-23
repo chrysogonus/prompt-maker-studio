@@ -45,7 +45,7 @@ Phase 5 of the evaluate → refine loop (see [below](#evaluate--refine-loop-plan
 ### Prompt Trash & Restore
 
 - **Value**: Recover a deleted prompt with its versions and evaluation history.
-- **Current gap**: The library provides a five-second local Undo before sending DELETE. Once committed, server deletion is permanent and cascades through dependent records; there is no persistent trash.
+- **Current gap**: The library provides a ten-second local Undo before sending DELETE. Once committed, server deletion is permanent and cascades through dependent records; there is no persistent trash.
 - **Suggested approach**: A 30-day soft-delete view with restore and explicit permanent deletion, excluded from normal library and execution queries.
 - **Source**: `frontend/src/features/library/useLibrary.ts`, `backend/app/services/prompts/library.py`.
 - **Effort**: Medium.
@@ -57,6 +57,15 @@ Phase 5 of the evaluate → refine loop (see [below](#evaluate--refine-loop-plan
 - **Suggested approach**: Store a source key per imported prompt (vault-relative path or Notion page ID; migration), match on it before the title, and keep per-source choices (left out, placeholders kept).
 - **Source**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/lib/promptImport.ts`, `backend/app/models/prompt.py`.
 - **Effort**: Medium.
+
+### Small Follow-ups from the 2026-10-23 UI/UX Test
+
+- **Open imported prompts as a batch**: after an import into several folders, Open imported prompts shows All prompts, where the new prompts lead the default recency sort. A view of exactly the imported prompts needs a new library view (the IDs or an import marker).
+- **Markdown in evaluation results**: run details show model output as raw Markdown tables; rendering it needs a Markdown renderer (none is installed).
+- **Inputs highlighted while editing**: `{{inputs}}` are highlighted in the preview only; the section text areas would need a mirrored highlight layer.
+- **Import review on phones**: a filter and "collapse all" for reviewing hundreds of notes in the small dialog.
+- **Sequential prompt IDs**: IDs reveal the total number of prompts to any user; not a vulnerability given the ownership checks, but worth deciding before a public launch.
+- **Source**: `prompt-maker-ux-test-2026-10-23.md` (not checked in).
 
 ### Variable Defaults & Typed Validation
 

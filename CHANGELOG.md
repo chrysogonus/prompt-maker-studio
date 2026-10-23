@@ -31,6 +31,14 @@ any release. See [Project status](./README.md#project-status).
 
 ### Fixed
 
+- Library polish: the bulk action bar stays in view while selecting further down the list;
+  previews of imported notes no longer show Markdown such as ``` or `###`; Undo after deleting
+  lasts 10 seconds; the search is kept in the address (`?q=`), so Back from a prompt keeps it;
+  and a prompt with unsaved edits in this browser is marked Unsaved draft.
+- Settings and the account stay in view at the bottom of the sidebar however many folders there
+  are, and Guides, Free tools and the Template gallery are marked as leaving the app.
+- The browser tab says "Sign in" or "Create account" instead of the last page's title, and
+  Settings warns when the ChatGPT and Claude server address is local or not HTTPS.
 - Insert input turns a name such as `max rows!` into `max_rows`, and its error sits on its own
   line instead of squeezing the name field.
 - Inputs filled in before a new prompt's first save are kept after saving.

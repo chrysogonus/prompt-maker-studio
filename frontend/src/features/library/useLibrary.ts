@@ -23,7 +23,6 @@ export function useLibrary() {
 
   const [prompts, setPrompts] = useState<Prompt[] | null>(null);
   const [loadError, setLoadError] = useState('');
-  const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'recent' | 'title'>('recent');
   const [selected, setSelected] = useState<number[]>([]);
   const [batchFolder, setBatchFolder] = useState('');
@@ -61,6 +60,27 @@ export function useLibrary() {
       setLoadError(err instanceof Error ? err.message : 'Failed to load your prompts.');
     }
   }, [loadLibrary, refreshLibrary]);
+
+  // The query is kept in the address (?q=), so Back from a prompt and shared links keep it.
+  // Another view (a folder link, or Back to an earlier one) reuses this page, so the box takes
+  // that address's query; within a view the typed text wins over the router's late echo.
+  const viewKey = view.type === 'folder' ? `folder:${view.folder}` : view.type;
+  const urlQuery = searchParams.get('q') ?? '';
+  const [search, setSearchState] = useState(urlQuery);
+  const [searchView, setSearchView] = useState(viewKey);
+  if (viewKey !== searchView) {
+    setSearchView(viewKey);
+    setSearchState(urlQuery);
+  }
+  const setSearch = (value: string) => {
+    setSearchState(value);
+    const params = new URLSearchParams(window.location.search);
+    if (value) params.set('q', value); else params.delete('q');
+    const query = params.toString();
+    // Null state: Next.js copies its own history state and updates useSearchParams; passing
+    // its marked state back would skip that update.
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  };
 
   useEffect(() => {
     void load();
