@@ -77,7 +77,7 @@ export function useLibrary() {
       return;
     }
     written.current = { viewKey, queries: [] };
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- The address changed by navigation, not typing.
+    // The address changed by navigation, not typing.
     setSearchState(urlQuery);
   }, [viewKey, urlQuery]);
   const setSearch = (value: string) => {
