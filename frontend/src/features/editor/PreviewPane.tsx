@@ -7,6 +7,7 @@ import AICallContext from '@/components/ui/AICallContext';
 import { fillVariables, renderPlainSections, renderSections, sectionTag, splitVariables } from '@/lib/sections';
 import { PromptField, VariableMetadataItem, PromptsConfigResponse, TryPromptResponse } from '@/types/prompt';
 import styles from './PromptEditor.module.css';
+import { choiceList } from './editorState';
 
 // Not a limit of any particular chat app — just a quiet heads-up.
 const LONG_PROMPT_CHARS = 40_000;
@@ -155,21 +156,37 @@ export default function PreviewPane({
           {variables.some((name) => metadata[name]?.example) && (
             <button type="button" className={styles.copyButton} data-secondary="true" onClick={onLoadExamples}>Load example inputs</button>
           )}
-          {variables.map((name) => (
-            <label key={name} className={styles.valueField}>
-              <span>{name}{metadata[name]?.required ? ' Required' : ' Optional'}</span>
-              <textarea
-                value={values[name] ?? ''}
-                aria-label={`${name}${metadata[name]?.required ? ' Required' : ''}`}
-                aria-required={metadata[name]?.required || undefined}
-                aria-invalid={missingRequired.includes(name)}
-                aria-describedby={missingRequired.includes(name) ? 'required-input-warning' : undefined}
-                onChange={(e) => onValueChange(name, e.target.value)}
-                placeholder={metadata[name]?.description || 'Type the value'}
-                rows={1}
-              />
-            </label>
-          ))}
+          {variables.map((name) => {
+            const choices = choiceList(metadata[name]?.options);
+            const value = values[name] ?? '';
+            const field = {
+              'aria-label': `${name}${metadata[name]?.required ? ' Required' : ''}`,
+              'aria-required': metadata[name]?.required || undefined,
+              'aria-invalid': missingRequired.includes(name),
+              'aria-describedby': missingRequired.includes(name) ? 'required-input-warning' : undefined,
+            };
+            return (
+              <label key={name} className={styles.valueField}>
+                <span>{name}{metadata[name]?.required ? ' Required' : ' Optional'}</span>
+                {choices.length ? (
+                  <select {...field} value={value} onChange={(e) => onValueChange(name, e.target.value)}>
+                    <option value="">{metadata[name]?.description || 'Choose…'}</option>
+                    {/* A remembered or example value outside the list stays selectable rather than vanishing. */}
+                    {value && !choices.includes(value) && <option value={value}>{value}</option>}
+                    {choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+                  </select>
+                ) : (
+                  <textarea
+                    {...field}
+                    value={value}
+                    onChange={(e) => onValueChange(name, e.target.value)}
+                    placeholder={metadata[name]?.description || 'Type the value'}
+                    rows={1}
+                  />
+                )}
+              </label>
+            );
+          })}
         </div>
       )}
 

@@ -1484,3 +1484,33 @@ sign-in screen; choosing a theme in the app applies to both.
 
 **Sources**: `frontend/src/lib/theme.ts`, `frontend/src/components/ui/ThemeSync.tsx`,
 `frontend/src/app/layout.tsx`.
+
+---
+
+## Variables Can Offer a Fixed List of Choices
+
+**Status**: Accepted (2026-10-23)
+
+**Context**: A UI/UX test found people keeping separate prompts that only hold lists of values
+(art styles, characters) to swap into one template, because an input could only be typed. The
+stored variable `type` (including `list`) was retired from the editor in 0.3.0 and never offered
+a choice.
+
+**Decision**: Variable metadata gains optional `options`: up to 50 strings of up to 200
+characters. The server trims them and drops blanks and repeats; an empty list is stored as no
+choices, and the field is left out of responses and exports when unset. The editor's input
+settings take choices one per line, and Fill mode shows an input with choices as a list (its hint
+as the empty entry), keeping a remembered or example value that is not in the list. The value is
+substituted as plain text, as before. Evaluation cases keep free text, so a test can use any
+value. `type` stays stored and unedited.
+
+**Rationale**: A list is the common case behind the request and needs no new validation contract
+or migration (`variable_metadata` is JSON). Leaving the field out when unset keeps existing
+prompts, versions and exports unchanged.
+
+**Consequences**: Partly amends "Real Per-Variable Type and Description" and the 0.3.0
+retirement of variable types: choices are a separate, real control, not a revived type. MCP
+`get_prompt` returns the choices with the rest of the metadata, and JSON exports carry them.
+
+**Sources**: `backend/app/schemas/prompts.py` (`VariableMetadataItem`),
+`frontend/src/features/editor/VariablesPanel.tsx`, `frontend/src/features/editor/PreviewPane.tsx`.

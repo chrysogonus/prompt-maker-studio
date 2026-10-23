@@ -100,7 +100,9 @@ last known update because earlier organization-only activity cannot be separated
 contain `fields` and `variables` with `name`, `value`, `description` and
 `source_text`; an existing unfilled placeholder has an empty value and null
 source text. Conversion never saves a prompt. Variable metadata defaults to
-`required: false`; an optional `example` is separate from section content.
+`required: false`; an optional `example` is separate from section content, and optional
+`options` (up to 50 strings of up to 200 characters, trimmed, without blanks or repeats) are
+offered as a list in Fill mode. `options` is omitted when unset.
 Prompt responses expose `current_note`; history exposes corrected `note` and
 preserved `legacy_note`.
 

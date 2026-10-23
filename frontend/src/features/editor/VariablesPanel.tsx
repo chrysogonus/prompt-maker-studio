@@ -60,6 +60,10 @@ export default function VariablesPanel({
             <textarea value={metadata[name]?.example ?? ''} maxLength={10_000} rows={2}
               aria-label={`Example input for ${name}`} placeholder="Example value (used by Load example inputs)"
               onChange={(event) => onChangeMetadata(name, { example: event.target.value || null })} />
+            {/* Lines stay as typed so Enter starts the next choice; saving drops blanks and repeats. */}
+            <textarea value={metadata[name]?.options?.join('\n') ?? ''} rows={3}
+              aria-label={`Choices for ${name}`} placeholder="Choices to pick from, one per line (optional)"
+              onChange={(event) => onChangeMetadata(name, { options: event.target.value ? event.target.value.split('\n') : null })} />
             </div>
           </details>
         </div>

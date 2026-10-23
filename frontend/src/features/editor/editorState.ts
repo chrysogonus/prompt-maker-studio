@@ -52,13 +52,20 @@ export function toFields(sections: EditorSection[]): PromptField[] {
   return sections.map(({ name, content }) => ({ name: normalizeSectionName(name), content }));
 }
 
+/** Choices as the server stores them: trimmed, without blanks or repeats. */
+export function choiceList(options: string[] | null | undefined): string[] {
+  return [...new Set((options ?? []).map((option) => option.trim()).filter(Boolean))];
+}
+
 export function snapshot(fields: PromptField[], metadata: Metadata | null | undefined): string {
   const sorted = Object.keys(metadata ?? {})
     .sort()
     .map((key) => {
       const item = metadata![key];
       return [key, { type: item.type, ...(item.description ? { description: item.description } : {}),
-        ...(item.required ? { required: true } : {}), ...(item.example ? { example: item.example } : {}) }];
+        ...(item.required ? { required: true } : {}), ...(item.example ? { example: item.example } : {}),
+        // Compared as stored, so a trailing blank line typed in the editor is not an unsaved change.
+        ...(choiceList(item.options).length ? { options: choiceList(item.options) } : {}) }];
     });
   return JSON.stringify({ fields, metadata: sorted });
 }

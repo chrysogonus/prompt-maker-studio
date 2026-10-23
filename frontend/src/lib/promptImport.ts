@@ -47,7 +47,9 @@ export function validateImportPrompts(value: unknown, lenient = false): ImportPr
         for (const [field, max] of [['description', 500], ['example', 10000]] as const) {
           if (metadata[field] != null && (typeof metadata[field] !== 'string' || metadata[field].length > max)) return invalid(`invalid variable ${field}.`);
         }
-        return [key, { type: metadata.type, ...(metadata.required !== undefined && { required: metadata.required }), ...(metadata.description !== undefined && { description: metadata.description }), ...(metadata.example !== undefined && { example: metadata.example }) } as VariableMetadataItem];
+        const { options } = metadata;
+        if (options != null && (!Array.isArray(options) || options.length > 50 || options.some(option => typeof option !== 'string' || Array.from(option).length > 200))) return invalid('invalid variable choices.');
+        return [key, { type: metadata.type, ...(metadata.required !== undefined && { required: metadata.required }), ...(metadata.description !== undefined && { description: metadata.description }), ...(metadata.example !== undefined && { example: metadata.example }), ...(options != null && { options }) } as VariableMetadataItem];
       });
       prompt.variable_metadata = Object.fromEntries(entries);
     }

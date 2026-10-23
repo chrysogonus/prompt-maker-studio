@@ -124,6 +124,63 @@ it('copies plain text exactly as previewed while keeping placeholders and litera
   expect(clipboard).toHaveBeenCalledWith('  Visit café. Literal <example>.  ');
 });
 
+it('offers an input with choices as a list in Fill mode, keeping a value from outside it', async () => {
+  const user = userEvent.setup();
+  const clipboard = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({
+    fields: [{ name: 'Task', content: 'Draw a cat in {{style}} style.' }],
+    variable_metadata: { style: { type: 'text', description: 'Art style', example: 'Studio Ghibli', options: ['One Piece', 'Disney', 'Final Fantasy'] } },
+  }));
+  await renderSaved();
+  const style = screen.getByRole('combobox', { name: 'style' });
+  expect([...(style as HTMLSelectElement).options].map((option) => option.text)).toEqual(['Art style', 'One Piece', 'Disney', 'Final Fantasy']);
+  await user.selectOptions(style, 'Disney');
+  expect(screen.getByLabelText('Prompt text').textContent).toBe('Draw a cat in Disney style.');
+  await user.click(screen.getByRole('button', { name: 'Copy filled prompt' }));
+  expect(clipboard).toHaveBeenCalledWith('Draw a cat in Disney style.');
+  // An example outside the list is still shown and used, not silently dropped.
+  await user.click(screen.getByRole('button', { name: 'Load example inputs' }));
+  expect(style).toHaveValue('Studio Ghibli');
+  expect(screen.getByLabelText('Prompt text').textContent).toBe('Draw a cat in Studio Ghibli style.');
+});
+
+it('turns typed choices into a list to pick from, one per line', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ fields: [{ name: 'Task', content: 'Visit {{team}}.' }], variable_metadata: null }));
+  await renderSaved();
+  await user.click(screen.getByText('Options for team'));
+  await user.type(screen.getByLabelText('Choices for team'), 'Payments{Enter}Search{Enter}');
+  expect(screen.getByLabelText('Choices for team')).toHaveValue('Payments\nSearch\n');
+  const team = screen.getByRole('combobox', { name: 'team' });
+  expect([...(team as HTMLSelectElement).options].map((option) => option.value)).toEqual(['', 'Payments', 'Search']);
+  await user.clear(screen.getByLabelText('Choices for team'));
+  expect(screen.queryByRole('combobox', { name: 'team' })).not.toBeInTheDocument();
+  expect(screen.getByLabelText('team', { exact: true }).tagName).toBe('TEXTAREA');
+});
+
+it('saves typed choices without leaving them marked as unsaved, and reopens clean', async () => {
+  const user = userEvent.setup();
+  const fields = [{ name: 'Task', content: 'Visit {{team}}.' }];
+  const stored = prompt({ fields, variable_metadata: { team: { type: 'text', options: ['Payments', 'Search'] } }, updated_at: '2026-07-09T00:00:00Z' });
+  vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ fields, variable_metadata: null }));
+  // The server drops the blank line left by the final Enter.
+  vi.mocked(ApiClient.updatePrompt).mockResolvedValue(stored);
+  const view = render(<PromptEditor promptId={1} />);
+  await screen.findByRole('button', { name: 'Weekly status update' });
+  const edit = screen.queryByRole('button', { name: 'Edit template' });
+  if (edit) await user.click(edit);
+  await user.click(screen.getByText('Options for team'));
+  await user.type(screen.getByLabelText('Choices for team'), 'Payments{Enter}Search{Enter}');
+  fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+  await waitFor(() => expect(ApiClient.updatePrompt).toHaveBeenCalled());
+  expect(await screen.findByRole('button', { name: 'Saved' })).toBeDisabled();
+  view.unmount();
+  vi.mocked(ApiClient.getPromptById).mockResolvedValue(stored);
+  render(<PromptEditor promptId={1} />);
+  await screen.findByRole('button', { name: 'Weekly status update' });
+  expect(screen.queryByText('Your unsaved changes were restored.')).not.toBeInTheDocument();
+});
+
 it('previews a single-section prompt as plain text until section tags are chosen', async () => {
   const user = userEvent.setup();
   vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ fields: [{ name: 'Task', content: 'Visit {{team}}.' }] }));

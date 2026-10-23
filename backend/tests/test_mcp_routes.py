@@ -106,6 +106,17 @@ class TestMCPPromptTools:
             client, second_auth_headers, "get_prompt", prompt_id=saved["id"]
         ).endswith("Prompt not found")
 
+    def test_get_returns_input_choices_set_in_the_app(self, client, auth_headers):
+        saved = _ok(client, auth_headers, "save_prompt", name="Art", fields=TASK_FIELDS)
+        client.patch(
+            f"/api/prompts/{saved['id']}",
+            headers=auth_headers,
+            json={"variable_metadata": {"style": {"type": "text", "options": ["Disney", "Pixar"]}}},
+        )
+
+        fetched = _ok(client, auth_headers, "get_prompt", prompt_id=saved["id"])
+        assert fetched["variable_metadata"]["style"]["options"] == ["Disney", "Pixar"]
+
     def test_update_rerenders_text_and_keeps_a_version(self, client, auth_headers):
         saved = _ok(client, auth_headers, "save_prompt", name="Summarizer", fields=TASK_FIELDS)
         new_fields = [{"name": "task", "content": "Summarize in three bullets"}]

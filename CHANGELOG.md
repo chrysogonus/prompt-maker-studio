@@ -12,6 +12,10 @@ any release. See [Project status](./README.md#project-status).
 
 ### Added
 
+- Inputs can offer a list of choices: add them one per line in the input's options, and Fill
+  mode shows a list to pick from (for example an art style or a character). Choices are kept in
+  versions and JSON exports and returned by the ChatGPT and Claude `get_prompt` tool.
+
 - Free prompt tools at `/tools` that work without an account and upload nothing: a template filler
   for `{{variables}}`, a prompt checker, a word-level prompt diff and a token counter with
   estimated costs. Each can save its prompt to your library after you sign in or sign up. The

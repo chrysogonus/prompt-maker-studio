@@ -703,6 +703,18 @@ button.title:hover {
   line-height: 1.45;
 }
 
+.valueField select {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid var(--pv-control-border);
+  border-radius: var(--radius-sm);
+  background: var(--pv-input);
+  color: var(--pv-text);
+  font: inherit;
+}
+
 .valueField textarea::placeholder {
   color: var(--pv-muted);
   /* Hints are italic so they never read as a typed value. */
@@ -1175,7 +1187,7 @@ button.version:hover {
 
 .variableOptions textarea { flex: 1; min-width: 0; resize: vertical; }
 
-.valueField textarea[aria-invalid='true'] { border: 2px solid var(--pv-var); }
+.valueField textarea[aria-invalid='true'], .valueField select[aria-invalid='true'] { border: 2px solid var(--pv-var); }
 
 .previewFoot button { min-height: 44px; }
 

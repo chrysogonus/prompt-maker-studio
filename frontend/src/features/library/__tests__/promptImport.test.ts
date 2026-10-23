@@ -9,6 +9,15 @@ describe('prompt import', () => {
       variable_metadata: { name: { type: 'text', required: true } },
     }] }))).toEqual([{ name: 'Greeting', fields, folder: 'Work', variable_metadata: { name: { type: 'text', required: true } } }]);
   });
+  it('keeps input choices from an export and refuses malformed ones', () => {
+    const fields = [{ name: 'Task', content: 'Draw in {{style}}' }];
+    const exported = (options: unknown) => JSON.stringify({ prompts: [{ name: 'Art', fields, variable_metadata: { style: { type: 'text', options } } }] });
+    expect(parsePromptImport(exported(['Disney', 'Pixar']))[0].variable_metadata).toEqual({ style: { type: 'text', options: ['Disney', 'Pixar'] } });
+    expect(() => parsePromptImport(exported('Disney'))).toThrow('invalid variable choices');
+    // 200 characters as the server counts them, even when each is two UTF-16 units.
+    expect(parsePromptImport(exported(['🐱'.repeat(200)]))[0].variable_metadata?.style.options).toEqual(['🐱'.repeat(200)]);
+    expect(() => parsePromptImport(exported(['🐱'.repeat(201)]))).toThrow('invalid variable choices');
+  });
   it('reads explicit Markdown prompt and section headings, including fenced headings', () => {
     expect(parsePromptImport('# First\n## Role\nBe kind\n## Task\n```md\n# example\n```\n# Second\nBody')).toEqual([
       { name: 'First', folder: null, fields: [{ name: 'Role', content: 'Be kind' }, { name: 'Task', content: '```md\n# example\n```' }] },
