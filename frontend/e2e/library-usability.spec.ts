@@ -118,4 +118,10 @@ test('keeps the search in the address across folders, a prompt and Back', async 
   await page.goBack();
   await expect(search).toHaveValue('cafe');
   await expect(page.getByRole('link', { name: 'Status update', exact: true })).toHaveCount(0);
+
+  // The current view's own link drops the query, as its address says.
+  await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('link', { name: /^All prompts/ }).click();
+  await expect(page).toHaveURL(/\/library$/);
+  await expect(search).toHaveValue('');
+  await expect(page.getByRole('link', { name: 'Status update', exact: true })).toBeVisible();
 });

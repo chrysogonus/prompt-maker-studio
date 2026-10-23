@@ -62,18 +62,24 @@ export function useLibrary() {
   }, [loadLibrary, refreshLibrary]);
 
   // The query is kept in the address (?q=), so Back from a prompt and shared links keep it.
-  // Another view (a folder link, or Back to an earlier one) reuses this page, so the box takes
-  // that address's query; within a view the typed text wins over the router's late echo.
-  const viewKey = view.type === 'folder' ? `folder:${view.folder}` : view.type;
   const urlQuery = searchParams.get('q') ?? '';
   const [search, setSearchState] = useState(urlQuery);
-  const [searchView, setSearchView] = useState(viewKey);
-  if (viewKey !== searchView) {
-    setSearchView(viewKey);
+  // Queries this page wrote that the router may still echo back, possibly late; any other query
+  // in the address came from navigating (a sidebar link, Back), so the box takes it.
+  const written = useRef<string[]>([]);
+  useEffect(() => {
+    if (written.current.includes(urlQuery)) {
+      // Once the newest write is echoed, older ones can no longer arrive.
+      if (urlQuery === written.current.at(-1)) written.current = [urlQuery];
+      return;
+    }
+    written.current = [];
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- The address changed by navigation, not typing.
     setSearchState(urlQuery);
-  }
+  }, [urlQuery]);
   const setSearch = (value: string) => {
     setSearchState(value);
+    written.current.push(value);
     const params = new URLSearchParams(window.location.search);
     if (value) params.set('q', value); else params.delete('q');
     const query = params.toString();

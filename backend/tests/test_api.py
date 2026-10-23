@@ -947,8 +947,14 @@ class TestVariableMetadata:
             )
 
         assert "options" not in patch(["", "  "]).json()["variable_metadata"]["style"]
-        assert patch([f"Choice {n}" for n in range(51)]).status_code == 422
+        fifty = [f"Choice {n}" for n in range(50)]
+        # Limits count what is stored: a trailing blank line, repeats and padding are free.
+        stored = patch([*fifty, " Choice 0 ", ""]).json()
+        assert stored["variable_metadata"]["style"]["options"] == fifty
+        assert patch([f"  {'x' * 200}  "]).status_code == 200
+        assert patch([*fifty, "Choice 50"]).status_code == 422
         assert patch(["x" * 201]).status_code == 422
+        assert patch("Disney").status_code == 422
 
     def test_patch_clears_variable_metadata_with_empty_dict(self, client, auth_headers):
         prompt_id = self._create_prompt(client, auth_headers)

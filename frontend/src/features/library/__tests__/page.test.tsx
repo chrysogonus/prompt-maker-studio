@@ -1001,11 +1001,38 @@ describe('LibraryPage', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('follows navigation that changes only the query, but not late echoes of typing', async () => {
+    const user = userEvent.setup();
+    const view = await renderLibrary('q=firm');
+    const box = screen.getByLabelText('Search prompts');
+    // Clicking the current view in the sidebar drops the query.
+    currentParams = new URLSearchParams('');
+    view.rerender(<LibraryPage />);
+    expect(box).toHaveValue('');
+    // Another query in the same view, e.g. from a link.
+    currentParams = new URLSearchParams('q=warm');
+    view.rerender(<LibraryPage />);
+    expect(box).toHaveValue('warm');
+    // The router echoes earlier keystrokes after newer ones were typed; the box keeps the newest.
+    await user.clear(box);
+    await user.type(box, 'ab');
+    currentParams = new URLSearchParams('q=a');
+    view.rerender(<LibraryPage />);
+    expect(box).toHaveValue('ab');
+    currentParams = new URLSearchParams('q=ab');
+    view.rerender(<LibraryPage />);
+    expect(box).toHaveValue('ab');
+    window.history.replaceState(null, '', '/');
+  });
+
   it('takes the query from the address when the view changes without remounting', async () => {
     const user = userEvent.setup();
     const view = await renderLibrary('q=firm');
     await user.clear(screen.getByLabelText('Search prompts'));
     await user.type(screen.getByLabelText('Search prompts'), 'warm');
+    // The router reports the address the typing wrote.
+    currentParams = new URLSearchParams('q=warm');
+    view.rerender(<LibraryPage />);
     // A folder link carries no query.
     currentParams = new URLSearchParams('folder=Writing');
     view.rerender(<LibraryPage />);

@@ -21,12 +21,13 @@ class VariableMetadataItem(BaseModel):
         None, max_length=50, exclude_if=lambda options: options is None
     )
 
-    @field_validator("options")
+    @field_validator("options", mode="before")
     @classmethod
-    def tidy_options(cls, options: list[str] | None) -> list[str] | None:
-        """Blank lines and repeats are dropped; an empty list means free text."""
-        if options is None:
-            return None
+    def tidy_options(cls, options: object) -> object:
+        """Blank lines and repeats are dropped before the limits apply, so a trailing Enter
+        or padding never fails a save; an empty list means free text."""
+        if not isinstance(options, list) or not all(isinstance(option, str) for option in options):
+            return options  # Left for the type check to reject.
         kept = list(dict.fromkeys(option.strip() for option in options if option.strip()))
         return kept or None
 
