@@ -1025,6 +1025,19 @@ describe('LibraryPage', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('treats a folder link as navigation even before the last typing echo arrives', async () => {
+    const user = userEvent.setup();
+    const view = await renderLibrary('q=firm');
+    const box = screen.getByLabelText('Search prompts');
+    // Clearing writes an empty query, the same one the folder link has; no echo has come yet.
+    await user.clear(box);
+    await user.type(box, 'warm');
+    currentParams = new URLSearchParams('folder=Writing');
+    view.rerender(<LibraryPage />);
+    expect(box).toHaveValue('');
+    window.history.replaceState(null, '', '/');
+  });
+
   it('takes the query from the address when the view changes without remounting', async () => {
     const user = userEvent.setup();
     const view = await renderLibrary('q=firm');

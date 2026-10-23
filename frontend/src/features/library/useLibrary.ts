@@ -64,22 +64,25 @@ export function useLibrary() {
   // The query is kept in the address (?q=), so Back from a prompt and shared links keep it.
   const urlQuery = searchParams.get('q') ?? '';
   const [search, setSearchState] = useState(urlQuery);
-  // Queries this page wrote that the router may still echo back, possibly late; any other query
-  // in the address came from navigating (a sidebar link, Back), so the box takes it.
-  const written = useRef<string[]>([]);
+  // Moving to another view is always navigation. Within a view, the router may echo queries this
+  // page wrote, possibly late; any other query came from navigating (a link, Back), and the box
+  // takes it. Plain values, not libraryHref(view), keep the React Compiler's memoization.
+  const viewKey = view.type === 'folder' ? `folder:${view.folder}` : view.type;
+  const written = useRef<{ viewKey: string; queries: string[] }>({ viewKey, queries: [] });
   useEffect(() => {
-    if (written.current.includes(urlQuery)) {
+    const { queries } = written.current;
+    if (written.current.viewKey === viewKey && queries.includes(urlQuery)) {
       // Once the newest write is echoed, older ones can no longer arrive.
-      if (urlQuery === written.current.at(-1)) written.current = [urlQuery];
+      if (urlQuery === queries.at(-1)) written.current = { viewKey, queries: [urlQuery] };
       return;
     }
-    written.current = [];
+    written.current = { viewKey, queries: [] };
     // eslint-disable-next-line react-hooks/set-state-in-effect -- The address changed by navigation, not typing.
     setSearchState(urlQuery);
-  }, [urlQuery]);
+  }, [viewKey, urlQuery]);
   const setSearch = (value: string) => {
     setSearchState(value);
-    written.current.push(value);
+    written.current.queries.push(value);
     const params = new URLSearchParams(window.location.search);
     if (value) params.set('q', value); else params.delete('q');
     const query = params.toString();
