@@ -163,7 +163,7 @@ export class AuthService {
         });
       };
       // Refresh can set httpOnly cookies even if its body is ignored. Clear
-      // them afterward, reading the CSRF cookie that refresh may have rotated.
+      // them afterward, reading the CSRF cookie as it is then.
       this.logoutPromise = (this.refreshPromise
         ? this.refreshPromise.catch(() => {}).then(clearCookies)
         : clearCookies())
@@ -310,11 +310,12 @@ export class AuthService {
 
   /**
    * Send a tiny probe to the configured provider so a wrong key, endpoint, or
-   * model name surfaces here rather than inside a feature. Always resolves —
-   * failures come back as `{ ok: false, message }`.
+   * model name surfaces here rather than inside a feature. With `data`, tests
+   * those unsaved values without storing them. Always resolves — failures come
+   * back as `{ ok: false, message }`.
    */
-  static async testLLMConnection(): Promise<LLMConnectionTestResult> {
-    return this.llmConnectionRequest('POST', undefined, '/test');
+  static async testLLMConnection(data?: LLMConnectionUpdate): Promise<LLMConnectionTestResult> {
+    return this.llmConnectionRequest('POST', data, '/test');
   }
 
   /** List models the configured provider exposes, with estimated token prices. */

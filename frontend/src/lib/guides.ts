@@ -10,7 +10,7 @@ interface GuideSummary {
 export const GUIDES_INDEX: GuideSummary = {
   path: '/guides',
   title: 'Practical guides for reusable AI prompts',
-  description: 'Learn to create reusable AI prompts, fill template variables, and organize your ChatGPT prompt library with practical examples in Prompt Maker Studio.',
+  description: 'Learn what makes a good AI prompt, how to write prompts for coding agents, images, research and writing, and how to keep a reusable prompt library.',
 };
 
 export const GUIDES = {
@@ -27,7 +27,27 @@ export const GUIDES = {
   organize: {
     path: '/guides/organize-chatgpt-prompts',
     title: 'How to organize and reuse your ChatGPT prompts',
-    description: 'Keep useful ChatGPT prompts in a personal library with clear names, folders, favorites, search, and version history.',
+    description: 'Keep useful ChatGPT prompts in a personal library with clear names, folders, favourites, search and version history.',
+  },
+  goodPrompt: {
+    path: '/guides/what-makes-a-good-prompt',
+    title: 'What makes a good AI prompt',
+    description: 'The six parts most prompts need (role, context, task, format, constraints and examples), with a complete example and how to test and improve a prompt.',
+  },
+  codingAgents: {
+    path: '/guides/prompts-for-coding-agents',
+    title: 'How to write prompts for coding agents',
+    description: 'Brief Claude Code, Codex or Cursor like a work ticket: the goal, where to look, constraints, a checkable definition of done and what to report.',
+  },
+  imagePrompts: {
+    path: '/guides/image-generation-prompts',
+    title: 'How to write image generation prompts',
+    description: 'Describe subject, setting, composition, style, lighting and format so ChatGPT (GPT Image), Midjourney, Stable Diffusion or Gemini produce the picture you have in mind.',
+  },
+  researchWriting: {
+    path: '/guides/research-and-writing-prompts',
+    title: 'Prompts for research and writing',
+    description: 'Get summaries and drafts that stay close to your sources: citations, audience, tone, structure and what the model should do when information is missing.',
   },
 } satisfies Record<string, GuideSummary>;
 

@@ -56,8 +56,12 @@ def session_expires_at() -> datetime:
     return datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
 
-def issue_session(response: Response, access_token: str) -> None:
-    """Attach a fresh session cookie and its matching CSRF cookie."""
+def issue_session(response: Response, access_token: str, csrf_token: str | None = None) -> None:
+    """Attach a fresh session cookie and its matching CSRF cookie.
+
+    `csrf_token` keeps an existing token (a session refresh): requests already
+    built with it may still be in flight, and a new token would fail them. Login,
+    password change and sign-out paths omit it and get a new random token."""
     max_age = ACCESS_TOKEN_EXPIRE_MINUTES * 60
     common = {
         "max_age": max_age,
@@ -71,7 +75,8 @@ def issue_session(response: Response, access_token: str) -> None:
     # Deliberately NOT httpOnly: the frontend has to read this one to echo it
     # back in a header. It is not a credential on its own — it only proves the
     # request came from a page that can read this site's cookies.
-    response.set_cookie(CSRF_COOKIE_NAME, secrets.token_urlsafe(32), httponly=False, **common)
+    csrf = csrf_token or secrets.token_urlsafe(32)
+    response.set_cookie(CSRF_COOKIE_NAME, csrf, httponly=False, **common)
 
 
 def clear_session(response: Response) -> None:

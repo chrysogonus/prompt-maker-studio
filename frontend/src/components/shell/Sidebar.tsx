@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BookOpen, CodeXml } from 'lucide-react';
+import { ArrowUpRight, BookOpen, CodeXml, LayoutTemplate, Wrench } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { PromptMakerTile } from '@/components/brand/PromptMakerMark';
@@ -151,7 +151,7 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
 
       <nav aria-label="Library" className={styles.nav}>
         {item({ type: 'all' }, 'All prompts', <AllPromptsIcon tone="inherit" />, counts.all)}
-        {item({ type: 'favorites' }, 'Favorites', <FavoriteIcon tone="inherit" />, counts.favorites)}
+        {item({ type: 'favorites' }, 'Favourites', <FavoriteIcon tone="inherit" />, counts.favorites)}
 
         <h2 className={styles.heading}>Folders</h2>
         {counts.folders.map(({ name, count }) =>
@@ -166,9 +166,22 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
 
       <div className={styles.foot}>
         <ThemeControl />
-        <Link href="/guides" className={styles.item} onClick={onNavigate}>
+        {/* These are the public pages, with their own layout; the arrow says they leave the app. */}
+        <p id="sidebar-public-note" hidden>Opens the public pages, outside the app.</p>
+        <Link href="/guides" className={styles.item} onClick={onNavigate} aria-describedby="sidebar-public-note">
           <BookOpen size={16} aria-hidden="true" />
           <span className={styles.label}>Guides</span>
+          <ArrowUpRight size={14} className={styles.leaves} aria-hidden="true" />
+        </Link>
+        <Link href="/tools" className={styles.item} onClick={onNavigate} aria-describedby="sidebar-public-note">
+          <Wrench size={16} aria-hidden="true" />
+          <span className={styles.label}>Free tools</span>
+          <ArrowUpRight size={14} className={styles.leaves} aria-hidden="true" />
+        </Link>
+        <Link href="/gallery" className={styles.item} onClick={onNavigate} aria-describedby="sidebar-public-note">
+          <LayoutTemplate size={16} aria-hidden="true" />
+          <span className={styles.label}>Template gallery</span>
+          <ArrowUpRight size={14} className={styles.leaves} aria-hidden="true" />
         </Link>
         <Link
           href="/settings"

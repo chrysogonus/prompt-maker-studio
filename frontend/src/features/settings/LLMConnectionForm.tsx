@@ -51,10 +51,14 @@ export default function LLMConnectionForm() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [testedSelection, setTestedSelection] = useState('');
+  const [testMessage, setTestMessage] = useState('');
   const catalogueRequest = useRef(0);
+  // A saved or removed connection makes a test still in flight meaningless.
+  const testRequest = useRef(0);
 
   const applyConnection = useCallback((next: LLMConnection) => {
     catalogueRequest.current += 1;
+    testRequest.current += 1;
     setModelCatalogue([]);
     setTestedSelection('');
     setConnection(next);
@@ -113,8 +117,11 @@ export default function LLMConnectionForm() {
   const unlistedModel = isCurated && !curatedModels.some((item) => item.id === model);
   const legacyModel = isCurated && connection?.provider === providerHandle && connection.model
     && !curatedModels.some((item) => item.id === connection.model);
+  const complete = Boolean(providerHandle && model.trim() && !unlistedModel && !(keyRequired && !apiKey.trim()));
   const compatibility = modelCompatibility(model);
-  const selectionTested = testedSelection === `${providerHandle}|${baseUrl}|${model}|${workspaceId}`;
+  // Includes the typed key: a passed test must not vouch for credentials edited since.
+  const selection = `${providerHandle}|${baseUrl}|${model}|${workspaceId}|${apiKey.trim()}`;
+  const selectionTested = testedSelection === selection;
 
   const handleProviderChange = (handle: string) => {
     catalogueRequest.current += 1;
@@ -126,11 +133,21 @@ export default function LLMConnectionForm() {
     const next = providers.find((p) => p.handle === handle);
     setBaseUrl(next?.default_base_url ?? '');
     // Suggested models are provider-specific, so a carried-over model name
-    // would almost always be wrong for the new vendor.
-    setModel(next?.models[0]?.id ?? '');
+    // would almost always be wrong for the new vendor. Prices differ widely,
+    // so the user picks one rather than getting the first (priciest) listed.
+    setModel('');
     setApiKey('');
     setShowApiKey(false);
   };
+
+  const formValues = () => ({
+    provider: providerHandle,
+    base_url: baseUrl.trim() || null,
+    model: model.trim(),
+    ...(providerHandle === 'anthropic' ? { workspace_id: workspaceId || null } : {}),
+    // Blank means "leave the stored key alone" — only send a real value.
+    ...(apiKey.trim() ? { api_key: apiKey.trim() } : {}),
+  });
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -143,14 +160,7 @@ export default function LLMConnectionForm() {
     setStatus('');
     setIsSaving(true);
     try {
-      const updated = await AuthService.updateLLMConnection({
-        provider: providerHandle,
-        base_url: baseUrl.trim() || null,
-        model: model.trim(),
-        ...(providerHandle === 'anthropic' ? { workspace_id: workspaceId || null } : {}),
-        // Blank means "leave the stored key alone" — only send a real value.
-        ...(apiKey.trim() ? { api_key: apiKey.trim() } : {}),
-      });
+      const updated = await AuthService.updateLLMConnection(formValues());
       applyConnection(updated);
       void refreshModelCatalogue(updated);
       setStatus('Connection saved.');
@@ -162,21 +172,27 @@ export default function LLMConnectionForm() {
   };
 
   const handleTest = async () => {
+    const tested = selection;
+    const id = ++testRequest.current;
     setError('');
     setStatus('');
     setTestedSelection('');
+    setTestMessage('');
     setIsTesting(true);
     try {
-      const result = await AuthService.testLLMConnection();
+      // Unsaved values are tested as entered, without saving them.
+      const result = await AuthService.testLLMConnection(unsaved ? formValues() : undefined);
+      if (id !== testRequest.current) return;
       if (result.ok) {
-        setTestedSelection(`${connection?.provider ?? ''}|${connection?.base_url ?? ''}|${connection?.model ?? ''}|${connection?.workspace_id ?? ''}`);
-        setStatus(`Text-generation test passed for ${connection?.model ?? connection?.server_default?.model}. ${result.message}`);
-        if (connection) void refreshModelCatalogue(connection);
+        // The values sent, not the current ones: the form may have changed meanwhile.
+        setTestedSelection(tested);
+        setTestMessage(`Text-generation test passed for ${unsaved ? model : connection?.model ?? connection?.server_default?.model}. ${result.message}`);
+        if (connection && !unsaved) void refreshModelCatalogue(connection);
       } else {
         setError(result.message);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to test the connection.');
+      if (id === testRequest.current) setError(err instanceof Error ? err.message : 'Failed to test the connection.');
     } finally {
       setIsTesting(false);
     }
@@ -249,11 +265,17 @@ export default function LLMConnectionForm() {
         <Input
           value={baseUrl}
           onChange={(e) => setBaseUrl(e.target.value)}
-          placeholder={selected?.default_base_url ?? 'http://localhost:11434/v1'}
+          placeholder={selected ? selected.default_base_url ?? 'http://localhost:11434/v1' : ''}
           aria-label="Base URL"
           spellCheck={false}
         />
       </label>
+      {selected && !selected.requires_api_key && (
+        <p className={styles.hint}>
+          Running this app in Docker? There, <code>localhost</code> is the backend container. Use an
+          address it can reach, such as <code>http://host.docker.internal:11434/v1</code>.
+        </p>
+      )}
 
       <div className={styles.field}>
         <span className={styles.fieldLabel}>Model</span>
@@ -314,13 +336,14 @@ export default function LLMConnectionForm() {
 
       <p className={styles.hint}>
         {isCurated
-          ? selectionTested ? 'Text-generation test passed for the saved model.' : 'Save your selection, then test the connection to verify access.'
+          ? selectionTested ? 'Text-generation test passed for this model.' : 'Use Test connection to check access, before or after saving.'
           : compatibility === 'other' ? 'This model name indicates an operation other than text generation. Choose a chat/text model for Import, Refine, Evaluate and Try once.'
-          : selectionTested ? 'The saved provider and selected model passed a text-generation test. Structured operations still depend on provider support.' : 'Model discovery and saved credentials do not verify compatibility. Model compatibility has not been tested for this selection; use Test connection after saving.'}
+          : selectionTested ? 'This provider and model passed a text-generation test. Structured operations still depend on provider support.' : 'Listed models are not checked for compatibility. Use Test connection to check this one.'}
         {!isCurated && ' Model-name grouping is guidance only. Custom models remain available for self-hosted providers.'}
       </p>
-      {unsaved && <p className={styles.hint}>Save changes before testing. Test connection uses the saved provider and model.</p>}
-      <p className={styles.hint}>Test connection sends a text-generation request using {connection?.provider_label ?? connection?.server_default?.provider_label ?? 'the saved provider'} / {connection?.model ?? connection?.server_default?.model ?? 'saved model'} and may incur provider charges.</p>
+      <p className={styles.hint}>Test connection sends a text-generation request using {unsaved
+        ? `${selected?.label ?? 'the selected provider'} / ${model.trim() || 'the selected model'}`
+        : `${connection?.provider_label ?? connection?.server_default?.provider_label ?? 'the saved provider'} / ${connection?.model ?? connection?.server_default?.model ?? 'saved model'}`} and may incur provider charges.</p>
 
       <div className={styles.field}>
         <label className={styles.fieldLabel} htmlFor="llm-api-key">
@@ -395,16 +418,17 @@ export default function LLMConnectionForm() {
         </div>
       )}
       {status && <div className={styles.success} role="status">{status}</div>}
+      {selectionTested && testMessage && <div className={styles.success} role="status">{testMessage}</div>}
 
       <div className={styles.actions}>
-        <Button type="submit" disabled={isSaving || !providerHandle || !model.trim() || unlistedModel}>
+        <Button type="submit" disabled={isSaving || !complete}>
           {isSaving ? 'Saving…' : 'Save connection'}
         </Button>
         <Button
           type="button"
           variant="secondary"
           onClick={handleTest}
-          disabled={isTesting || unsaved || !(connection?.configured || connection?.server_default)}
+          disabled={isTesting || (unsaved ? !complete : !(connection?.configured || connection?.server_default))}
         >
           {isTesting ? 'Testing…' : 'Test connection'}
         </Button>

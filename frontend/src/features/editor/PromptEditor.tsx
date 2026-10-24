@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 
 import Button, { ButtonLink } from '@/components/ui/Button';
@@ -8,9 +9,11 @@ import Dialog from '@/components/ui/Dialog';
 import { EditIcon, FolderIcon } from '@/components/ui/icon';
 import { PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
 
+import { variablesIn } from '@/lib/sections';
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
+import { editedAt } from '@/features/library/libraryState';
 
-import HistoryPanel from './HistoryPanel';
+import HistoryPanel, { formatDate } from './HistoryPanel';
 import ImportDialog from './ImportDialog';
 import PreviewPane from './PreviewPane';
 import RefinePanel from './RefinePanel';
@@ -246,7 +249,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               }} aria-pressed={historyOpen}>History</Button>
             </div>}
           </div>}
-          {(!focusedUse || dirty) && <Button variant="primary" onClick={save} disabled={saving || refineOpen || (!!prompt && !dirty)}>
+          {(!focusedUse || dirty) && <Button variant="primary" onClick={save} disabled={saving || refineOpen || !hasContent || (!!prompt && !dirty)}>
             {saving ? 'Saving…' : prompt && !dirty ? 'Saved' : 'Save'}
           </Button>}
         </div>
@@ -336,6 +339,10 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
                         <span>{template.description}</span>
                       </button>
                     ))}
+                    <Link href="/gallery" className={styles.menuItem}>
+                      <strong>Browse the template gallery</strong>
+                      <span>24 more templates for coding agents, images, writing and everyday work.</span>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -561,6 +568,14 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
         <dl className={styles.promptDetails}>
           <dt>Name</dt><dd>{prompt?.name}</dd>
           <dt>Folder</dt><dd>{prompt?.folder || 'Unfiled'}</dd>
+          {prompt && <>
+            <dt>Created</dt><dd>{formatDate(prompt.created_at)}</dd>
+            <dt>Last edited</dt><dd>{formatDate(editedAt(prompt))}</dd>
+            {/* Stored versions are the states before each edit; the saved prompt is one newer, as in History. */}
+            <dt>Current version</dt><dd>{Math.max(0, ...versions.map((version) => version.version_number)) + 1}</dd>
+            <dt>Known good</dt><dd>{prompt.known_good_version ? `Version ${prompt.known_good_version}` : 'Not marked'}</dd>
+            <dt>Inputs</dt><dd>{variablesIn(prompt.fields).join(', ') || 'None'}</dd>
+          </>}
         </dl>
         <Button onClick={() => setDetailsOpen(false)}>Close</Button>
       </Dialog>

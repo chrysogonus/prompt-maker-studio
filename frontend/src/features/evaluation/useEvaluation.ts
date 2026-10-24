@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiClient, ApiError, isValidPromptId, PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
 import { runStatus } from '@/lib/evaluationStatus';
 import { downloadBlob } from '@/lib/download';
-import { pageTitle } from '@/lib/branding';
+import { useAuth } from '@/lib/auth-context';
+import { pageTitle, storageKey } from '@/lib/branding';
 import type { PromptHistoryResponse, PromptsConfigResponse } from '@/types/prompt';
 import type { EvalCase, EvalCaseInput, EvalProposal, EvalRun } from '@/types/evaluation';
 
@@ -13,6 +14,15 @@ export const CASE_LIMIT = 20;
 const HISTORY_PAGE_SIZE = 50;
 
 type Editing = { caseId?: number; initial?: EvalCaseInput; proposalIndex?: number };
+
+function readProposals(key: string): EvalProposal[] {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
+    return Array.isArray(saved) ? saved as EvalProposal[] : [];
+  } catch {
+    return [];
+  }
+}
 
 export function useEvaluation(promptId: number) {
   const [prompt, setPrompt] = useState<PromptHistoryResponse | null>(null);
@@ -40,6 +50,26 @@ export function useEvaluation(promptId: number) {
   const [suggesting, setSuggesting] = useState(false);
   const [proposals, setProposals] = useState<EvalProposal[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
+  // Unsaved suggestions are billed AI output, so they survive a reload like editor drafts
+  // (scoped by account and wiped on sign-out with the other `USER_CONTENT_KEY_PREFIXES`).
+  const { currentUser } = useAuth();
+  const proposalsKey = currentUser ? storageKey(`eval-suggestions:${currentUser}:${promptId}`) : null;
+  const restoredKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!proposalsKey) return;
+    if (restoredKey.current !== proposalsKey) {
+      restoredKey.current = proposalsKey;
+      setProposals(readProposals(proposalsKey));
+      return;
+    }
+    try {
+      if (proposals.length) localStorage.setItem(proposalsKey, JSON.stringify(proposals));
+      else localStorage.removeItem(proposalsKey);
+    } catch {
+      // Storage can be full or blocked; suggestions then last only until reload.
+    }
+  }, [proposals, proposalsKey]);
 
   useEffect(() => {
     let active = true;

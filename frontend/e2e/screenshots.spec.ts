@@ -101,7 +101,7 @@ test('captures the README screenshots', async ({ page }) => {
   // Comparing an earlier version with the current text.
   await page.getByRole('button', { name: 'Tools', exact: true }).click();
   await page.getByRole('button', { name: 'History' }).click();
-  const history = page.getByRole('complementary', { name: 'Version history' });
+  const history = page.getByRole('dialog', { name: 'Version history' });
   await history.getByRole('button', { name: /^Version 1/ }).click();
   await expect(history.getByLabel('Changes since this version')).toBeVisible();
   await shoot(page, 'history');
@@ -111,7 +111,7 @@ test('captures the README screenshots', async ({ page }) => {
   await page.getByRole('button', { name: 'Paste a prompt' }).click();
   const importDialog = page.getByRole('dialog', { name: 'Paste a prompt' });
   await importDialog.getByLabel('Prompt to convert').fill(IMPORT_TEXT);
-  await importDialog.getByRole('button', { name: 'Create template' }).click();
+  await importDialog.getByRole('button', { name: 'Create template with AI' }).click();
   await page.getByRole('dialog', { name: 'Review your template' }).getByRole('button', { name: 'Use in editor' }).click();
   await expect(page.getByLabel('Task text')).toHaveValue(/late order/);
   expect(importHits).toBe(1);

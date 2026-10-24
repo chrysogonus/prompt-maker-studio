@@ -22,8 +22,6 @@ BANDIT    := $(VENV)/bin/bandit
 # reached pip as `--compile=pip-compile` and aborted the run.
 PIPAUDIT   := $(VENV)/bin/pip-audit
 PIPCOMPILE := $(VENV)/bin/pip-compile
-FRONTEND_PORT ?= 3000
-BACKEND_PORT ?= 8000
 
 E2E_PROJECT := prompt-maker-studio-e2e
 E2E_BACKEND_PORT := 18000
@@ -180,14 +178,20 @@ build:
 	@echo "Building Docker images..."
 	@docker compose build
 
+# Print the addresses Compose actually bound: .env port overrides are read by
+# Compose, not by these Makefile defaults.
+PRINT_URLS = frontend=$$(docker compose port frontend 3000 2>/dev/null); \
+	backend=$$(docker compose port backend 8000 2>/dev/null); \
+	echo "Frontend: http://$${frontend:-not published}"; \
+	echo "Backend API: http://$${backend:-not published}"; \
+	echo "API Docs: http://$${backend:-not published}/docs"
+
 # Start Docker containers
 up: setup
 	@echo "Starting application with Docker..."
 	@docker compose up -d
 	@echo "Application started!"
-	@echo "Frontend: http://localhost:$(FRONTEND_PORT)"
-	@echo "Backend API: http://localhost:$(BACKEND_PORT)"
-	@echo "API Docs: http://localhost:$(BACKEND_PORT)/docs"
+	@$(PRINT_URLS)
 
 # Stop Docker containers
 down:
@@ -208,9 +212,7 @@ sync-restart:
 	@echo "Starting containers..."
 	@docker compose up -d
 	@echo "Application restarted with latest changes!"
-	@echo "Frontend: http://localhost:$(FRONTEND_PORT)"
-	@echo "Backend API: http://localhost:$(BACKEND_PORT)"
-	@echo "API Docs: http://localhost:$(BACKEND_PORT)/docs"
+	@$(PRINT_URLS)
 
 # Show Docker logs
 logs:

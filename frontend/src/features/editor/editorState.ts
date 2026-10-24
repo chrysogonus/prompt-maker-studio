@@ -1,3 +1,4 @@
+import { storageKey } from '@/lib/branding';
 import { normalizeSectionName } from '@/lib/sections';
 
 import { PromptField, VariableMetadataItem, ParseTextResponse, ExtractedVariable } from '@/types/prompt';
@@ -51,15 +52,28 @@ export function toFields(sections: EditorSection[]): PromptField[] {
   return sections.map(({ name, content }) => ({ name: normalizeSectionName(name), content }));
 }
 
+/** Choices as the server stores them: trimmed, without blanks or repeats. */
+export function choiceList(options: string[] | null | undefined): string[] {
+  return [...new Set((options ?? []).map((option) => option.trim()).filter(Boolean))];
+}
+
 export function snapshot(fields: PromptField[], metadata: Metadata | null | undefined): string {
   const sorted = Object.keys(metadata ?? {})
     .sort()
     .map((key) => {
       const item = metadata![key];
       return [key, { type: item.type, ...(item.description ? { description: item.description } : {}),
-        ...(item.required ? { required: true } : {}), ...(item.example ? { example: item.example } : {}) }];
+        ...(item.required ? { required: true } : {}), ...(item.example ? { example: item.example } : {}),
+        // Compared as stored, so a trailing blank line typed in the editor is not an unsaved change.
+        ...(choiceList(item.options).length ? { options: choiceList(item.options) } : {}) }];
     });
   return JSON.stringify({ fields, metadata: sorted });
+}
+
+/** Whether opening this saved prompt restores unsaved edits: a draft made against its current text that differs from it. */
+export function hasUnsavedDraft(user: string, prompt: { id: number; fields: PromptField[]; variable_metadata?: Metadata | null }): boolean {
+  const draft = readDraft(storageKey(`editor-draft:${user}:${prompt.id}`));
+  return !!draft && draft.base === snapshot(prompt.fields, prompt.variable_metadata) && snapshot(draft.sections, draft.metadata) !== draft.base;
 }
 
 export function readDraft(key: string | null): Draft | null {
@@ -99,11 +113,16 @@ export interface ImportVariable extends ExtractedVariable {
   reuse: boolean;
 }
 
+/** What a History action did, in the words the page's notice used. */
+export interface OperationResult { ok: boolean; text: string }
+
 export interface ImportSession {
   text: string;
   /** Title and folder chosen in the library's import preview, offered again on Save. */
   title?: string;
   folder?: string | null;
+  /** The library's Make reusable with AI already chose AI, so the conversion starts by itself. */
+  convert?: boolean;
   conversion?: ParseTextResponse;
   variables?: ImportVariable[];
   keepExamples?: boolean;
@@ -112,6 +131,8 @@ export interface ImportSession {
 
 export interface ImportedPrompt {
   saveAsWritten?: boolean;
+  /** Offered as the name on Save when the import session has none. */
+  title?: string;
   fields: PromptField[];
   metadata: Metadata;
   values: Record<string, string>;

@@ -91,6 +91,9 @@ class LLMConnection:
     provider: Provider
     model: str
     client: OpenAI
+    # Set for calls the operator pays for on behalf of anonymous visitors, so one
+    # request cannot ask for an arbitrarily long (and costly) answer.
+    max_output_tokens: int | None = None
 
     @property
     def provider_handle(self) -> str:
@@ -189,6 +192,21 @@ def timeout_seconds_for(provider: Provider) -> float:
     return provider.timeout_seconds
 
 
+def server_default_connection(model: str | None = None) -> LLMConnection | None:
+    """The operator's shared connection, or None when the server has none. Used for
+    users without their own connection and for signed-out visitors (the free refiner)."""
+    default = server_default()
+    if default is None:
+        return None
+    return _build_connection(
+        default.provider,
+        (model or default.model).strip(),
+        default.base_url,
+        default.api_key or _LOCAL_API_KEY_PLACEHOLDER,
+        trusted=True,
+    )
+
+
 def client_for(user: User, model: str | None = None) -> LLMConnection:
     """
     Build the LLM client for `user`'s own provider connection, or for the
@@ -205,15 +223,9 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
         StoredKeyUnreadableError: If the stored key cannot be decrypted
     """
     if not has_own_connection(user):
-        default = server_default()
-        if default is not None:
-            return _build_connection(
-                default.provider,
-                (model or default.model).strip(),
-                default.base_url,
-                default.api_key or _LOCAL_API_KEY_PLACEHOLDER,
-                trusted=True,
-            )
+        connection = server_default_connection(model)
+        if connection is not None:
+            return connection
 
     if not user.llm_provider:
         msg = (
@@ -261,6 +273,24 @@ def client_for(user: User, model: str | None = None) -> LLMConnection:
 
     return _build_connection(
         provider, resolved_model, base_url, api_key, workspace_id=user.llm_workspace_id
+    )
+
+
+def unsaved_connection(
+    provider: Provider,
+    model: str,
+    base_url: str,
+    api_key: str | None,
+    workspace_id: str | None = None,
+) -> LLMConnection:
+    """A connection the user is checking in Settings before saving it. Never trusted:
+    the egress policy for user-supplied URLs applies as for a saved connection."""
+    return _build_connection(
+        provider,
+        model,
+        base_url,
+        api_key or _LOCAL_API_KEY_PLACEHOLDER,
+        workspace_id=workspace_id,
     )
 
 
@@ -457,6 +487,12 @@ def json_completion(
     for degraded in (False, True):
         response_format = _response_format_for(connection.provider, schema, degraded=degraded)
         kwargs = {"response_format": response_format} if response_format else {}
+        if connection.max_output_tokens:
+            # ponytail: OpenAI's newer models reject max_tokens; compat endpoints take it.
+            cap = (
+                "max_completion_tokens" if connection.provider_handle == "openai" else "max_tokens"
+            )
+            kwargs[cap] = connection.max_output_tokens
         try:
             with provider_attempt(connection) as attempt:
                 response = connection.client.chat.completions.create(

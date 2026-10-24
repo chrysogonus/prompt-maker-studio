@@ -15,6 +15,8 @@ for (const width of [1440, 390, 320]) {
       const path = new URL(route.request().url()).pathname;
       let body: unknown = {};
       if (path === '/api/auth/me') body = { id: 1, username: 'alex', email: 'alex@example.com', default_library_view: 'grid', created_at: '2026-10-01T00:00:00Z' };
+      // Clicks and typing renew the session; a reply without an expiry would sign the page out.
+      else if (path === '/api/auth/refresh') body = { expires_at: new Date(Date.now() + 3_600_000).toISOString() };
       else if (path === '/api/prompts/saved') body = prompts;
       else if (path === '/api/prompts/1' && route.request().method() === 'PATCH') {
         prompts = [{ ...prompts[0], ...route.request().postDataJSON() }];
@@ -35,7 +37,7 @@ for (const width of [1440, 390, 320]) {
     const metadata = await folder.locator('..').boundingBox();
     const actions = await card.getByRole('button', { name: 'Copy the Customer support response template' }).boundingBox();
     expect(metadata!.y + metadata!.height).toBeLessThanOrEqual(actions!.y);
-    for (const button of [page.getByRole('button', { name: 'Grid', exact: true }), card.getByRole('button', { name: 'Add Customer support response to favorites' }), card.getByRole('button', { name: 'More actions for Customer support response' })]) {
+    for (const button of [page.getByRole('button', { name: 'Grid', exact: true }), card.getByRole('button', { name: 'Add Customer support response to favourites' }), card.getByRole('button', { name: 'More actions for Customer support response' })]) {
       const box = (await button.boundingBox())!;
       expect(box.width).toBeGreaterThanOrEqual(44);
       expect(box.height).toBeGreaterThanOrEqual(44);
@@ -73,7 +75,7 @@ for (const width of [1440, 390, 320]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`import-${width}.png`), fullPage: true });
     await page.getByRole('button', { name: 'Keep as written' }).click();
-    await expect(page.getByText(/Imported 1 of 1 prompts/)).toBeVisible();
+    await expect(page.getByText(/Imported 1 prompt\./)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Open imported prompt' })).toBeVisible();
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await expect(page.getByRole('main').getByRole('link', { name: 'New prompt', exact: true })).toBeVisible();
@@ -83,3 +85,47 @@ for (const width of [1440, 390, 320]) {
     await page.screenshot({ path: testInfo.outputPath(`library-${width}.png`), fullPage: true });
   });
 }
+
+test('keeps the search in the address across folders, a prompt and Back', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('prompt-maker-studio:client-session-expiry', String(Date.now() + 3_600_000)));
+  const prompt = (id: number, name: string, folder: string) => ({
+    id, name, folder, fields: [{ name: 'Task', content: `Write the ${name.toLowerCase()}.` }], generated_prompt: '', is_favorite: false,
+    created_at: '2026-10-01T12:00:00Z', updated_at: '2026-10-01T12:00:00Z', content_updated_at: '2026-10-01T12:00:00Z',
+  });
+  const prompts = [prompt(1, 'Café menu', 'Food'), prompt(2, 'Status update', 'Work')];
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    const body = path === '/api/auth/me' ? { id: 1, username: 'alex', email: 'alex@example.com', default_library_view: 'list', created_at: '2026-10-01T00:00:00Z' }
+      // Clicks and typing renew the session; a reply without an expiry would sign the page out.
+      : path === '/api/auth/refresh' ? { expires_at: new Date(Date.now() + 3_600_000).toISOString() }
+      : path === '/api/prompts/saved' ? prompts
+      : path === '/api/prompts/1' ? prompts[0]
+      : /\/(versions|runs|cases)$/.test(path) ? [] : {};
+    await route.fulfill({ json: body });
+  });
+  await page.goto('/library');
+  const search = page.getByLabel('Search prompts');
+  await search.fill('cafe');
+  await expect(page).toHaveURL(/\/library\?q=cafe$/);
+  await expect(page.getByRole('link', { name: 'Status update', exact: true })).toHaveCount(0);
+
+  // A folder link has no query; Back returns to the search.
+  await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('link', { name: /^Work/ }).click();
+  await expect(page).toHaveURL(/folder=Work/);
+  await expect(search).toHaveValue('');
+  await page.goBack();
+  await expect(page).toHaveURL(/\/library\?q=cafe$/);
+  await expect(search).toHaveValue('cafe');
+
+  await page.getByRole('link', { name: 'Café menu', exact: true }).click();
+  await expect(page).toHaveURL(/\/editor\/1/);
+  await page.goBack();
+  await expect(search).toHaveValue('cafe');
+  await expect(page.getByRole('link', { name: 'Status update', exact: true })).toHaveCount(0);
+
+  // The current view's own link drops the query, as its address says.
+  await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('link', { name: /^All prompts/ }).click();
+  await expect(page).toHaveURL(/\/library$/);
+  await expect(search).toHaveValue('');
+  await expect(page.getByRole('link', { name: 'Status update', exact: true })).toBeVisible();
+});

@@ -912,6 +912,50 @@ class TestVariableMetadata:
             "example": None,
         }
 
+    def test_choices_are_tidied_kept_through_versions_and_exported(self, client, auth_headers):
+        prompt_id = self._create_prompt(client, auth_headers)
+        choices = {"style": {"type": "text", "options": [" One Piece ", "Disney", "", "Disney"]}}
+        resp = client.patch(
+            f"/api/prompts/{prompt_id}", headers=auth_headers, json={"variable_metadata": choices}
+        )
+        assert resp.status_code == 200
+        assert resp.json()["variable_metadata"]["style"]["options"] == ["One Piece", "Disney"]
+
+        # An edit stores the state with choices as a version; restoring it brings them back.
+        client.patch(
+            f"/api/prompts/{prompt_id}",
+            headers=auth_headers,
+            json={"fields": [{"name": "goal", "content": "y"}], "variable_metadata": {}},
+        )
+        versions = client.get(f"/api/prompts/{prompt_id}/versions", headers=auth_headers).json()
+        restored = client.post(
+            f"/api/prompts/{prompt_id}/versions/{versions[0]['id']}/restore", headers=auth_headers
+        )
+        assert restored.json()["variable_metadata"]["style"]["options"] == ["One Piece", "Disney"]
+        exported = client.get("/api/prompts/export", headers=auth_headers).json()
+        [prompt] = [p for p in exported["prompts"] if p["id"] == prompt_id]
+        assert prompt["variable_metadata"]["style"]["options"] == ["One Piece", "Disney"]
+
+    def test_blank_choices_mean_free_text_and_limits_are_enforced(self, client, auth_headers):
+        prompt_id = self._create_prompt(client, auth_headers)
+
+        def patch(options):
+            return client.patch(
+                f"/api/prompts/{prompt_id}",
+                headers=auth_headers,
+                json={"variable_metadata": {"style": {"type": "text", "options": options}}},
+            )
+
+        assert "options" not in patch(["", "  "]).json()["variable_metadata"]["style"]
+        fifty = [f"Choice {n}" for n in range(50)]
+        # Limits count what is stored: a trailing blank line, repeats and padding are free.
+        stored = patch([*fifty, " Choice 0 ", ""]).json()
+        assert stored["variable_metadata"]["style"]["options"] == fifty
+        assert patch([f"  {'x' * 200}  "]).status_code == 200
+        assert patch([*fifty, "Choice 50"]).status_code == 422
+        assert patch(["x" * 201]).status_code == 422
+        assert patch("Disney").status_code == 422
+
     def test_patch_clears_variable_metadata_with_empty_dict(self, client, auth_headers):
         prompt_id = self._create_prompt(client, auth_headers)
         client.patch(

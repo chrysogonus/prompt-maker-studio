@@ -314,6 +314,7 @@ button.title:hover {
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font: inherit;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -428,6 +429,9 @@ button.title:hover {
 }
 
 .insertForm label { flex-basis: 100%; color: var(--text-secondary); overflow-wrap: anywhere; }
+
+/* The error gets its own line so it never squeezes the name input. */
+.insertForm .sectionError { flex-basis: 100%; }
 
 .insertForm input {
   flex: 1;
@@ -699,8 +703,22 @@ button.title:hover {
   line-height: 1.45;
 }
 
+.valueField select {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid var(--pv-control-border);
+  border-radius: var(--radius-sm);
+  background: var(--pv-input);
+  color: var(--pv-text);
+  font: inherit;
+}
+
 .valueField textarea::placeholder {
   color: var(--pv-muted);
+  /* Hints are italic so they never read as a typed value. */
+  font-style: italic;
 }
 
 .previewText {
@@ -813,11 +831,22 @@ button.title:hover {
   z-index: 5;
   display: flex;
   flex-direction: column;
+  /* A <dialog>: drop the browser's centring, padding and size limits. */
+  inset-inline: auto;
+  margin: 0;
+  padding: 0;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  color: var(--text-primary);
+  font: inherit;
   background: var(--color-panel);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-float);
   animation: historyIn 0.16s ease-out;
 }
+
+.history:not([open]) { display: none; }
 
 @keyframes historyIn {
   from {
@@ -832,6 +861,15 @@ button.title:hover {
   padding: 12px 12px 12px 20px;
   border-bottom: 1px solid var(--color-border);
 }
+
+.historyStatus {
+  margin: 0;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm-size);
+}
+
+.historyStatus[data-tone='error'] { border-left: 4px solid var(--color-danger); }
 
 .historyHead h2 {
   flex: 1;
@@ -861,6 +899,9 @@ button.title:hover {
   padding: 10px 14px 24px;
   list-style: none;
 }
+
+/* Sits under the version's text instead of centred across the row. */
+.versionAction { justify-self: start; align-self: flex-start; }
 
 .version {
   display: grid;
@@ -1146,7 +1187,7 @@ button.version:hover {
 
 .variableOptions textarea { flex: 1; min-width: 0; resize: vertical; }
 
-.valueField textarea[aria-invalid='true'] { border: 2px solid var(--pv-var); }
+.valueField textarea[aria-invalid='true'], .valueField select[aria-invalid='true'] { border: 2px solid var(--pv-var); }
 
 .previewFoot button { min-height: 44px; }
 
@@ -1201,6 +1242,8 @@ button.version:hover {
 
 @media (min-width: 1201px) {
   .editor[data-focused='true'] .history { grid-column: 1; width: 100%; max-width: 960px; justify-self: center; }
+  /* Sized by the title, so the actions wrap to a second row before it truncates. */
+  .crumbs { flex: 1 1 auto; }
 }
 
 .outputFormat {

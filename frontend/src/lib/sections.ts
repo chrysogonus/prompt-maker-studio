@@ -73,15 +73,28 @@ export function isVariableName(name: string): boolean {
   return /^[A-Za-z_][A-Za-z0-9_-]*$/.test(name);
 }
 
+/** Typed or placeholder text as an input name: "Max rows!" becomes `max_rows`; may still be invalid ("1st"). */
+export function toVariableName(text: string): string {
+  return text.trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/[^a-z0-9_]/g, '');
+}
+
 /** Replace `text[start, end)` with `{{name}}`; the replaced text can become the input's example. */
 export function insertVariable(text: string, start: number, end: number, name: string) {
   const token = `{{${name}}}`;
   return { text: text.slice(0, start) + token + text.slice(end), replaced: text.slice(start, end), caret: start + token.length };
 }
 
+/**
+ * The value stored for a variable name. Names are user text, and `{{constructor}}` or
+ * `{{toString}}` are valid, so never read what a plain object inherits.
+ */
+export function valueFor(record: Record<string, string>, name: string): string | undefined {
+  return Object.hasOwn(record, name) ? record[name] : undefined;
+}
+
 /** Replace each filled-in variable; unfilled ones stay as `{{name}}`. */
 export function fillVariables(text: string, values: Record<string, string>): string {
-  return text.replace(VARIABLE, (token, name: string) => (values[name] ? values[name] : token));
+  return text.replace(VARIABLE, (token, name: string) => valueFor(values, name) || token);
 }
 
 export interface TextPart {

@@ -86,11 +86,50 @@ describe('LLMConnectionForm', () => {
     expect(await screen.findByRole('option', { name: /text-embedding/ })).toBeDisabled();
     expect(screen.getByRole('option', { name: /whisper/ })).toBeDisabled();
     expect(screen.getByRole('option', { name: /custom-local/ })).toBeEnabled();
-    expect(screen.getByText(/Model compatibility has not been tested/)).toBeInTheDocument();
+    expect(screen.getByText(/Use Test connection to check this one/)).toBeInTheDocument();
     await user.clear(screen.getByLabelText('Model'));
     await user.type(screen.getByLabelText('Model'), 'my-self-hosted-model');
-    expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
-    expect(screen.getByText(/Save changes before testing/)).toBeInTheDocument();
+    expect(screen.getByText(/using Ollama \(self-hosted\) \/ my-self-hosted-model/)).toBeInTheDocument();
+    vi.mocked(AuthService.testLLMConnection).mockResolvedValue({ ok: true, message: 'Connected.' });
+    await user.click(screen.getByRole('button', { name: 'Test connection' }));
+    // Unsaved values are tested as entered, and nothing is saved.
+    await waitFor(() => expect(AuthService.testLLMConnection).toHaveBeenCalledWith({
+      provider: 'ollama', base_url: 'http://localhost:11434/v1', model: 'my-self-hosted-model',
+    }));
+    expect(AuthService.updateLLMConnection).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Text-generation test passed/)).toBeInTheDocument();
+    // A passed test no longer applies once the credentials change.
+    await user.type(screen.getByLabelText('API key'), 'other-key');
+    expect(screen.queryByText(/Text-generation test passed/)).not.toBeInTheDocument();
+  });
+
+  it('never lets a test still in flight vouch for values edited meanwhile', async () => {
+    const user = userEvent.setup();
+    let finish: (value: { ok: boolean; message: string }) => void = () => {};
+    vi.mocked(AuthService.testLLMConnection).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({ provider: 'ollama', model: 'llama3', base_url: 'http://localhost:11434/v1' }));
+    render(<LLMConnectionForm />);
+    await user.click(await screen.findByRole('button', { name: 'Test connection' }));
+    await user.type(screen.getByLabelText('API key'), 'edited');
+    finish({ ok: true, message: 'Connected.' });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Test connection' })).toHaveTextContent('Test connection'));
+    expect(screen.queryByText(/Text-generation test passed/)).not.toBeInTheDocument();
+  });
+
+  it('never lets a test still in flight vouch for a key saved meanwhile', async () => {
+    const user = userEvent.setup();
+    let finish: (value: { ok: boolean; message: string }) => void = () => {};
+    vi.mocked(AuthService.testLLMConnection).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    vi.mocked(AuthService.updateLLMConnection).mockResolvedValue(connection());
+    render(<LLMConnectionForm />);
+    await user.click(await screen.findByRole('button', { name: 'Test connection' }));
+    await user.type(screen.getByLabelText('API key'), 'sk-replacement');
+    await user.click(screen.getByRole('button', { name: 'Save connection' }));
+    await screen.findByText('Connection saved.');
+    // Saving clears the key field, so the form matches the original test again.
+    finish({ ok: true, message: 'Connected.' });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Test connection' })).toHaveTextContent('Test connection'));
+    expect(screen.queryByText(/Text-generation test passed/)).not.toBeInTheDocument();
   });
   it('populates the form from the saved connection', async () => {
     render(<LLMConnectionForm />);
@@ -120,11 +159,13 @@ describe('LLMConnectionForm', () => {
     }));
     render(<LLMConnectionForm />);
     await userEvent.selectOptions(await screen.findByLabelText('Provider'), 'anthropic');
-    expect(screen.getByRole('combobox', { name: 'Model' })).toHaveValue('claude-sonnet-5-5');
+    // No preselection: the user picks a model, priced in the list.
+    expect(screen.getByRole('combobox', { name: 'Model' })).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Save connection' })).toBeDisabled();
     expect(screen.getByRole('option', { name: /Claude Sonnet 5.5/ })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /GPT-6/ })).not.toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText('Provider'), 'openai');
-    expect(screen.getByRole('combobox', { name: 'Model' })).toHaveValue('gpt-6-astra');
+    expect(screen.getByRole('combobox', { name: 'Model' })).toHaveValue('');
     expect(screen.queryByRole('option', { name: /Claude Sonnet/ })).not.toBeInTheDocument();
   });
 
@@ -138,7 +179,7 @@ describe('LLMConnectionForm', () => {
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Save connection' })).toBeDisabled();
     await userEvent.selectOptions(screen.getByLabelText('Model'), 'gpt-6.1-sol');
-    expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
     await userEvent.click(screen.getByRole('button', { name: 'Save connection' }));
     await waitFor(() => expect(AuthService.updateLLMConnection).toHaveBeenCalledWith({
       provider: 'openai', base_url: 'https://api.openai.com/v1', model: 'gpt-6.1-sol',
@@ -235,6 +276,12 @@ describe('LLMConnectionForm', () => {
     expect(
       screen.getByText('Switching providers requires a new API key.'),
     ).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText('Model'), 'claude-sonnet-5-5');
+    expect(screen.getByRole('button', { name: 'Save connection' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('API key'), 'sk-ant-new');
+    expect(screen.getByRole('button', { name: 'Save connection' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
   });
 
   it('does not demand a key for a self-hosted provider', async () => {
@@ -245,6 +292,7 @@ describe('LLMConnectionForm', () => {
 
     expect(screen.queryByText(/requires a new API key/)).not.toBeInTheDocument();
     expect(screen.getByText('API key (optional)')).toBeInTheDocument();
+    expect(screen.getByText(/is the backend container/)).toBeInTheDocument();
   });
 
   it('sends a newly entered key', async () => {
@@ -405,7 +453,7 @@ it('shows optional Anthropic workspace and resets it when switching providers', 
   expect(workspace).toHaveValue('wrkspc_ABC123');
   await user.clear(workspace);
   await user.type(workspace, 'wrkspc_NEXT');
-  expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
   await user.click(screen.getByRole('button', { name: 'Save connection' }));
   await waitFor(() => expect(AuthService.updateLLMConnection).toHaveBeenCalledWith(expect.objectContaining({ workspace_id: 'wrkspc_NEXT' })));
   await user.selectOptions(screen.getByLabelText('Provider'), 'openai');

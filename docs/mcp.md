@@ -14,7 +14,7 @@ runs in stateless, JSON-response mode, so each request is independent.
 | Tool | Read-only | REST equivalent |
 |---|---|---|
 | `list_saved_prompts` | Yes | `GET /api/prompts/saved` (summaries only, no prompt text; filter by `folder` or `favorite_only`) |
-| `get_prompt` | Yes | `GET /api/prompts/{id}`, including each variable's hint in `variable_metadata` |
+| `get_prompt` | Yes | `GET /api/prompts/{id}`, including each variable's hint and any choices in `variable_metadata` |
 | `save_prompt` | No | `POST /api/prompts` |
 | `update_prompt` | No | `PATCH /api/prompts/{id}` |
 | `list_prompt_versions` | Yes | `GET /api/prompts/{id}/versions` |

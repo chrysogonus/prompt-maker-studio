@@ -182,6 +182,7 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
             "030_eval_human_score",
             "031_eval_tested_prompt",
             "032_prompt_known_good_version",
+            "033_public_billed_calls",
         }
         assert "updated_at" in _columns(connection, "prompts")
         assert _table_exists(connection, "prompt_versions")
@@ -337,7 +338,7 @@ def test_run_migrations_is_idempotent_on_current_database(tmp_path):
 
     with engine.connect() as connection:
         versions = connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
-        assert len(versions) == 32
+        assert len(versions) == 33
         assert {
             "fields",
             "user_id",
@@ -839,6 +840,29 @@ def test_known_good_version_migration_is_idempotent_and_preserves_prompts():
         _migration_032_prompt_known_good_version(connection)
         row = connection.execute(text("SELECT name, known_good_version FROM prompts")).one()
         assert tuple(row) == ("kept", None)
+    engine.dispose()
+
+
+def test_public_billed_calls_migration_is_idempotent():
+    from app.database.migrations.v033_public_billed_calls import (
+        _migration_033_public_billed_calls,
+    )
+
+    engine = create_engine("sqlite://")
+    with engine.begin() as connection:
+        _migration_033_public_billed_calls(connection)
+        connection.execute(
+            text(
+                "INSERT INTO public_billed_calls (source, provider, model, prompt_tokens, "
+                "completion_tokens, cost_usd) VALUES ('public_refine_draft', 'openai', 'm', 1, 2, 0.5)"
+            )
+        )
+        _migration_033_public_billed_calls(connection)
+        assert connection.execute(text("SELECT COUNT(*) FROM public_billed_calls")).scalar() == 1
+        indexes = {
+            row[1] for row in connection.execute(text("PRAGMA index_list('public_billed_calls')"))
+        }
+        assert {"ix_public_billed_calls_source", "ix_public_billed_calls_created_at"} <= indexes
     engine.dispose()
 
 

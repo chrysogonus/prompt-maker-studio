@@ -1,6 +1,6 @@
 import { storageKey } from '@/lib/branding';
-import { suggestTitle } from '@/lib/sections';
-import type { PromptCreateRequest, VariableMetadataItem } from '@/types/prompt';
+import { splitVariables, suggestTitle, toVariableName, variablesIn } from '@/lib/sections';
+import type { PromptCreateRequest, PromptField, VariableMetadataItem } from '@/types/prompt';
 
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 export const MAX_IMPORT_PROMPTS = 1000;
@@ -9,8 +9,8 @@ const MAX_SECTION = 10_000;
 /** Hands a pasted note from the library to the editor's AI conversion, once. */
 export const pasteHandoffKey = () => storageKey('paste-handoff');
 
-/** A favorite flag can't be sent on create, so it is applied after. */
-export type ImportPrompt = PromptCreateRequest & { is_favorite?: true };
+/** A favorite flag can't be sent on create, so it is applied after; `flag` says why a note starts unticked and is never sent. */
+export type ImportPrompt = PromptCreateRequest & { is_favorite?: true; flag?: string };
 const fail = (message: string): never => { throw new Error(message); };
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -47,7 +47,9 @@ export function validateImportPrompts(value: unknown, lenient = false): ImportPr
         for (const [field, max] of [['description', 500], ['example', 10000]] as const) {
           if (metadata[field] != null && (typeof metadata[field] !== 'string' || metadata[field].length > max)) return invalid(`invalid variable ${field}.`);
         }
-        return [key, { type: metadata.type, ...(metadata.required !== undefined && { required: metadata.required }), ...(metadata.description !== undefined && { description: metadata.description }), ...(metadata.example !== undefined && { example: metadata.example }) } as VariableMetadataItem];
+        const { options } = metadata;
+        if (options != null && (!Array.isArray(options) || options.length > 50 || options.some(option => typeof option !== 'string' || Array.from(option).length > 200))) return invalid('invalid variable choices.');
+        return [key, { type: metadata.type, ...(metadata.required !== undefined && { required: metadata.required }), ...(metadata.description !== undefined && { description: metadata.description }), ...(metadata.example !== undefined && { example: metadata.example }), ...(options != null && { options }) } as VariableMetadataItem];
       });
       prompt.variable_metadata = Object.fromEntries(entries);
     }
@@ -161,6 +163,8 @@ function tidyNote(prompt: ImportPrompt, noteTags: string[]): ImportPrompt {
         // [[Page]] and [[Page|label]] read as their text; an embedded image or file is left out.
         .replace(/(!?)\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, embed: string, page: string, label?: string) =>
           embed && /\.(?!md$)\w+$/i.test(page) ? '' : label ?? page)
+        // Notion links to its other exported pages, [Page](Page%20b2c3….md), read as their text.
+        .replace(/\[([^\]]+)\]\((?![a-z][\w+.-]*:|\/\/)[^)\s]*\.(?:md|csv)(?:#[^)]*)?\)/gi, '$1')
         // ==Highlights== keep their text.
         .replace(/==(?=\S)([^=\n]+?)(?<=\S)==/g, '$1')
         .trimEnd();
@@ -168,7 +172,8 @@ function tidyNote(prompt: ImportPrompt, noteTags: string[]): ImportPrompt {
     });
     return content === field.content ? field : { ...field, content: content.trim() };
   }).filter((field, _, all) => field.content.trim() || all.length === 1);
-  const tag = tags.map(value => value.trim().replace(/^#/, '')).find(Boolean);
+  // A nested tag (#prompts/engineering) suggests its last part, not a folder named with a slash.
+  const tag = tags.map(value => value.trim().replace(/^#/, '').split('/').filter(Boolean).pop() ?? '').find(Boolean);
   return {
     ...prompt,
     fields,
@@ -194,7 +199,7 @@ export function parsePromptImport(original: string, suggestedTitle = 'Imported n
     if (!object(data) || !Array.isArray(data.prompts)) return fail('Expected a JSON export with a prompts array.');
     return validateImportPrompts(data.prompts.map((prompt: unknown, index: number) => object(prompt) && prompt.name == null ? { ...prompt, name: `Imported prompt ${index + 1}` } : prompt));
   }
-  if (!text) return fail('Include some note text or a JSON export.');
+  if (!text) return fail('This note is empty.');
   const frontmatter = text.match(FRONTMATTER);
   const title = frontmatter ? frontmatterTitle(frontmatter[1]) : undefined;
   const body = frontmatter ? text.slice(frontmatter[0].length).trim() : '';
@@ -253,22 +258,45 @@ export function importProblem(prompt: ImportPrompt): string | null {
 /**
  * Split each over-long section at paragraph breaks (or, failing that, every 10,000
  * characters) into numbered sections, so no text is lost: "Reference", "Reference 2".
+ * A cut never lands inside a {{placeholder}} or between the halves of an emoji.
  */
 export function splitLongSections(prompt: ImportPrompt): ImportPrompt {
   const taken = new Set<string>();
   const fields = prompt.fields.flatMap(field => {
     if (field.content.length <= MAX_SECTION) return [field];
-    const parts = [''];
-    for (const paragraph of field.content.split(/(?<=\n\n)/)) {
-      for (let i = 0; i < paragraph.length; i += MAX_SECTION) {
-        const piece = paragraph.slice(i, i + MAX_SECTION);
-        if (parts[parts.length - 1].length + piece.length > MAX_SECTION) parts.push('');
-        parts[parts.length - 1] += piece;
-      }
-    }
-    return parts.map(content => ({ name: field.name, content: content.trim() }));
+    return splitText(field.content).map(content => ({ name: field.name, content: content.trim() }));
   });
   return { ...prompt, fields: fields.map(field => ({ ...field, name: sectionName(field.name, taken) })) };
+}
+
+function splitText(text: string): string[] {
+  // Placeholder spans over the whole text, since {{ name }} may contain line breaks.
+  const spans: [number, number][] = [];
+  let offset = 0;
+  for (const part of splitVariables(text)) {
+    if (part.kind === 'variable') spans.push([offset, offset + part.text.length]);
+    offset += part.text.length;
+  }
+  const inside = (at: number) => spans.find(([from, to]) => from < at && to > at);
+  const parts: string[] = [];
+  let start = 0;
+  while (text.length - start > MAX_SECTION) {
+    let end = start + MAX_SECTION;
+    // The last paragraph break that fits, skipping breaks inside a placeholder.
+    let paragraph = text.lastIndexOf('\n\n', end - 2);
+    while (paragraph !== -1 && paragraph + 2 > start && inside(paragraph + 2)) paragraph = text.lastIndexOf('\n\n', paragraph - 1);
+    if (paragraph !== -1 && paragraph + 2 > start) end = paragraph + 2;
+    const span = inside(end);
+    // Cut before the placeholder, or after it when it starts this section.
+    // ponytail: a single placeholder padded past 10,000 characters still yields one over-long section.
+    if (span) end = span[0] > start ? span[0] : span[1];
+    // A low surrogate continues the character before it; keep the pair together.
+    if (/[\uDC00-\uDFFF]/.test(text[end]) && end - 1 > start) end -= 1;
+    parts.push(text.slice(start, end));
+    start = end;
+  }
+  parts.push(text.slice(start));
+  return parts;
 }
 
 /**
@@ -291,14 +319,12 @@ function sectionName(heading: string, taken: Set<string>): string {
 // ponytail: heuristic; people see the list and choose before anything changes.
 const PLACEHOLDER = /(?<![\w\][])\[([A-Za-z][\w -]{1,40})\](?![\](])|(?<![{\w])\{([A-Za-z][\w -]{0,40})\}(?!\})|<([a-z][a-z0-9_ -]{1,40})>/g;
 
-const placeholderName = (inner: string) => inner.trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/[^a-z0-9_]/g, '');
-
 function placeholdersIn(content: string): Map<string, string> {
   const found = new Map<string, string>();
   for (const match of content.matchAll(PLACEHOLDER)) {
     const inner = match[1] ?? match[2] ?? match[3];
     if (match[3] && content.includes(`</${match[3]}>`)) continue;
-    const name = placeholderName(inner);
+    const name = toVariableName(inner);
     if (/^[a-z_][a-z0-9_]*$/.test(name)) found.set(match[0], name);
   }
   return found;
@@ -307,6 +333,29 @@ function placeholdersIn(content: string): Map<string, string> {
 /** Placeholder spellings that could become `{{inputs}}`, in order of appearance. */
 export function findPlaceholders(prompts: ImportPrompt[]): string[] {
   return [...new Set(prompts.flatMap(prompt => prompt.fields.flatMap(field => [...placeholdersIn(field.content).keys()])))];
+}
+
+/**
+ * On re-import, the note still says [focus area] where the library prompt has {{focus_area}}:
+ * placeholders whose input the library prompt already has are converted again, keeping its hints.
+ */
+export function reapplyConversions(prompt: ImportPrompt, current: { fields: PromptField[]; variable_metadata?: Record<string, VariableMetadataItem> | null }): ImportPrompt {
+  const names = variablesIn(current.fields);
+  const tokens = prompt.fields.flatMap(field => [...placeholdersIn(field.content)].filter(([, name]) => names.includes(name)).map(([token]) => token));
+  return tokens.length ? convertPlaceholders([{ ...prompt, variable_metadata: { ...prompt.variable_metadata, ...current.variable_metadata } }], tokens)[0] : prompt;
+}
+
+/**
+ * A pasted note titled from its first line still starts with that line. "LinkedIn post writer"
+ * is a title but "Do not reveal secrets" is an instruction, so it is only taken out when asked.
+ * Returns the prompt without it, or null when the first line is not the title.
+ */
+export function withoutTitleLine(prompt: ImportPrompt): ImportPrompt | null {
+  const [field, ...others] = prompt.fields;
+  const [first, ...rest] = field.content.trim().split('\n');
+  const after = rest.join('\n').trim();
+  if (others.length || !after || first.trim() !== prompt.name.trim() || /^\s*(`{3}|~{3})/.test(first)) return null;
+  return { ...prompt, fields: [{ ...field, content: after }] };
 }
 
 /** "[PASTE CODE HERE]" reads as the hint "Paste code here". */
@@ -396,6 +445,21 @@ export function parseCsvPrompts(text: string): ImportPrompt[] {
 
 export interface ImportFile { name: string; path: string; text: string }
 
+const LINK_LINE = /^(?:[-*+]\s+)?(?:\[[^\]]*\]\([^)]*\)|\[\[[^\]]+\]\])$/;
+
+/**
+ * Why a note is probably not a prompt, so it starts unticked: an Obsidian template (Templater's
+ * <% tp.… %>, a core {{date:YYYY-MM-DD}}, or the Templates folder) or a page of only links.
+ */
+export function noteFlag(file: ImportFile): string | undefined {
+  if (/(^|\/)templates?\//i.test(file.path) || /<%[-_*]?\s*tp\.|\{\{\s*(date|time)\s*:[^}]*\}\}/.test(file.text)) {
+    return 'This looks like a note template, so it starts unticked.';
+  }
+  // Headings and Notion page properties (Tags: …) are left out, as the tidy-up removes them too.
+  const lines = file.text.replace(FRONTMATTER, '').split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith('#') && !METADATA_KEY.test(line));
+  if (lines.length && lines.every(line => LINK_LINE.test(line))) return 'This page only links to other pages, so it starts unticked.';
+}
+
 /** A file's folders, without the parts of a split export (`Export-…-Part-1.zip`). */
 const folderPath = (path: string) => path.split('/').slice(0, -1).filter(part => !/\.zip$/i.test(part));
 
@@ -423,8 +487,10 @@ export function parseImportFiles(files: ImportFile[], keepOriginal = false): { p
   for (const file of preferPages(files)) {
     const folder = (folderPath(file.path).pop() ?? '').replace(NOTION_ID, '').trim() || null;
     try {
-      const parsed = /\.csv$/i.test(file.name) ? parseCsvPrompts(file.text) : parsePromptImport(file.text, titleFromFileName(file.name), keepOriginal);
-      prompts.push(...parsed.map(prompt => ({ ...prompt, folder: prompt.folder ?? folder })));
+      const csv = /\.csv$/i.test(file.name);
+      const parsed = csv ? parseCsvPrompts(file.text) : parsePromptImport(file.text, titleFromFileName(file.name), keepOriginal);
+      const flag = csv || /\.json$/i.test(file.name) ? undefined : noteFlag(file);
+      prompts.push(...parsed.map(prompt => ({ ...prompt, folder: prompt.folder ?? folder, ...(flag && { flag }) })));
     } catch (error) {
       // A note holds one prompt, so "Prompt 1:" says nothing.
       skipped.push(`${file.name}: ${(error as Error).message.replace(/^Prompt 1: /, '')}`);

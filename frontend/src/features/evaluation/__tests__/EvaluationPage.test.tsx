@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import EvaluationPage from '../EvaluationPage';
 import { ApiClient, ApiError } from '@/lib/api';
@@ -15,6 +15,7 @@ vi.mock('@/lib/api', async () => ({
   ].map((name) => [name, vi.fn()])),
 }));
 vi.mock('@/lib/download', () => ({ downloadBlob: vi.fn() }));
+vi.mock('@/lib/auth-context', () => ({ useAuth: () => ({ currentUser: 'alex' }) }));
 
 const example: EvalCase = {
   id: 4, prompt_id: 1, method: 'rule', name: 'Returns JSON', criteria: '{json}',
@@ -32,6 +33,7 @@ const run: EvalRun = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   vi.mocked(ApiClient.getPromptById).mockResolvedValue({
     id: 1, name: 'Release notes', fields: [{ name: 'Task', content: 'Write about {{topic}}' }],
     generated_prompt: '<TASK>Write about {{topic}}</TASK>', created_at: '2026-10-01T10:00:00',
@@ -279,6 +281,26 @@ it('reviews AI suggestions without saving them until the user accepts an edited 
   await screen.findByRole('heading', { name: 'Returns JSON' });
   expect(ApiClient.createEvalCase).toHaveBeenCalledTimes(1);
   expect(ApiClient.generateEvalCases).toHaveBeenCalledWith(1, 'Output format');
+  expect(localStorage.getItem('prompt-maker-studio:eval-suggestions:alex:1')).toBeNull();
+});
+
+it('keeps unsaved suggestions across a reload until they are discarded', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.generateEvalCases).mockResolvedValue({ proposals: [{
+    method: 'rule', name: 'Returns JSON', criteria: '{json}', variables: { topic: 'Release notes' },
+    rationale: 'Checks the output format.',
+  }] });
+  await open();
+  await user.click(screen.getByRole('button', { name: 'Suggest test cases' }));
+  await user.click(screen.getByRole('button', { name: 'Generate suggestions' }));
+  await screen.findByText('Checks the output format.');
+  cleanup();
+  await open();
+  expect(await screen.findByText('Checks the output format.')).toBeInTheDocument();
+  expect(ApiClient.generateEvalCases).toHaveBeenCalledTimes(1);
+  await user.click(screen.getByRole('button', { name: 'Discard suggestions' }));
+  expect(screen.queryByText('Checks the output format.')).not.toBeInTheDocument();
+  expect(localStorage.getItem('prompt-maker-studio:eval-suggestions:alex:1')).toBeNull();
 });
 
 it('imports CSV as text and appends returned cases', async () => {

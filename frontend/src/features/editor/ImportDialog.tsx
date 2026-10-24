@@ -35,9 +35,8 @@ export default function ImportDialog({
   const request = useRef(0);
   useEffect(() => () => { request.current += 1; }, []);
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!session.text.trim() || busyRef.current || !aiAvailable) return;
+  const convert = async (from: ImportSession) => {
+    if (!from.text.trim() || busyRef.current || !aiAvailable) return;
     const id = ++request.current;
     busyRef.current = true;
     setBusy(true);
@@ -46,7 +45,7 @@ export default function ImportDialog({
       const result = await ApiClient.parsePromptText({ text: session.text, extract_variables: true });
       if (id !== request.current) return;
       const variables = result.variables ?? variablesIn(result.fields).map((name) => ({ name, value: '', description: '', source_text: null }));
-      onSessionChange({ ...session, conversion: result, reviewing: true, keepExamples: false,
+      onSessionChange({ ...from, conversion: result, reviewing: true, keepExamples: false,
         variables: variables.map((variable) => ({ ...variable, originalName: variable.name, reuse: true })),
       });
     } catch (failure) {
@@ -55,6 +54,15 @@ export default function ImportDialog({
       if (id === request.current) { busyRef.current = false; setBusy(false); }
     }
   };
+  const submit = (event: FormEvent) => { event.preventDefault(); void convert(session); };
+  // Started once; without an AI connection the form explains why and offers Save as written.
+  useEffect(() => {
+    if (!isOpen || !session.convert || aiConfigLoading) return;
+    const from = { ...session, convert: undefined };
+    onSessionChange(from);
+    if (aiAvailable) void convert(from);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, session.convert, aiConfigLoading, aiAvailable]);
 
   return <Dialog isOpen={isOpen} title={session.reviewing ? 'Review your template' : 'Paste a prompt'}
     className={importStyles.dialog} onClose={() => !busyRef.current && onClose()}>
@@ -62,8 +70,7 @@ export default function ImportDialog({
       {replacesContent && <p className={styles.dialogHint}>Use in editor will replace your current sections and variable settings in the draft. Undo restores the previous draft. Save to keep the conversion.</p>}
       <ImportReview session={session} onChange={onSessionChange} onImport={onImport} onClose={onClose} />
     </> : <form className={styles.dialogForm} onSubmit={submit}>
-      <p className={styles.dialogText}>Keep your words as written, or optionally use AI to organize sections and suggest reusable inputs. Saving as written keeps all text in one Task section, which copies as plain text.</p>
-      <p className={styles.dialogHint}>Save as written works without AI. You can rename the prompt before saving.</p>
+      <p className={styles.dialogText}>Save as written needs no AI: it keeps your text in one Task section, which copies as plain text, and you can rename it before saving. Or create a template with AI: it organizes sections and suggests reusable inputs for you to review.</p>
       {aiConfigLoading ? <p role="status">Checking AI connection…</p> : aiConfigError ? <p role="status">Could not check the AI connection. Reload to retry; you can still save as written.</p> : <AICallContext config={aiConfig} />}
       {!aiConfigLoading && !aiAvailable && <p><Link href="/settings#s-api">Open Settings</Link> to review your AI connection.</p>}
       <textarea className={styles.importText} value={session.text}
@@ -77,7 +84,7 @@ export default function ImportDialog({
         <Button variant="ghost" onClick={onClose} disabled={busy}>Close</Button>
         {session.conversion && <Button variant="secondary" disabled={busy} onClick={() => onSessionChange({ ...session, reviewing: true })}>Return to review</Button>}
         <Button variant="primary" disabled={busy || !session.text.trim()} onClick={() => onImport({ fields: [{ name: 'Task', content: session.text }], metadata: {}, values: {}, saveAsWritten: true })}>Save as written</Button>
-        <Button variant="secondary" type="submit" disabled={busy || !session.text.trim() || !aiAvailable}>{busy ? 'Creating template…' : 'Create template'}</Button>
+        <Button variant="secondary" type="submit" disabled={busy || !session.text.trim() || !aiAvailable}>{busy ? 'Creating template…' : 'Create template with AI'}</Button>
       </div>
     </form>}
   </Dialog>;

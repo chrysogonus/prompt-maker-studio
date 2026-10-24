@@ -104,7 +104,7 @@ for (const width of [1440, 390]) {
     await expect(importer).toContainText('current draft stays as it is');
     await expect(importer).toContainText('Ollama / test-model');
     await importer.getByLabel('Prompt to convert').fill('Imported draft.');
-    await importer.getByRole('button', { name: 'Create template', exact: true }).click();
+    await importer.getByRole('button', { name: 'Create template with AI', exact: true }).click();
     const review = page.getByRole('dialog', { name: 'Review your template' });
     await expect(review).toContainText('replace your current sections and variable settings');
     await review.getByRole('button', { name: 'Use in editor' }).click();

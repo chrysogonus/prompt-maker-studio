@@ -24,6 +24,8 @@ export interface VariableMetadataItem {
   description?: string | null;
   required?: boolean;
   example?: string | null;
+  /** Values offered in Fill mode as a list; null or absent means free text. */
+  options?: string[] | null;
 }
 
 export interface PromptHistoryResponse {

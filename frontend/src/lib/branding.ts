@@ -38,7 +38,7 @@ export const storageKey = (suffix: string) => `${APP_SLUG}:${suffix}`;
  * sharing a browser can never restore each other's draft, and they are wiped
  * on explicit sign-out so the next person at the machine cannot read them.
  */
-const USER_CONTENT_KEY_PREFIXES = ['draft:', 'editor-draft:', 'refine:'] as const;
+const USER_CONTENT_KEY_PREFIXES = ['draft:', 'editor-draft:', 'refine:', 'eval-suggestions:'] as const;
 
 /**
  * Delete every stored draft, on sign-out.

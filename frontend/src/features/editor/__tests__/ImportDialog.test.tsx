@@ -18,9 +18,9 @@ const conversion = {
 };
 const apply = vi.fn();
 
-function Host() {
-  const [session, setSession] = useState<ImportSession>({ text: '' });
-  return <ImportDialog isOpen aiAvailable aiConfig={{ provider_connected: true, provider: 'ollama', provider_label: 'Ollama', model: 'local', available_models: [], budget_exhausted: false, global_budget_remaining_usd: null }}
+function Host({ start = { text: '' }, aiAvailable = true }: { start?: ImportSession; aiAvailable?: boolean }) {
+  const [session, setSession] = useState<ImportSession>(start);
+  return <ImportDialog isOpen aiAvailable={aiAvailable} aiConfig={{ provider_connected: true, provider: 'ollama', provider_label: 'Ollama', model: 'local', available_models: [], budget_exhausted: false, global_budget_remaining_usd: null }}
     replacesContent session={session} onSessionChange={setSession} onClose={vi.fn()} onImport={apply} />;
 }
 
@@ -33,7 +33,7 @@ async function convert() {
   const user = userEvent.setup();
   render(<Host />);
   fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: source } });
-  await user.click(screen.getByRole('button', { name: 'Create template' }));
+  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
   await screen.findByRole('button', { name: 'Use in editor' });
   return user;
 }
@@ -92,10 +92,10 @@ it('keeps source text after errors and supports an explicit retry', async () => 
   vi.mocked(ApiClient.parsePromptText).mockRejectedValueOnce(new Error('Provider unavailable'));
   render(<Host />);
   fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: source } });
-  await user.click(screen.getByRole('button', { name: 'Create template' }));
+  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Provider unavailable');
   expect(screen.getByLabelText('Prompt to convert')).toHaveValue(source);
-  await user.click(screen.getByRole('button', { name: 'Create template' }));
+  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
   expect(await screen.findByRole('button', { name: 'Use in editor' })).toBeEnabled();
 });
 
@@ -107,6 +107,8 @@ it('keeps existing empty placeholders and offers explicit placeholder copying', 
   const user = await convert();
   const clipboard = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
   expect(screen.getByText('Existing placeholder; the source did not supply a value.')).toBeInTheDocument();
+  // Nothing to fill in yet, so the review opens on the template.
+  expect(screen.getByRole('radio', { name: 'Template' })).toHaveAttribute('aria-checked', 'true');
   await user.click(screen.getByRole('button', { name: 'Copy with placeholders' }));
   expect(clipboard).toHaveBeenCalledWith('<TASK>\nExplain {{topic}} to Lisbon residents. Use {{topic}} again.\n</TASK>');
   fireEvent.change(screen.getByLabelText('Value for topic'), { target: { value: 'Space\n& planets' } });
@@ -151,5 +153,18 @@ it('keeps pasted content exactly without AI when disconnected', async () => {
     session={{ text }} onSessionChange={vi.fn()} onClose={vi.fn()} onImport={apply} />);
   await user.click(screen.getByRole('button', { name: 'Save as written' }));
   expect(apply).toHaveBeenCalledWith({ fields: [{ name: 'Task', content: text }], metadata: {}, values: {}, saveAsWritten: true });
+  expect(ApiClient.parsePromptText).not.toHaveBeenCalled();
+});
+
+it('starts the conversion itself when the library already chose AI, once', async () => {
+  render(<Host start={{ text: source, convert: true }} />);
+  expect(await screen.findByRole('button', { name: 'Use in editor' })).toBeInTheDocument();
+  expect(ApiClient.parsePromptText).toHaveBeenCalledTimes(1);
+  expect(ApiClient.parsePromptText).toHaveBeenCalledWith({ text: source, extract_variables: true });
+});
+
+it('shows the paste form instead when the library chose AI but none is connected', () => {
+  render(<Host start={{ text: source, convert: true }} aiAvailable={false} />);
+  expect(screen.getByLabelText('Prompt to convert')).toHaveValue(source);
   expect(ApiClient.parsePromptText).not.toHaveBeenCalled();
 });

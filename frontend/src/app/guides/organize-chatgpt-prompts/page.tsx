@@ -54,9 +54,9 @@ export default function OrganizePromptsPage() {
         <figcaption>Folders narrow the library; stars keep frequently used prompts easy to reach.</figcaption>
       </figure>
 
-      <h2>Keep frequent prompts in Favorites</h2>
+      <h2>Keep frequent prompts in Favourites</h2>
       <p>
-        Select the star beside a prompt, then choose <strong>Favorites</strong> in the sidebar.
+        Select the star beside a prompt, then choose <strong>Favourites</strong> in the sidebar.
         Starring a prompt leaves it in its folder too. Use this view for the few templates you
         reach for most often.
       </p>
@@ -64,7 +64,7 @@ export default function OrganizePromptsPage() {
       <h2>Search the right part of your library</h2>
       <p>
         Use <strong>Search prompts</strong> to search prompt names, folder names, section names,
-        and section text. Search narrows the current view: if you are in Favorites or a folder,
+        and section text. Search narrows the current view: if you are in Favourites or a folder,
         it searches those prompts. Select <strong>All prompts</strong> before searching the
         entire library. Results show the most recently edited prompts first.
       </p>
@@ -84,13 +84,13 @@ export default function OrganizePromptsPage() {
         with its number. Restoring keeps the version you replace in history.
       </p>
 
-      <h2>Optional: use your library from inside ChatGPT</h2>
+      <h2>Optional: use your library from inside ChatGPT or Claude</h2>
       <p>
-        Copying and pasting works without connecting ChatGPT to your library. If you choose to
-        connect the optional integration, it can list, open, save, and update your prompts from
+        Copying and pasting works without connecting ChatGPT or Claude to your library. If you
+        choose to connect the optional integration, it can list, open, save and update your prompts from
         the chat after you sign in and grant access. The{' '}
         <a href="https://github.com/chrysogonus/prompt-maker-studio/blob/main/docs/mcp.md">
-          ChatGPT integration documentation
+          ChatGPT and Claude integration documentation
         </a>{' '}
         covers connection requirements and setup. This is a separate connection from the AI
         provider used by Paste a prompt, Refine, or Try once.

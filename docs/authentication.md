@@ -47,8 +47,8 @@ Content-Type: application/json
 ```
 
 The response contains `id`, `username`, `email`, `created_at`, and library/evaluation
-preferences. `REGISTRATION_MODE` defaults to `closed`: the first account can
-always register, then registration returns 403 unless the operator sets `open`.
+preferences. `REGISTRATION_MODE` defaults to `open`. With `closed` (or any unrecognised
+value), the first account can still register, then registration returns 403.
 Usernames are normalized with `.strip().lower()` during registration and login.
 Duplicate usernames and emails receive the same generic 400 response.
 The login `username` field accepts either the username or the account email:
@@ -149,9 +149,10 @@ working users stay signed in and an idle tab still expires after
 `ACCESS_TOKEN_EXPIRE_MINUTES`. Sign-out waits for pending refreshes before
 clearing cookies, and a new login waits for that cleanup. It also renews a
 still-valid session before a delayed prompt deletion, and retries an
-authenticated request once after a 401 — rebuilding headers per attempt,
-because a refresh rotates the CSRF token. An expired session cannot be
-refreshed and still requires login.
+authenticated request once after a 401, rebuilding headers per attempt. A
+refresh keeps the CSRF token it was sent, so writes already in flight still
+match; login, password change and sign-out issue a new one. An expired session
+cannot be refreshed and still requires login.
 
 Each token carries an `auth_time` claim: when the user last entered their
 password (login or password change). Refreshes carry it forward and never

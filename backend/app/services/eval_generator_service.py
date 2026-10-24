@@ -57,8 +57,9 @@ _SYSTEM_PROMPT = (
     "rationale for why the case is useful. Never create a Rule check for the name of a "
     "structural or qualitative instruction (for example 'tagline', 'summary', 'tone', "
     "'call-to-action', 'paragraph', or 'word count'); those concepts require Judge grading "
-    "unless the prompt explicitly requires that exact word to appear. Propose at most "
-    "{max_cases} cases."
+    "unless the prompt explicitly requires that exact word to appear. Never repeat or "
+    "rephrase a case listed under Existing test cases; cover something they miss. "
+    "Propose at most {max_cases} cases."
 )
 
 
@@ -81,6 +82,24 @@ def _shorten_to_words(text: str, limit: int) -> str:
     clipped = collapsed[:limit].rsplit(" ", 1)[0].rstrip(" ,;:-")
     # A single word longer than the limit has no boundary to fall back to.
     return clipped or collapsed[:limit]
+
+
+def _inputs_key(variables: object) -> tuple:
+    if not isinstance(variables, dict):
+        return ()
+    return tuple(sorted((str(k), " ".join(str(v).split())) for k, v in variables.items()))
+
+
+def _existing_case_line(case: dict) -> str:
+    """One bounded line per saved case: enough to recognise its scenario."""
+    line = f"- {case.get('name') or 'Unnamed'} ({case.get('method') or 'unknown'})"
+    if case.get("criteria"):
+        line += f": {_shorten_to_words(case['criteria'], 160)}"
+    variables = case.get("variables")
+    if isinstance(variables, dict) and variables:
+        inputs = "; ".join(f"{k}={_shorten_to_words(str(v), 60)}" for k, v in variables.items())
+        line += f" | inputs: {_shorten_to_words(inputs, 200)}"
+    return line
 
 
 def _case_name(case: dict) -> str:
@@ -192,6 +211,7 @@ class EvalGeneratorService:
         goal: str | None,
         max_cases: int,
         connection: LLMConnection,
+        existing: list[dict] | None = None,
     ) -> tuple[list[EvalCaseProposal], LLMUsage]:
         """
         Propose up to `max_cases` eval cases covering happy-path, edge-case,
@@ -220,6 +240,10 @@ class EvalGeneratorService:
             user_content += f"\n\nDeclared variables:\n{variable_lines}"
         if goal and goal.strip():
             user_content += f"\n\nTesting goal: {goal.strip()}"
+        existing = existing or []
+        existing_lines = "\n".join(_existing_case_line(case) for case in existing)
+        if existing_lines:
+            user_content += f"\n\nExisting test cases:\n{existing_lines}"
 
         raw, usage = json_completion(
             connection,
@@ -242,5 +266,11 @@ class EvalGeneratorService:
             _normalize_proposal(case)
             for case in cases[:max_cases]
             if isinstance(case, dict) and {"method", "criteria", "rationale"} <= case.keys()
+        ]
+        # Exactly the same inputs as a saved case test nothing new. Without
+        # variables every case has the same (empty) inputs, so nothing is dropped.
+        taken = [_inputs_key(case.get("variables")) for case in existing]
+        proposals = [
+            p for p in proposals if not p.variables or _inputs_key(p.variables) not in taken
         ]
         return proposals, usage

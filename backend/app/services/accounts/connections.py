@@ -21,6 +21,7 @@ from app.services.llm_client import (
     has_own_connection,
     server_default,
     text_completion,
+    unsaved_connection,
 )
 from app.services.llm_model_catalog import invalidate_model_cache, model_prices_for
 from app.services.llm_providers import PROVIDERS, InvalidConnectionError, resolve_connection
@@ -140,11 +141,40 @@ def delete_llm_connection(current_user: User, db: Session):
     return _connection_response(current_user)
 
 
+def _connection_to_test(body: LLMConnectionUpdate, user: User):
+    """Validate unsaved form values like a save would, without storing anything.
+    As with a save, an omitted key reuses the stored one, only for the same provider;
+    an empty string means no key."""
+    clearing_key = body.api_key is not None and not body.api_key.strip()
+    same_provider = user.llm_provider == body.provider
+    use_stored = bool(user.llm_api_key_encrypted) and same_provider and not clearing_key
+    resolved = resolve_connection(
+        provider_handle=body.provider,
+        base_url=body.base_url,
+        model=body.model,
+        api_key=body.api_key,
+        has_stored_key=use_stored,
+    )
+    api_key = resolved.api_key or (
+        decrypt_secret(user.llm_api_key_encrypted) if use_stored else None
+    )
+    workspace_id = None
+    if resolved.provider.handle == "anthropic":
+        workspace_id = (
+            body.workspace_id
+            if "workspace_id" in body.model_fields_set
+            else (user.llm_workspace_id if same_provider else None)
+        )
+    return unsaved_connection(
+        resolved.provider, resolved.model, resolved.base_url, api_key, workspace_id
+    )
+
+
 @observe_operation("connection_test")
-def test_llm_connection(current_user: User, db: Session):
-    """Send a one-token probe to the configured provider so a wrong endpoint, key,
-    or model name is reported here rather than as a mystery failure inside a
-    feature. Rate-limited: it is a real (if tiny) billed call."""
+def test_llm_connection(current_user: User, db: Session, body: LLMConnectionUpdate | None):
+    """Send a one-token probe to the configured provider — or to the unsaved values in
+    `body` — so a wrong endpoint, key, or model name is reported here rather than as a
+    mystery failure inside a feature. Rate-limited: it is a real (if tiny) billed call."""
     connection = None
     try:
         BudgetService.check(db, current_user.id)
@@ -156,10 +186,20 @@ def test_llm_connection(current_user: User, db: Session):
         return LLMConnectionTestResponse(ok=False, message=str(exc))
     try:
         with bill_failed_attempts(db, current_user.id, "connection_test"):
-            connection = client_for(current_user)
+            # Built inside the handler: a URL that validates can still fail to construct
+            # a client (e.g. a non-numeric port), and that is reportable copy too.
+            connection = (
+                _connection_to_test(body, current_user) if body else client_for(current_user)
+            )
             _, usage = text_completion(
                 connection, [{"role": "user", "content": "Reply with the word: ok"}]
             )
+    except InvalidConnectionError as exc:
+        return LLMConnectionTestResponse(ok=False, message=str(exc))
+    except SecretDecryptionError:
+        return LLMConnectionTestResponse(
+            ok=False, message="Your stored API key could not be read. Re-enter it to test."
+        )
     # Every failure mode here is reportable copy, including a malformed
     # response from an endpoint that isn't actually OpenAI-compatible.
     except Exception as exc:

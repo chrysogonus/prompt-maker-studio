@@ -63,6 +63,17 @@ class TestGenerateClarifyingQuestions:
         assert result == ["Who is the audience?"]
         system_message = create.call_args.kwargs["messages"][0]["content"]
         assert "never ask what value" in system_message
+        assert "without braces" in system_message
+
+    def test_returns_only_questions_a_draft_request_can_carry(self):
+        too_long = "Why " + "really " * 80 + "?"
+        asked = [f"Question {i}?" for i in range(12)]
+        connection, _ = _connection_returning({"questions": ["", "  ", too_long, *asked]})
+
+        result, _ = PromptRefinerService.generate_clarifying_questions("template", connection)
+
+        assert len(too_long) > 500
+        assert result == asked[:10]
 
     def test_propagates_provider_errors(self):
         connection = make_connection(MagicMock(side_effect=OpenAIError("boom")))
@@ -145,6 +156,17 @@ class TestSectionDraft:
         assert "No clarifications were given" in request["messages"][0]["content"]
         assert "do not invent new requirements" in request["messages"][0]["content"]
         assert json.loads(request["messages"][1]["content"])["clarifications"] == []
+
+    def test_expand_adds_stated_defaults_when_no_answers_were_given(self):
+        fields = [PromptField(name="Task", content="Explain {{topic}}.")]
+        connection, create = _connection_returning(
+            {"fields": [field.model_dump() for field in fields]}
+        )
+        PromptRefinerService.generate_section_draft(fields, [], connection, expand=True)
+        system_message = create.call_args.kwargs["messages"][0]["content"]
+        assert "state who the answer is for, the output format, the length" in system_message
+        assert "add no new XML tags or {{variables}}" in system_message
+        assert "do not invent new requirements" not in system_message
 
     def test_sends_test_results_as_untrusted_evidence(self):
         fields = [PromptField(name="Task", content="Explain {{topic}}.")]

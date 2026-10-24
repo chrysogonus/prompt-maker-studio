@@ -23,7 +23,7 @@ export async function authenticatedFetch(
   } catch {
     return response;
   }
-  // Refresh rotates the CSRF cookie; rebuild headers for the single retry.
+  // Rebuild headers for the single retry: the cookies may have changed meanwhile.
   response = await sessionFetch(url, init);
   return response;
 }

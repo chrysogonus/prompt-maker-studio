@@ -65,8 +65,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 COOKIE_DOMAIN=
 COOKIE_SECURE=true
 
-# Default registration admits only the first account, then closes.
-REGISTRATION_MODE=closed
+# Registration is open by default; `closed` admits only the first account.
+REGISTRATION_MODE=open
 # Keep user-supplied private provider URLs disabled unless every account is trusted.
 ALLOW_PRIVATE_LLM_URLS=false
 
@@ -85,6 +85,16 @@ LLM_API_KEY=
 # See docs/docker.md's Environment Variables section.
 # GLOBAL_MONTHLY_BUDGET_USD=50
 # USER_MONTHLY_BUDGET_USD=5
+
+# Optional free refiner for signed-out visitors, on the server default (off by
+# default). Before enabling: update the privacy policy and confirm the backend
+# sees real client IPs (see docs/docker.md).
+# PUBLIC_REFINE_ENABLED=true
+# PUBLIC_REFINE_RATE_LIMIT=6/minute;30/day
+# PUBLIC_REFINE_DAILY_LIMIT=200
+# PUBLIC_REFINE_MAX_OUTPUT_TOKENS=8000
+# PUBLIC_REFINE_MODEL=<a stronger model on the LLM_PROVIDER; empty uses LLM_MODEL>
+# PUBLIC_MONTHLY_BUDGET_USD=10
 
 # Frontend Configuration
 # No API URL to set — browsers call /api on YOUR_DOMAIN and Caddy routes it to

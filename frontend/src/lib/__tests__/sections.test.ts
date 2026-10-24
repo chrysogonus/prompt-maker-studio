@@ -65,6 +65,10 @@ describe('variables', () => {
     );
   });
 
+  it('never fills a variable from what a plain object inherits', () => {
+    expect(fillVariables('{{constructor}} {{toString}} {{hasOwnProperty}}', {})).toBe('{{constructor}} {{toString}} {{hasOwnProperty}}');
+  });
+
   it('splits text into plain runs and variable tokens', () => {
     expect(splitVariables('a {{x}} b')).toEqual([
       { kind: 'text', text: 'a ' },

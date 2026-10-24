@@ -23,7 +23,6 @@ export function useLibrary() {
 
   const [prompts, setPrompts] = useState<Prompt[] | null>(null);
   const [loadError, setLoadError] = useState('');
-  const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'recent' | 'title'>('recent');
   const [selected, setSelected] = useState<number[]>([]);
   const [batchFolder, setBatchFolder] = useState('');
@@ -61,6 +60,36 @@ export function useLibrary() {
       setLoadError(err instanceof Error ? err.message : 'Failed to load your prompts.');
     }
   }, [loadLibrary, refreshLibrary]);
+
+  // The query is kept in the address (?q=), so Back from a prompt and shared links keep it.
+  const urlQuery = searchParams.get('q') ?? '';
+  const [search, setSearchState] = useState(urlQuery);
+  // Moving to another view is always navigation. Within a view, the router may echo queries this
+  // page wrote, possibly late; any other query came from navigating (a link, Back), and the box
+  // takes it. Plain values, not libraryHref(view), keep the React Compiler's memoization.
+  const viewKey = view.type === 'folder' ? `folder:${view.folder}` : view.type;
+  const written = useRef<{ viewKey: string; queries: string[] }>({ viewKey, queries: [] });
+  useEffect(() => {
+    const { queries } = written.current;
+    if (written.current.viewKey === viewKey && queries.includes(urlQuery)) {
+      // Once the newest write is echoed, older ones can no longer arrive.
+      if (urlQuery === queries.at(-1)) written.current = { viewKey, queries: [urlQuery] };
+      return;
+    }
+    written.current = { viewKey, queries: [] };
+    // The address changed by navigation, not typing.
+    setSearchState(urlQuery);
+  }, [viewKey, urlQuery]);
+  const setSearch = (value: string) => {
+    setSearchState(value);
+    written.current.queries.push(value);
+    const params = new URLSearchParams(window.location.search);
+    if (value) params.set('q', value); else params.delete('q');
+    const query = params.toString();
+    // Null state: Next.js copies its own history state and updates useSearchParams; passing
+    // its marked state back would skip that update.
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  };
 
   useEffect(() => {
     void load();
@@ -171,7 +200,7 @@ export function useLibrary() {
       notifyLibraryChanged();
     } catch {
       replace(prompt);
-      showToast({ text: 'Could not update favorites. Try again.' });
+      showToast({ text: 'Could not update favourites. Try again.' });
     }
   };
 

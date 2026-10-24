@@ -70,9 +70,8 @@ def bill_failed_attempts(db: Session, user_id: int, source: str):
             raise
 
 
-def record_billed_call(db: Session, user_id: int, source: str, usage: LLMUsage) -> BilledCall:
-    """Add a ledger row for one billed call. Does NOT commit — the caller owns
-    the transaction (eval runs batch many rows into one end-of-run commit)."""
+def priced_usage(usage: LLMUsage) -> tuple[int, int, float]:
+    """(prompt_tokens, completion_tokens, cost_usd) to record for one call."""
     # Lazy import: budget_service imports the BilledCall model, and importing it
     # at module scope here closes a cycle through app.models.
     from app.services.budget_service import BudgetService
@@ -85,17 +84,12 @@ def record_billed_call(db: Session, user_id: int, source: str, usage: LLMUsage) 
     guard_unknown_costs = BudgetService.any_limit_configured()
     prompt_tokens = usage.prompt_tokens
     completion_tokens = usage.completion_tokens
-    estimated_tokens = False
-
-    if (
+    estimated_tokens = (
         guard_unknown_costs
         and prompt_tokens == 0
         and completion_tokens == 0
         and is_priced(usage.provider, usage.model)
-    ):
-        # Priced model, but the endpoint told us nothing about usage.
-        estimated_tokens = True
-
+    )  # Priced model, but the endpoint told us nothing about usage.
     cost = cost_usd_for(
         usage.provider,
         usage.model,
@@ -103,7 +97,13 @@ def record_billed_call(db: Session, user_id: int, source: str, usage: LLMUsage) 
         ASSUMED_TOKENS_WHEN_USAGE_MISSING["output"] if estimated_tokens else completion_tokens,
         assume_cost_when_unknown=guard_unknown_costs,
     )
+    return prompt_tokens, completion_tokens, cost
 
+
+def record_billed_call(db: Session, user_id: int, source: str, usage: LLMUsage) -> BilledCall:
+    """Add a ledger row for one billed call. Does NOT commit — the caller owns
+    the transaction (eval runs batch many rows into one end-of-run commit)."""
+    prompt_tokens, completion_tokens, cost = priced_usage(usage)
     billed = BilledCall(
         user_id=user_id,
         source=source,

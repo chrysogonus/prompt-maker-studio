@@ -10,7 +10,98 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
-Prepared for 0.9.0; see the [release candidate](./docs/releases/0.9.0.md).
+Prepared for 0.10.0; see the [release candidate](./docs/releases/0.10.0.md).
+
+### Added
+
+- Inputs can offer a list of choices: add them one per line in the input's options, and Fill
+  mode shows a list to pick from (for example an art style or a character). Choices are kept in
+  versions and JSON exports and returned by the ChatGPT and Claude `get_prompt` tool.
+- Free prompt tools at `/tools` that work without an account and upload nothing: a template filler
+  for `{{variables}}`, a prompt checker, a word-level prompt diff and a token counter with
+  estimated costs. Each can save its prompt to your library after you sign in or sign up. The
+  app's sidebar, the editor's starter templates and the empty library link to the tools and the
+  gallery.
+- Four new guides: what makes a good AI prompt, prompts for coding agents, image generation
+  prompts, and prompts for research and writing.
+- A free prompt template gallery at `/gallery`: 24 curated templates for coding agents, image
+  generation, research and writing, and everyday work, to fill in, copy or save to your library.
+- A free AI prompt refiner at `/tools/prompt-refiner` for visitors without an account, off by
+  default. Operators enable it with `PUBLIC_REFINE_ENABLED=true`; it runs on the server-default
+  connection with per-visitor, daily and monthly limits (`PUBLIC_REFINE_RATE_LIMIT`,
+  `PUBLIC_REFINE_DAILY_LIMIT`, `PUBLIC_MONTHLY_BUDGET_USD`; by default 6 requests a minute and 30 a
+  day per visitor, so a few question-and-draft rounds fit in a minute) and can use another model on the same
+  provider (`PUBLIC_REFINE_MODEL`). "Improve now" fills in an audience, format, length and how to
+  handle missing information. Migration 033 adds its spend ledger.
+
+### Fixed
+
+- Library polish: the bulk action bar stays in view while selecting further down the list;
+  previews of imported notes no longer show Markdown such as ``` or `###`; Undo after deleting
+  lasts 10 seconds; the search is kept in the address (`?q=`), so Back from a prompt keeps it;
+  and a prompt with unsaved edits in this browser is marked Unsaved draft.
+- Settings and the account stay in view at the bottom of the sidebar however many folders there
+  are, and Guides, Free tools and the Template gallery are marked as leaving the app.
+- The browser tab says "Sign in" or "Create account" instead of the last page's title, and
+  Settings warns when the ChatGPT and Claude server address is local or not HTTPS.
+- Insert input turns a name such as `max rows!` into `max_rows`, and its error sits on its own
+  line instead of squeezing the name field.
+- Inputs filled in before a new prompt's first save are kept after saving.
+- Opening a prompt that does not exist says "Prompt not found" instead of "Failed to fetch
+  prompt versions", and signing up with an unusable email domain says "Enter an email address you
+  can receive mail at." instead of the validator's technical text.
+- History on narrow screens is a dialog: Escape closes it, focus stays in it after Restore, and
+  restore results and errors are shown inside it (a failed restore keeps the comparison).
+- Make reusable with AI goes straight to the AI conversion instead of asking again; the review
+  opens on Template when no input has a value yet.
+- Editor polish: italic hints in Fill mode, a clearer example-value label, a warning when Try once
+  would run with no inputs filled in, an aligned Mark as known good button, and Prompt details now
+  shows created and edited dates, the current version, the known-good version and the inputs.
+- Re-importing a changed note and choosing Update no longer turns inputs made on the first
+  import back into placeholder text: `{{focus_area}}` stays an input with its settings, and only
+  new placeholders are offered.
+- Re-import compares a note with every library prompt of the same title, so a prompt that
+  shares its title with another is no longer flagged as changed, and Update is offered only
+  when exactly one prompt has that title.
+- Obsidian note templates (Templater, `{{date:…}}`, the Templates folder) and pages that only
+  link to other pages start unticked, with the reason shown.
+- Links to other Notion pages, such as `[Style guide](Style%20guide%20b2c3….md)`, are imported
+  as their text, and a nested tag such as `#prompts/engineering` suggests the folder
+  "Engineering" rather than a folder named with a slash.
+- When pasted text starts with the line used as its title, the preview offers to take that line
+  out of the text; it is never removed automatically, since a title and an instruction look alike.
+- Import messages are plainer: "Imported 7 prompts, skipped 1 already in your library", ignored
+  files are named, an empty note says "This note is empty", and each prompt's tick box is
+  labelled with its title.
+- Suggested test cases no longer repeat or rephrase the prompt's existing cases.
+- Refine no longer drops clarifying questions that mention an input such as "the article",
+  which could leave a vague prompt with no questions at all.
+- Saving right after loading a page could fail with "Missing or invalid CSRF token": the
+  session refresh started by the first click replaced the token a save in flight was using.
+  Refreshing now keeps the token.
+- Splitting a section over 10,000 characters (when importing notes, or saving from a free tool)
+  no longer cuts through a `{{placeholder}}` or an emoji.
+- A variable named like a built-in property, such as `{{constructor}}`, is no longer filled in
+  with stray text in the preview.
+
+### Changed
+
+- The app uses British spelling throughout: the Favorites view is now Favourites.
+- Public pages (landing page, guides, tools, gallery, legal pages) follow your system's light or
+  dark setting until you choose a theme; the app itself stays light by default.
+- Registration is open by default. Operators who relied on the implicit closed default must now
+  set `REGISTRATION_MODE=closed`, which still admits only the first account; any unrecognised
+  value is also treated as closed.
+
+### Security
+
+- The backend's `opentelemetry-api` is updated from 1.45.0 to 1.45.1 for CVE-2026-114603: an
+  inbound `tracestate` header could make parsing take quadratic time and stall a worker.
+  Rebuilt images pick it up; no configuration change.
+
+## [0.9.0] - 2026-10-20
+
+See the [release record](./docs/releases/0.9.0.md).
 
 ### Added
 
@@ -858,7 +949,8 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.9.0
 [0.8.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.8.0
 [0.7.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.7.0
 [0.6.1]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.6.1

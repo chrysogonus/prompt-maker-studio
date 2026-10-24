@@ -54,22 +54,22 @@ export function ProfileSettings({
       </div>
       <div className={styles.body}>
         <div className={styles.row}>
-          <div>
-            <div className={styles.rowLabel}>Username</div>
+          <div className={styles.rowLabel}>Username</div>
+          <div className={styles.settingAction}>
             <div className={styles.rowValue}>{currentUser}</div>
+            {!showUsernameEdit && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setNewUsernameValue(currentUser ?? '');
+                  setShowUsernameEdit(true);
+                  setUsernameError('');
+                }}
+              >
+                Edit username
+              </Button>
+            )}
           </div>
-          {!showUsernameEdit && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setNewUsernameValue(currentUser ?? '');
-                setShowUsernameEdit(true);
-                setUsernameError('');
-              }}
-            >
-              Edit username
-            </Button>
-          )}
         </div>
         {showUsernameEdit && (
           <form onSubmit={handleUsernameChange} className={styles.inlineForm} noValidate>
@@ -93,23 +93,23 @@ export function ProfileSettings({
         {usernameError && <div className={styles.error} role="alert">{usernameError}</div>}
 
         <div className={styles.row}>
-          <div>
-            <div className={styles.rowLabel}>Email</div>
+          <div className={styles.rowLabel}>Email</div>
+          <div className={styles.settingAction}>
             <div className={styles.rowValue}>{user?.email || 'No email on file'}</div>
+            {!showEmailEdit && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setNewEmailValue(user?.email ?? '');
+                  setEmailPassword('');
+                  setShowEmailEdit(true);
+                  setEmailError('');
+                }}
+              >
+                Edit email
+              </Button>
+            )}
           </div>
-          {!showEmailEdit && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setNewEmailValue(user?.email ?? '');
-                setEmailPassword('');
-                setShowEmailEdit(true);
-                setEmailError('');
-              }}
-            >
-              Edit email
-            </Button>
-          )}
         </div>
         {showEmailEdit && (
           <form onSubmit={handleEmailChange} className={styles.inlineForm} noValidate>

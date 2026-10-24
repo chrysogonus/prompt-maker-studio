@@ -42,8 +42,8 @@ under Settings → AI connection or use an operator-configured server default
 (`LLM_BASE_URL` and `LLM_MODEL`, plus provider/key settings when needed).
 A user-supplied local Ollama endpoint needs `ALLOW_PRIVATE_LLM_URLS=true` on a
 trusted development instance; see [local provider setup](./docs/development.md#1-environment-setup).
-Registration admits the first account by default; deliberately set
-`REGISTRATION_MODE=open` if a development instance needs further accounts.
+Registration is open by default; set `REGISTRATION_MODE=closed` if a
+development instance should admit only its first account.
 
 ```bash
 # Option A — full containerized stack

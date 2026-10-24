@@ -91,7 +91,7 @@ describe('AppLayout', () => {
         'href',
         '/impressum',
       );
-      expect(screen.getByRole('contentinfo')).not.toHaveTextContent('Datenschutz');
+      expect(screen.getByRole('contentinfo')).not.toHaveTextContent('Privacy policy');
     } finally {
       fetchSpy.mockRestore();
     }

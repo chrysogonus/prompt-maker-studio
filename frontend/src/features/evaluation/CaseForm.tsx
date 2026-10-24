@@ -80,7 +80,7 @@ export default function CaseForm({ prompt, initial, isEditing, busy, error, onSa
           ) : (
             <>
               {method === 'rule' && !advanced ? <>
-                {checks.map((check, index) => <div key={index}>
+                {checks.map((check, index) => <div key={index} className={styles.check}>
                   <label className={styles.field}><span>Check {index + 1}</span>
                     <Select value={check.kind} onChange={(event) => updateCheck(index, { kind: event.target.value })}>
                       <option value="contains">Contains</option><option value="excludes">Does not contain</option><option value="json">Valid JSON</option>

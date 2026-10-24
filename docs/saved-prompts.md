@@ -84,7 +84,8 @@ modes:
   explicitly allows unresolved inputs. Optional inputs retain the existing copying behavior.
 
 Hints are edited in the Variables panel under the sections. Each variable's Options
-disclosure contains its required flag and example. The panel links to the variables
+disclosure contains its required flag, example and choices (one per line); an input with
+choices is a list to pick from in Fill mode. The panel links to the variables
 guide; Guides is also available in app navigation. Markup warnings are advisory and
 can be dismissed without altering the text. A hint whose variable no longer
 appears is kept, marked as unused, until removed. Variables are optional by default; required inputs
@@ -188,11 +189,11 @@ above both panes as stored only in the current browser.
   section, preserving its text. Prompts with a single section copy as plain text by
   default; Output options can add the section tags.
   Optional AI conversion still offers review before applying.
-- The sidebar narrows it to **Favorites**, a **folder**, or **Unfiled**.
+- The sidebar narrows it to **Favourites**, a **folder**, or **Unfiled**.
 - Library cards expose Copy template and, for prompts with variables, Fill and copy, which opens
   the filling view directly on desktop and phones. Each prompt's menu: Copy template, Rename,
   Move to folder, Duplicate, Delete. Delete takes effect
-  at once with a 5-second Undo and only then calls the server; a delete still waiting is sent if
+  at once with a 10-second Undo and only then calls the server; a delete still waiting is sent if
   the page is left.
 - **Folders** are labels on prompts (`prompts.folder`). A folder exists while a prompt is filed in
   it. A folder view can rename the folder (`PATCH /api/prompts/folders?name=`, merging onto an
@@ -220,6 +221,7 @@ interface PromptHistoryResponse {
   known_good_version?: number | null; // the version the user marked as known good
   variable_metadata?: Record<string, {
     type: string; description?: string | null; required?: boolean; example?: string | null;
+    options?: string[]; // choices offered in Fill mode; omitted when there are none
   }> | null;
 }
 
@@ -230,7 +232,8 @@ interface PromptField {
 ```
 
 Tags remain legacy export data. Variable types remain in metadata for compatibility, while the
-editor uses text inputs and provides hints, required flags and optional examples.
+editor uses text inputs (or a list when choices are set) and provides hints, required flags,
+optional examples and choices.
 
 ## Future enhancements
 

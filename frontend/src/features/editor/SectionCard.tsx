@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Button from '@/components/ui/Button';
-import { insertVariable, isVariableName, sectionTag, unbalancedTags } from '@/lib/sections';
+import { insertVariable, isVariableName, sectionTag, toVariableName, unbalancedTags } from '@/lib/sections';
 import type { EditorSection } from './PromptEditor';
 import styles from './PromptEditor.module.css';
 
@@ -87,9 +87,10 @@ export default function SectionCard({
   const confirmInsert = (event: FormEvent) => {
     event.preventDefault();
     if (!insert) return;
-    // "Target audience" becomes target_audience rather than an error.
+    // "Target audience" or "max rows!" becomes target_audience / max_rows rather than an error;
+    // letters outside ASCII ("Größe") would be dropped, so those still get the error.
     const typed = insert.name.trim();
-    const name = /\s/.test(typed) ? typed.toLowerCase().replace(/\s+/g, '_') : typed;
+    const name = isVariableName(typed) || /[^\x00-\x7F]/.test(typed) ? typed : toVariableName(typed);
     if (!isVariableName(name)) {
       setInsert({ ...insert, error: 'Start with a letter or _, then use letters, numbers, _ or -.' });
       return;
@@ -189,11 +190,12 @@ export default function SectionCard({
             maxLength={100}
             autoFocus
             aria-invalid={!!insert.error}
+            aria-describedby={insert.error ? `insert-error-${section.key}` : undefined}
             spellCheck={false}
           />
           <Button type="submit" variant="secondary">Insert</Button>
           <Button type="button" variant="ghost" onClick={cancelInsert}>Cancel</Button>
-          {insert.error && <p className={styles.sectionError} role="alert">{insert.error}</p>}
+          {insert.error && <p id={`insert-error-${section.key}`} className={styles.sectionError} role="alert">{insert.error}</p>}
         </form>
       )}
       {contentError && <p id={contentErrorId} className={styles.sectionError}>Section text must be 10,000 characters or fewer.</p>}

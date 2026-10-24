@@ -39,6 +39,8 @@ test.beforeEach(async ({ page }) => {
     const method = request.method();
     const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (path === '/api/auth/me') return json({ id: 1, username: 'alex', email: 'alex@example.com', created_at: prompt.created_at });
+    // Clicks and typing renew the session; a reply without an expiry would sign the page out.
+    if (path === '/api/auth/refresh') return json({ expires_at: new Date(Date.now() + 3_600_000).toISOString() });
     if (path === '/api/prompts/1') return json(prompt);
     if (path === '/api/prompts/saved') return json([prompt]);
     if (path === '/api/prompts/folders') return json(['Work']);

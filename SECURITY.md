@@ -129,11 +129,21 @@ Anyone self-hosting Prompt Maker Studio is responsible for their own deployment:
   trusted and also bypass it, allowing a private local provider without granting
   private-network access to user-supplied URLs. Network-level egress controls
   remain useful defence in depth.
-- **Registration is closed by default.** `REGISTRATION_MODE=closed` admits only
-  the first account, so a fresh install is usable and then locks. Set it to
-  `open` only if you intend anyone who can reach the instance to be able to
-  create an account — an account is what unlocks the provider-URL surface
-  above.
+- **Registration is open by default.** Anyone who can reach the instance can
+  create an account. An account unlocks the provider-URL surface above, which
+  is why user-supplied private URLs stay blocked unless `ALLOW_PRIVATE_LLM_URLS`
+  is set. For a private install set `REGISTRATION_MODE=closed`: it admits only
+  the first account, so a fresh install is usable and then locks. Any other
+  value also means closed, so a typo never opens sign-up.
+- **The free refiner is off by default.** `PUBLIC_REFINE_ENABLED=true` lets
+  signed-out visitors send up to 8,000 characters to the operator's server
+  default for refinement. It is bounded per visitor IP (`PUBLIC_REFINE_RATE_LIMIT`,
+  in memory), per day across all visitors (`PUBLIC_REFINE_DAILY_LIMIT`) and per
+  month (`PUBLIC_MONTHLY_BUDGET_USD`, also counted toward
+  `GLOBAL_MONTHLY_BUDGET_USD`), with answers capped at
+  `PUBLIC_REFINE_MAX_OUTPUT_TOKENS` and a honeypot field against simple bots. Its
+  spend is recorded without user, IP address or prompt text. Per-IP limits rely
+  on the backend seeing real client addresses behind the proxy.
 - **Content-Security-Policy.** `'unsafe-eval'` has been removed; scripts, frames,
   connections, form targets, and the document base are all locked to the origin,
   and `object-src` is `'none'`. `script-src` still allows `'unsafe-inline'`,

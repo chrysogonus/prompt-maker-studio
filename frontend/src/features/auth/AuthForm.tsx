@@ -4,9 +4,10 @@
 
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { AuthService } from '@/lib/auth';
-import { APP_NAME } from '@/lib/branding';
+import { APP_NAME, pageTitle } from '@/lib/branding';
 import Wordmark from '@/components/ui/Wordmark';
 import LegalLinks from '@/components/LegalLinks';
 import RepositoryLink from '@/components/RepositoryLink';
@@ -15,6 +16,10 @@ import { PASSWORD_HINT, passwordPolicyError } from './passwordPolicy';
 
 interface AuthFormProps {
   onSuccess: () => void;
+  /** Why sign-in is needed right now, such as a template waiting to be saved. */
+  notice?: string;
+  /** A way back for visitors who came from a public page. */
+  backHref?: string;
 }
 
 type View = 'login' | 'register' | 'forgot-password';
@@ -28,7 +33,7 @@ const FIELD_ORDER: FieldName[] = ['username', 'password', 'email'];
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function AuthForm({ onSuccess }: AuthFormProps) {
+export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps) {
   const [view, setView] = useState<View>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -43,6 +48,12 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
   const usernameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+
+  // The page behind sign-in (e.g. Settings) is not shown, so its title must not stay in the tab.
+  useEffect(() => {
+    document.title = pageTitle(view === 'login' ? 'Sign in' : view === 'register' ? 'Create account' : 'Reset password');
+    return () => { document.title = pageTitle(); };
+  }, [view]);
   const inputRefs = { username: usernameRef, password: passwordRef, email: emailRef };
 
   const switchView = (next: View) => {
@@ -130,7 +141,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
         );
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
+      const errorMessage = err instanceof Error ? err.message : 'Authentication failed.';
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -222,6 +233,12 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} className={styles.form} noValidate>
+        {notice && (
+          <div className={styles.sessionNotice} role="status">
+            {notice}
+            {backHref && <> <Link href={backHref}>Go back without signing in</Link></>}
+          </div>
+        )}
         {view === 'login' && sessionNotice && (
           <div className={styles.sessionNotice} role="status">{sessionNotice}</div>
         )}
@@ -268,7 +285,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
                 clearFieldError('password');
               }}
               className={styles.input}
-              placeholder={view === 'login' ? 'Enter your password' : PASSWORD_HINT}
+              placeholder={view === 'login' ? 'Enter your password' : undefined}
               required
               minLength={view === 'login' ? 1 : 10}
               autoComplete={view === 'login' ? 'current-password' : 'new-password'}

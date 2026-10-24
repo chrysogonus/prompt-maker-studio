@@ -221,6 +221,8 @@ export async function getPromptVersions(id: number): Promise<PromptVersionRespon
       AuthService.removeToken();
       throw new Error('Session expired. Please login again.');
     }
+    // A missing prompt has no versions either; say so rather than "failed to fetch".
+    if (response.status === 404) throw new ApiError(PROMPT_NOT_FOUND_MESSAGE, 404);
     throw new Error('Failed to fetch prompt versions');
   }
 

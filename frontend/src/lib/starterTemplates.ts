@@ -45,7 +45,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
   },
   {
     id: 'summarise',
-    label: 'Summarise something',
+    label: 'Summarize something',
     description: 'Long text in, the parts you need out.',
     sections: [
       { name: 'Source', content: '{{source}}', hint: '' },

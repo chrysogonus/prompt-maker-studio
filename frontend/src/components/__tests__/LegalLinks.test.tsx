@@ -17,11 +17,11 @@ describe('LegalLinks', () => {
       'href',
       '/impressum',
     );
-    expect(screen.getByRole('link', { name: 'Datenschutz' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Privacy policy' })).toHaveAttribute(
       'href',
       '/datenschutz',
     );
-    expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+    expect(screen.getByRole('link', { name: 'Terms of service' })).toHaveAttribute('href', '/terms');
   });
 
   it('omits terms when its deployment file is absent', async () => {
@@ -29,7 +29,7 @@ describe('LegalLinks', () => {
     render(<LegalLinks />);
 
     expect(await screen.findByRole('link', { name: 'Impressum' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Terms of Service' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Terms of service' })).not.toBeInTheDocument();
   });
 
   it('renders nothing when the deployment provides no pages', async () => {

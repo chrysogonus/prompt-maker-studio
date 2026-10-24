@@ -200,3 +200,13 @@ describe('account and OAuth request boundaries', () => {
     });
   });
 });
+
+describe('missing prompts', () => {
+  it.each([
+    ['the prompt', () => ApiClient.getPromptById(999999)],
+    ['its versions', () => ApiClient.getPromptVersions(999999)],
+  ])('reports a deleted or unknown prompt plainly when loading %s', async (_name, request) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 404, json: async () => ({ detail: 'Prompt not found' }) } as Response);
+    await expect(request()).rejects.toMatchObject({ message: 'Prompt not found — it may have been deleted.', status: 404 });
+  });
+});

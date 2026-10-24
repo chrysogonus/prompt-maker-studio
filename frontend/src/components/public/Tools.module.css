@@ -1,0 +1,252 @@
+.toolArticle {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--space-8) 0 clamp(64px, 10vh, 112px);
+  overflow-wrap: anywhere;
+}
+
+.toolArticle h1 {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: var(--weight-semibold);
+  text-wrap: balance;
+}
+
+.local {
+  margin-top: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-sm-size);
+}
+
+.widget {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-sm-size);
+  font-weight: var(--weight-medium);
+}
+
+/* Fieldsets lay out like .field; the floated legend joins the grid gap. */
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.fieldset legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+
+.fieldset legend + * {
+  clear: both;
+}
+
+.field small {
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 160px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-control-border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm-size);
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.short {
+  min-height: 72px;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.status {
+  color: var(--text-secondary);
+  font-size: var(--text-sm-size);
+}
+
+.output {
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--pv-bg);
+  color: var(--pv-text);
+  border: 1px solid var(--pv-border);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm-size);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diff {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-panel-raised);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm-size);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diff ins,
+.legend ins {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--color-accent-success) 22%, transparent);
+}
+
+.diff del,
+.legend del {
+  /* Muted text on the red tint is 4.2:1; the strikethrough already marks removal. */
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+}
+
+/* Pale tints over dark plum turn olive and grey; colour the text instead. */
+:global([data-theme='dark']) .diff ins,
+:global([data-theme='dark']) .legend ins {
+  color: var(--color-accent-success);
+}
+
+:global([data-theme='dark']) .diff del,
+:global([data-theme='dark']) .legend del {
+  color: var(--color-danger);
+}
+
+.legend {
+  color: var(--text-secondary);
+  font-size: var(--text-sm-size);
+}
+
+.findings {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.findings li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--color-border-strong);
+  background: var(--color-panel-raised);
+  border-radius: var(--radius-sm);
+}
+
+.findings li[data-severity='problem'] {
+  border-left-color: var(--color-danger);
+}
+
+.findings span {
+  color: var(--text-secondary);
+  font-size: var(--text-sm-size);
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin: 0;
+}
+
+.stats div {
+  display: grid;
+  gap: 2px;
+}
+
+.stats dt {
+  color: var(--text-secondary);
+  font-size: var(--text-sm-size);
+}
+
+.stats dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: var(--weight-semibold);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  /* .toolArticle's anywhere would let columns shrink until headers break mid-word. */
+  overflow-wrap: normal;
+  border-collapse: collapse;
+  font-size: var(--text-sm-size);
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.table td:not(:first-child),
+.table th:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.faq h3 {
+  margin-top: var(--space-6);
+  font-size: 1.0625rem;
+  font-weight: var(--weight-semibold);
+}
+
+.faq p {
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 760px) {
+  .widget { padding: var(--space-4); }
+  .columns { grid-template-columns: minmax(0, 1fr); }
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--text-sm-size);
+}
+
+/* Hidden from people and assistive tech; only form-filling bots see it. */
+.honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

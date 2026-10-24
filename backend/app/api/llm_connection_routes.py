@@ -85,6 +85,7 @@ def delete_llm_connection(
 @limiter.limit("5/minute")
 def test_llm_connection(
     request: Request,
+    body: LLMConnectionUpdate | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -92,6 +93,11 @@ def test_llm_connection(
     Send a one-token probe to the configured provider so a wrong endpoint, key,
     or model name is reported here rather than as a mystery failure inside a
     feature. Rate-limited: it is a real (if tiny) billed call.
+
+    An optional body with the same fields as PUT tests those unsaved values
+    instead, validated like a save but never stored. As with PUT, an omitted
+    `api_key` reuses the stored key, only for the same provider; an empty
+    string means no key.
 
     Goes through the budget check and the spend ledger like every other billed
     path. It used to skip both, which made it the one endpoint that kept
@@ -102,4 +108,6 @@ def test_llm_connection(
         {"ok": ..., "message": ...} — always 200; the failure detail is in the
         body so the form can render it inline.
     """
-    return deps.call_service(connections.test_llm_connection, current_user=current_user, db=db)
+    return deps.call_service(
+        connections.test_llm_connection, current_user=current_user, db=db, body=body
+    )

@@ -1,13 +1,13 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
 import { ApiClient } from '@/lib/api';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
 import { libraryHref } from '@/lib/libraryViews';
-import { convertPlaceholders, findPlaceholders, ImportFile, ImportPrompt, importProblem, isImportableFile, MAX_IMPORT_BYTES, parseImportFiles, parsePromptImport, pasteHandoffKey, splitLongSections, titleFromFileName, validateImportPrompts } from '@/lib/promptImport';
+import { convertPlaceholders, findPlaceholders, ImportFile, ImportPrompt, importProblem, isImportableFile, MAX_IMPORT_BYTES, noteFlag, parseImportFiles, parsePromptImport, pasteHandoffKey, reapplyConversions, splitLongSections, titleFromFileName, validateImportPrompts, withoutTitleLine } from '@/lib/promptImport';
 import { MAX_ZIP_BYTES, readZip } from '@/lib/importArchive';
 import type { PromptField, PromptHistoryResponse } from '@/types/prompt';
 import styles from './LibraryPage.module.css';
@@ -44,7 +44,8 @@ function importedHref(created: PromptHistoryResponse[]): string {
 }
 
 const plural = (count: number, word: string) => `${count.toLocaleString('en')} ${word}${count === 1 ? '' : 's'}`;
-const sameTitle = (a: { name?: string | null }, b: { name?: string | null }) => (a.name ?? '').trim().toLowerCase() === (b.name ?? '').trim().toLowerCase();
+const titleKey = (prompt: { name?: string | null }) => (prompt.name ?? '').trim().toLowerCase();
+const sameTitle = (a: { name?: string | null }, b: { name?: string | null }) => titleKey(a) === titleKey(b);
 const sameText = (a: PromptField[], b: PromptField[]) =>
   JSON.stringify(a.map(field => [field.name, field.content])) === JSON.stringify(b.map(field => [field.name, field.content]));
 
@@ -71,6 +72,8 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
   const folderInput = useRef<HTMLInputElement>(null);
   // A file's name is only a fallback title for that file, not for text pasted afterwards.
   const fileTitle = useRef(false);
+  // Where that single file was, so a template there is flagged like one among several files.
+  const notePath = useRef('');
   const close = () => {
     if (busy) return;
     setOpen(false);
@@ -102,16 +105,29 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
   const [updating, setUpdating] = useState<number[]>([]);
   // The library only refreshes when the dialog closes, so count this session's imports too.
   const [sessionPrompts, setSessionPrompts] = useState<PromptHistoryResponse[]>([]);
-  // The most recent library prompt with the same title, if any.
-  const match = (prompt: ImportPrompt) => [...sessionPrompts].reverse().find(other => sameTitle(other, prompt)) ?? existing.find(other => sameTitle(other, prompt));
-  const isDuplicate = (prompt: ImportPrompt) => !!match(prompt);
-  // Changed since it was imported: placeholders converted on the first import do not count.
-  const isChanged = (prompt: ImportPrompt) => {
-    const current = match(prompt);
-    return !!current && !sameText(prompt.fields, current.fields) && !sameText(convertPlaceholders([prompt])[0].fields, current.fields);
-  };
-  const ticked = (prompt: ImportPrompt, index: number) => isDuplicate(prompt) === toggled.includes(index);
-  const updates = (prompt: ImportPrompt, index: number) => updating.includes(index) && isChanged(prompt) && !importProblem(prompt);
+  // Library prompts by title, newest first; this session's imports replace their stale library copies.
+  const byTitle = useMemo(() => {
+    const map = new Map<string, PromptHistoryResponse[]>();
+    for (const prompt of [...sessionPrompts].reverse().concat(existing)) {
+      const same = map.get(titleKey(prompt)) ?? [];
+      if (!same.some(other => other.id === prompt.id)) map.set(titleKey(prompt), [...same, prompt]);
+    }
+    return map;
+  }, [sessionPrompts, existing]);
+  const matches = (prompt: ImportPrompt) => byTitle.get(titleKey(prompt)) ?? [];
+  const isDuplicate = (prompt: ImportPrompt) => matches(prompt).length > 0;
+  // Changed when no prompt of that title has its text; placeholders converted on the first import do not count.
+  const isChanged = (prompt: ImportPrompt) => isDuplicate(prompt)
+    && !matches(prompt).some(current => sameText(prompt.fields, current.fields) || sameText(reapplyConversions(prompt, current).fields, current.fields));
+  // Only an unambiguous match can be updated: with several prompts of one title, the wrong one could be overwritten.
+  const updateTarget = (prompt: ImportPrompt) => matches(prompt).length === 1 ? matches(prompt)[0] : undefined;
+  const startsUnticked = (prompt: ImportPrompt) => isDuplicate(prompt) || !!prompt.flag;
+  const ticked = (prompt: ImportPrompt, index: number) => startsUnticked(prompt) === toggled.includes(index);
+  // What a prompt chosen for update will send: its earlier inputs again. Limits, Split and the
+  // placeholder offer all use this, since converting can make a section longer.
+  const willSend = (prompt: ImportPrompt, index: number) =>
+    updating.includes(index) && isChanged(prompt) && updateTarget(prompt) ? reapplyConversions(prompt, updateTarget(prompt)!) : prompt;
+  const updates = (prompt: ImportPrompt, index: number) => updating.includes(index) && isChanged(prompt) && !!updateTarget(prompt) && !importProblem(willSend(prompt, index));
   // A ticked prompt is imported once nothing stops it.
   const included = (prompt: ImportPrompt, index: number) => ticked(prompt, index) && !updating.includes(index) && !importProblem(prompt);
   const startOver = () => {
@@ -122,7 +138,9 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
   const updateSource = (text: string) => { setSource(text); setPreview(null); setError(''); setResult(''); };
   const showPreview = (keep: boolean) => {
     try {
-      const parse = (original: boolean) => files.length ? parseImportFiles(files, original) : { prompts: parsePromptImport(source, noteTitle, original), skipped: [] };
+      const flag = files.length || /^[{[]/.test(source.trim()) ? undefined : noteFlag({ name: '', path: fileTitle.current ? notePath.current : '', text: source });
+      const parse = (original: boolean) => files.length ? parseImportFiles(files, original)
+        : { prompts: parsePromptImport(source, noteTitle, original).map(prompt => flag ? { ...prompt, flag } : prompt), skipped: [] };
       const parsed = parse(keep);
       if (!parsed.prompts.length) throw new Error(`None of these files hold a prompt. ${parsed.skipped.join(' ')}`);
       setPreview(parsed.prompts);
@@ -136,7 +154,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
     const picked = fromFolder ? withoutRoot(chosen) : chosen;
     const isZip = (path: string) => /\.zip$/i.test(path);
     const notes = picked.filter(({ path }) => isImportableFile(path) || isZip(path));
-    const ignored = picked.length - notes.length;
+    const ignored = picked.filter(item => !notes.includes(item)).map(({ path }) => path);
     updateSource('');
     setFiles([]);
     if (!notes.length) { setError(picked.length ? 'Choose .md, .txt, .csv or .json files, or a Notion .zip export.' : ''); return; }
@@ -151,6 +169,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
         updateSource(await notes[0].file.text());
         setNoteTitle(titleFromFileName(notes[0].file.name));
         fileTitle.current = true;
+        notePath.current = notes[0].path;
       } else {
         const read = await Promise.all(notes.map(async ({ file, path }) => isZip(path)
           ? readZip(new Uint8Array(await file.arrayBuffer()))
@@ -159,7 +178,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
         if (!found.length) { setError('This export holds no .md, .txt, .csv or .json notes.'); return; }
         setFiles(found);
         setNoteTitle('');
-        if (ignored) setResult(`${ignored} other file${ignored === 1 ? ' was' : 's were'} ignored.`);
+        if (ignored.length) setResult(`Ignored ${plural(ignored.length, 'other file')}: ${ignored.slice(0, 5).join(', ')}${ignored.length > 5 ? ` and ${ignored.length - 5} more` : ''}.`);
       }
     } catch (error) { setError(error instanceof Error && /zip/i.test(error.message) ? error.message : 'Could not read these files.'); }
     finally { setBusy(false); }
@@ -167,11 +186,12 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
   const fromNote = files.length ? files.some(file => !/\.(json|csv)$/i.test(file.name)) : !!source.trim() && !/^[{[]/.test(source.trim());
   // A fresh single note may go to AI conversion instead; retries and JSON exports may not.
   const singleNote = preview?.length === 1 && fromNote && files.length <= 1;
-  const placeholders = preview ? findPlaceholders(preview.filter(ticked)) : [];
-  const usedIn = (token: string) => preview!.filter((prompt, index) => ticked(prompt, index) && findPlaceholders([prompt]).includes(token)).length;
+  const offered = preview ? preview.flatMap((prompt, index) => ticked(prompt, index) || updates(prompt, index) ? [willSend(prompt, index)] : []) : [];
+  const placeholders = findPlaceholders(offered);
+  const usedIn = (token: string) => offered.filter(prompt => findPlaceholders([prompt]).includes(token)).length;
   const count = preview ? preview.filter(included).length : 0;
   const updateCount = preview ? preview.filter(updates).length : 0;
-  const problems = preview ? preview.filter((prompt, index) => ticked(prompt, index) && importProblem(prompt)).length : 0;
+  const problems = preview ? preview.filter((prompt, index) => (ticked(prompt, index) || updating.includes(index)) && importProblem(willSend(prompt, index))).length : 0;
   const chosen = placeholders.filter(token => !unchosen.includes(token));
   const mixedFolders = !!preview?.some(prompt => (prompt.folder ?? '') !== (preview[0].folder ?? ''));
   const sharedFolder = preview && !mixedFolders ? preview[0].folder ?? '' : '';
@@ -199,11 +219,13 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
     }
     let updated = 0;
     for (const prompt of toUpdate) {
-      const current = match(prompt)!;
+      const current = updateTarget(prompt)!;
+      const next = reapplyConversions(prompt, current);
       try {
         // The library prompt's current text stays in its History; a concurrent edit fails with 409 and stays for retry.
         created.push(await ApiClient.updatePrompt(current.id, {
-          fields: prompt.fields, ...(prompt.variable_metadata && { variable_metadata: { ...current.variable_metadata, ...prompt.variable_metadata } }),
+          // Settings made in the library win for inputs it already has, so converting here never replaces them.
+          fields: next.fields, ...(next.variable_metadata && { variable_metadata: { ...next.variable_metadata, ...current.variable_metadata } }),
           note: 'Updated from import', ...(current.updated_at && { last_updated_at: current.updated_at }),
         }));
         updated++;
@@ -223,14 +245,22 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
     setFiles([]);
     setSkipped([]);
     setDone(failed.length ? null : created);
-    setResult(`Imported ${created.length - updated} of ${validated.length} prompts.${updated ? ` Updated ${updated} (earlier text kept in History).` : ''}${duplicates ? ` Skipped ${duplicates} already in your library.` : ''}${leftOut ? ` Left out ${leftOut} not selected or needing changes.` : ''}${failed.length ? ` ${failed.length} failed; only these remain below for retry.` : ''}`);
+    // Only the counts that happened; "of" only when some imports failed.
+    const added = created.length - updated;
+    const summary = [
+      added < validated.length ? `imported ${added} of ${plural(validated.length, 'prompt')}` : added && `imported ${plural(added, 'prompt')}`,
+      updated && `updated ${updated} (earlier text kept in History)`,
+      duplicates && `skipped ${duplicates} already in your library`,
+      leftOut && `left out ${leftOut} not selected or needing changes`,
+    ].filter(Boolean).join(', ');
+    setResult([summary && `${summary.charAt(0).toUpperCase()}${summary.slice(1)}.`, failed.length && `${failed.length} failed; only these remain below for retry.`].filter(Boolean).join(' '));
     setBusy(false);
   };
   const reuseWithAI = () => {
     // The note's body, without frontmatter or its title line, keeping ## headings for the AI.
     const text = preview![0].fields.map(field => field.name === 'Prompt' ? field.content : `## ${field.name}\n${field.content}`).join('\n\n');
     const { name: title, folder } = preview![0];
-    try { sessionStorage.setItem(pasteHandoffKey(), JSON.stringify({ text, title, folder })); } catch { /* The editor still opens Paste a prompt empty. */ }
+    try { sessionStorage.setItem(pasteHandoffKey(), JSON.stringify({ text, title, folder, convert: true })); } catch { /* The editor still opens Paste a prompt empty. */ }
     close();
     router.push('/editor/new?import=1');
   };
@@ -288,9 +318,9 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
           </div>}
           <details className={styles.dialogText}>
             <summary>Format details</summary>
-            <p>A note without a heading is kept in one Prompt section. Note metadata is tidied first: YAML front matter, Notion page properties and callouts, Obsidian callouts, comments, Dataview queries, embedded files and trailing #tags are removed, [[links]] and ==highlights== read as text, the front matter title or first heading becomes the title, the first tag suggests a folder, and a Notion favourite stays a favourite. You can keep the original text in the preview.</p>
+            <p>A note without a heading is kept in one Prompt section. Note metadata is tidied first: YAML front matter, Notion page properties and callouts, Obsidian callouts, comments, Dataview queries, embedded files and trailing #tags are removed, [[links]], links to other Notion pages and ==highlights== read as text, the front matter title or first heading becomes the title, the first tag suggests a folder, and a Notion favourite stays a favourite. Note templates and pages of only links start unticked. You can keep the original text in the preview.</p>
             <p>For several prompts in one note, start each with a heading and optionally add smaller headings for sections; a pasted page that starts at ## works the same way. Headings inside code fences remain text. Up to 1,000 prompts at a time.</p>
-            <p>JSON files use the Prompt Maker Studio export format: titles, sections, folders, variable settings and favorites are copied. Version history, dates and notes are not imported; this is not a full archive restore.</p>
+            <p>JSON files use the Prompt Maker Studio export format: titles, sections, folders, variable settings and favourites are copied. Version history, dates and notes are not imported; this is not a full archive restore.</p>
           </details>
           <Button variant="primary" disabled={busy || (!source.trim() && !files.length)} onClick={() => showPreview(keepOriginal)}>Preview</Button>
         </>}
@@ -316,7 +346,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
             </div>
             <div className={styles.selectionBar}>
               <Button variant="ghost" disabled={busy} onClick={() => setToggled([])}>Select all new</Button>
-              <Button variant="ghost" disabled={busy} onClick={() => setToggled(preview.flatMap((prompt, index) => isDuplicate(prompt) ? [] : [index]))}>Select none</Button>
+              <Button variant="ghost" disabled={busy} onClick={() => setToggled(preview.flatMap((prompt, index) => startsUnticked(prompt) ? [] : [index]))}>Select none</Button>
             </div>
           </>}
           {placeholders.length > 0 && !beforeConvert && <fieldset className={styles.placeholderOffer}>
@@ -337,12 +367,13 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
           </p>}
           <div className={styles.importPreview}>
             {preview.map((prompt, index) => {
-              const problem = importProblem(prompt);
+              const problem = importProblem(willSend(prompt, index));
               const first = preview.findIndex(other => sameTitle(other, prompt));
+              const untitled = withoutTitleLine(prompt);
               return <div className={styles.importItem} key={index}>
                 {isChanged(prompt) ? <fieldset className={styles.duplicateChoice}>
-                  <legend>Already in your library, with different text:</legend>
-                  {([['skip', 'Leave it as it is'], ['update', 'Update it (the current text stays in History)'], ['copy', 'Import a copy']] as const).map(([choice, label]) =>
+                  <legend>{updateTarget(prompt) ? 'Already in your library, with different text:' : `${matches(prompt).length} prompts in your library have this title, each with different text:`}</legend>
+                  {([['skip', 'Leave it as it is'], ['update', 'Update it (the current text stays in History)'], ['copy', 'Import a copy']] as const).filter(([choice]) => choice !== 'update' || updateTarget(prompt)).map(([choice, label]) =>
                     <label key={choice} className={styles.checkRow}>
                       <input type="radio" name={`import-duplicate-${index}`} disabled={busy}
                         checked={choice === 'update' ? updating.includes(index) : choice === 'copy' ? ticked(prompt, index) && !updating.includes(index) : !ticked(prompt, index) && !updating.includes(index)}
@@ -354,7 +385,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
                     </label>)}
                 </fieldset> : <label className={styles.checkRow}>
                   <input type="checkbox" checked={ticked(prompt, index)} disabled={busy} onChange={() => toggle(index)} />
-                  {isDuplicate(prompt) ? 'Already in your library. Import a copy anyway' : `Import prompt ${index + 1}`}
+                  {isDuplicate(prompt) ? 'Already in your library. Import a copy anyway' : prompt.name.trim() ? `Import “${prompt.name.trim()}”` : `Import prompt ${index + 1}`}
                 </label>}
                 <div className={styles.field}>
                   <label htmlFor={`import-title-${index}`}>Title for prompt {index + 1}</label>
@@ -365,10 +396,14 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
                   <label htmlFor={`import-folder-${index}`}>Folder for {prompt.name}</label>
                   <input id={`import-folder-${index}`} value={prompt.folder ?? ''} list="import-folders" maxLength={255} disabled={busy} onChange={event => edit(index, item => ({ ...item, folder: event.target.value }))} />
                 </div>
+                {untitled && <p className={styles.dialogText}>The text starts with its title.{' '}
+                  <Button variant="ghost" disabled={busy} onClick={() => edit(index, () => untitled)}>Take it out of the text</Button>
+                </p>}
                 {first < index && <p className={styles.dialogText}>Same title as prompt {first + 1} in this import.</p>}
+                {prompt.flag && <p className={styles.dialogText}>{prompt.flag}</p>}
                 {problem && <div id={`import-problem-${index}`} className={styles.importError}>
                   <p>{problem}{/^Section/.test(problem) && ' Split it at paragraph breaks into numbered sections; no text is removed.'}</p>
-                  {/^Section/.test(problem) && <Button variant="secondary" className={styles.fieldAction} disabled={busy} onClick={() => edit(index, splitLongSections)}>Split section</Button>}
+                  {/^Section/.test(problem) && <Button variant="secondary" className={styles.fieldAction} disabled={busy} onClick={() => edit(index, item => splitLongSections(willSend(item, index)))}>Split section</Button>}
                 </div>}
                 <details open={preview.length <= 5}><summary>{prompt.fields.length} section{prompt.fields.length === 1 ? '' : 's'}</summary>{prompt.fields.map(field => <div key={field.name}><strong>{field.name}</strong><pre className={styles.importText}>{field.content}</pre></div>)}</details>
               </div>;

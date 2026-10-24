@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useMemo } from 'react';
 import Link from 'next/link';
 
 import Button from '@/components/ui/Button';
@@ -14,6 +14,8 @@ import {
   SearchIcon,
 } from '@/components/ui/icon';
 
+import { hasUnsavedDraft } from '@/features/editor/editorState';
+import { useAuth } from '@/lib/auth-context';
 import { RECOVERED_HISTORY_FOLDER } from '@/lib/libraryViews';
 import { relativeTime } from '@/lib/relativeTime';
 import { splitVariables, variablesIn } from '@/lib/sections';
@@ -72,6 +74,10 @@ function LibraryContent() {
     removeFolder,
     folders,
   } = useLibrary();
+  const { currentUser } = useAuth();
+  // Prompts with unsaved edits in this browser, read once per load rather than on every keystroke.
+  const drafts = useMemo(() => new Set(currentUser ? (prompts ?? []).filter((prompt) => hasUnsavedDraft(currentUser, prompt)).map((prompt) => prompt.id) : []), [currentUser, prompts]);
+  const draftBadge = (prompt: Prompt) => drafts.has(prompt.id) && <span className={styles.draft}>Unsaved draft</span>;
 
   const preview = (prompt: Prompt) => {
     const match = searchMatch(prompt, search);
@@ -162,7 +168,7 @@ function LibraryContent() {
       type="button"
       className={styles.star}
       aria-pressed={prompt.is_favorite}
-      aria-label={prompt.is_favorite ? `Remove ${prompt.name} from favorites` : `Add ${prompt.name} to favorites`}
+      aria-label={prompt.is_favorite ? `Remove ${prompt.name} from favourites` : `Add ${prompt.name} to favourites`}
       onClick={(e) => {
         e.stopPropagation();
         void toggleFavorite(prompt);
@@ -204,7 +210,7 @@ function LibraryContent() {
   } else if (visible.length === 0 && view.type === 'favorites') {
     body = (
       <div className={styles.empty}>
-        <h2>No favorites yet</h2>
+        <h2>No favourites yet</h2>
         <p>Star the prompts you use most and they’ll be collected here.</p>
       </div>
     );
@@ -232,6 +238,7 @@ function LibraryContent() {
             <div className={styles.cardMeta}>
               {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
               <span>{variableLabel(variablesIn(prompt.fields).length)}</span>
+              {draftBadge(prompt)}
               {testLabel(prompt) && <span>{testLabel(prompt)}</span>}
               <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
             </div>
@@ -268,6 +275,7 @@ function LibraryContent() {
                 <div className={styles.meta}>
                   {view.type !== 'folder' && <span className={styles.folder}>{prompt.folder ?? 'Unfiled'}</span>}
                   <span>{variableLabel(variables)}</span>
+                  {draftBadge(prompt)}
                   {testLabel(prompt) && <span>{testLabel(prompt)}</span>}
                   <span className={styles.when}>{relativeTime(editedAt(prompt))}</span>
                 </div>
@@ -323,6 +331,12 @@ function LibraryContent() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link href="/gallery" className={styles.starter}>
+                <strong>Browse the template gallery</strong>
+                <span>24 more templates for coding agents, images, writing and everyday work.</span>
+              </Link>
+            </li>
           </ul>
         </section>
         {toast && <ToastView toast={toast} onDone={() => setToast(null)} />}

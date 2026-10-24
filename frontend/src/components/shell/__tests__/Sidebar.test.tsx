@@ -97,7 +97,7 @@ describe('Sidebar', () => {
     expect(await screen.findByRole('link', { name: /Work/ })).toHaveTextContent('Work2');
     expect(navLabels()).toEqual([
       'All prompts5',
-      'Favorites1',
+      'Favourites1',
       'Learning1',
       'Work2',
       'Recovered history1',
@@ -108,6 +108,8 @@ describe('Sidebar', () => {
       '/library?folder=Learning',
     );
     expect(screen.getByRole('link', { name: 'New prompt' })).toHaveAttribute('href', '/editor/new');
+    expect(screen.getByRole('link', { name: 'Free tools' })).toHaveAttribute('href', '/tools');
+    expect(screen.getByRole('link', { name: 'Template gallery' })).toHaveAttribute('href', '/gallery');
     expect(screen.getByRole('link', { name: 'Open source on GitHub' })).toHaveAttribute(
       'href',
       'https://github.com/chrysogonus/prompt-maker-studio',
@@ -147,7 +149,7 @@ describe('Sidebar', () => {
     render(<Sidebar open onNavigate={onNavigate} />);
     await screen.findByRole('link', { name: /Work/ });
 
-    await user.click(screen.getByRole('link', { name: /Favorites/ }));
+    await user.click(screen.getByRole('link', { name: /Favourites/ }));
     expect(onNavigate).toHaveBeenCalled();
 
     expect(screen.getByText('Signed in as alex')).toBeInTheDocument();

@@ -11,6 +11,7 @@ from app.api.eval_routes import router as eval_router
 from app.api.mcp_routes import MCP_PATH, PROTECTED_RESOURCE_METADATA_PATH, mcp_endpoint
 from app.api.oauth_routes import oauth_protocol_app, well_known_router
 from app.api.oauth_routes import router as oauth_router
+from app.api.public_routes import router as public_router
 from app.api.refine_routes import router as refine_router
 from app.api.routes import router
 from app.auth.utils import SECRET_KEY, is_insecure_secret_key
@@ -63,7 +64,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title=f"{APP_NAME} API",
         description="API for generating structured prompts",
-        version="0.9.0",
+        version="0.10.0",
         lifespan=lifespan,
     )
     configure_http(application)
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
         admin_router,
         eval_router,
         refine_router,
+        public_router,
         oauth_router,
         well_known_router,
     ):

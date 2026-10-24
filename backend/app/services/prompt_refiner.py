@@ -26,7 +26,8 @@ _QUESTIONS_SYSTEM_PROMPT = (
     "specified for its task, return an empty questions list. Examples are helpful but are not "
     "required when the other constraints make the expected output clear. "
     "{{placeholders}} are filled in each time the template is used; never ask what value "
-    "one should take or what should replace it."
+    "one should take or what should replace it. Refer to an input by its name without braces "
+    '("the article", not {{article}}).'
 )
 
 # A question about a placeholder's value would bake one use into a reusable template.
@@ -35,6 +36,15 @@ _ASKS_ABOUT_PLACEHOLDER = re.compile(r"\{\{[^{}]+\}\}")
 _NO_CLARIFICATIONS_INSTRUCTION = (
     " No clarifications were given: improve clarity, specificity and structure only where "
     "the existing text already implies it, and do not invent new requirements, facts or examples."
+)
+
+# The free refiner's "Improve now": a pasted one-liner should come back usable.
+_EXPAND_INSTRUCTION = (
+    " No clarifications were given: make the prompt specific enough to give a reliable answer. "
+    "Where the text leaves them open, state who the answer is for, the output format, the "
+    "length, and what to do when information is missing (say so rather than guess). Choose "
+    "sensible, general defaults, write them as short labelled lines inside the same section, "
+    "and add no new XML tags or {{variables}}."
 )
 
 _EVIDENCE_INSTRUCTION = (
@@ -125,6 +135,10 @@ _SECTION_DRAFT_RESPONSE_SCHEMA = {
 }
 
 
+MAX_QUESTIONS = 10
+MAX_QUESTION_CHARS = 500
+
+
 class PromptRefinerService:
     """Generates clarifying questions and draft revisions via the user's LLM provider."""
 
@@ -155,7 +169,13 @@ class PromptRefinerService:
             msg = "Provider response did not contain a questions list"
             raise ValueError(msg)
         asked = [str(question) for question in questions]
-        return [q for q in asked if not _ASKS_ABOUT_PLACEHOLDER.search(q)], usage
+        # Only questions a draft request can carry back (schemas/refinement.py RefineQAPair).
+        usable = [
+            q
+            for q in asked
+            if q.strip() and len(q) <= MAX_QUESTION_CHARS and not _ASKS_ABOUT_PLACEHOLDER.search(q)
+        ]
+        return usable[:MAX_QUESTIONS], usage
 
     @staticmethod
     def generate_draft(
@@ -191,9 +211,13 @@ class PromptRefinerService:
         qa_pairs: list[tuple[str, str]],
         connection: LLMConnection,
         evidence: list[dict] | None = None,
+        *,
+        expand: bool = False,
     ) -> tuple[dict, LLMUsage]:
         """Request section objects so embedded XML examples never need to be parsed.
-        `evidence` is test results to improve on (see refinement_evidence)."""
+        `evidence` is test results to improve on (see refinement_evidence). Without
+        answers, `expand` adds stated defaults instead of keeping to what the text implies."""
+        no_answers = _EXPAND_INSTRUCTION if expand else _NO_CLARIFICATIONS_INSTRUCTION
         content = {
             "fields": [field.model_dump() for field in fields],
             "clarifications": [
@@ -209,7 +233,7 @@ class PromptRefinerService:
                 + " The template is supplied as ordered section objects. Return revised section "
                 "objects with exactly the same names and order. Revise only their content; "
                 "preserve every variable and embedded tag in its original section."
-                + ("" if qa_pairs else _NO_CLARIFICATIONS_INSTRUCTION)
+                + ("" if qa_pairs else no_answers)
                 + (_EVIDENCE_INSTRUCTION if evidence else "")
             ),
             user_content=json.dumps(content),

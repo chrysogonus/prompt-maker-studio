@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { GALLERY } from '@/lib/gallery';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import LandingPage, { generateMetadata } from '../page';
 import robots from '../robots';
@@ -27,7 +28,7 @@ describe('Landing page', () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('reuse your best AI prompts');
     expect(screen.getByText(/import Markdown notes, such as Notion or Obsidian exports/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/library');
+    expect(screen.getAllByRole('link', { name: 'Open the app' }).length).toBeGreaterThan(2);
     for (const link of screen.getAllByRole('link', { name: 'Open the app' })) {
       expect(link).toHaveAttribute('href', '/library');
     }
@@ -75,6 +76,18 @@ describe('robots.txt and sitemap.xml', () => {
       { url: 'https://prompts.example/guides/reusable-ai-prompts' },
       { url: 'https://prompts.example/guides/prompt-template-variables' },
       { url: 'https://prompts.example/guides/organize-chatgpt-prompts' },
+      { url: 'https://prompts.example/guides/what-makes-a-good-prompt' },
+      { url: 'https://prompts.example/guides/prompts-for-coding-agents' },
+      { url: 'https://prompts.example/guides/image-generation-prompts' },
+      { url: 'https://prompts.example/guides/research-and-writing-prompts' },
+      { url: 'https://prompts.example/tools' },
+      { url: 'https://prompts.example/tools/prompt-template-filler' },
+      { url: 'https://prompts.example/tools/prompt-linter' },
+      { url: 'https://prompts.example/tools/prompt-refiner' },
+      { url: 'https://prompts.example/tools/prompt-diff' },
+      { url: 'https://prompts.example/tools/token-counter' },
+      { url: 'https://prompts.example/gallery' },
+      ...GALLERY.map(({ slug }) => ({ url: `https://prompts.example/gallery/${slug}` })),
     ]);
   });
 });

@@ -7,7 +7,7 @@ start the app.
 
 All user-data endpoints require authentication. Public health (`GET /`),
 OpenAPI (`GET /docs`, `/redoc`, `/openapi.json`), discovery and authentication
-entry points are exceptions; `/metrics` is an unauthenticated internal endpoint
+entry points, and the free-tool endpoints under `/api/public`, are exceptions; `/metrics` is an unauthenticated internal endpoint
 blocked by the production Caddy configuration. Browsers use the httpOnly session
 cookie set by `/api/auth/login` (plus an `X-CSRF-Token` header on writes);
 scripts and CI can still send `Authorization: Bearer <token>`. See
@@ -19,7 +19,7 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 |---|---|---|---|
 | `POST` | `/api/auth/register` | No | Register new user account |
 | `POST` | `/api/auth/login` | No | Set the session/CSRF cookies; return token type and expiry metadata |
-| `POST` | `/api/auth/refresh` | Yes | Renew a valid session and rotate cookies, within its 12-hour maximum age |
+| `POST` | `/api/auth/refresh` | Yes | Renew a valid session within its 12-hour maximum age: a new session cookie, the same CSRF token |
 | `POST` | `/api/auth/logout` | No | End the current session by clearing its cookies. Deliberately unauthenticated so signing out works with an already-expired token |
 | `POST` | `/api/auth/logout-all` | Yes | Invalidate every session for this account, including the caller's |
 | `GET` | `/api/auth/me` | Yes | Retrieve current user profile and settings |
@@ -29,7 +29,7 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 | `GET` | `/api/auth/me/llm-connection/models` | Yes | List curated OpenAI/Anthropic/Gemini models, or discover local/custom models, with estimated input/output pricing |
 | `PUT` | `/api/auth/me/llm-connection` | Yes | Create or replace the connection; hosted models must be in the curated catalogue |
 | `DELETE` | `/api/auth/me/llm-connection` | Yes | Disconnect the provider and erase the stored key |
-| `POST` | `/api/auth/me/llm-connection/test` | Yes | Send a tiny probe to verify the configured endpoint, key, and model |
+| `POST` | `/api/auth/me/llm-connection/test` | Yes | Send a tiny probe to verify the configured endpoint, key, and model; an optional body with the `PUT` fields tests those unsaved values without storing them (omitting `api_key` reuses the stored key, only for the same provider; an empty string tests without a key) |
 | `GET` | `/api/auth/me/connected-apps` | Yes | List the MCP clients (such as ChatGPT) that still hold a valid connection to the caller's account: `[{client_id, name}]` |
 | `DELETE` | `/api/auth/me/connected-apps/{client_id}` | Yes | Disconnect one client (10/min): its access and refresh tokens stop working at once; 404 if it is not connected to the caller |
 | `POST` | `/api/auth/change-password` | Yes | Change password after verifying current password; revokes all other sessions |
@@ -100,7 +100,9 @@ last known update because earlier organization-only activity cannot be separated
 contain `fields` and `variables` with `name`, `value`, `description` and
 `source_text`; an existing unfilled placeholder has an empty value and null
 source text. Conversion never saves a prompt. Variable metadata defaults to
-`required: false`; an optional `example` is separate from section content.
+`required: false`; an optional `example` is separate from section content, and optional
+`options` (up to 50 strings of up to 200 characters, trimmed, without blanks or repeats) are
+offered as a list in Fill mode. `options` is omitted when unset.
 Prompt responses expose `current_note`; history exposes corrected `note` and
 preserved `legacy_note`.
 
@@ -120,6 +122,17 @@ saved through case creation rather than persisted by generation.
 | `POST` | `/api/prompts/{id}/eval/cases/generate` | Yes | Propose reviewable AI test cases |
 | `GET`, `POST` | `/api/prompts/{id}/eval/runs` | Yes | List runs (`limit` 1–100, default 50; `offset` ≥ 0) or run the suite. An optional POST body `{"fields": [...]}` tests those unsaved sections instead of the saved prompt and never saves them. Each run reports `tested_version` (the saved version with the tested text; `null` for an unsaved draft whose text was never saved) and `matches_current` (whether that text is the prompt's current text); `tested_prompt` is the text itself (`null` before migration 031) |
 | `POST` | `/api/prompts/{id}/eval/runs/{run_id}/results/{result_id}/rate` | Yes | 1–5 star rating: scores a pending Manual result, or records `human_score` beside a scored AI-review result without changing its score. Either rating is final (404 once rated) |
+
+## Public Endpoints
+
+Used by the free tools for signed-out visitors; no session needed.
+
+| Method | Endpoint | Auth Required | Description |
+|---|---|---|---|
+| `GET` | `/api/public/model-prices` | No | Curated hosted models (`provider`, `provider_label`, `id`, `label`) with estimated input/output prices per million tokens (60/min) |
+| `GET` | `/api/public/refine` | No | Whether the free refiner is offered (`available`: `PUBLIC_REFINE_ENABLED` and a server default) and its `max_chars` (60/min) |
+| `POST` | `/api/public/refine/questions` | No | Clarifying questions for a pasted prompt `{text, website, force}`; `website` is a honeypot that must be empty. Uses the server default; 404 when off, 503 without a server default, 402 when the shared or public monthly budget is used up, 429 at the daily or per-IP limit (`PUBLIC_REFINE_RATE_LIMIT`, default 6/minute and 30/day, shared with `/draft`) |
+| `POST` | `/api/public/refine/draft` | No | A refined prompt `{text}` from `{text, website, qa_pairs}` (at most 5 pairs; blank answers are ignored), with the same limits. The refined text must keep the prompt's `{{variables}}` and tags |
 
 ## MCP, OAuth & Admin Endpoints
 

@@ -183,6 +183,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+.draft {
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  color: var(--text-secondary);
+}
+
 .actions {
   display: flex;
   align-items: center;
@@ -332,11 +339,6 @@
   border-radius: var(--radius-md);
   background: var(--color-panel);
   box-shadow: var(--shadow-float);
-}
-
-.head .menu {
-  left: 0;
-  right: auto;
 }
 
 .menu button {
@@ -610,7 +612,9 @@
 .rowControls { display: grid; justify-items: center; }
 .selectionBar, .batchForm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
 .selectVisible { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; font-size: var(--text-sm-size); cursor: pointer; }
-.batchForm { padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+/* Stays in view while selecting cards further down the list. */
+.batchForm { position: sticky; top: 0; z-index: 2; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-panel); }
+@media (max-width: 760px) { .batchForm { top: 56px; } }
 .batchForm small { color: var(--text-muted); }
 .importPreview { display: grid; gap: var(--space-4); max-height: 45vh; overflow-y: auto; }
 .importItem { display: grid; gap: var(--space-2); padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); }

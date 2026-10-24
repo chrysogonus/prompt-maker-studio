@@ -7,6 +7,7 @@ import AICallContext from '@/components/ui/AICallContext';
 import { fillVariables, renderPlainSections, renderSections, sectionTag, splitVariables } from '@/lib/sections';
 import { PromptField, VariableMetadataItem, PromptsConfigResponse, TryPromptResponse } from '@/types/prompt';
 import styles from './PromptEditor.module.css';
+import { choiceList } from './editorState';
 
 // Not a limit of any particular chat app — just a quiet heads-up.
 const LONG_PROMPT_CHARS = 40_000;
@@ -155,21 +156,37 @@ export default function PreviewPane({
           {variables.some((name) => metadata[name]?.example) && (
             <button type="button" className={styles.copyButton} data-secondary="true" onClick={onLoadExamples}>Load example inputs</button>
           )}
-          {variables.map((name) => (
-            <label key={name} className={styles.valueField}>
-              <span>{name}{metadata[name]?.required ? ' Required' : ' Optional'}</span>
-              <textarea
-                value={values[name] ?? ''}
-                aria-label={`${name}${metadata[name]?.required ? ' Required' : ''}`}
-                aria-required={metadata[name]?.required || undefined}
-                aria-invalid={missingRequired.includes(name)}
-                aria-describedby={missingRequired.includes(name) ? 'required-input-warning' : undefined}
-                onChange={(e) => onValueChange(name, e.target.value)}
-                placeholder={metadata[name]?.description || 'Type the value'}
-                rows={1}
-              />
-            </label>
-          ))}
+          {variables.map((name) => {
+            const choices = choiceList(metadata[name]?.options);
+            const value = values[name] ?? '';
+            const field = {
+              'aria-label': `${name}${metadata[name]?.required ? ' Required' : ''}`,
+              'aria-required': metadata[name]?.required || undefined,
+              'aria-invalid': missingRequired.includes(name),
+              'aria-describedby': missingRequired.includes(name) ? 'required-input-warning' : undefined,
+            };
+            return (
+              <label key={name} className={styles.valueField}>
+                <span>{name}{metadata[name]?.required ? ' Required' : ' Optional'}</span>
+                {choices.length ? (
+                  <select {...field} value={value} onChange={(e) => onValueChange(name, e.target.value)}>
+                    <option value="">{metadata[name]?.description || 'Choose…'}</option>
+                    {/* A remembered or example value outside the list stays selectable rather than vanishing. */}
+                    {value && !choices.includes(value) && <option value={value}>{value}</option>}
+                    {choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+                  </select>
+                ) : (
+                  <textarea
+                    {...field}
+                    value={value}
+                    onChange={(e) => onValueChange(name, e.target.value)}
+                    placeholder={metadata[name]?.description || 'Type the value'}
+                    rows={1}
+                  />
+                )}
+              </label>
+            );
+          })}
         </div>
       )}
 
@@ -262,6 +279,8 @@ export default function PreviewPane({
             <div className={styles.tryControls}>
               <>{aiConfigLoading ? <p role="status">Checking AI connection…</p> : aiConfigError ? <p role="status">Could not check the AI connection. Reload to retry.</p> : <AICallContext config={aiConfig} />}</>
               {filledText.length > TRY_PROMPT_CHARS && <p className={styles.previewWarning}>Try once accepts up to 100,000 characters. Shorten the prompt before running.</p>}
+              {/* A run with only placeholders usually just asks for the inputs, wasting a call. */}
+              {variables.length > 0 && unfilled.length === variables.length && <p className={styles.previewWarning}>No inputs are filled in, so the model will see only placeholders.</p>}
               <button type="button" className={styles.copyButton} data-secondary="true" onClick={tryOnce}
                 disabled={filledText.length > TRY_PROMPT_CHARS || trying || !hasContent || missingRequired.length > 0 || !aiConfig?.provider_connected || aiConfig.budget_exhausted}>
                 {trying ? 'Running…' : 'Try once'}
@@ -271,7 +290,7 @@ export default function PreviewPane({
             {tryError && <p className={styles.tryResult} role="alert">{tryError}{tryError.includes('Settings →') && <> <Link href="/settings#s-api">Open Settings</Link></>}</p>}
             {result && <section ref={resultRef} className={styles.tryResult} aria-label="Try once output">
               <h3>Output</h3>
-              <p>{result.response.provider} / {result.response.model}</p>
+              <p>{aiConfig?.provider === result.response.provider ? aiConfig.provider_label : result.response.provider} / {result.response.model}</p>
               {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier inputs. Run again to try the current prompt.</p>}
               <pre tabIndex={0}>{result.response.output_text || 'The model returned no text.'}</pre>
               {result.response.output_text && (

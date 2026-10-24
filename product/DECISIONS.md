@@ -461,7 +461,7 @@ server: `isAuthenticated()` is now a hint derived from the stored expiry, and
 
 **Rationale**: Review-before-save keeps the user in control while reusing the existing ownership, validation, ordering, and case-limit behavior of normal case creation. It also avoids creating a second bulk-write path with different persistence semantics.
 
-**Consequences**: Unsaved proposals disappear on navigation or reload. Generation is a billed, budget-checked OpenAI call and is rate-limited to 10/minute. The backend caps proposals to the remaining capacity under the 20-case limit, but accepted cases can still require user refinement before they are useful quality gates.
+**Consequences**: Unsaved proposals are kept in this browser, per account and prompt, until saved or discarded (since 2026-10-21; earlier they disappeared on navigation or reload), and are wiped on sign-out with other drafts. Generation is a billed, budget-checked OpenAI call and is rate-limited to 10/minute. The backend caps proposals to the remaining capacity under the 20-case limit, but accepted cases can still require user refinement before they are useful quality gates.
 
 **Source**: `backend/app/api/eval_routes.py`, `backend/app/services/eval_generator_service.py`, `backend/app/schemas/`, `frontend/src/features/evaluation/EvaluationPage.tsx`
 
@@ -900,7 +900,7 @@ quietly outliving its reason.
 
 **Decision**: Serve a server-rendered landing page at `/` for visitors without a session cookie, and redirect those with one to `/library`. Add `robots.txt` and `sitemap.xml`, and build the canonical link and social previews from `FRONTEND_URL` at request time. Screenshots are plain `<img>` copies under `frontend/public/landing/`.
 
-**Rationale**: Checking the httpOnly session cookie on the server keeps returning users one hop from their library without client code on the landing page. The published image is domain-agnostic, so anything naming the public origin must be rendered per request. The image ships without sharp, so `next/image` would add nothing. The call to action says "Open the app", not "Create account", because `REGISTRATION_MODE` defaults to `closed`.
+**Rationale**: Checking the httpOnly session cookie on the server keeps returning users one hop from their library without client code on the landing page. The published image is domain-agnostic, so anything naming the public origin must be rendered per request. The image ships without sharp, so `next/image` would add nothing. The call to action says "Open the app", not "Create account", because `REGISTRATION_MODE` defaulted to `closed` at the time (it defaults to `open` since "Registration Opens by Default").
 
 **Consequences**: Every deployment, self-hosted ones included, shows the landing page to signed-out visitors. The screenshots are copies of `docs/assets/` and must be refreshed by hand when those are regenerated. A stale cookie costs one extra redirect to the sign-in form.
 
@@ -1231,6 +1231,18 @@ is by title only, so a renamed note still imports as new. Two-way sync stays out
 **Sources**: `frontend/src/features/library/ImportPrompts.tsx`, `frontend/src/features/library/useLibrary.ts`,
 `frontend/src/app/page.tsx`.
 
+**Amended (2026-10-23)**: A UI/UX test found that Update put back placeholder text such as
+`[focus area]` that the first import had turned into `{{focus_area}}`, and that a prompt sharing
+its title with another was compared only with the newest and offered for an Update that would
+overwrite the wrong one. Placeholders whose input the library prompt already has are now
+converted again before comparing and updating, and the library prompt's settings win for
+inputs it already has, so converting in the preview never replaces them. A note is compared with every
+library prompt of its title: matching any of them is "already in your library", and Update is
+offered only when exactly one prompt has that title. Note templates (Templater, core
+`{{date:…}}`, a Templates folder) and pages of only links start unticked with the reason shown.
+Matching stays by title, with no stored source path, so choices are not remembered between
+imports.
+
 ---
 
 ## AI Review Agreement Is Measured with the User's Own Ratings
@@ -1295,8 +1307,9 @@ from. Draft runs appear in Run history; refinement will start them (planned).
 **Context**: Refinement changed wording without evidence that the result was better, and
 evaluation scores were not used anywhere else.
 
-**Decision**: On saved prompts, Refine lists the latest run's scored results, weakest first,
-with nothing preselected; the user chooses up to five. The draft request carries only their
+**Decision**: On saved prompts, Refine lists the scored results, weakest first, of the latest
+run of the editor's current text, or else of the latest run of a saved version (a check of some
+other unsaved draft never qualifies), with nothing preselected; the user chooses up to five. The draft request carries only their
 IDs and the server loads, ownership-checks and trims the content, which the refiner treats as
 untrusted data while counting what was checked as a requirement. After review, Check against
 test cases evaluates the unsaved draft, plus the current sections unless a run already tested
@@ -1373,3 +1386,131 @@ Duplicates start without a mark, since their history starts fresh.
 
 **Sources**: `backend/app/services/prompts/library.py`, `backend/app/services/evaluation/results.py`,
 `frontend/src/features/editor/HistoryPanel.tsx`, `frontend/src/features/library/LibraryPage.tsx`.
+
+---
+
+## Registration Opens by Default
+
+**Status**: Accepted (2026-10-21)
+
+**Context**: Signed-out visitors are getting free tools, guides and templates that lead to
+"save to your library". With `REGISTRATION_MODE` defaulting to `closed`, a fresh install
+turned that step into a 403 for everyone but the first account, and the hosted instance
+already runs with registration open.
+
+**Decision**: An unset or empty `REGISTRATION_MODE` means `open`. `closed` keeps the
+first-account bootstrap and then blocks sign-up; any other value is also treated as
+`closed`, so a mistyped attempt to close sign-up fails safe.
+
+**Rationale**: The default should match how the product is meant to be used. The risk the
+closed default guarded against — every account can make the server call a user-supplied
+provider URL — is contained by `ALLOW_PRIVATE_LLM_URLS=false`, which keeps private and
+loopback addresses unreachable regardless of who registers.
+
+**Consequences**: Self-hosters who relied on the implicit closed default must now set
+`REGISTRATION_MODE=closed` (called out in the changelog). Registration and login rate limits
+remain the guard against scripted sign-ups.
+
+**Sources**: `backend/app/services/accounts/registration.py`, `docker-compose.yml`, `.env.example`,
+`SECURITY.md`.
+
+---
+
+## A Free Refiner for Signed-out Visitors, on the Server Default
+
+**Status**: Accepted (2026-10-22)
+
+**Context**: Signed-out visitors now get free browser-only tools, guides and templates.
+Refinement is the one AI feature that shows the product's value in a single step, but it needs
+a model, and visitors have no account, provider or budget of their own.
+
+**Decision**: `POST /api/public/refine/questions` and `/draft` refine one pasted prompt (up to
+8,000 characters, as a single Task section) on the operator's server default, reusing the
+refiner service and its draft validation. It is off unless `PUBLIC_REFINE_ENABLED` is set, and
+`GET /api/public/refine` tells the page whether it is offered. Guards, cheapest first: a
+honeypot field and size limits (422), a per-IP rate limit (`PUBLIC_REFINE_RATE_LIMIT`, default
+6/minute and 30/day, so a few question-and-draft rounds fit in a minute), the shared and public monthly ceilings (`GLOBAL_MONTHLY_BUDGET_USD`,
+`PUBLIC_MONTHLY_BUDGET_USD`; 402) and a daily call cap across all visitors
+(`PUBLIC_REFINE_DAILY_LIMIT`, default 200; 429). The per-IP limit is one bucket for both
+steps, and only questions a draft request can carry back are returned. Each admitted call reserves its row in a separate `public_billed_calls` ledger
+(migration 033) at a pessimistic estimate (the whole input and an answer capped at
+`PUBLIC_REFINE_MAX_OUTPUT_TOKENS`, default 8,000, on each of up to four attempts: two JSON
+attempts, each retried once by the SDK) before the provider is contacted, under a process lock, and is settled to the reported usage afterwards
+(the estimate stays the floor when an attempt reports no token counts);
+the ledger counts toward the shared ceiling. Without answers, the public draft asks the model to
+state an audience, format, length and how to handle missing information as labelled lines
+(`expand`); the editor's refine keeps to what the text implies. `PUBLIC_REFINE_MODEL` may pick a
+stronger model on the same provider.
+
+**Rationale**: The user chose the server default over separate hardware and self-contained
+limits over a third-party challenge, which keeps the CSP and the privacy policy small. A
+separate ledger avoids rebuilding `billed_calls` to make `user_id` nullable, and lets public
+rows deliberately carry no user, IP address or prompt text. Results are handed to the app
+straight into an unsaved editor draft (already structured, so no review), so saving needs no new endpoint. A visitor pasting a
+one-line prompt expects a visibly better prompt, while an editor user refining a saved template
+expects their requirements to stay theirs, hence the two draft modes.
+
+**Consequences**: The per-IP limit is in memory (one backend process) and only meaningful
+when the backend sees real client addresses behind the proxy; restarts reset it. Because calls
+in flight hold a reservation, the daily cap is exact and the monthly ceilings can be exceeded
+only when a call costs more than its estimate. The admission lock assumes one backend process;
+several workers would need a database-level counter. Determined abuse from many addresses is
+limited only by the daily cap and budgets. Operators must mention the refiner in their privacy policy before enabling it.
+
+**Sources**: `backend/app/api/public_routes.py`, `backend/app/services/public_refine.py`,
+`backend/app/models/public_billed_call.py`, `backend/app/services/budget_service.py`,
+`frontend/src/features/tools/PromptRefiner.tsx`.
+
+## Public Pages Follow the Visitor's System Theme
+
+**Status**: Accepted (2026-10-22)
+
+**Context**: Light is the app's default theme, and the theme control lives in the app's sidebar.
+Signed-out visitors on the landing page, guides, tools, gallery and legal pages therefore always
+saw light mode, whatever their system preferred, with no way to change it.
+
+**Decision**: When no theme is stored, public pages follow `prefers-color-scheme`; app pages stay
+light. A stored `light`, `dark` or `system` choice wins everywhere. The rule lives in
+`frontend/src/lib/theme.ts` (`isPublicPath`, `applyTheme`), is applied before first paint by
+`THEME_SCRIPT`, and is re-applied by `ThemeSync` on every route change, so a client navigation
+from a dark public page into the app returns to light.
+
+**Rationale**: Visitors get the reading mode their system asks for without a new control, and
+the app keeps the light default that its screenshots, sign-in screen and first-run experience
+were designed around.
+
+**Consequences**: A signed-out visitor with a dark system sees dark public pages and a light
+sign-in screen; choosing a theme in the app applies to both.
+
+**Sources**: `frontend/src/lib/theme.ts`, `frontend/src/components/ui/ThemeSync.tsx`,
+`frontend/src/app/layout.tsx`.
+
+---
+
+## Variables Can Offer a Fixed List of Choices
+
+**Status**: Accepted (2026-10-23)
+
+**Context**: A UI/UX test found people keeping separate prompts that only hold lists of values
+(art styles, characters) to swap into one template, because an input could only be typed. The
+stored variable `type` (including `list`) was retired from the editor in 0.3.0 and never offered
+a choice.
+
+**Decision**: Variable metadata gains optional `options`: up to 50 strings of up to 200
+characters. The server trims them and drops blanks and repeats; an empty list is stored as no
+choices, and the field is left out of responses and exports when unset. The editor's input
+settings take choices one per line, and Fill mode shows an input with choices as a list (its hint
+as the empty entry), keeping a remembered or example value that is not in the list. The value is
+substituted as plain text, as before. Evaluation cases keep free text, so a test can use any
+value. `type` stays stored and unedited.
+
+**Rationale**: A list is the common case behind the request and needs no new validation contract
+or migration (`variable_metadata` is JSON). Leaving the field out when unset keeps existing
+prompts, versions and exports unchanged.
+
+**Consequences**: Partly amends "Real Per-Variable Type and Description" and the 0.3.0
+retirement of variable types: choices are a separate, real control, not a revived type. MCP
+`get_prompt` returns the choices with the rest of the metadata, and JSON exports carry them.
+
+**Sources**: `backend/app/schemas/prompts.py` (`VariableMetadataItem`),
+`frontend/src/features/editor/VariablesPanel.tsx`, `frontend/src/features/editor/PreviewPane.tsx`.

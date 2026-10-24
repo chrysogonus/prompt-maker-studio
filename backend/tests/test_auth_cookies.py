@@ -76,27 +76,37 @@ class TestSessionCookies:
         """Signing out must work even after the token has already expired."""
         assert client.post("/api/auth/logout").status_code == status.HTTP_204_NO_CONTENT
 
-    def test_refresh_reissues_both_cookies(self, client):
+    def test_refresh_reissues_both_cookies_and_keeps_the_csrf_token(self, client):
+        """A refresh often runs alongside a write the page has already built with
+        the current token (the first click after loading starts one). Rotating the
+        token there failed those writes with 403, so refresh keeps it."""
         _register_and_login(client)
         original_csrf = client.cookies[CSRF_COOKIE_NAME]
+        header_built_before_refresh = _csrf_header(client)
 
         response = client.post("/api/auth/refresh", headers=_csrf_header(client))
 
         assert response.status_code == status.HTTP_200_OK
-        # The JWT can come back byte-identical when the refresh lands in the
-        # same second as the login (`iat`/`exp` have one-second resolution), so
-        # the observable rotation is the CSRF token, which is random per issue.
-        assert client.cookies[CSRF_COOKIE_NAME] != original_csrf
-        assert client.get("/api/auth/me").status_code == status.HTTP_200_OK
-        # And the refreshed CSRF token is the one now accepted.
+        set_cookies = response.headers.get_list("set-cookie")
+        assert any(c.startswith(f"{SESSION_COOKIE_NAME}=") for c in set_cookies)
+        assert any(c.startswith(f"{CSRF_COOKIE_NAME}={original_csrf}") for c in set_cookies)
+        assert client.cookies[CSRF_COOKIE_NAME] == original_csrf
         assert (
             client.patch(
                 "/api/auth/me",
                 json={"default_library_view": "grid"},
-                headers=_csrf_header(client),
+                headers=header_built_before_refresh,
             ).status_code
             == status.HTTP_200_OK
         )
+
+    def test_login_issues_a_new_csrf_token(self, client):
+        _register_and_login(client)
+        first = client.cookies[CSRF_COOKIE_NAME]
+
+        client.post("/api/auth/login", json={"username": "cookieuser", "password": "testpass123!"})
+
+        assert client.cookies[CSRF_COOKIE_NAME] != first
 
 
 class TestCsrfProtection:

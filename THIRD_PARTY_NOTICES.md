@@ -46,7 +46,7 @@ byte for byte; inspect the built artifact when updating its inventory.
 | mcp-types | 2.3.0 | MIT |
 | msgpack | 1.2.3 | Apache-2.0 |
 | openai | 3.13.0 | Apache-2.0 |
-| opentelemetry-api | 1.45.0 | Apache-2.0 |
+| opentelemetry-api | 1.45.1 | Apache-2.0 |
 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause |
 | prometheus-fastapi-instrumentator | 8.1.0 | ISC |
 | prometheus_client | 0.26.0 | Apache-2.0 AND BSD-2-Clause |

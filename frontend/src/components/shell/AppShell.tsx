@@ -10,6 +10,7 @@ import LegalLinks from '@/components/LegalLinks';
 import Button from '@/components/ui/Button';
 import { LibraryDataProvider } from '@/features/library/LibraryData';
 import { AuthContext } from '@/lib/auth-context';
+import { pendingHandoff } from '@/lib/openInApp';
 
 import styles from './AppShell.module.css';
 import { APP_NAME } from '@/lib/branding';
@@ -51,7 +52,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <AuthForm onSuccess={handleAuthSuccess} />;
+    const handoff = pendingHandoff();
+    return (
+      <AuthForm
+        onSuccess={handleAuthSuccess}
+        notice={handoff ? `Sign in or create a free account to save ${handoff.title ? `“${handoff.title}”` : 'your prompt'} to your library.` : undefined}
+        backHref={handoff?.returnTo || undefined}
+      />
+    );
   }
 
   return (

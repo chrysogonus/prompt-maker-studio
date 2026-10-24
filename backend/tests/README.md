@@ -48,6 +48,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_prompt_service.py` | Transport-independent prompt operations, ownership, versions, and failed-write rollback |
 | `test_prompt_versions.py` | Version snapshotting on section/metadata edits, resulting-state notes and legacy notes, metadata restore semantics, ownership, and cascade delete |
 | `test_prompts_config.py` | Per-user AI capability endpoint: connection state, model list, budget status, and per-user scoping |
+| `test_public_routes.py` | Unauthenticated `/api/public` endpoints: model prices, and the free refiner's on/off and server-default checks, honeypot and size validation, daily cap, public and shared budgets, public spend ledger and draft validation |
 | `test_refine_routes.py` | Saved-prompt and unsaved-snapshot refinement, authentication, section/answer validation, spend recording (including rejected drafts), separate save/versioning, and budget rejection |
 | `test_safe_regex.py` | Time-bounded matching for user-supplied eval regexes: catastrophic patterns are abandoned within a fixed budget regardless of input length, the runaway worker is killed rather than merely abandoned, workers come from a fork server rather than a fork of the threaded server, the pool recovers, and `re` semantics (backreferences, lookaround) are preserved |
 | `test_schemas.py` | Pydantic request and response validation, including `VariableMetadataItem`, eval case/rating, and refine draft schemas |

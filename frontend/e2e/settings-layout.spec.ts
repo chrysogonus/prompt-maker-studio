@@ -17,6 +17,8 @@ test.beforeEach(async ({ page }) => {
     if (path === '/api/auth/me') body = {
       id: 1, username: 'alex', email: 'alex@example.com', default_library_view: 'list', created_at: '2026-10-01T10:00:00Z',
     };
+    // Clicks and typing renew the session; a reply without an expiry would sign the page out.
+    else if (path === '/api/auth/refresh') body = { expires_at: new Date(Date.now() + 3_600_000).toISOString() };
     else if (path === '/api/prompts/saved') body = [];
     else if (path === '/api/auth/me/llm-connection') body = {
       configured: true, provider: 'openai', provider_label: 'OpenAI',

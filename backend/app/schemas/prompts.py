@@ -1,7 +1,7 @@
 """Prompts request and response contracts."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -15,6 +15,21 @@ class VariableMetadataItem(BaseModel):
     description: str | None = Field(None, max_length=500)
     required: bool = False
     example: str | None = Field(None, max_length=10_000)
+    # Fill mode offers these to choose from; the chosen value is substituted as plain text.
+    # Left out when unset, so stored and exported metadata without choices keeps its shape.
+    options: list[Annotated[str, Field(max_length=200)]] | None = Field(
+        None, max_length=50, exclude_if=lambda options: options is None
+    )
+
+    @field_validator("options", mode="before")
+    @classmethod
+    def tidy_options(cls, options: object) -> object:
+        """Blank lines and repeats are dropped before the limits apply, so a trailing Enter
+        or padding never fails a save; an empty list means free text."""
+        if not isinstance(options, list) or not all(isinstance(option, str) for option in options):
+            return options  # Left for the type check to reject.
+        kept = list(dict.fromkeys(option.strip() for option in options if option.strip()))
+        return kept or None
 
 
 class PromptField(BaseModel):

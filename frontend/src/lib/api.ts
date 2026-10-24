@@ -5,10 +5,16 @@ import * as oauth from './api/oauth';
 import * as accounts from './api/accounts';
 import * as refinement from './api/refinement';
 import * as evaluation from './api/evaluation';
+import * as publicTools from './api/public';
 export { ApiError, PROMPT_NOT_FOUND_MESSAGE, isValidPromptId } from './api/errors';
 export type { BudgetErrorDetails } from './api/errors';
+export type { PublicModelPrice } from './api/public';
 
 export class ApiClient {
+  static getPublicModelPrices = publicTools.getPublicModelPrices;
+  static getPublicRefineStatus = publicTools.getPublicRefineStatus;
+  static getPublicRefineQuestions = publicTools.getPublicRefineQuestions;
+  static createPublicRefineDraft = publicTools.createPublicRefineDraft;
   static tryPrompt = prompts.tryPrompt;
   static getEvalCases = evaluation.getEvalCases;
   static createEvalCase = evaluation.createEvalCase;

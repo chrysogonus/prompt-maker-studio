@@ -169,8 +169,8 @@ DEV_BIND_ADDRESS=127.0.0.1
 BACKEND_PORT=8000
 FRONTEND_PORT=3000
 
-# Registration admits the first account, then closes by default.
-REGISTRATION_MODE=closed
+# Registration is open by default; `closed` admits only the first account.
+REGISTRATION_MODE=open
 # Permit user-supplied private provider URLs only on a trusted instance.
 ALLOW_PRIVATE_LLM_URLS=false
 
@@ -200,6 +200,22 @@ LLM_API_KEY=
 # GET /api/prompts/config. Operator-controlled only.
 # GLOBAL_MONTHLY_BUDGET_USD=50
 # USER_MONTHLY_BUDGET_USD=5
+
+# The free refiner (/tools/prompt-refiner) lets signed-out visitors refine a
+# pasted prompt on the server default, at the operator's cost. Off unless
+# PUBLIC_REFINE_ENABLED=true; it also needs LLM_* set. Limits: per visitor IP
+# (PUBLIC_REFINE_RATE_LIMIT, in memory), per UTC day across all visitors
+# (PUBLIC_REFINE_DAILY_LIMIT) and per month (PUBLIC_MONTHLY_BUDGET_USD, which
+# also counts toward GLOBAL_MONTHLY_BUDGET_USD). PUBLIC_REFINE_MAX_OUTPUT_TOKENS
+# (default 8000) caps each answer's length, and PUBLIC_REFINE_MODEL picks another
+# model on the LLM_PROVIDER (empty uses LLM_MODEL). Its spend is recorded without
+# any visitor data. Per-IP limits only work when the backend sees real client
+# addresses (Caddy's X-Forwarded-For through uvicorn's trusted proxy). Mention
+# the free refiner in your privacy policy before enabling it.
+# PUBLIC_REFINE_ENABLED=true
+# PUBLIC_REFINE_RATE_LIMIT=6/minute;30/day
+# PUBLIC_REFINE_DAILY_LIMIT=200
+# PUBLIC_MONTHLY_BUDGET_USD=10
 
 # Public origin for reset links, MCP/OAuth discovery, canonical URL and sitemap.
 # Use the public HTTPS origin in production.
