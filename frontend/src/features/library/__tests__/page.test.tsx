@@ -988,6 +988,12 @@ describe('LibraryPage', () => {
     expect(container.querySelector('li p')).toHaveTextContent(/^Steps Read the diff const a = 1;$/);
   });
 
+  it('previews Markdown links by their text, without the address', async () => {
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [{ name: 'Task', content: 'See [Style guide](Style%20guide%20b2c3.md) and ![chart](https://x.test/c.png).' }] })]);
+    const { container } = await renderLibrary();
+    expect(container.querySelector('li p')).toHaveTextContent(/^See Style guide and chart\.$/);
+  });
+
   it('keeps the search in the address, so Back and links restore it', async () => {
     const user = userEvent.setup();
     window.history.replaceState(null, '', '/library?view=favorites');

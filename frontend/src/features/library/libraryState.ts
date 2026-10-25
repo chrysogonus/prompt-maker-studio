@@ -23,6 +23,7 @@ function plainText(markdown: string): string {
   return markdown
     .replace(/^\s*(`{3,}|~{3,}).*$/gm, '')
     .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+|\d+[.)]\s+)/gm, '')
+    .replace(/!?\[([^\]\n]*)\]\([^)\n]*\)/g, '$1')
     .replace(/(\*\*|__)(?=\S)(.+?)(?<=\S)\1/g, '$2')
     .replace(/`([^`\n]+)`/g, '$1');
 }

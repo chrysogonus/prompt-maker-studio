@@ -10,6 +10,19 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Fixed
+
+- Placeholder text, including the library search, uses the themed muted colour, so it stays
+  readable in dark mode; dropdowns and expandable sections show the same focus ring as buttons.
+- Library card previews show a Markdown link as its text instead of the address, and Evaluate
+  gives its saved test cases a heading for screen readers.
+- On touch screens, buttons, toggles, inputs and the small text links are at least 44px tall.
+- Settings descriptions wrap at a readable width, and its status and field labels are larger.
+- Section cards, error notices, history and Evaluate drop their coloured left stripes for full
+  borders or tinted backgrounds.
+- With reduced motion, loading spinners pulse instead of freezing, and notices fade without
+  sliding. The full-page loading spinner turns again.
+
 ## [0.10.0] - 2026-10-24
 
 See the [release record](./docs/releases/0.10.0.md).

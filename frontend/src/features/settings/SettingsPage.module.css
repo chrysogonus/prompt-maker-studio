@@ -72,6 +72,7 @@
 
 .rowValue,
 .text {
+  max-width: 62ch;
   color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
@@ -143,7 +144,7 @@
   color: var(--text-secondary);
 }
 
-.steps li { overflow-wrap: anywhere; }
+.steps li { max-width: 62ch; overflow-wrap: anywhere; }
 .steps a { color: var(--accent-text); text-decoration: underline; }
 .steps button { margin-top: var(--space-1); }
 

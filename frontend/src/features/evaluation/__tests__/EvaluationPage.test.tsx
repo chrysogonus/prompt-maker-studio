@@ -524,3 +524,10 @@ it('offers AI settings after an explicit run failure without linking case valida
   expect(await screen.findByRole('alert')).toHaveTextContent('Invalid criteria.');
   expect(screen.queryByRole('link', { name: 'Open Settings' })).not.toBeInTheDocument();
 });
+
+it('nests saved case names under a heading for the case list', async () => {
+  await open([example]);
+  const list = screen.getByRole('region', { name: 'Saved test cases' });
+  expect(within(list).getByRole('heading', { level: 2, name: 'Saved test cases' })).toBeInTheDocument();
+  expect(within(list).getByRole('heading', { level: 3, name: 'Returns JSON' })).toBeInTheDocument();
+});

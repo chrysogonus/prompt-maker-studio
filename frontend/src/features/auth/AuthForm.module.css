@@ -368,6 +368,7 @@
 }
 
 .toggleButton {
+  min-height: var(--tap-min);
   background: none;
   border: none;
   padding: 0;
@@ -515,5 +516,15 @@
   .sessionNotice,
   .successMessage {
     animation: none;
+  }
+
+  .buttonSpinner {
+    animation: buttonPulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes buttonPulse {
+  50% {
+    opacity: 0.4;
   }
 }

@@ -104,6 +104,26 @@
   animation: spin var(--motion-spin) infinite;
 }
 
+/* Module-local: CSS Modules rename keyframes, so the global `spin` never matched. */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Still reads as busy without anything moving. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+}
+
 .footer {
   padding: var(--space-4) var(--space-8);
   margin-top: auto;
@@ -137,8 +157,8 @@
   .menuButton {
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: max(40px, var(--tap-min));
+    height: max(40px, var(--tap-min));
     border: 0;
     border-radius: var(--radius-sm);
     background: none;
@@ -161,7 +181,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    height: 32px;
+    min-height: max(32px, var(--tap-min));
     padding: 0 12px;
     border-radius: var(--radius-sm);
     background: var(--surface-accent);
