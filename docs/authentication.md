@@ -193,7 +193,9 @@ features fall back to the server default if one exists. Updating the same
 provider without `api_key` retains the key; switching provider cannot reuse it.
 
 User-supplied provider URLs are checked against the public-egress policy;
-`ALLOW_PRIVATE_LLM_URLS=true` permits private/self-hosted endpoints. The
+`ALLOW_PRIVATE_LLM_URLS=true` permits private/self-hosted endpoints. The connection
+response's `private_urls_allowed` reports that setting, so Settings suggests a local
+Ollama or vLLM address only where one can work. The
 operator-configured `LLM_*` server default is trusted and may use a private URL.
 
 Owned prompt lookups return 404 both for missing records and records owned by

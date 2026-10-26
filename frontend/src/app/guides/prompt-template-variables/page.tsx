@@ -56,11 +56,11 @@ export default function TemplateVariablesPage() {
           Hints appear inside the empty input fields when filling the prompt.
         </li>
         <li>
-          If a value must be supplied before a complete copy, select its <strong>Required</strong>{' '}
-          checkbox. Variables are optional unless you mark them required.
+          If a value must be supplied before a complete copy, open <strong>Options for team</strong>{' '}
+          and select <strong>Required team</strong>. Variables are optional unless you mark them required.
         </li>
         <li>
-          Optionally enter an example input. Choose <strong>Save</strong> to keep hints, requirements,
+          In the same options, optionally fill in <strong>Example input</strong>. Choose <strong>Save</strong> to keep hints, requirements,
           and examples with the template. Examples are not inserted automatically.
         </li>
       </ol>

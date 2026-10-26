@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import Button from '@/components/ui/Button';
+import Button, { ButtonLink } from '@/components/ui/Button';
 import styles from './error.module.css';
 
 export default function ErrorPage({
@@ -20,15 +20,15 @@ export default function ErrorPage({
       <div className={styles.card}>
         <h1 className={styles.title}>Something went wrong</h1>
         <p className={styles.message}>
-          An unexpected error occurred. You can try again, or head back to the Dashboard.
+          An unexpected error occurred. You can try again, or go back to your library.
         </p>
         <div className={styles.actions}>
           <Button variant="primary" onClick={reset}>
             Try again
           </Button>
-          <Button variant="secondary" onClick={() => (window.location.href = '/')}>
-            Go to Dashboard
-          </Button>
+          <ButtonLink variant="secondary" href="/library">
+            Go to your library
+          </ButtonLink>
         </div>
       </div>
     </div>

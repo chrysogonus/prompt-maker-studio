@@ -49,6 +49,14 @@ def test_private_destinations_are_rejected(monkeypatch, address):
         validate_base_url("https://evil.example.com/v1")
 
 
+def test_rejection_explains_itself_to_users_and_self_hosters(monkeypatch):
+    _resolve_to(monkeypatch, "10.0.0.5")
+    with pytest.raises(InvalidConnectionError) as error:
+        validate_base_url("https://ollama.example.com/v1")
+    assert "reachable over the internet" in str(error.value)
+    assert "If you run this server, ALLOW_PRIVATE_LLM_URLS=true" in str(error.value)
+
+
 def test_ipv6_loopback_and_mapped_ipv4_are_rejected(monkeypatch):
     _resolve_to(monkeypatch, "::1")
     with pytest.raises(InvalidConnectionError, match="private or loopback"):

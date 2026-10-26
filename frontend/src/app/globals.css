@@ -241,6 +241,12 @@ a {
   text-decoration: none;
 }
 
+/* A word diff that swaps one word for another would otherwise run them together. */
+del + ins,
+ins + del {
+  margin-inline-start: 0.3ch;
+}
+
 button,
 input,
 textarea {

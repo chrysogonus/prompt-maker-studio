@@ -36,6 +36,18 @@ class TestGetConnection:
         # Only a non-reversible hint is exposed.
         assert resp.json()["api_key_hint"] == "sk-…0000"
 
+    def test_says_private_urls_are_refused_by_default(self, client, auth_headers):
+        resp = client.get("/api/auth/me/llm-connection", headers=auth_headers)
+
+        assert resp.json()["private_urls_allowed"] is False
+
+    def test_says_when_the_operator_allows_private_urls(
+        self, client, auth_headers, allow_private_llm_urls
+    ):
+        resp = client.get("/api/auth/me/llm-connection", headers=auth_headers)
+
+        assert resp.json()["private_urls_allowed"] is True
+
     def test_server_default_is_absent_when_unset(self, client, auth_headers):
         resp = client.get("/api/auth/me/llm-connection", headers=auth_headers)
 

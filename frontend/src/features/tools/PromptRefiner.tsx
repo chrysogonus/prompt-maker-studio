@@ -91,6 +91,11 @@ export default function PromptRefiner() {
     );
   }
 
+  // Showing the form before the answer would flash controls a server may not offer.
+  if (available === null && !statusFailed) {
+    return <p className={styles.status} role="status">Checking whether the free refiner is available…</p>;
+  }
+
   const tooLong = text.length > maxChars;
   const statusNotice = statusFailed && (
     <p className={styles.error} role="alert">

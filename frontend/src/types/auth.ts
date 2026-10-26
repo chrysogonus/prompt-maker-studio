@@ -91,6 +91,8 @@ export interface LLMConnection {
   providers: LLMProviderOption[];
   /** The operator's connection, used while `configured` is false. */
   server_default?: { provider_label: string; model: string } | null;
+  /** Whether a base URL may point at a private or local address on this server. */
+  private_urls_allowed?: boolean;
 }
 
 export interface LLMConnectionUpdate {

@@ -270,12 +270,17 @@ export default function LLMConnectionForm() {
           spellCheck={false}
         />
       </label>
-      {selected && !selected.requires_api_key && (
+      {selected && !selected.requires_api_key && (connection?.private_urls_allowed ? (
         <p className={styles.hint}>
           Running this app in Docker? There, <code>localhost</code> is the backend container. Use an
           address it can reach, such as <code>http://host.docker.internal:11434/v1</code>.
         </p>
-      )}
+      ) : (
+        <p className={styles.hint}>
+          This server does not allow private or local addresses, so a model on your own computer or
+          network cannot be reached from here. Use an address that is reachable over the internet.
+        </p>
+      ))}
 
       <div className={styles.field}>
         <span className={styles.fieldLabel}>Model</span>
@@ -343,7 +348,9 @@ export default function LLMConnectionForm() {
       </p>
       <p className={styles.hint}>Test connection sends a text-generation request using {unsaved
         ? `${selected?.label ?? 'the selected provider'} / ${model.trim() || 'the selected model'}`
-        : `${connection?.provider_label ?? connection?.server_default?.provider_label ?? 'the saved provider'} / ${connection?.model ?? connection?.server_default?.model ?? 'saved model'}`} and may incur provider charges.</p>
+        : `${connection?.provider_label ?? connection?.server_default?.provider_label ?? 'the saved provider'} / ${connection?.model ?? connection?.server_default?.model ?? 'saved model'}`}
+        {/* A self-hosted model without a key bills nobody. */}
+        {unsaved && selected && !selected.requires_api_key ? '.' : ' and may incur provider charges.'}</p>
 
       <div className={styles.field}>
         <label className={styles.fieldLabel} htmlFor="llm-api-key">

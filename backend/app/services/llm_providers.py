@@ -206,9 +206,11 @@ def public_host_addresses(host: str) -> list[str]:
             continue
         if _is_blocked_address(address):
             msg = (
-                f"Base URL host '{host}' resolves to a private or loopback address, which this "
-                "deployment does not allow. An operator can permit local providers such as "
-                "Ollama or vLLM by setting ALLOW_PRIVATE_LLM_URLS=true."
+                # Users of a hosted instance read this in Settings; self-hosters need the switch.
+                f"Base URL host '{host}' resolves to a private or loopback address. This server "
+                "does not allow those, so a model on your own computer or network cannot be "
+                "reached from here; use a provider that is reachable over the internet. If you "
+                "run this server, ALLOW_PRIVATE_LLM_URLS=true permits local providers."
             )
             raise InvalidConnectionError(msg)
         if str(address) not in addresses:
