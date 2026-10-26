@@ -416,12 +416,14 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
   await tabB.getByRole('button', { name: 'Save', exact: true }).click();
   expect((await tabBSave).status()).toBe(409);
 
-  await expect(tabB.getByText(/changed somewhere else/)).toBeVisible();
-  await tabB.getByRole('button', { name: 'Load latest version' }).click();
-  await expect(tabB.getByText(/changed somewhere else/)).toHaveCount(0);
+  await expect(tabB.getByText(/saved somewhere else/)).toBeVisible();
+  await tabB.getByRole('button', { name: 'Compare', exact: true }).click();
+  await expect(tabB.getByLabel('Saved version compared with yours')).toContainText('tab A wins');
+  await tabB.getByRole('button', { name: 'Keep my edits' }).click();
+  await expect(tabB.getByText(/saved somewhere else/)).toHaveCount(0);
   await expect(tabB.getByLabel('Task text')).toHaveValue('tab B draft {{alpha}}');
 
-  // Saving after loading the latest version overwrites it on purpose.
+  // Saving after keeping the edits overwrites the other version on purpose.
   const overwrite = promptPatch(tabB, promptId);
   await tabB.getByRole('button', { name: 'Save', exact: true }).click();
   expect((await overwrite).status()).toBe(200);

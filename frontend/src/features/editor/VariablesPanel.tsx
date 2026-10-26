@@ -51,19 +51,26 @@ export default function VariablesPanel({
             maxLength={500}
           />
           <details className={styles.variableAdvanced}>
-            <summary>Options for {name}</summary>
+            {/* Says what is set while collapsed, so a required input is not hidden. */}
+            <summary>Options for {name}{metadata[name]?.required ? ' · Required' : ''}</summary>
             <div className={styles.variableOptions}>
             <label><input type="checkbox" checked={metadata[name]?.required ?? false}
               onChange={(event) => onChangeMetadata(name, { required: event.target.checked })} />
               Required {name}
             </label>
-            <textarea value={metadata[name]?.example ?? ''} maxLength={10_000} rows={2}
-              aria-label={`Example input for ${name}`} placeholder="Example value (used by Load example inputs)"
-              onChange={(event) => onChangeMetadata(name, { example: event.target.value || null })} />
-            {/* Lines stay as typed so Enter starts the next choice; saving drops blanks and repeats. */}
-            <textarea value={metadata[name]?.options?.join('\n') ?? ''} rows={3}
-              aria-label={`Choices for ${name}`} placeholder="Choices to pick from, one per line (optional)"
-              onChange={(event) => onChangeMetadata(name, { options: event.target.value ? event.target.value.split('\n') : null })} />
+            <label className={styles.optionField}>
+              <span>Example input</span>
+              <textarea value={metadata[name]?.example ?? ''} maxLength={10_000} rows={2}
+                aria-label={`Example input for ${name}`} placeholder="Used by Load example inputs"
+                onChange={(event) => onChangeMetadata(name, { example: event.target.value || null })} />
+            </label>
+            <label className={styles.optionField}>
+              <span>Choices</span>
+              {/* Lines stay as typed so Enter starts the next choice; saving drops blanks and repeats. */}
+              <textarea value={metadata[name]?.options?.join('\n') ?? ''} rows={3}
+                aria-label={`Choices for ${name}`} placeholder="One per line (optional)"
+                onChange={(event) => onChangeMetadata(name, { options: event.target.value ? event.target.value.split('\n') : null })} />
+            </label>
             </div>
           </details>
         </div>
