@@ -10,8 +10,40 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- AI answers in Test with AI and in Evaluate render as Markdown, with tables, lists, headings and
+  emphasis, and a Plain text button shows the exact text. Raw HTML is not rendered, images show
+  as their alt text, and links open in a new tab.
+
 ### Fixed
 
+- Settings suggests a local Ollama or vLLM address only when the server allows private addresses,
+  reported by the connection response's new `private_urls_allowed` field. A refused private
+  address explains that a model on your own computer cannot be reached from a hosted server,
+  and tells self-hosters about `ALLOW_PRIVATE_LLM_URLS=true`.
+- The filled preview no longer crashes on an input named `__proto__` or goes blank on one named
+  `constructor`.
+- When a prompt was saved somewhere else while you edited it, the notice offers Compare, Keep my
+  edits and Use the saved version. Compare shows the saved version against yours word by word,
+  says when input settings differ too, and Keep my edits keeps what you compared.
+- History keeps focus, so Escape still closes it, after marking a version as known good.
+- A required input is flagged only after you have been in it, a collapsed Options for <name>
+  says when the input is required, and its example and choices fields have labels.
+- Sign-up states the username rules (3–50 letters, numbers, underscores or hyphens) and checks
+  them before submitting, as Settings does; changing the password confirms with a status message.
+- The sign-in page is headed "Sign in", its wordmark links back to the home page, and Sign out
+  everywhere asks for confirmation first.
+- A search inside a folder or Favourites that finds nothing offers Search all prompts. Search
+  excerpts are cut at word boundaries and keep `{{variables}}` whole.
+- More-actions menus move with the arrow keys, Home and End, and the JSON export's file name
+  carries the date.
+- The error page leads back to the library instead of the retired dashboard, the guides use
+  the current button names (Edit template, Options for <name>) and point to Settings for
+  ChatGPT and Claude, and the free refiner says it is checking availability instead of showing
+  nothing.
+- Word diffs merge neighbouring changes and keep a gap between a removed word and its
+  replacement, so swaps read clearly.
 - Placeholder text, including the library search, uses the themed muted colour, so it stays
   readable in dark mode; dropdowns and expandable sections show the same focus ring as buttons.
 - Library card previews show a Markdown link as its text instead of the address, and Evaluate
