@@ -75,7 +75,7 @@ test('captures the README screenshots', async ({ page }) => {
 
   // The sign-in screen, before any credentials are entered.
   await page.goto('/library');
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   await expect(page.locator('#username')).toHaveValue('');
   await shoot(page, 'login');
 

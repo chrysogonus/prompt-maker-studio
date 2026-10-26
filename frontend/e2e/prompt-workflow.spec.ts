@@ -27,7 +27,7 @@ function sidebarLink(page: Page, name: string | RegExp) {
 
 async function register(page: Page, user: TestUser) {
   await page.goto('/library');
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Create account' }).click();
   await page.locator('#username').fill(user.username);
@@ -211,7 +211,7 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   const refreshed = page.waitForResponse((response) => response.url().endsWith('/api/auth/refresh'));
   const signedOut = page.waitForResponse((response) => response.url().endsWith('/api/auth/logout'));
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   releaseRefresh();
   await (await refreshed).finished();
   expect((await signedOut).status()).toBe(204);
@@ -219,7 +219,7 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   expect(await page.evaluate(() => localStorage.getItem('prompt-maker-studio:client-session-expiry'))).toBeNull();
   await page.unroute('**/api/auth/refresh');
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 
   await page.locator('#username').fill(user.username);
   await page.locator('#password').fill(user.password);

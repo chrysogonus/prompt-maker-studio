@@ -40,7 +40,10 @@ describe('AuthForm — login view', () => {
     expect(
       screen.getByRole('heading', { name: /a home for the prompts you keep retyping/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+    // Visitors who arrived from the public site can get back to it.
+    expect(screen.getByRole('link', { name: 'Prompt Maker Studio' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('banner')).toContainElement(screen.getByRole('link', { name: 'Open source on GitHub' }));
     expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
@@ -268,7 +271,7 @@ describe('AuthForm — forgot-password view', () => {
     render(<AuthForm onSuccess={mockOnSuccess} />);
     await userEvent.click(screen.getByRole('button', { name: /forgot password/i }));
     await userEvent.click(screen.getByRole('button', { name: /back to sign in/i }));
-    expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
   });
 });
 
@@ -287,9 +290,23 @@ describe('AuthForm — validation reporting', () => {
     await userEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Username must be at least 3 characters.');
+    expect(alert).toHaveTextContent('Username must be 3-50 characters using only letters, digits, underscores, and hyphens.');
     expect(alert).toHaveTextContent('Password must be at least 10 characters.');
     expect(alert).toHaveTextContent('Enter a valid email address.');
+    expect(AuthService.register).not.toHaveBeenCalled();
+  });
+
+  it('explains the username rules instead of sending a name with a space', async () => {
+    render(<AuthForm onSuccess={mockOnSuccess} />);
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+    expect(screen.getByLabelText(/username/i)).toHaveAccessibleDescription(/saved in lower case/);
+
+    await userEvent.type(screen.getByLabelText(/username/i), 'new user');
+    await userEvent.type(screen.getByLabelText(/^password$/i), 'Testing-1234!');
+    await userEvent.type(screen.getByLabelText(/email/i), 'new@example.com');
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('only letters, digits, underscores, and hyphens');
     expect(AuthService.register).not.toHaveBeenCalled();
   });
 

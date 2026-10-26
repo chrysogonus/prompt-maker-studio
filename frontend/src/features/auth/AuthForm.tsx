@@ -13,6 +13,7 @@ import LegalLinks from '@/components/LegalLinks';
 import RepositoryLink from '@/components/RepositoryLink';
 import styles from './AuthForm.module.css';
 import { PASSWORD_HINT, passwordPolicyError } from './passwordPolicy';
+import { USERNAME_HINT, usernamePolicyError } from './usernamePolicy';
 
 interface AuthFormProps {
   onSuccess: () => void;
@@ -91,8 +92,9 @@ export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps)
     const errors: FieldErrors = {};
     if (!username.trim()) {
       errors.username = view === 'login' ? 'Enter your username or email.' : 'Enter your username.';
-    } else if (view === 'register' && username.trim().length < 3) {
-      errors.username = 'Username must be at least 3 characters.';
+    } else if (view === 'register') {
+      const usernameError = usernamePolicyError(username);
+      if (usernameError) errors.username = usernameError;
     }
 
     const policyError = view === 'register' ? passwordPolicyError(password) : null;
@@ -223,11 +225,11 @@ export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps)
     <>
       <div className={styles.brand}>
         <h2 className={styles.title}>
-          {view === 'login' ? 'Welcome back' : 'Create your account'}
+          {view === 'login' ? 'Sign in' : 'Create your account'}
         </h2>
         <p className={styles.subtitle}>
           {view === 'login'
-            ? `Sign in to your ${APP_NAME} account`
+            ? `Use your ${APP_NAME} account, or create a free one below.`
             : `Get started with ${APP_NAME}`}
         </p>
       </div>
@@ -261,12 +263,14 @@ export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps)
             minLength={view === 'login' ? 1 : 3}
             autoComplete="username"
             aria-invalid={!!fieldErrors.username}
-            aria-describedby={fieldErrors.username ? 'username-error' : undefined}
+            aria-describedby={fieldErrors.username ? 'username-error' : view === 'register' ? 'username-hint' : undefined}
           />
-          {fieldErrors.username && (
+          {fieldErrors.username ? (
             <p id="username-error" className={styles.fieldError}>
               {fieldErrors.username}
             </p>
+          ) : view === 'register' && (
+            <p id="username-hint" className={styles.fieldHint}>{USERNAME_HINT}.</p>
           )}
         </div>
 
@@ -379,12 +383,15 @@ export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps)
 
   return (
     <div className={styles.container}>
-      <div className={styles.repository}>
+      <header className={styles.repository}>
         <RepositoryLink />
-      </div>
+      </header>
       <main className={styles.authShell}>
         <section className={styles.visualPanel} aria-labelledby="auth-product-title">
-          <Wordmark icon="tile" className={styles.wordmark} />
+          {/* The way back to the public site for visitors who came from it. */}
+          <Link href="/" className={styles.homeLink}>
+            <Wordmark icon="tile" className={styles.wordmark} />
+          </Link>
 
           <div className={styles.intro}>
             <h1 id="auth-product-title" className={styles.heroTitle}>

@@ -282,7 +282,8 @@ describe('SettingsPage', () => {
     vi.mocked(AuthService.logoutEverywhere).mockResolvedValue(undefined);
     renderSettings();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere…' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out all devices' }));
 
     await waitFor(() => {
       expect(AuthService.logoutEverywhere).toHaveBeenCalled();
@@ -290,11 +291,24 @@ describe('SettingsPage', () => {
     });
   });
 
+  it('asks before signing out everywhere and can be cancelled', async () => {
+    vi.mocked(AuthService.logoutEverywhere).mockClear();
+    renderSettings();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere…' }));
+    expect(screen.getByRole('button', { name: 'Sign out all devices' })).toHaveFocus();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('button', { name: 'Sign out everywhere…' })).toBeInTheDocument();
+    expect(AuthService.logoutEverywhere).not.toHaveBeenCalled();
+  });
+
   it('reports a failed sign-out-everywhere and stays signed in', async () => {
     vi.mocked(AuthService.logoutEverywhere).mockRejectedValue(new Error('Server said no'));
     renderSettings();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere…' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out all devices' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Server said no');
     expect(logout).not.toHaveBeenCalled();

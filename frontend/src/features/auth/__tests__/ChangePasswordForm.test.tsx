@@ -67,6 +67,7 @@ describe('ChangePasswordForm component', () => {
     await waitFor(() => {
       expect(screen.queryByLabelText(/current password/i)).not.toBeInTheDocument();
     });
+    expect(screen.getByRole('status')).toHaveTextContent('Password changed. Other devices were signed out.');
   });
 
   it('shows an error message when the change is rejected and keeps the form open', async () => {

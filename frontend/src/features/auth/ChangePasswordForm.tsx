@@ -62,10 +62,12 @@ export default function ChangePasswordForm() {
 
   if (!isOpen) {
     return (
-      <button className={styles.trigger} onClick={openForm} title="Click to change password">
-        Change password
-        {success && <span className={styles.successDot} aria-hidden="true" />}
-      </button>
+      <div className={styles.closed}>
+        <button className={styles.trigger} onClick={openForm} title="Click to change password">
+          Change password
+        </button>
+        {success && <p className={styles.success} role="status">Password changed. Other devices were signed out.</p>}
+      </div>
     );
   }
 

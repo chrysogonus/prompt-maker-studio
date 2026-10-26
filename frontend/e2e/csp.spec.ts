@@ -99,7 +99,7 @@ test.describe('Content-Security-Policy', () => {
     const user = uniqueUser('csp');
 
     await page.goto('/library');
-    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Create account' }).click();
     await page.locator('#username').fill(user.username);
