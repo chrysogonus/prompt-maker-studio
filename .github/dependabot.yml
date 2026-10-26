@@ -93,6 +93,13 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
+      # react-dom and the React types must move with react, or npm cannot resolve peers
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions, pinned by commit SHA in the workflows. A SHA refresh carries
   # no semver classification, so this uses one catch-all group without an
