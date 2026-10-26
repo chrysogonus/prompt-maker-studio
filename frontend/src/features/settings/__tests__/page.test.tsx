@@ -274,7 +274,7 @@ describe('SettingsPage', () => {
       // Asserted at the download boundary rather than on URL.createObjectURL:
       // clicking a synthesised <a download> is unimplemented in jsdom and
       // produced an uncaught navigation error from a timer.
-      expect(downloadBlob).toHaveBeenCalledWith(blob, expect.stringContaining('.json'));
+      expect(downloadBlob).toHaveBeenCalledWith(blob, expect.stringMatching(/-export-\d{4}-\d{2}-\d{2}\.json$/));
     });
   });
 

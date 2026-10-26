@@ -198,6 +198,49 @@ describe('LibraryPage', () => {
     expect(screen.getByText('No prompts match “refund ticket”')).toBeInTheDocument();
   });
 
+  it('offers to search the whole library when a folder has no match', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([
+      saved({ id: 1, name: 'Refund Request Template', folder: 'Support' }),
+      saved({ id: 2, name: 'Code review', folder: 'Engineering' }),
+    ]);
+    await renderLibrary('folder=Engineering');
+    await user.type(screen.getByLabelText('Search prompts'), 'refund');
+
+    expect(screen.getByText('1 prompt matches elsewhere in your library.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Search all prompts' })).toHaveAttribute('href', '/library?q=refund');
+  });
+
+  it('keeps variable chips whole in search excerpts and cuts them at spaces', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [
+      { name: 'Task', content: 'Write a friendly reply to {{customer_name}} about their order and keep it short.' },
+    ] })]);
+    const { container } = await renderLibrary();
+    await user.type(screen.getByLabelText('Search prompts'), 'customer');
+
+    const mark = container.querySelector('mark');
+    expect(mark).toHaveTextContent('{{customer_name}}');
+    expect(mark?.querySelector('span')).toHaveTextContent('{{customer_name}}');
+    expect(mark?.parentElement).toHaveTextContent(/^Task: …a friendly reply to \{\{customer_name\}\}/);
+  });
+
+  it.each([
+    ['a long variable name at the start', 'Please send this to {{international_customer_delivery_address}} tomorrow.', 'address', '{{international_customer_delivery_address}}'],
+    // The excerpt's natural end falls inside `{{ customer_name }}`, right after a space in the braces.
+    ['spaces inside the braces at the end', `confirm${' x'.repeat(38)} {{ customer_name }} and more words after it.`, 'confirm', null],
+  ])('never cuts a variable at an excerpt edge: %s', async (_case, content, query, marked) => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [{ name: 'Task', content }] })]);
+    const { container } = await renderLibrary();
+    await user.type(screen.getByLabelText('Search prompts'), query);
+
+    const excerptText = container.querySelector('mark')?.parentElement?.textContent ?? '';
+    // Every opening {{ in the excerpt has its closing }}, and vice versa.
+    expect(excerptText.split('{{').length).toBe(excerptText.split('}}').length);
+    if (marked) expect(container.querySelector('mark')).toHaveTextContent(marked);
+  });
+
   it.each(['list', 'grid'])('shows matching context in %s and keeps the default excerpt without a query', async layout => {
     const user = userEvent.setup();
     vi.mocked(AuthService.getCurrentUser).mockResolvedValue({ id: 1, username: 'alex', created_at: '2026-01-01', default_library_view: layout as 'list' | 'grid' });
@@ -264,6 +307,20 @@ describe('LibraryPage', () => {
     await user.click(screen.getByRole('button', { name: 'Add Weekly status update to favourites' }));
     await screen.findByRole('button', { name: 'Remove Weekly status update from favourites' });
     expect(rowNames()[0]).toBe('Reply to a tricky email');
+  });
+
+  it('moves through the more-actions menu with arrow keys, Home and End', async () => {
+    const user = userEvent.setup();
+    await renderLibrary();
+    await user.click(screen.getByRole('button', { name: 'More actions for LinkedIn post' }));
+    await user.keyboard('{ArrowDown}');
+    expect(document.activeElement).toHaveTextContent('Copy template');
+    await user.keyboard('{ArrowUp}');
+    expect(document.activeElement).toHaveTextContent('Delete');
+    await user.keyboard('{Home}');
+    expect(document.activeElement).toHaveTextContent('Copy template');
+    await user.keyboard('{End}');
+    expect(document.activeElement).toHaveTextContent('Delete');
   });
 
   it('keeps a pending deletion hidden while importing and allows undo', async () => {

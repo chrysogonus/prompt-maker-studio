@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, useMemo } from 'react';
+import { Suspense, useMemo, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 
-import Button from '@/components/ui/Button';
+import Button, { ButtonLink } from '@/components/ui/Button';
 import Dialog from '@/components/ui/Dialog';
 import {
   CopyIcon,
@@ -79,10 +79,27 @@ function LibraryContent() {
   const drafts = useMemo(() => new Set(currentUser ? (prompts ?? []).filter((prompt) => hasUnsavedDraft(currentUser, prompt)).map((prompt) => prompt.id) : []), [currentUser, prompts]);
   const draftBadge = (prompt: Prompt) => drafts.has(prompt.id) && <span className={styles.draft}>Unsaved draft</span>;
 
+  /** Text with its variable chips intact; a match inside a {{variable}} marks the whole chip. */
+  const snippet = (before: string, match = '', after = '') => {
+    const [from, to] = [before.length, before.length + match.length];
+    let end = 0;
+    return splitVariables(before + match + after).flatMap((part, i) => {
+      const start = end;
+      end += part.text.length;
+      if (part.kind === 'variable') {
+        const chip = <span key={i} className={styles.snippetVariable}>{part.text}</span>;
+        return start < to && end > from ? <mark key={i}>{chip}</mark> : chip;
+      }
+      const [a, b] = [Math.max(from, start) - start, Math.min(to, end) - start];
+      return a < b ? [part.text.slice(0, a), <mark key={i}>{part.text.slice(a, b)}</mark>, part.text.slice(b)] : [part.text];
+    });
+  };
+
   const preview = (prompt: Prompt) => {
     const match = searchMatch(prompt, search);
-    return match ? <><strong>{match.label}:</strong> {match.before}<mark>{match.match}</mark>{match.after}</>
-      : splitVariables(excerpt(prompt)).map((part, i) => part.kind === 'variable' ? <span key={i} className={styles.snippetVariable}>{part.text}</span> : part.text);
+    return match
+      ? <><strong>{match.label}:</strong> {snippet(match.before, match.match, match.after)}</>
+      : snippet(excerpt(prompt));
   };
 
   const selection = (prompt: Prompt) => (
@@ -91,8 +108,19 @@ function LibraryContent() {
     </label>
   );
 
+  /** Arrow keys, Home and End move through an open menu's items, as Tab already does. */
+  const menuKeys = (event: KeyboardEvent<HTMLDivElement>) => {
+    const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>(`.${styles.menu} button`)];
+    if (!items.length || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const at = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+      : event.key === 'ArrowDown' ? (at + 1) % items.length : (at <= 0 ? items.length : at) - 1;
+    items[next].focus();
+  };
+
   const promptMenu = (prompt: Prompt) => (
-    <div className={styles.menuWrap} data-menu>
+    <div className={styles.menuWrap} data-menu onKeyDown={menuKeys}>
       <button
         type="button"
         className={styles.iconButton}
@@ -198,13 +226,26 @@ function LibraryContent() {
   } else if (prompts === null) {
     body = <p className={styles.loading}>Loading your prompts…</p>;
   } else if (visible.length === 0 && search.trim()) {
+    // Search narrows the current view, so say when prompts elsewhere match.
+    const elsewhere = view.type === 'all' ? 0 : prompts.filter((prompt) => searchMatch(prompt, search) !== null).length;
     body = (
       <div className={styles.empty}>
         <h2>No prompts match “{search.trim()}”</h2>
-        <p>Search looks at names, folders and section text.</p>
-        <Button variant="secondary" onClick={() => setSearch('')}>
-          Clear search
-        </Button>
+        <p>
+          {elsewhere
+            ? `${elsewhere} ${elsewhere === 1 ? 'prompt matches' : 'prompts match'} elsewhere in your library.`
+            : 'Search looks at names, folders and section text.'}
+        </p>
+        <div className={styles.emptyActions}>
+          {elsewhere > 0 && (
+            <ButtonLink variant="primary" href={`/library?${new URLSearchParams({ q: search.trim() })}`}>
+              Search all prompts
+            </ButtonLink>
+          )}
+          <Button variant="secondary" onClick={() => setSearch('')}>
+            Clear search
+          </Button>
+        </div>
       </div>
     );
   } else if (visible.length === 0 && view.type === 'favorites') {
@@ -350,7 +391,7 @@ function LibraryContent() {
         <h1>{title}</h1>
         <ImportPrompts onCreated={addImported} folders={folders} existing={prompts ?? []} />
         {view.type === 'folder' && (
-          <div className={styles.menuWrap} data-menu>
+          <div className={styles.menuWrap} data-menu onKeyDown={menuKeys}>
             <button
               type="button"
               className={styles.iconButton}

@@ -1,4 +1,5 @@
 import type { PromptHistoryResponse } from '@/types/prompt';
+import { splitVariables } from '@/lib/sections';
 
 // Long enough to notice the toast and reach Undo; the delete is sent when it ends.
 export const UNDO_MS = 10000;
@@ -76,7 +77,22 @@ function excerptAround(candidate: { label: string; text: string }, index: number
     folded += size;
     offset += character.length;
   }
-  const from = Math.max(0, start - 24);
-  const to = Math.min(text.length, end + 80);
+  let from = Math.max(0, start - 24);
+  let to = Math.min(text.length, end + 80);
+  // Cut at spaces so the excerpt does not open or close mid-word or mid-{{variable}}.
+  const opening = text.indexOf(' ', from);
+  if (from > 0 && opening >= 0 && opening < start) from = opening + 1;
+  const closing = text.lastIndexOf(' ', to);
+  if (to < text.length && closing >= end) to = closing;
+  // Widen to whole {{variables}}: a long name or spaces inside the braces can defeat the cuts above.
+  let at = 0;
+  for (const part of splitVariables(text)) {
+    const partEnd = at + part.text.length;
+    if (part.kind === 'variable') {
+      if (at < from && from < partEnd) from = at;
+      if (at < to && to < partEnd) to = partEnd;
+    }
+    at = partEnd;
+  }
   return { label: candidate.label, before: `${from ? '…' : ''}${text.slice(from, start)}`, match: text.slice(start, end), after: `${text.slice(end, to)}${to < text.length ? '…' : ''}` };
 }

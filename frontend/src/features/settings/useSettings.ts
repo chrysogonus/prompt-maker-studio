@@ -137,7 +137,8 @@ export function useSettings() {
     setExportSuccess('');
     try {
       const blob = await ApiClient.exportPrompts();
-      const filename = `${APP_SLUG}-export.json`;
+      // The local date keeps repeated exports apart (en-CA formats it as YYYY-MM-DD).
+      const filename = `${APP_SLUG}-export-${new Date().toLocaleDateString('en-CA')}.json`;
       downloadBlob(blob, filename);
       setExportSuccess(`Exported your prompts to ${filename}`);
       setTimeout(() => {
