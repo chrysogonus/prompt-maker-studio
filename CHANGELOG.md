@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.11.0; see the [release candidate](./docs/releases/0.11.0.md).
+
 ### Added
 
 - AI answers in Test with AI and in Evaluate render as Markdown, with tables, lists, headings and
