@@ -439,7 +439,11 @@
   color: var(--text-secondary);
 }
 
-.output pre {
+.outputBody {
+  padding: var(--space-4);
+}
+
+.output > pre {
   padding: var(--space-4);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -539,6 +543,14 @@
   .comparisonColumns {
     grid-template-columns: 1fr;
   }
+}
+
+.compareOutput {
+  padding: var(--space-3);
+  margin-top: var(--space-3);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 .compareText {

@@ -1,0 +1,84 @@
+/* Colours come from the surrounding surface: the plum preview or a light panel. */
+.output {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.toggle {
+  justify-self: end;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-sm-size);
+  opacity: 0.8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.toggle[aria-pressed='true'] {
+  opacity: 1;
+  font-weight: var(--weight-semibold);
+}
+
+.formatted,
+.plain {
+  max-height: 440px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+
+.plain {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm-size);
+}
+
+.formatted {
+  white-space: normal;
+  font-family: var(--font-display);
+}
+
+.formatted > :first-child { margin-top: 0; }
+.formatted > :last-child { margin-bottom: 0; }
+.formatted p,
+.formatted ul,
+.formatted ol,
+.formatted pre,
+.formatted blockquote { margin: 0 0 var(--space-3); }
+.formatted ul,
+.formatted ol { padding-left: 1.4em; }
+.formatted h1,
+.formatted h2,
+.formatted h3,
+.formatted h4 { margin: var(--space-4) 0 var(--space-2); font-size: 1.05em; font-weight: var(--weight-semibold); }
+.formatted code { font-family: var(--font-mono); font-size: 0.92em; }
+.formatted pre { white-space: pre-wrap; padding: var(--space-3); border-radius: var(--radius-sm); background: color-mix(in srgb, currentColor 8%, transparent); }
+.formatted blockquote { padding-left: var(--space-3); border-left: 2px solid color-mix(in srgb, currentColor 35%, transparent); }
+.formatted a { color: inherit; text-decoration: underline; }
+
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 var(--space-3);
+}
+
+.tableScroll table {
+  border-collapse: collapse;
+  font-size: var(--text-sm-size);
+}
+
+.tableScroll th,
+.tableScroll td {
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: normal;
+  min-width: 8ch;
+}

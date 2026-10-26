@@ -130,6 +130,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
                 <Button disabled={!!busy} onClick={() => setSuggesting(false)}>Cancel</Button>
                 <Button variant="primary" type="submit" disabled={!!busy || !canUseAI}>{busy === 'generate' ? 'Generating suggestions…' : 'Generate suggestions'}</Button>
               </div>
+              {busy === 'generate' && <p className={styles.hint} role="status">This can take a minute or two. Keep this page open.</p>}
             </form>
           )}
           {proposals.length > 0 && (

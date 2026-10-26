@@ -284,6 +284,15 @@ it('reviews AI suggestions without saving them until the user accepts an edited 
   expect(localStorage.getItem('prompt-maker-studio:eval-suggestions:alex:1')).toBeNull();
 });
 
+it('says how long suggestions can take while they are generated', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.generateEvalCases).mockReturnValue(new Promise(() => {}));
+  await open();
+  await user.click(screen.getByRole('button', { name: 'Suggest test cases' }));
+  await user.click(screen.getByRole('button', { name: 'Generate suggestions' }));
+  expect(await screen.findByText('This can take a minute or two. Keep this page open.')).toBeInTheDocument();
+});
+
 it('keeps unsaved suggestions across a reload until they are discarded', async () => {
   const user = userEvent.setup();
   vi.mocked(ApiClient.generateEvalCases).mockResolvedValue({ proposals: [{

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ApiClient } from '@/lib/api';
 import AICallContext from '@/components/ui/AICallContext';
+import ModelOutput from '@/components/ui/ModelOutput';
 import { fillVariables, renderPlainSections, renderSections, sectionTag, splitVariables, valueFor } from '@/lib/sections';
 import { PromptField, VariableMetadataItem, PromptsConfigResponse, TryPromptResponse } from '@/types/prompt';
 import styles from './PromptEditor.module.css';
@@ -296,7 +297,7 @@ export default function PreviewPane({
               <h3>Output</h3>
               <p>{aiConfig?.provider === result.response.provider ? aiConfig.provider_label : result.response.provider} / {result.response.model}</p>
               {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier inputs. Run again to try the current prompt.</p>}
-              <pre tabIndex={0}>{result.response.output_text || 'The model returned no text.'}</pre>
+              {result.response.output_text ? <ModelOutput text={result.response.output_text} /> : <p>The model returned no text.</p>}
               {result.response.output_text && (
                 <button type="button" className={styles.copyButton} data-secondary="true" onClick={() => copy('output')}>
                   {copied === 'output' ? 'Copied' : 'Copy output'}

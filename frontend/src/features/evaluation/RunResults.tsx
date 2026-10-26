@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { resultFailure, resultStatus, runScoreLabel } from '@/lib/evaluationStatus';
 import type { EvalResult } from '@/types/evaluation';
 import Button from '@/components/ui/Button';
+import ModelOutput from '@/components/ui/ModelOutput';
 import type { EvalRun } from '@/types/evaluation';
 import { METHOD_LABELS } from './useEvaluation';
 import styles from './Evaluation.module.css';
@@ -83,7 +84,7 @@ export default function RunResults({ run, busy, onRate }: {
               {`${resultStatus(result)}${result.score === null ? '' : ` · ${Math.round(result.score)}/100`}`}
             </span>
           </header>
-          {result.output_text !== null ? <div className={styles.output}><h4>Model output</h4><pre>{result.output_text || '(Empty output)'}</pre></div>
+          {result.output_text !== null ? <div className={styles.output}><h4>Model output</h4>{result.output_text ? <div className={styles.outputBody}><ModelOutput text={result.output_text} /></div> : <pre>(Empty output)</pre>}</div>
             : <p className={styles.error}>No model output was recorded for this case.</p>}
           <ResultFeedback result={result} />
           {result.is_pending && (

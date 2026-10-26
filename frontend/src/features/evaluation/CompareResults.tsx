@@ -2,6 +2,7 @@ import type { EvalResult, EvalRun } from '@/types/evaluation';
 import { resultStatus, runScoreLabel, runVersionLabel } from '@/lib/evaluationStatus';
 import { ResultFeedback } from './RunResults';
 import { METHOD_LABELS } from './useEvaluation';
+import ModelOutput from '@/components/ui/ModelOutput';
 import styles from './Evaluation.module.css';
 
 function ComparisonOutput({ result, title }: { result?: EvalResult; title: string }) {
@@ -9,7 +10,8 @@ function ComparisonOutput({ result, title }: { result?: EvalResult; title: strin
     <h4>{title}</h4>
     {result ? <>
       <p className={styles.hint}>{METHOD_LABELS[result.method]}: {`${resultStatus(result)}${result.score === null ? '' : ` · ${Math.round(result.score)}/100`}`}</p>
-      <pre className={styles.compareText}>{result.output_text === null ? 'No model output recorded.' : result.output_text || '(Empty output)'}</pre>
+      {result.output_text ? <div className={styles.compareOutput}><ModelOutput text={result.output_text} /></div>
+        : <pre className={styles.compareText}>{result.output_text === null ? 'No model output recorded.' : '(Empty output)'}</pre>}
       <ResultFeedback result={result} />
       <details className={styles.runDetails}><summary>Inputs and scoring</summary>
         <dl className={styles.metadata}>{Object.entries(result.variables ?? {}).map(([name, value]) => <div key={name}><dt>{name}</dt><dd className={styles.verbatim}>{value || '(Blank; placeholder kept)'}</dd></div>)}</dl>

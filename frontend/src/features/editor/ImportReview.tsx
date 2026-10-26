@@ -55,7 +55,10 @@ export default function ImportReview({ session, onChange, onImport, onClose }: {
 
   return <>
     <h3 ref={heading} tabIndex={-1} className={styles.reviewHeading}>Your template is ready to review</h3>
-    <p>Original inputs are filled in. Changes here are local; they do not make another AI request.</p>
+    <p>
+      {variables.some((variable) => variable.value) ? 'Original inputs are filled in.' : 'No values were found for the inputs; fill them in below or keep them as placeholders.'}
+      {' '}Changes here are local; they do not make another AI request.
+    </p>
     <div className={styles.reviewLayout}>
       <section aria-label="Converted prompt" className={styles.preview}>
         <SegmentedControl aria-label="Conversion preview mode" options={VIEWS} value={view} onChange={setView} />
