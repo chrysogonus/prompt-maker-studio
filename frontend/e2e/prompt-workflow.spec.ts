@@ -418,7 +418,9 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
 
   await expect(tabB.getByText(/saved somewhere else/)).toBeVisible();
   await tabB.getByRole('button', { name: 'Compare', exact: true }).click();
-  await expect(tabB.getByLabel('Saved version compared with yours')).toContainText('tab A wins');
+  const conflictDiff = tabB.getByLabel('Saved version compared with yours');
+  await expect(conflictDiff.locator('del')).toHaveText(['A', 'wins']);
+  await expect(conflictDiff.locator('ins')).toHaveText(['B', 'draft']);
   await tabB.getByRole('button', { name: 'Keep my edits' }).click();
   await expect(tabB.getByText(/saved somewhere else/)).toHaveCount(0);
   await expect(tabB.getByLabel('Task text')).toHaveValue('tab B draft {{alpha}}');
