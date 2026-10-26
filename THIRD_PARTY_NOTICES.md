@@ -31,12 +31,12 @@ byte for byte; inspect the built artifact when updating its inventory.
 | Deprecated | 1.3.1 | MIT |
 | dnspython | 2.8.0 | ISC |
 | email-validator | 2.3.0 | Unlicense |
-| fastapi | 0.142.2 | MIT |
+| fastapi | 0.146.0 | MIT |
 | h11 | 0.16.0 | MIT |
 | httpcore | 1.0.9 | BSD-3-Clause |
-| httpcore2 | 2.13.1 | BSD-3-Clause |
+| httpcore2 | 2.14.0 | BSD-3-Clause |
 | httpx | 0.28.1 | BSD-3-Clause |
-| httpx2 | 2.13.1 | BSD-3-Clause |
+| httpx2 | 2.14.0 | BSD-3-Clause |
 | idna | 3.18 | BSD-3-Clause |
 | jiter | 0.16.0 | MIT |
 | jsonschema | 4.26.0 | MIT |
@@ -45,25 +45,25 @@ byte for byte; inspect the built artifact when updating its inventory.
 | mcp | 2.3.0 | MIT |
 | mcp-types | 2.3.0 | MIT |
 | msgpack | 1.2.3 | Apache-2.0 |
-| openai | 3.13.0 | Apache-2.0 |
+| openai | 3.35.1 | Apache-2.0 |
 | opentelemetry-api | 1.45.1 | Apache-2.0 |
 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause |
 | prometheus-fastapi-instrumentator | 8.1.0 | ISC |
 | prometheus_client | 0.26.0 | Apache-2.0 AND BSD-2-Clause |
 | pycparser | 3.0 | BSD-3-Clause |
-| pydantic | 2.13.5 | MIT |
-| pydantic_core | 2.46.5 | MIT |
+| pydantic | 2.14.1 | MIT |
+| pydantic_core | 2.50.1 | MIT |
 | PyJWT | 2.15.1 | MIT |
 | python-multipart | 0.0.32 | Apache-2.0 |
 | referencing | 0.37.0 | MIT |
 | rpds-py | 2026.9.1 | MIT |
 | slowapi | 0.1.10 | MIT |
 | sniffio | 1.3.1 | MIT OR Apache-2.0 |
-| SQLAlchemy | 2.1.3 | MIT |
+| SQLAlchemy | 2.1.5 | MIT |
 | sse-starlette | 3.5.0 | BSD-3-Clause |
-| starlette | 1.7.0 | BSD-3-Clause |
+| starlette | 1.9.0 | BSD-3-Clause |
 | truststore | 0.10.4 | MIT |
-| typing-inspection | 0.4.2 | MIT |
+| typing-inspection | 0.4.4 | MIT |
 | typing_extensions | 4.16.0 | PSF-2.0 |
 | uvicorn | 0.54.0 | BSD-3-Clause |
 | wrapt | 2.2.2 | BSD-2-Clause |
