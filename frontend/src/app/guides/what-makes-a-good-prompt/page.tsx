@@ -63,6 +63,24 @@ export default function GoodPromptPage() {
         it states a role or audience, a format, a length and an example, or let the <Link href={TOOLS.refiner.path}>prompt refiner</Link>{' '}
         suggest a clearer version.
       </p>
+
+      <h2>Further reading</h2>
+      <p>The model providers&apos; own guides give the same advice in more depth:</p>
+      <ul>
+        <li>
+          Anthropic,{' '}
+          <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices">Prompting best practices</a>:
+          being clear and direct, adding context, examples, XML tags and giving Claude a role.
+        </li>
+        <li>
+          OpenAI, <a href="https://developers.openai.com/api/docs/guides/prompt-engineering">Prompt engineering</a>:
+          an identity for the assistant, few-shot examples, relevant context and Markdown or XML structure.
+        </li>
+        <li>
+          Google, <a href="https://ai.google.dev/gemini-api/docs/prompting-strategies">Prompt design strategies</a>:
+          clear instructions, few-shot examples, added context and breaking prompts into components.
+        </li>
+      </ul>
     </GuideArticle>
   );
 }

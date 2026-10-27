@@ -43,7 +43,7 @@ export default function ImagePromptsPage() {
       <h2>Iterate one change at a time</h2>
       <ul>
         <li>Generate a few images, keep the best, and change one detail, such as lighting, before generating again.</li>
-        <li>Put the most important detail early. Many models weight the start of a prompt more heavily.</li>
+        <li>Put the most important detail early, so it is not lost among the others.</li>
         <li>Avoid copying living artists&apos; names. Describe the qualities you want instead: loose brushwork, high contrast, muted colours.</li>
         <li>Keep the versions that worked. The <Link href={TOOLS.diff.path}>prompt diff</Link> shows what you changed between them.</li>
       </ul>

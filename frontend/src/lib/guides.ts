@@ -17,6 +17,13 @@ export const GUIDES_INDEX: GuideSummary = {
 };
 
 export const GUIDES = {
+  library: {
+    path: '/guides/what-is-a-prompt-library',
+    title: 'What is a prompt library?',
+    description: 'A prompt library keeps the AI prompts you reuse in one place, named and ready to fill in. What belongs in one, what makes an entry useful, and how to start.',
+    published: '2026-10-27',
+    updated: '2026-10-27',
+  },
   reusable: {
     path: '/guides/reusable-ai-prompts',
     title: 'How to create reusable AI prompts',
@@ -29,7 +36,7 @@ export const GUIDES = {
     title: 'How to use variables in AI prompt templates',
     description: 'Build a weekly update template with {{variables}}, add hints and example inputs, and copy a filled prompt into your preferred AI assistant.',
     published: '2026-10-15',
-    updated: '2026-10-26',
+    updated: '2026-10-27',
   },
   organize: {
     path: '/guides/organize-chatgpt-prompts',
@@ -43,21 +50,21 @@ export const GUIDES = {
     title: 'What makes a good AI prompt',
     description: 'The six parts most prompts need (role, context, task, format, constraints and examples), with a complete example and how to test and improve a prompt.',
     published: '2026-10-22',
-    updated: '2026-10-22',
+    updated: '2026-10-27',
   },
   codingAgents: {
     path: '/guides/prompts-for-coding-agents',
     title: 'How to write prompts for coding agents',
     description: 'Brief Claude Code, Codex or Cursor like a work ticket: the goal, where to look, constraints, a checkable definition of done and what to report.',
     published: '2026-10-22',
-    updated: '2026-10-23',
+    updated: '2026-10-27',
   },
   imagePrompts: {
     path: '/guides/image-generation-prompts',
     title: 'How to write image generation prompts',
     description: 'Describe subject, setting, composition, style, lighting and format so GPT Image, Midjourney, Stable Diffusion or Gemini produce the picture you have in mind.',
     published: '2026-10-22',
-    updated: '2026-10-23',
+    updated: '2026-10-27',
   },
   researchWriting: {
     path: '/guides/research-and-writing-prompts',

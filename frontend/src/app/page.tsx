@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import LegalLinks from '@/components/LegalLinks';
 import JsonLd, { FREE_OFFER, PROJECT } from '@/components/public/JsonLd';
-import RepositoryLink from '@/components/RepositoryLink';
+import RepositoryLink, { REPOSITORY_URL } from '@/components/RepositoryLink';
 import { ButtonLink } from '@/components/ui/Button';
 import Wordmark from '@/components/ui/Wordmark';
 import GuideList from '@/components/guides/GuideList';
@@ -213,6 +213,13 @@ export default async function LandingPage() {
             Saving and filling in prompts needs no AI connection. Optional AI features use your own
             OpenAI, Anthropic, Gemini, Ollama or other OpenAI-compatible provider, or a shared
             connection when the server offers one.
+          </p>
+          <p>
+            For a team, run one copy on a server you control. Each person keeps a private library, and
+            you can set up a shared AI connection, such as a local model through Ollama or vLLM, for
+            people without their own API key. The{' '}
+            <a href={`${REPOSITORY_URL}/blob/main/docs/deployment.md`}>deployment guide</a>{' '}
+            covers the setup.
           </p>
           <ButtonLink href="/library" variant="primary" className={styles.cta}>
             Open the app

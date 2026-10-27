@@ -23,6 +23,15 @@ any release. See [Project status](./README.md#project-status).
   Public footers link to it.
 - `/llms.txt` lists the guides, tools, templates, the About page and the MCP address for AI
   assistants, built from this site's own origin.
+- A guide, "What is a prompt library?", covers what belongs in one, what makes an entry useful,
+  and how to start from the free templates.
+- Each gallery template shows its prompt filled in with the example inputs and what a good result
+  looks like, and every template now has at least one tip.
+- The coding-agent guide includes all six coding templates, ready to copy. The variables guide
+  compares placeholder syntax in other tools, with sources, and lists common pitfalls. The guide
+  on good prompts links the Anthropic, OpenAI and Google prompting guides.
+- The home page explains how a team can run its own copy, with a shared AI connection such as a
+  local model.
 
 ### Fixed
 

@@ -9,10 +9,12 @@ import CodingAgentsPage, { generateMetadata as codingAgentsMetadata } from '../g
 import ImagePromptsPage, { generateMetadata as imagePromptsMetadata } from '../guides/image-generation-prompts/page';
 import ResearchWritingPage, { generateMetadata as researchWritingMetadata } from '../guides/research-and-writing-prompts/page';
 import ConnectPage, { generateMetadata as connectMetadata } from '../guides/connect-chatgpt-claude/page';
+import LibraryPage, { generateMetadata as libraryMetadata } from '../guides/what-is-a-prompt-library/page';
 
 afterEach(() => vi.unstubAllEnvs());
 
 const articles = [
+  { Page: LibraryPage, metadata: libraryMetadata, path: '/guides/what-is-a-prompt-library' },
   { Page: ReusablePromptsPage, metadata: reusableMetadata, path: '/guides/reusable-ai-prompts' },
   { Page: TemplateVariablesPage, metadata: variablesMetadata, path: '/guides/prompt-template-variables' },
   { Page: OrganizePromptsPage, metadata: organizeMetadata, path: '/guides/organize-chatgpt-prompts' },
@@ -35,6 +37,27 @@ describe('Public guides', () => {
     expect(index).toMatchObject({ '@type': 'CollectionPage', url: 'https://guides.example/guides' });
     expect(index.mainEntity.itemListElement.map((item: { url: string }) => item.url))
       .toEqual(articles.map(({ path }) => `https://guides.example${path}`));
+  });
+
+  it('gives the coding-agent guide every coding template, ready to copy', () => {
+    const { container } = render(<CodingAgentsPage />);
+
+    const templates = within(container).getAllByRole('heading', { level: 3 });
+    expect(templates).toHaveLength(6);
+    for (const heading of templates) {
+      const section = heading.closest('section')!;
+      expect(within(section).getByRole('link', { name: 'Fill it in' }).getAttribute('href')).toMatch(/^\/gallery\//);
+      expect(section.querySelector('pre')!.textContent).toMatch(/\{\{\w+\}\}/);
+    }
+  });
+
+  it('compares variable syntax across tools with sources', () => {
+    render(<TemplateVariablesPage />);
+
+    const table = screen.getByRole('table');
+    expect(within(table).getAllByRole('row')).toHaveLength(6);
+    expect(within(table).getAllByRole('link').map((link) => new URL(link.getAttribute('href')!).host))
+      .toEqual(['platform.claude.com', 'docs.cloud.google.com', 'docs.langchain.com']);
   });
 
   it("shows this deployment's own MCP address in the connector guide", () => {

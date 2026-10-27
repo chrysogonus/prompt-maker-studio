@@ -10,6 +10,8 @@ const paths = [
   '/guides/prompts-for-coding-agents',
   '/guides/image-generation-prompts',
   '/guides/research-and-writing-prompts',
+  '/guides/what-is-a-prompt-library',
+  '/guides/connect-chatgpt-claude',
 ];
 
 test('visitors can follow the guides from the homepage into the app', async ({ page }) => {

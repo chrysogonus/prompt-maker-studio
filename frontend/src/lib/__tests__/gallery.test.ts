@@ -26,6 +26,10 @@ describe('gallery data', () => {
     expect(variables.filter((name) => !template.examples[name]?.trim())).toEqual([]);
     expect(lintPrompt(renderSections(template.sections)).filter((finding) => finding.severity === 'problem')).toEqual([]);
     if (template.guide) expect(GUIDES[template.guide]).toBeDefined();
+    // Each page explains what a good result looks like and gives at least one tip.
+    expect(template.outcome.length).toBeGreaterThan(40);
+    expect(template.outcome.length).toBeLessThanOrEqual(200);
+    expect(template.tips.length).toBeGreaterThan(0);
   });
 
   it('orders featured templates and finds templates by slug and guide', () => {

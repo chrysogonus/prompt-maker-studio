@@ -41,6 +41,10 @@ describe('Prompt gallery', () => {
   it('shows a template ready to fill in, with tips, its guide and related templates', async () => {
     render(await TemplatePage(params('bug-fix-brief')));
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Bug fix brief for a coding agent');
+    const example = screen.getByRole('heading', { name: 'Example, filled in' }).parentElement!.querySelector('h2 + p + pre')!.textContent!;
+    expect(example).toContain('<GOAL>\nFix this bug: saving a note with an emoji in its title returns a 500 error.');
+    expect(example).not.toContain('{{');
+    expect(screen.getByRole('heading', { name: 'What to expect' }).nextElementSibling).toHaveTextContent(/root cause/);
     expect(screen.getByRole('textbox', { name: 'symptom' })).toHaveAttribute('placeholder', 'What goes wrong, and how to reproduce it');
     expect(screen.getByRole('button', { name: 'Use example inputs' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'how to write prompts for coding agents' })).toHaveAttribute('href', '/guides/prompts-for-coding-agents');

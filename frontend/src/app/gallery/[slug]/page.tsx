@@ -7,6 +7,7 @@ import TemplateFiller from '@/features/tools/TemplateFiller';
 import { siteUrl } from '@/lib/branding';
 import { GALLERY_CATEGORIES, galleryDescription, galleryMetadata, galleryPath, galleryTemplate, relatedTemplates } from '@/lib/gallery';
 import { GUIDES } from '@/lib/guides';
+import { fillVariables, renderSections } from '@/lib/sections';
 import { TOOLS } from '@/lib/tools';
 
 type Params = { params: Promise<{ slug: string }> };
@@ -54,6 +55,11 @@ export default async function GalleryTemplatePage({ params }: Params) {
             <li key={section.name}><strong>{section.name}</strong>: {section.content.split('\n')[0]}</li>
           ))}
         </ul>
+        <h2>Example, filled in</h2>
+        <p>With the example inputs, the prompt you copy reads:</p>
+        <pre>{renderSections(template.sections.map((section) => ({ ...section, content: fillVariables(section.content, template.examples) })))}</pre>
+        <h2>What to expect</h2>
+        <p>{template.outcome}</p>
         {template.tips.length > 0 && (
           <>
             <h2>Tips</h2>
