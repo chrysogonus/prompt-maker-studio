@@ -14,7 +14,7 @@ const params = (slug: string) => ({ params: Promise.resolve({ slug }) });
 describe('Prompt gallery', () => {
   it('lists every template under its category, with popular ones first', () => {
     const { container } = render(<GalleryPage />);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Free prompt templates');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Free prompt library and templates');
     const index = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
     expect(index['@type']).toBe('CollectionPage');
     expect(index.mainEntity.itemListElement).toHaveLength(GALLERY.length);
@@ -70,10 +70,15 @@ describe('Prompt gallery', () => {
 
   it('builds index and template metadata from the origin at request time', async () => {
     vi.stubEnv('FRONTEND_URL', 'https://gallery.example');
-    expect(indexMetadata().alternates?.canonical).toBe('https://gallery.example/gallery');
+    const index = indexMetadata();
+    expect(index.alternates?.canonical).toBe('https://gallery.example/gallery');
+    expect(index.description!.length).toBeLessThanOrEqual(160);
     const meta = await templateMetadata(params('meeting-summary'));
     expect(meta.alternates?.canonical).toBe('https://gallery.example/gallery/meeting-summary');
-    expect(meta.title).toContain('Meeting summary with action items: free prompt template');
+    expect(meta.title).toBe('Meeting summary with action items: free prompt template');
+    for (const template of GALLERY) {
+      expect(String((await templateMetadata(params(template.slug))).title).length, template.slug).toBeLessThanOrEqual(60);
+    }
   });
 
   it('wraps the gallery in the public shell with a Templates link', async () => {

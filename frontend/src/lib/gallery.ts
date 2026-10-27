@@ -446,8 +446,8 @@ export const GALLERY: GalleryTemplate[] = [
 
 export const GALLERY_INDEX = {
   path: '/gallery',
-  title: 'Free prompt templates',
-  description: 'Free, ready-to-use AI prompt templates for coding agents, image generation, research and writing, and everyday work. Fill them in, copy them, or save them to your library.',
+  title: 'Free prompt library and templates',
+  description: 'Free AI prompt templates for coding agents, image generation, research, writing and everyday work. Fill them in, copy them or save them to your library.',
 };
 
 export function galleryPath(slug: string): string {
@@ -470,9 +470,17 @@ export function galleryDescription(template: GalleryTemplate): string {
 }
 
 export function galleryMetadata(template?: GalleryTemplate) {
-  return guideMetadata(template
-    ? { path: galleryPath(template.slug), title: `${template.title}: free prompt template`, description: galleryDescription(template) }
-    : GALLERY_INDEX);
+  // Template titles leave out the app name to stay under the ~60 characters search results show.
+  return template
+    ? guideMetadata({ path: galleryPath(template.slug), title: `${template.title}: free prompt template`, description: galleryDescription(template) }, { brand: false })
+    : guideMetadata(GALLERY_INDEX);
+}
+
+/** The next four templates in the category, wrapping, so every template is linked from its neighbours. */
+export function relatedTemplates(template: GalleryTemplate): GalleryTemplate[] {
+  const siblings = GALLERY.filter((item) => item.category === template.category);
+  const index = siblings.indexOf(template);
+  return [...siblings.slice(index + 1), ...siblings.slice(0, index)].slice(0, 4);
 }
 
 /** Templates that point to this guide, so guides can suggest a place to start. */

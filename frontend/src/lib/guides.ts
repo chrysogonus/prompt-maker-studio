@@ -55,7 +55,7 @@ export const GUIDES = {
   imagePrompts: {
     path: '/guides/image-generation-prompts',
     title: 'How to write image generation prompts',
-    description: 'Describe subject, setting, composition, style, lighting and format so ChatGPT (GPT Image), Midjourney, Stable Diffusion or Gemini produce the picture you have in mind.',
+    description: 'Describe subject, setting, composition, style, lighting and format so GPT Image, Midjourney, Stable Diffusion or Gemini produce the picture you have in mind.',
     published: '2026-10-22',
     updated: '2026-10-23',
   },
@@ -69,9 +69,9 @@ export const GUIDES = {
 } satisfies Record<string, GuideSummary>;
 
 // Called by dynamic pages so a published image uses its deployment's origin.
-export function guideMetadata(guide: GuideSummary): Metadata {
+export function guideMetadata(guide: GuideSummary, { brand = true } = {}): Metadata {
   const url = `${siteUrl()}${guide.path}`;
-  const title = `${guide.title} · ${APP_NAME}`;
+  const title = brand ? `${guide.title} · ${APP_NAME}` : guide.title;
   const image = `${siteUrl()}/landing/editor.png`;
   return {
     title,

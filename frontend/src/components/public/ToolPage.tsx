@@ -51,7 +51,7 @@ export default function ToolPage({ tool, widget, faq, children, local = true }: 
         <h1>{tool.title}</h1>
         <p className={guideStyles.intro}>{tool.description}</p>
         {/* Local tools say so in their description. */}
-        {!local && <p className={styles.local}>When this site offers it, your prompt is sent to its AI provider to refine it and is not stored by this site.</p>}
+        {!local && <p className={styles.local}>Refining sends your prompt to this site&apos;s AI provider; this site does not store it.</p>}
       </header>
       <section className={styles.widget} aria-label={tool.title}>{widget}</section>
       <div className={guideStyles.prose}>

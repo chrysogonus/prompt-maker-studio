@@ -5,7 +5,7 @@ import JsonLd, { PROJECT, breadcrumbs } from '@/components/public/JsonLd';
 import styles from '@/components/public/Tools.module.css';
 import TemplateFiller from '@/features/tools/TemplateFiller';
 import { siteUrl } from '@/lib/branding';
-import { GALLERY, GALLERY_CATEGORIES, galleryDescription, galleryMetadata, galleryPath, galleryTemplate } from '@/lib/gallery';
+import { GALLERY_CATEGORIES, galleryDescription, galleryMetadata, galleryPath, galleryTemplate, relatedTemplates } from '@/lib/gallery';
 import { GUIDES } from '@/lib/guides';
 import { TOOLS } from '@/lib/tools';
 
@@ -21,7 +21,7 @@ export default async function GalleryTemplatePage({ params }: Params) {
   if (!template) notFound();
   const category = GALLERY_CATEGORIES.find((item) => item.id === template.category)!;
   const guide = template.guide ? GUIDES[template.guide] : undefined;
-  const related = GALLERY.filter((item) => item.category === template.category && item.slug !== template.slug).slice(0, 4);
+  const related = relatedTemplates(template);
   const url = `${siteUrl()}${galleryPath(template.slug)}`;
   const structuredData = [
     // No category crumb: a #fragment is the same URL as the gallery itself.

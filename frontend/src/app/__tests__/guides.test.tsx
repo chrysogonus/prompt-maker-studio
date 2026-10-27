@@ -75,6 +75,8 @@ describe('Public guides', () => {
     vi.stubEnv('FRONTEND_URL', 'https://second.example');
     const result = metadata();
     expect(result.alternates?.canonical).toBe(`https://second.example${path}`);
+    expect(result.description!.length).toBeGreaterThanOrEqual(110);
+    expect(result.description!.length).toBeLessThanOrEqual(160);
     expect(result.openGraph).toMatchObject({
       type: path === '/guides' ? 'website' : 'article',
       url: `https://second.example${path}`,

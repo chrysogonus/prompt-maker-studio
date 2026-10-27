@@ -90,6 +90,7 @@ describe('Landing page', () => {
     const metadata = await generateMetadata();
 
     expect(metadata.alternates?.canonical).toBe('https://prompts.example/');
+    expect(metadata.description!.length).toBeLessThanOrEqual(160);
     expect(metadata.openGraph?.images).toEqual([
       expect.objectContaining({ url: 'https://prompts.example/landing/editor.png' }),
     ]);

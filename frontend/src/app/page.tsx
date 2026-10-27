@@ -17,8 +17,8 @@ import { availableLegalPages } from '@/lib/legal';
 import styles from './page.module.css';
 
 const DESCRIPTION =
-  'A prompt library and template editor. Save your best AI prompts as sections with {{variables}}, ' +
-  'fill them in, and copy them into ChatGPT, Claude, Gemini or any other assistant.';
+  'A prompt library and template editor: save your best AI prompts with {{variables}}, fill them in ' +
+  'and copy them into ChatGPT, Claude, Gemini or any assistant.';
 
 export async function generateMetadata(): Promise<Metadata> {
   const url = siteUrl();

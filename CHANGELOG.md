@@ -24,6 +24,11 @@ any release. See [Project status](./README.md#project-status).
   The legal pages have their own description and canonical link, `sitemap.xml` lists the ones a
   deployment provides, and `/privacy` and `/imprint` redirect to them.
 - Responses no longer carry an `X-Powered-By: Next.js` header.
+- Every gallery template is linked from the "More … templates" list of its category neighbours;
+  before, the last template in each category was listed nowhere else.
+- Search titles and descriptions fit what results show: gallery template titles stay under 60
+  characters, free tool titles start with "Free", the gallery is titled "Free prompt library and
+  templates", and long descriptions are shortened to 160 characters or fewer.
 
 ## [0.11.0] - 2026-10-27
 

@@ -42,7 +42,7 @@ describe('Free tools', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     // The refiner is the one tool that sends text, and says so.
     expect(container.querySelector('header')).toHaveTextContent(path.endsWith('prompt-refiner')
-      ? /your prompt is sent to its AI provider/ : /Runs in your browser; nothing is uploaded\.$/);
+      ? /sends your prompt to this site's AI provider/ : /Runs in your browser; nothing is uploaded\.$/);
     expect(screen.getByRole('heading', { name: 'Questions' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'All tools' })).toHaveAttribute('href', '/tools');
     expect(screen.getByRole('link', { name: 'Open the app' })).toHaveAttribute('href', '/library');
@@ -59,7 +59,11 @@ describe('Free tools', () => {
 
   it.each([{ metadata: indexMetadata, path: '/tools' }, ...tools])('builds $path metadata from the origin at request time', ({ metadata, path }) => {
     vi.stubEnv('FRONTEND_URL', 'https://tools.example');
-    expect(metadata().alternates?.canonical).toBe(`https://tools.example${path}`);
+    const result = metadata();
+    expect(result.alternates?.canonical).toBe(`https://tools.example${path}`);
+    expect(result.title).toMatch(/^Free /);
+    expect(result.description!.length).toBeGreaterThanOrEqual(110);
+    expect(result.description!.length).toBeLessThanOrEqual(160);
   });
 
   it('wraps tools in the public shell with Guides, Tools and the app', async () => {
