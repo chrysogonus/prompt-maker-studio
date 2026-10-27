@@ -1574,3 +1574,29 @@ shows FAQ rich results, but the FAQPage data stays because it still describes th
 **Sources**: `frontend/src/components/public/JsonLd.tsx`, `frontend/src/lib/guides.ts`,
 `frontend/src/components/guides/GuideArticle.tsx`, `frontend/src/components/public/ToolPage.tsx`,
 `frontend/src/app/sitemap.ts`.
+
+---
+
+## Public Screenshots Are Cached; Pages Are Not
+
+**Status**: Accepted (2026-10-27)
+
+**Context**: Every path outside `/_next/` is served `Cache-Control: no-store` so the Back button
+cannot show account pages after sign-out. The 2026-10-27 SEO audit found that this also made
+browsers download the 100 KB landing screenshots again on every visit.
+
+**Decision**: `/landing/*` is excluded from the `no-store` rule and served `public,
+max-age=86400`. Its files are fixed screenshots with no account data; they are not
+content-hashed, so a day bounds how long a replaced image stays stale. Every page, public ones
+included, keeps `no-store`: public pages render per request anyway, so caching their HTML would
+gain little and would need a route allowlist that a new account page could slip past. The
+screenshots are also served as WebP at 720 and 1440 pixels wide through `srcset`; the PNGs stay
+for social previews and structured data.
+
+**Rationale**: The bytes worth caching are the images; the risk the rule guards against lives in
+HTML.
+
+**Consequences**: A replaced screenshot may show the old version for up to a day. Adding another
+public asset folder that should be cached means adding it to the exclusion in `next.config.js`.
+
+**Sources**: `frontend/next.config.js`, `frontend/src/app/page.tsx`, `frontend/public/landing/`.

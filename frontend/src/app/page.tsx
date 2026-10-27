@@ -113,7 +113,9 @@ export default async function LandingPage() {
 
         <figure className={styles.shot}>
           <img
-            src="/landing/editor.png"
+            src="/landing/editor.webp"
+            srcSet="/landing/editor-720.webp 720w, /landing/editor.webp 1440w"
+            sizes="(max-width: 1120px) 100vw, 1120px"
             width={1440}
             height={900}
             alt="The editor: a weekly status update prompt in Role, Context, Task and Format sections, with a filled-in preview ready to copy."
@@ -170,7 +172,9 @@ export default async function LandingPage() {
 
         <figure className={styles.shot}>
           <img
-            src="/landing/library.png"
+            src="/landing/library.webp"
+            srcSet="/landing/library-720.webp 720w, /landing/library.webp 1440w"
+            sizes="(max-width: 1120px) 100vw, 1120px"
             width={1440}
             height={900}
             loading="lazy"

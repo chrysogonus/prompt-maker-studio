@@ -29,6 +29,9 @@ any release. See [Project status](./README.md#project-status).
 - Search titles and descriptions fit what results show: gallery template titles stay under 60
   characters, free tool titles start with "Free", the gallery is titled "Free prompt library and
   templates", and long descriptions are shortened to 160 characters or fewer.
+- The home page and guide screenshots load as WebP at about half the bytes of the PNGs, or a
+  fifth where a 720-pixel copy is sharp enough, and the browser keeps `/landing/*` images for a day instead of
+  downloading them again on every visit. Pages themselves are still never cached.
 
 ## [0.11.0] - 2026-10-27
 

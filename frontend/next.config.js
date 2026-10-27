@@ -35,8 +35,13 @@ const nextConfig = {
         // Keep page documents out of the browser's back/forward cache so the
         // Back button cannot re-display authenticated pages after sign-out.
         // Hashed build assets under /_next/ keep their long-lived caching.
-        source: '/((?!_next/).*)',
+        source: '/((?!_next/|landing/).*)',
         headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
+      {
+        // Public screenshots hold no account data. Not hashed, so cached for a day rather than forever.
+        source: '/landing/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=86400' }],
       },
     ];
   },

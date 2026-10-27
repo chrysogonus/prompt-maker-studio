@@ -74,6 +74,17 @@ describe('Landing page', () => {
     });
   });
 
+  it('serves the screenshots as responsive WebP', async () => {
+    render(await LandingPage());
+
+    for (const image of screen.getAllByRole('img').filter((img) => img.getAttribute('src')?.startsWith('/landing/'))) {
+      expect(image.getAttribute('src')).toMatch(/\.webp$/);
+      expect(image.getAttribute('srcset')).toMatch(/-720\.webp 720w, .*\.webp 1440w$/);
+      expect(image).toHaveAttribute('sizes');
+    }
+    expect(screen.getAllByRole('img').filter((img) => img.getAttribute('src')?.startsWith('/landing/'))).toHaveLength(2);
+  });
+
   it("links the operator's legal pages in the server-rendered footer", async () => {
     withImpressum();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
