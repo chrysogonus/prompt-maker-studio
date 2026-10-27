@@ -243,7 +243,9 @@ deployment, so it is not part of this repository or the published images —
 each operator supplies their own.
 
 Put HTML fragments (no `<html>`/`<body>`, just headings, paragraphs and lists)
-in the folder named by `LEGAL_PAGES_PATH` (default `./legal`, git-ignored):
+in the folder named by `LEGAL_PAGES_PATH` (default `./legal`, git-ignored). Give
+each file a single `<h1>`; for a page in two languages, make the second
+language's heading an `<h2>`, since search engines read one main heading per page:
 
 | File | Served at |
 |---|---|
@@ -253,8 +255,9 @@ in the folder named by `LEGAL_PAGES_PATH` (default `./legal`, git-ignored):
 
 The folder is mounted read-only into the frontend container and read on every
 request, so edits go live without a restart. A page — and its link on the homepage,
-in the app footer and on the sign-in screen — appears only when its file exists, so a
-deployment without these files shows neither. The files must be readable by
+the public guides, tools and templates, the app footer and the sign-in screen, plus its
+`sitemap.xml` entry — appears only when its file exists, so a deployment without these
+files shows neither. `/privacy` and `/imprint` redirect to `/datenschutz` and `/impressum`. The files must be readable by
 the container's non-root user (`chmod 644`). Their HTML is rendered as-is and
 treated as trusted, like the `Caddyfile`; the site's Content-Security-Policy
 still blocks external scripts, styles and images in it.

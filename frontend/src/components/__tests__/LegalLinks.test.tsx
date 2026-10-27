@@ -24,6 +24,15 @@ describe('LegalLinks', () => {
     expect(screen.getByRole('link', { name: 'Terms of service' })).toHaveAttribute('href', '/terms');
   });
 
+  it('renders pages the server already knows without asking', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    render(<LegalLinks pages={['datenschutz']} />);
+
+    expect(screen.getByRole('link', { name: 'Privacy policy' })).toHaveAttribute('href', '/datenschutz');
+    expect(screen.queryByRole('link', { name: 'Impressum' })).not.toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('omits terms when its deployment file is absent', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ pages: ['impressum'] }));
     render(<LegalLinks />);

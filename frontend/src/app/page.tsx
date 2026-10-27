@@ -13,6 +13,7 @@ import ToolList from '@/components/public/ToolList';
 import guideStyles from '@/components/guides/Guides.module.css';
 import { featuredTemplates, galleryPath } from '@/lib/gallery';
 import { APP_NAME, siteUrl } from '@/lib/branding';
+import { availableLegalPages } from '@/lib/legal';
 import styles from './page.module.css';
 
 const DESCRIPTION =
@@ -219,7 +220,7 @@ export default async function LandingPage() {
           &copy; {new Date().getFullYear()} {APP_NAME}. Licensed under{' '}
           <a href="https://github.com/chrysogonus/prompt-maker-studio/blob/main/LICENSE">Apache-2.0</a>.
         </span>
-        <LegalLinks className={styles.legalLinks} />
+        <LegalLinks className={styles.legalLinks} pages={await availableLegalPages()} />
       </footer>
     </div>
   );

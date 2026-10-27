@@ -3,9 +3,10 @@ import { tmpdir } from 'os';
 import path from 'path';
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import ImpressumPage from '../impressum/page';
-import DatenschutzPage from '../datenschutz/page';
-import TermsPage from '../terms/page';
+import ImpressumPage, { generateMetadata as impressumMetadata } from '../impressum/page';
+import DatenschutzPage, { generateMetadata as datenschutzMetadata } from '../datenschutz/page';
+import TermsPage, { generateMetadata as termsMetadata } from '../terms/page';
+import LegalLayout from '../layout';
 import { GET } from '../../legal.json/route';
 
 vi.mock('next/navigation', () => ({
@@ -30,6 +31,25 @@ describe('Legal pages', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Impressum' })).toBeInTheDocument();
     expect(screen.getByText('Operator Name')).toBeInTheDocument();
+  });
+
+  it('links the pages that exist in the server-rendered footer', async () => {
+    render(await LegalLayout({ children: <p>Page</p> }));
+
+    expect(screen.getByRole('link', { name: 'Impressum' })).toHaveAttribute('href', '/impressum');
+    expect(screen.queryByRole('link', { name: 'Terms of service' })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { metadata: impressumMetadata, href: '/impressum' },
+    { metadata: datenschutzMetadata, href: '/datenschutz' },
+    { metadata: termsMetadata, href: '/terms' },
+  ])('gives $href its own description and a canonical link on this origin', ({ metadata, href }) => {
+    vi.stubEnv('FRONTEND_URL', 'https://legal.example/');
+    const result = metadata();
+
+    expect(result.alternates?.canonical).toBe(`https://legal.example${href}`);
+    expect(result.description).toMatch(/\S/);
   });
 
   it('is not found when the deployment provides no file', async () => {

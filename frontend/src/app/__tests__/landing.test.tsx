@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import path from 'path';
 import { render, screen } from '@testing-library/react';
 import { GALLERY } from '@/lib/gallery';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -21,6 +24,13 @@ afterEach(() => {
   cookieNames.clear();
   vi.unstubAllEnvs();
 });
+
+/** A legal pages folder holding only an Impressum. */
+function withImpressum() {
+  const dir = mkdtempSync(path.join(tmpdir(), 'legal-pages-'));
+  writeFileSync(path.join(dir, 'impressum.html'), '<h1>Impressum</h1>');
+  vi.stubEnv('LEGAL_PAGES_DIR', dir);
+}
 
 describe('Landing page', () => {
   it('describes the product to signed-out visitors and links into the app', async () => {
@@ -64,6 +74,17 @@ describe('Landing page', () => {
     });
   });
 
+  it("links the operator's legal pages in the server-rendered footer", async () => {
+    withImpressum();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    render(await LandingPage());
+
+    expect(screen.getByRole('link', { name: 'Impressum' })).toHaveAttribute('href', '/impressum');
+    expect(screen.queryByRole('link', { name: 'Privacy policy' })).not.toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
   it('builds canonical and preview links from FRONTEND_URL at request time', async () => {
     vi.stubEnv('FRONTEND_URL', 'https://prompts.example/');
     const metadata = await generateMetadata();
@@ -76,13 +97,13 @@ describe('Landing page', () => {
 });
 
 describe('robots.txt and sitemap.xml', () => {
-  it('point crawlers at the public origin and away from signed-in pages', () => {
+  it('point crawlers at the public origin and away from signed-in pages', async () => {
     vi.stubEnv('FRONTEND_URL', 'https://prompts.example');
     const rules = robots();
 
     expect(rules.sitemap).toBe('https://prompts.example/sitemap.xml');
     expect(rules.rules).toMatchObject({ allow: '/', disallow: expect.arrayContaining(['/library', '/api/']) });
-    expect(sitemap()).toEqual([
+    expect(await sitemap()).toEqual([
       { url: 'https://prompts.example/' },
       { url: 'https://prompts.example/guides' },
       { url: 'https://prompts.example/guides/reusable-ai-prompts', lastModified: '2026-10-26' },
@@ -101,5 +122,14 @@ describe('robots.txt and sitemap.xml', () => {
       { url: 'https://prompts.example/gallery' },
       ...GALLERY.map(({ slug }) => ({ url: `https://prompts.example/gallery/${slug}` })),
     ]);
+  });
+
+  it("lists the operator's legal pages that exist", async () => {
+    vi.stubEnv('FRONTEND_URL', 'https://prompts.example');
+    withImpressum();
+
+    const urls = (await sitemap()).map(({ url }) => url);
+    expect(urls).toContain('https://prompts.example/impressum');
+    expect(urls).not.toContain('https://prompts.example/datenschutz');
   });
 });

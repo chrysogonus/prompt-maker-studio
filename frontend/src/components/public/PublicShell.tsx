@@ -1,17 +1,20 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import LegalLinks from '@/components/LegalLinks';
+import type { LegalSlug } from '@/lib/legal-pages';
 import Wordmark from '@/components/ui/Wordmark';
 import { APP_NAME } from '@/lib/branding';
 import styles from '@/app/page.module.css';
 
 /** Header and footer for public pages (guides, tools, templates), which stay public with a session too. */
-export default function PublicShell({ children, contentId, homeLabel, homeHref }: {
+export default function PublicShell({ children, contentId, homeLabel, homeHref, legalPages }: {
   children: ReactNode;
   contentId: string;
   /** The section this page belongs to, linked in the footer. */
   homeLabel: string;
   homeHref: string;
+  /** From `availableLegalPages()`, so the footer links are server-rendered. */
+  legalPages: readonly LegalSlug[];
 }) {
   return (
     <div className={styles.page}>
@@ -31,7 +34,7 @@ export default function PublicShell({ children, contentId, homeLabel, homeHref }
       <footer className={styles.footer}>
         <span>{APP_NAME}</span>
         <Link href={homeHref}>{homeLabel}</Link>
-        <LegalLinks className={styles.legalLinks} />
+        <LegalLinks className={styles.legalLinks} pages={legalPages} />
       </footer>
     </div>
   );

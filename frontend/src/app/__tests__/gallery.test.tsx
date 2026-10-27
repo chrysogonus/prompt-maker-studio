@@ -76,8 +76,8 @@ describe('Prompt gallery', () => {
     expect(meta.title).toContain('Meeting summary with action items: free prompt template');
   });
 
-  it('wraps the gallery in the public shell with a Templates link', () => {
-    render(<GalleryLayout><p>Gallery</p></GalleryLayout>);
+  it('wraps the gallery in the public shell with a Templates link', async () => {
+    render(await GalleryLayout({ children: <p>Gallery</p> }));
     expect(within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('link', { name: 'Templates' })).toHaveAttribute('href', '/gallery');
   });
 });

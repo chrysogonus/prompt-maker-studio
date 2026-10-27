@@ -17,6 +17,14 @@ any release. See [Project status](./README.md#project-status).
   app, and the guides, tools and gallery indexes as collections. Guides show when they were last
   updated, and `sitemap.xml` gives each guide's last-modified date.
 
+### Fixed
+
+- Footer links to the Impressum, privacy policy and terms are part of the page HTML on the home
+  page, guides, tools, templates and legal pages, so crawlers that do not run JavaScript find them.
+  The legal pages have their own description and canonical link, `sitemap.xml` lists the ones a
+  deployment provides, and `/privacy` and `/imprint` redirect to them.
+- Responses no longer carry an `X-Powered-By: Next.js` header.
+
 ## [0.11.0] - 2026-10-27
 
 See the [release record](./docs/releases/0.11.0.md).

@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   },
@@ -19,6 +20,13 @@ const nextConfig = {
         source: '/api/:path*',
         destination: `${process.env.API_PROXY_TARGET || 'http://backend:8000'}/api/:path*`,
       },
+    ];
+  },
+  async redirects() {
+    // Common English guesses for the operator's legal pages; not permanent, as a deployment may add pages here later.
+    return [
+      { source: '/privacy', destination: '/datenschutz', permanent: false },
+      { source: '/imprint', destination: '/impressum', permanent: false },
     ];
   },
   async headers() {

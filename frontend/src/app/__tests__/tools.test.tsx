@@ -62,8 +62,8 @@ describe('Free tools', () => {
     expect(metadata().alternates?.canonical).toBe(`https://tools.example${path}`);
   });
 
-  it('wraps tools in the public shell with Guides, Tools and the app', () => {
-    render(<ToolsLayout><p>Tool</p></ToolsLayout>);
+  it('wraps tools in the public shell with Guides, Tools and the app', async () => {
+    render(await ToolsLayout({ children: <p>Tool</p> }));
     const nav = screen.getByRole('navigation', { name: 'Main navigation' });
     expect(within(nav).getByRole('link', { name: 'Guides' })).toHaveAttribute('href', '/guides');
     expect(within(nav).getByRole('link', { name: 'Tools' })).toHaveAttribute('href', '/tools');
