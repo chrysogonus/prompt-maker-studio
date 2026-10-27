@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.12.0; see the [release candidate](./docs/releases/0.12.0.md).
+
 ### Added
 
 - Public pages describe themselves to search engines as structured data: the home page as a
@@ -46,8 +48,8 @@ any release. See [Project status](./README.md#project-status).
   characters, free tool titles start with "Free", the gallery is titled "Free prompt library and
   templates", and long descriptions are shortened to 160 characters or fewer.
 - The home page and guide screenshots load as WebP at about half the bytes of the PNGs, or a
-  fifth where a 720-pixel copy is sharp enough, and the browser keeps `/landing/*` images for a day instead of
-  downloading them again on every visit. Pages themselves are still never cached.
+  fifth where a 720-pixel copy is sharp enough, and the browser keeps `/landing/*` images for a
+  day instead of downloading them again on every visit. Pages themselves are still never cached.
 
 ## [0.11.0] - 2026-10-27
 

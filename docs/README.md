@@ -44,6 +44,9 @@ separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
+- [0.12.0 release candidate](releases/0.12.0.md): search and AI-assistant
+  discoverability from the 2026-10-27 SEO audit, an About page, a ChatGPT and Claude
+  connection guide, `llms.txt` and fuller gallery pages and guides.
 - [0.11.0 release record](releases/0.11.0.md): AI answers rendered as Markdown,
   fixes from the 2026-10-26 UI/UX test and the design audit, dependency updates,
   immutable image digests and validation.
