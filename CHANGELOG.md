@@ -16,6 +16,13 @@ any release. See [Project status](./README.md#project-status).
   website and free web app, guides as dated articles with breadcrumbs, each free tool as a web
   app, and the guides, tools and gallery indexes as collections. Guides show when they were last
   updated, and `sitemap.xml` gives each guide's last-modified date.
+- A guide, "How to use your prompt library in ChatGPT and Claude", gives the connection steps
+  with this site's own MCP address; the home page and the organizing guide link to it.
+- `/about` says what the app is, that it is open source and self-hostable, and which host runs
+  it, linking the operator's Impressum and privacy policy when the deployment provides them.
+  Public footers link to it.
+- `/llms.txt` lists the guides, tools, templates, the About page and the MCP address for AI
+  assistants, built from this site's own origin.
 
 ### Fixed
 

@@ -8,6 +8,7 @@ import GoodPromptPage, { generateMetadata as goodPromptMetadata } from '../guide
 import CodingAgentsPage, { generateMetadata as codingAgentsMetadata } from '../guides/prompts-for-coding-agents/page';
 import ImagePromptsPage, { generateMetadata as imagePromptsMetadata } from '../guides/image-generation-prompts/page';
 import ResearchWritingPage, { generateMetadata as researchWritingMetadata } from '../guides/research-and-writing-prompts/page';
+import ConnectPage, { generateMetadata as connectMetadata } from '../guides/connect-chatgpt-claude/page';
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -19,6 +20,7 @@ const articles = [
   { Page: CodingAgentsPage, metadata: codingAgentsMetadata, path: '/guides/prompts-for-coding-agents' },
   { Page: ImagePromptsPage, metadata: imagePromptsMetadata, path: '/guides/image-generation-prompts' },
   { Page: ResearchWritingPage, metadata: researchWritingMetadata, path: '/guides/research-and-writing-prompts' },
+  { Page: ConnectPage, metadata: connectMetadata, path: '/guides/connect-chatgpt-claude' },
 ];
 
 describe('Public guides', () => {
@@ -33,6 +35,14 @@ describe('Public guides', () => {
     expect(index).toMatchObject({ '@type': 'CollectionPage', url: 'https://guides.example/guides' });
     expect(index.mainEntity.itemListElement.map((item: { url: string }) => item.url))
       .toEqual(articles.map(({ path }) => `https://guides.example${path}`));
+  });
+
+  it("shows this deployment's own MCP address in the connector guide", () => {
+    vi.stubEnv('FRONTEND_URL', 'https://prompts.example/');
+    render(<ConnectPage />);
+
+    expect(screen.getAllByText('https://prompts.example/api/mcp').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/claude mcp add --transport http prompt-maker https:\/\/prompts\.example\/api\/mcp/)).toBeInTheDocument();
   });
 
   it.each(articles)('dates $path and describes it as an article', ({ Page, path }) => {

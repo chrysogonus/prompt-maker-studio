@@ -89,7 +89,8 @@ export default function OrganizePromptsPage() {
         Copying and pasting works without connecting ChatGPT or Claude to your library. If you
         choose to connect the optional integration, it can list, open, save and update your prompts from
         the chat after you sign in and grant access. In the app, <strong>Settings → ChatGPT and
-        Claude</strong> gives the server address and the steps for each app; the{' '}
+        Claude</strong> gives the server address and the steps for each app, and{' '}
+        <Link href={GUIDES.connect.path}>the ChatGPT and Claude guide</Link> walks through them; the{' '}
         <a href="https://github.com/chrysogonus/prompt-maker-studio/blob/main/docs/mcp.md">
           technical documentation
         </a>{' '}

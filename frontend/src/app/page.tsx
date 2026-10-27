@@ -12,6 +12,7 @@ import GuideList from '@/components/guides/GuideList';
 import ToolList from '@/components/public/ToolList';
 import guideStyles from '@/components/guides/Guides.module.css';
 import { featuredTemplates, galleryPath } from '@/lib/gallery';
+import { GUIDES } from '@/lib/guides';
 import { APP_NAME, siteUrl } from '@/lib/branding';
 import { availableLegalPages } from '@/lib/legal';
 import styles from './page.module.css';
@@ -164,7 +165,7 @@ export default async function LandingPage() {
               <dt>Your library in ChatGPT and Claude</dt>
               <dd>
                 Connect your account to ChatGPT or Claude to list, open, save and update prompts
-                without leaving the chat.
+                without leaving the chat. <Link href={GUIDES.connect.path}>See how</Link>.
               </dd>
             </div>
           </dl>
@@ -224,6 +225,7 @@ export default async function LandingPage() {
           &copy; {new Date().getFullYear()} {APP_NAME}. Licensed under{' '}
           <a href="https://github.com/chrysogonus/prompt-maker-studio/blob/main/LICENSE">Apache-2.0</a>.
         </span>
+        <Link href="/about">About</Link>
         <LegalLinks className={styles.legalLinks} pages={await availableLegalPages()} />
       </footer>
     </div>

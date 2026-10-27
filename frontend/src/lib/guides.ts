@@ -66,6 +66,13 @@ export const GUIDES = {
     published: '2026-10-22',
     updated: '2026-10-22',
   },
+  connect: {
+    path: '/guides/connect-chatgpt-claude',
+    title: 'How to use your prompt library in ChatGPT and Claude',
+    description: 'Connect ChatGPT or Claude to your prompt library to list, open, save and update prompts from a chat, on your own plan and without an API key.',
+    published: '2026-10-27',
+    updated: '2026-10-27',
+  },
 } satisfies Record<string, GuideSummary>;
 
 // Called by dynamic pages so a published image uses its deployment's origin.

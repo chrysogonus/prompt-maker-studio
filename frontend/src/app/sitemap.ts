@@ -14,6 +14,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const legal = await availableLegalPages();
   return [
     { url: `${origin}/` },
+    { url: `${origin}/about` },
     { url: `${origin}${GUIDES_INDEX.path}` },
     ...Object.values(GUIDES).map(({ path, updated }) => ({ url: `${origin}${path}`, lastModified: updated })),
     ...[TOOLS_INDEX, ...Object.values(TOOLS), GALLERY_INDEX].map(({ path }) => ({ url: `${origin}${path}` })),

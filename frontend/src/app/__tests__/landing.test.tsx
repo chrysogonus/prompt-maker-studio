@@ -52,6 +52,9 @@ describe('Landing page', () => {
   it('helps visitors discover the guides and their individual articles', async () => {
     render(await LandingPage());
 
+    expect(screen.getByRole('link', { name: 'See how' })).toHaveAttribute('href', '/guides/connect-chatgpt-claude');
+    expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute('href', '/about');
+
     expect(screen.getByRole('link', { name: 'Guides' })).toHaveAttribute('href', '/guides');
     for (const href of [
       '/guides/reusable-ai-prompts',
@@ -117,6 +120,7 @@ describe('robots.txt and sitemap.xml', () => {
     expect(rules.rules).toMatchObject({ allow: '/', disallow: expect.arrayContaining(['/library', '/api/']) });
     expect(await sitemap()).toEqual([
       { url: 'https://prompts.example/' },
+      { url: 'https://prompts.example/about' },
       { url: 'https://prompts.example/guides' },
       { url: 'https://prompts.example/guides/reusable-ai-prompts', lastModified: '2026-10-26' },
       { url: 'https://prompts.example/guides/prompt-template-variables', lastModified: '2026-10-26' },
@@ -125,6 +129,7 @@ describe('robots.txt and sitemap.xml', () => {
       { url: 'https://prompts.example/guides/prompts-for-coding-agents', lastModified: '2026-10-23' },
       { url: 'https://prompts.example/guides/image-generation-prompts', lastModified: '2026-10-23' },
       { url: 'https://prompts.example/guides/research-and-writing-prompts', lastModified: '2026-10-22' },
+      { url: 'https://prompts.example/guides/connect-chatgpt-claude', lastModified: '2026-10-27' },
       { url: 'https://prompts.example/tools' },
       { url: 'https://prompts.example/tools/prompt-template-filler' },
       { url: 'https://prompts.example/tools/prompt-linter' },

@@ -34,6 +34,7 @@ export default function PublicShell({ children, contentId, homeLabel, homeHref, 
       <footer className={styles.footer}>
         <span>{APP_NAME}</span>
         <Link href={homeHref}>{homeLabel}</Link>
+        <Link href="/about">About</Link>
         <LegalLinks className={styles.legalLinks} pages={legalPages} />
       </footer>
     </div>
