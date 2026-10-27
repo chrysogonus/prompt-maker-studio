@@ -57,6 +57,13 @@ Prepared for 0.11.0; see the [release candidate](./docs/releases/0.11.0.md).
 - With reduced motion, loading spinners pulse instead of freezing, and notices fade without
   sliding. The full-page loading spinner turns again.
 
+### Security
+
+- The backend's `dnspython` is updated from 2.8.0 to 2.9.0 for CVE-2026-114605: a crafted DNS
+  message could make name decompression use excessive CPU. It is only pulled in by
+  `email-validator`, which the app uses without DNS lookups. Rebuilt images pick it up; no
+  configuration change.
+
 ## [0.10.0] - 2026-10-24
 
 See the [release record](./docs/releases/0.10.0.md).
