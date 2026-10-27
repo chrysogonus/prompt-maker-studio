@@ -1,7 +1,7 @@
 import { availableLegalPages } from '@/lib/legal';
 
-// Every other page is prerendered, so the footer cannot know at build time
-// whether this deployment has legal pages. It asks here instead.
+// Server pages pass the list to their footer directly. Client screens (sign-in,
+// the app shell) cannot read the folder, so they ask here instead.
 export const dynamic = 'force-dynamic';
 
 export async function GET() {

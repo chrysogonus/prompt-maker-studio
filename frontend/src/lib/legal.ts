@@ -1,5 +1,7 @@
 import { readFile } from 'fs/promises';
 import path from 'path';
+import type { Metadata } from 'next';
+import { pageTitle, siteUrl } from '@/lib/branding';
 import { LEGAL_PAGES, type LegalSlug } from '@/lib/legal-pages';
 
 /**
@@ -19,6 +21,11 @@ export async function readLegalPage(slug: LegalSlug): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/** Title, its own description and a canonical link on this deployment's origin. */
+export function legalMetadata(title: string, href: string, description: string): Metadata {
+  return { title: pageTitle(title), description, alternates: { canonical: `${siteUrl()}${href}` } };
 }
 
 export async function availableLegalPages(): Promise<LegalSlug[]> {

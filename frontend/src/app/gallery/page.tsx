@@ -1,6 +1,7 @@
 import guideStyles from '@/components/guides/Guides.module.css';
+import JsonLd, { collection } from '@/components/public/JsonLd';
 import GalleryBrowser from '@/features/gallery/GalleryBrowser';
-import { GALLERY_INDEX, galleryMetadata } from '@/lib/gallery';
+import { GALLERY, GALLERY_INDEX, galleryMetadata, galleryPath } from '@/lib/gallery';
 
 export function generateMetadata() {
   return galleryMetadata();
@@ -16,6 +17,7 @@ export default function GalleryPage() {
         template to your own library.
       </p>
       <GalleryBrowser />
+      <JsonLd data={collection(GALLERY_INDEX, GALLERY.map(({ slug }) => galleryPath(slug)))} />
     </section>
   );
 }

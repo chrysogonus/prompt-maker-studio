@@ -10,6 +10,47 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.12.0; see the [release candidate](./docs/releases/0.12.0.md).
+
+### Added
+
+- Public pages describe themselves to search engines as structured data: the home page as a
+  website and free web app, guides as dated articles with breadcrumbs, each free tool as a web
+  app, and the guides, tools and gallery indexes as collections. Guides show when they were last
+  updated, and `sitemap.xml` gives each guide's last-modified date.
+- A guide, "How to use your prompt library in ChatGPT and Claude", gives the connection steps
+  with this site's own MCP address; the home page and the organizing guide link to it.
+- `/about` says what the app is, that it is open source and self-hostable, and which host runs
+  it, linking the operator's Impressum and privacy policy when the deployment provides them.
+  Public footers link to it.
+- `/llms.txt` lists the guides, tools, templates, the About page and the MCP address for AI
+  assistants, built from this site's own origin.
+- A guide, "What is a prompt library?", covers what belongs in one, what makes an entry useful,
+  and how to start from the free templates.
+- Each gallery template shows its prompt filled in with the example inputs and what a good result
+  looks like, and every template now has at least one tip.
+- The coding-agent guide includes all six coding templates, ready to copy. The variables guide
+  compares placeholder syntax in other tools, with sources, and lists common pitfalls. The guide
+  on good prompts links the Anthropic, OpenAI and Google prompting guides.
+- The home page explains how a team can run its own copy, with a shared AI connection such as a
+  local model.
+
+### Fixed
+
+- Footer links to the Impressum, privacy policy and terms are part of the page HTML on the home
+  page, guides, tools, templates and legal pages, so crawlers that do not run JavaScript find them.
+  The legal pages have their own description and canonical link, `sitemap.xml` lists the ones a
+  deployment provides, and `/privacy` and `/imprint` redirect to them.
+- Responses no longer carry an `X-Powered-By: Next.js` header.
+- Every gallery template is linked from the "More … templates" list of its category neighbours;
+  before, the last template in each category was listed nowhere else.
+- Search titles and descriptions fit what results show: gallery template titles stay under 60
+  characters, free tool titles start with "Free", the gallery is titled "Free prompt library and
+  templates", and long descriptions are shortened to 160 characters or fewer.
+- The home page and guide screenshots load as WebP at about half the bytes of the PNGs, or a
+  fifth where a 720-pixel copy is sharp enough, and the browser keeps `/landing/*` images for a
+  day instead of downloading them again on every visit. Pages themselves are still never cached.
+
 ## [0.11.0] - 2026-10-27
 
 See the [release record](./docs/releases/0.11.0.md).

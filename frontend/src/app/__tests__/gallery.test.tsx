@@ -13,8 +13,11 @@ const params = (slug: string) => ({ params: Promise.resolve({ slug }) });
 
 describe('Prompt gallery', () => {
   it('lists every template under its category, with popular ones first', () => {
-    render(<GalleryPage />);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Free prompt templates');
+    const { container } = render(<GalleryPage />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Free prompt library and templates');
+    const index = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(index['@type']).toBe('CollectionPage');
+    expect(index.mainEntity.itemListElement).toHaveLength(GALLERY.length);
     expect(within(screen.getByRole('region', { name: 'Featured' })).getAllByRole('link')).toHaveLength(6);
     for (const category of GALLERY_CATEGORIES) {
       const section = screen.getByRole('region', { name: category.label });
@@ -38,6 +41,10 @@ describe('Prompt gallery', () => {
   it('shows a template ready to fill in, with tips, its guide and related templates', async () => {
     render(await TemplatePage(params('bug-fix-brief')));
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Bug fix brief for a coding agent');
+    const example = screen.getByRole('heading', { name: 'Example, filled in' }).parentElement!.querySelector('h2 + p + pre')!.textContent!;
+    expect(example).toContain('<GOAL>\nFix this bug: saving a note with an emoji in its title returns a 500 error.');
+    expect(example).not.toContain('{{');
+    expect(screen.getByRole('heading', { name: 'What to expect' }).nextElementSibling).toHaveTextContent(/root cause/);
     expect(screen.getByRole('textbox', { name: 'symptom' })).toHaveAttribute('placeholder', 'What goes wrong, and how to reproduce it');
     expect(screen.getByRole('button', { name: 'Use example inputs' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'how to write prompts for coding agents' })).toHaveAttribute('href', '/guides/prompts-for-coding-agents');
@@ -53,8 +60,11 @@ describe('Prompt gallery', () => {
     vi.stubEnv('FRONTEND_URL', 'https://gallery.example');
     const { container } = render(await TemplatePage(params('bug-fix-brief')));
     const [breadcrumbs, work] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
-    expect(breadcrumbs.itemListElement.map((crumb: { name: string }) => crumb.name)).toEqual(['Templates', 'Coding agents', 'Bug fix brief for a coding agent']);
-    expect(work).toMatchObject({ '@type': 'CreativeWork', name: 'Bug fix brief for a coding agent', url: 'https://gallery.example/gallery/bug-fix-brief', isAccessibleForFree: true });
+    expect(breadcrumbs.itemListElement.map((crumb: { item: string }) => crumb.item)).toEqual(['https://gallery.example/gallery', 'https://gallery.example/gallery/bug-fix-brief']);
+    expect(work).toMatchObject({
+      '@type': 'CreativeWork', name: 'Bug fix brief for a coding agent', url: 'https://gallery.example/gallery/bug-fix-brief', isAccessibleForFree: true,
+      isPartOf: { url: 'https://gallery.example/' }, publisher: { '@type': 'Organization' },
+    });
   });
 
   it('answers an unknown template with not found', async () => {
@@ -64,14 +74,19 @@ describe('Prompt gallery', () => {
 
   it('builds index and template metadata from the origin at request time', async () => {
     vi.stubEnv('FRONTEND_URL', 'https://gallery.example');
-    expect(indexMetadata().alternates?.canonical).toBe('https://gallery.example/gallery');
+    const index = indexMetadata();
+    expect(index.alternates?.canonical).toBe('https://gallery.example/gallery');
+    expect(index.description!.length).toBeLessThanOrEqual(160);
     const meta = await templateMetadata(params('meeting-summary'));
     expect(meta.alternates?.canonical).toBe('https://gallery.example/gallery/meeting-summary');
-    expect(meta.title).toContain('Meeting summary with action items: free prompt template');
+    expect(meta.title).toBe('Meeting summary with action items: free prompt template');
+    for (const template of GALLERY) {
+      expect(String((await templateMetadata(params(template.slug))).title).length, template.slug).toBeLessThanOrEqual(60);
+    }
   });
 
-  it('wraps the gallery in the public shell with a Templates link', () => {
-    render(<GalleryLayout><p>Gallery</p></GalleryLayout>);
+  it('wraps the gallery in the public shell with a Templates link', async () => {
+    render(await GalleryLayout({ children: <p>Gallery</p> }));
     expect(within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('link', { name: 'Templates' })).toHaveAttribute('href', '/gallery');
   });
 });

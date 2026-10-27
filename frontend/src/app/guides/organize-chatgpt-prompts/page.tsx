@@ -49,7 +49,7 @@ export default function OrganizePromptsPage() {
         an existing folder merges the two.
       </p>
       <figure>
-        <img src="/landing/library.png" width={1440} height={900} loading="lazy"
+        <img src="/landing/library.webp" srcSet="/landing/library-720.webp 720w, /landing/library.webp 1440w" sizes="(max-width: 760px) 100vw, 760px" width={1440} height={900} loading="lazy"
           alt="Prompt library with folders in the sidebar, a search field, and reusable prompts with favorite controls." />
         <figcaption>Folders narrow the library; stars keep frequently used prompts easy to reach.</figcaption>
       </figure>
@@ -89,7 +89,8 @@ export default function OrganizePromptsPage() {
         Copying and pasting works without connecting ChatGPT or Claude to your library. If you
         choose to connect the optional integration, it can list, open, save and update your prompts from
         the chat after you sign in and grant access. In the app, <strong>Settings → ChatGPT and
-        Claude</strong> gives the server address and the steps for each app; the{' '}
+        Claude</strong> gives the server address and the steps for each app, and{' '}
+        <Link href={GUIDES.connect.path}>the ChatGPT and Claude guide</Link> walks through them; the{' '}
         <a href="https://github.com/chrysogonus/prompt-maker-studio/blob/main/docs/mcp.md">
           technical documentation
         </a>{' '}

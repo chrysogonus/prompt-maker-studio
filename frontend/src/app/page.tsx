@@ -4,19 +4,22 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import LegalLinks from '@/components/LegalLinks';
-import RepositoryLink from '@/components/RepositoryLink';
+import JsonLd, { FREE_OFFER, PROJECT } from '@/components/public/JsonLd';
+import RepositoryLink, { REPOSITORY_URL } from '@/components/RepositoryLink';
 import { ButtonLink } from '@/components/ui/Button';
 import Wordmark from '@/components/ui/Wordmark';
 import GuideList from '@/components/guides/GuideList';
 import ToolList from '@/components/public/ToolList';
 import guideStyles from '@/components/guides/Guides.module.css';
 import { featuredTemplates, galleryPath } from '@/lib/gallery';
+import { GUIDES } from '@/lib/guides';
 import { APP_NAME, siteUrl } from '@/lib/branding';
+import { availableLegalPages } from '@/lib/legal';
 import styles from './page.module.css';
 
 const DESCRIPTION =
-  'A prompt library and template editor. Save your best AI prompts as sections with {{variables}}, ' +
-  'fill them in, and copy them into ChatGPT, Claude, Gemini or any other assistant.';
+  'A prompt library and template editor: save your best AI prompts with {{variables}}, fill them in ' +
+  'and copy them into ChatGPT, Claude, Gemini or any assistant.';
 
 export async function generateMetadata(): Promise<Metadata> {
   const url = siteUrl();
@@ -36,6 +39,16 @@ export async function generateMetadata(): Promise<Metadata> {
 // expired cookie lands on the library's sign-in form, which is what they need.
 export default async function LandingPage() {
   if ((await cookies()).has('access_token')) redirect('/library');
+  const url = `${siteUrl()}/`;
+  const structuredData = [
+    { '@context': 'https://schema.org', '@type': 'WebSite', name: APP_NAME, url, description: DESCRIPTION, publisher: PROJECT },
+    {
+      '@context': 'https://schema.org', '@type': 'WebApplication',
+      name: APP_NAME, url, description: DESCRIPTION,
+      applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
+      isAccessibleForFree: true, offers: FREE_OFFER, author: PROJECT,
+    },
+  ];
 
   return (
     <div className={styles.page}>
@@ -52,6 +65,7 @@ export default async function LandingPage() {
       </header>
 
       <main>
+        <JsonLd data={structuredData} />
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <h1>Save, fill in and reuse your best AI prompts.</h1>
@@ -100,7 +114,9 @@ export default async function LandingPage() {
 
         <figure className={styles.shot}>
           <img
-            src="/landing/editor.png"
+            src="/landing/editor.webp"
+            srcSet="/landing/editor-720.webp 720w, /landing/editor.webp 1440w"
+            sizes="(max-width: 1120px) 100vw, 1120px"
             width={1440}
             height={900}
             alt="The editor: a weekly status update prompt in Role, Context, Task and Format sections, with a filled-in preview ready to copy."
@@ -149,7 +165,7 @@ export default async function LandingPage() {
               <dt>Your library in ChatGPT and Claude</dt>
               <dd>
                 Connect your account to ChatGPT or Claude to list, open, save and update prompts
-                without leaving the chat.
+                without leaving the chat. <Link href={GUIDES.connect.path}>See how</Link>.
               </dd>
             </div>
           </dl>
@@ -157,7 +173,9 @@ export default async function LandingPage() {
 
         <figure className={styles.shot}>
           <img
-            src="/landing/library.png"
+            src="/landing/library.webp"
+            srcSet="/landing/library-720.webp 720w, /landing/library.webp 1440w"
+            sizes="(max-width: 1120px) 100vw, 1120px"
             width={1440}
             height={900}
             loading="lazy"
@@ -196,6 +214,13 @@ export default async function LandingPage() {
             OpenAI, Anthropic, Gemini, Ollama or other OpenAI-compatible provider, or a shared
             connection when the server offers one.
           </p>
+          <p>
+            For a team, run one copy on a server you control. Each person keeps a private library, and
+            you can set up a shared AI connection, such as a local model through Ollama or vLLM, for
+            people without their own API key. The{' '}
+            <a href={`${REPOSITORY_URL}/blob/main/docs/deployment.md`}>deployment guide</a>{' '}
+            covers the setup.
+          </p>
           <ButtonLink href="/library" variant="primary" className={styles.cta}>
             Open the app
           </ButtonLink>
@@ -207,7 +232,8 @@ export default async function LandingPage() {
           &copy; {new Date().getFullYear()} {APP_NAME}. Licensed under{' '}
           <a href="https://github.com/chrysogonus/prompt-maker-studio/blob/main/LICENSE">Apache-2.0</a>.
         </span>
-        <LegalLinks className={styles.legalLinks} />
+        <Link href="/about">About</Link>
+        <LegalLinks className={styles.legalLinks} pages={await availableLegalPages()} />
       </footer>
     </div>
   );

@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import guideStyles from '@/components/guides/Guides.module.css';
+import JsonLd, { PROJECT, breadcrumbs } from '@/components/public/JsonLd';
 import styles from '@/components/public/Tools.module.css';
 import TemplateFiller from '@/features/tools/TemplateFiller';
 import { siteUrl } from '@/lib/branding';
-import { GALLERY, GALLERY_CATEGORIES, galleryDescription, galleryMetadata, galleryPath, galleryTemplate } from '@/lib/gallery';
+import { GALLERY_CATEGORIES, galleryDescription, galleryMetadata, galleryPath, galleryTemplate, relatedTemplates } from '@/lib/gallery';
 import { GUIDES } from '@/lib/guides';
+import { fillVariables, renderSections } from '@/lib/sections';
 import { TOOLS } from '@/lib/tools';
 
 type Params = { params: Promise<{ slug: string }> };
@@ -20,21 +22,16 @@ export default async function GalleryTemplatePage({ params }: Params) {
   if (!template) notFound();
   const category = GALLERY_CATEGORIES.find((item) => item.id === template.category)!;
   const guide = template.guide ? GUIDES[template.guide] : undefined;
-  const related = GALLERY.filter((item) => item.category === template.category && item.slug !== template.slug).slice(0, 4);
+  const related = relatedTemplates(template);
   const url = `${siteUrl()}${galleryPath(template.slug)}`;
   const structuredData = [
-    {
-      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
-      itemListElement: [
-        { name: 'Templates', item: `${siteUrl()}/gallery` },
-        { name: category.label, item: `${siteUrl()}/gallery#${category.id}` },
-        { name: template.title, item: url },
-      ].map((crumb, index) => ({ '@type': 'ListItem', position: index + 1, ...crumb })),
-    },
+    // No category crumb: a #fragment is the same URL as the gallery itself.
+    breadcrumbs(['Templates', '/gallery'], [template.title, galleryPath(template.slug)]),
     {
       '@context': 'https://schema.org', '@type': 'CreativeWork',
       name: template.title, description: galleryDescription(template), url,
       inLanguage: 'en', isAccessibleForFree: true, genre: category.label,
+      isPartOf: { '@type': 'WebSite', url: `${siteUrl()}/` }, publisher: PROJECT,
     },
   ];
   return (
@@ -47,7 +44,7 @@ export default async function GalleryTemplatePage({ params }: Params) {
         <p className={guideStyles.intro}>{template.summary}</p>
         <p className={styles.local}>Free to use and change. Filling in and copying happen in your browser.</p>
       </header>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <JsonLd data={structuredData} />
       <section className={styles.widget} aria-label="Fill in this template">
         <TemplateFiller title={template.title} fields={template.sections} hints={template.hints} examples={template.examples} />
       </section>
@@ -58,6 +55,11 @@ export default async function GalleryTemplatePage({ params }: Params) {
             <li key={section.name}><strong>{section.name}</strong>: {section.content.split('\n')[0]}</li>
           ))}
         </ul>
+        <h2>Example, filled in</h2>
+        <p>With the example inputs, the prompt you copy reads:</p>
+        <pre>{renderSections(template.sections.map((section) => ({ ...section, content: fillVariables(section.content, template.examples) })))}</pre>
+        <h2>What to expect</h2>
+        <p>{template.outcome}</p>
         {template.tips.length > 0 && (
           <>
             <h2>Tips</h2>

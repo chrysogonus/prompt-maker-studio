@@ -9,7 +9,7 @@ interface ToolSummary {
 export const TOOLS_INDEX: ToolSummary = {
   path: '/tools',
   title: 'Free prompt tools',
-  description: 'Free tools for writing better AI prompts: fill in prompt templates, check a prompt for missing parts, refine it with AI, compare two versions and estimate its tokens and cost. No account needed.',
+  description: 'Free tools for better AI prompts: fill in templates, check a prompt for gaps, refine it, compare versions and estimate tokens and cost. No account needed.',
 };
 
 export const TOOLS = {
@@ -26,7 +26,7 @@ export const TOOLS = {
   refiner: {
     path: '/tools/prompt-refiner',
     title: 'Prompt refiner',
-    description: 'Paste a prompt and get a clearer, more specific version, with optional questions about what you need. Free to try without an account, within daily limits, where this site offers it.',
+    description: 'Paste a prompt and get a clearer, more specific version, with optional questions about what you need. Free to try without an account, within daily limits.',
   },
   diff: {
     path: '/tools/prompt-diff',
@@ -42,5 +42,7 @@ export const TOOLS = {
 
 export type Tool = (typeof TOOLS)[keyof typeof TOOLS];
 
-// The guides' builder takes any public page summary.
-export const toolMetadata = guideMetadata;
+// The guides' builder takes any public page summary; tool pages lead with "Free" in search results.
+export function toolMetadata(tool: ToolSummary) {
+  return guideMetadata(tool === TOOLS_INDEX ? tool : { ...tool, title: `Free ${tool.title.toLowerCase()}` });
+}
