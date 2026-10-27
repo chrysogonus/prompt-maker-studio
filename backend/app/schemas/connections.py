@@ -83,6 +83,9 @@ class LLMConnectionResponse(BaseModel):
     providers: list[LLMProviderOption] = Field(default_factory=list)
     # Used whenever `configured` is false; None when the operator set none.
     server_default: LLMServerDefault | None = None
+    # Whether a base URL may resolve to a private or loopback address (ALLOW_PRIVATE_LLM_URLS),
+    # so Settings only suggests a local Ollama or vLLM address where one can work.
+    private_urls_allowed: bool = False
 
 
 class LLMConnectionUpdate(BaseModel):

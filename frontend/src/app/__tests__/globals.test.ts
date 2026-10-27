@@ -55,6 +55,22 @@ describe('native controls', () => {
     expect(globalsCss).toMatch(/:root\s*\{[^}]*color-scheme:\s*light;/);
     expect(globalsCss).toMatch(/\[data-theme="dark"\]\s*\{[^}]*color-scheme:\s*dark;/);
   });
+
+  it('draws placeholders in the themed muted colour instead of the browser grey', () => {
+    expect(globalsCss).toMatch(/(^|\n)::placeholder\s*\{[^}]*color:\s*var\(--text-tertiary\);/);
+  });
+
+  it('gives selects and summaries the shared focus ring', () => {
+    const focusRule = globalsCss.match(/([^{}]*)\{\s*outline: 2px solid var\(--color-accent-tag\);/)?.[1] ?? '';
+    for (const element of ['button', 'a', 'input', 'select', 'summary', 'textarea']) {
+      expect(focusRule).toContain(`${element}:focus-visible`);
+    }
+  });
+
+  it('raises tap targets to 44px only on touch screens', () => {
+    expect(globalsCss).toMatch(/:root\s*\{[^}]*--tap-min:\s*0px;/);
+    expect(globalsCss).toMatch(/@media \(pointer: coarse\)\s*\{\s*:root\s*\{\s*--tap-min:\s*44px;/);
+  });
 });
 
 describe('root layout stability', () => {

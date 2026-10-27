@@ -25,8 +25,9 @@ describe('Error boundary (app/error.tsx)', () => {
     expect(reset).toHaveBeenCalledTimes(1);
   });
 
-  it('offers a way back to the Dashboard', () => {
+  it('offers a way back to the library', () => {
     render(<ErrorPage error={new Error('boom')} reset={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Go to Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Go to your library' })).toHaveAttribute('href', '/library');
+    expect(screen.queryByText(/Dashboard/)).not.toBeInTheDocument();
   });
 });

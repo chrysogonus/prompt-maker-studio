@@ -60,6 +60,8 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
   const savingRef = useRef(false);
   const [note, setNote] = useState('');
   const [conflict, setConflict] = useState(false);
+  // The version saved elsewhere, fetched when the user asks to compare it with theirs.
+  const [conflictLatest, setConflictLatest] = useState<PromptHistoryResponse | null>(null);
   const [draftAction, setDraftAction] = useState<Notice | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const noticeTimer = useRef<number | null>(null);
@@ -263,6 +265,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
   const reportError = (err: unknown, fallback: string): string => {
     if (err instanceof ApiError && err.status === 409) {
       setConflict(true);
+      setConflictLatest(null);
       return 'This prompt changed elsewhere. Close History to choose which version to keep.';
     }
     const text = err instanceof Error ? err.message : fallback;
@@ -372,33 +375,60 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     }
   };
 
-  const discardEdits = () => {
+  /** Drops local edits and shows `base`: the saved prompt, or a newer one saved elsewhere. */
+  const discardEdits = (base: PromptHistoryResponse | null = prompt) => {
     if (draftKey) localStorage.removeItem(draftKey);
     setNote('');
     setImportSession({ text: '' });
-    const retained = new Set(variablesIn(prompt?.fields ?? []));
+    const retained = new Set(variablesIn(base?.fields ?? []));
     setValues((current) => Object.fromEntries(Object.entries(current).filter(([name]) => retained.has(name))));
     setNotice(null);
     setDraftAction(null);
     setRestoredDraft(false);
     setConflict(false);
-    if (prompt) {
-      setSections(toEditorSections(prompt.fields, true));
-      setMetadata(prompt.variable_metadata ?? {});
+    if (base) {
+      setSections(toEditorSections(base.fields, true));
+      setMetadata(base.variable_metadata ?? {});
     } else {
       setSections(blankSections());
       setMetadata({});
     }
   };
 
+  const compareConflict = async () => {
+    try {
+      setConflictLatest(await ApiClient.getPromptById(prompt!.id));
+    } catch (err) {
+      reportError(err, 'Failed to load the saved version.');
+    }
+  };
+
+  /** Keeps the local edits; the next save deliberately replaces the version saved elsewhere. */
+  // History is a bonus here: the conflict choice must not hinge on it.
+  const refreshVersions = (id: number) => ApiClient.getPromptVersions(id).then(setVersions).catch(() => {});
+
   const reloadAfterConflict = async () => {
     try {
-      applyPrompt(await ApiClient.getPromptById(prompt!.id));
-      setVersions(await ApiClient.getPromptVersions(prompt!.id));
+      // After Compare, replace only what the user saw: a later save elsewhere still conflicts.
+      applyPrompt(conflictLatest ?? await ApiClient.getPromptById(prompt!.id));
       setConflict(false);
       showNotice({
-        text: 'Loaded the latest saved version. Your edits are still here; saving replaces it.',
+        text: 'Your edits are kept. Save to replace the version saved elsewhere.',
       });
+      void refreshVersions(prompt!.id);
+    } catch (err) {
+      reportError(err, 'Failed to reload prompt.');
+    }
+  };
+
+  const takeSavedVersion = async () => {
+    try {
+      const latest = await ApiClient.getPromptById(prompt!.id);
+      // Baseline and editor contents change together, so a later save cannot overwrite unseen work.
+      applyPrompt(latest);
+      discardEdits(latest);
+      showNotice({ text: 'Showing the version saved elsewhere. Your edits were discarded.' });
+      void refreshVersions(latest.id);
     } catch (err) {
       reportError(err, 'Failed to reload prompt.');
     }
@@ -600,6 +630,7 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     note,
     setNote,
     conflict,
+    conflictLatest,
     notice,
     setNotice,
     draftAction,
@@ -630,7 +661,9 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
     save,
     createPrompt,
     discardEdits,
+    compareConflict,
     reloadAfterConflict,
+    takeSavedVersion,
     restore,
     markKnownGood,
     rename,

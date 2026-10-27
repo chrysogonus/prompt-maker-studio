@@ -24,7 +24,12 @@ from app.services.llm_client import (
     unsaved_connection,
 )
 from app.services.llm_model_catalog import invalidate_model_cache, model_prices_for
-from app.services.llm_providers import PROVIDERS, InvalidConnectionError, resolve_connection
+from app.services.llm_providers import (
+    PROVIDERS,
+    InvalidConnectionError,
+    private_llm_urls_allowed,
+    resolve_connection,
+)
 from app.services.secret_store import (
     SecretDecryptionError,
     decrypt_secret,
@@ -81,6 +86,7 @@ def _connection_response(user: User) -> LLMConnectionResponse:
             if default
             else None
         ),
+        private_urls_allowed=private_llm_urls_allowed(),
     )
 
 

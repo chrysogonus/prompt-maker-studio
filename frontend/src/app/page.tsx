@@ -65,7 +65,7 @@ export default async function LandingPage() {
               </ButtonLink>
               <RepositoryLink className={styles.sourceLink} />
             </div>
-            <p className={styles.heroNote}>Save, fill in and copy. No AI provider needed.</p>
+            <p className={styles.heroNote}>Sign in or create an account. Saving, filling in and copying need no AI provider.</p>
           </div>
           <figure className={styles.demo}>
             <div className={styles.demoTemplate}>

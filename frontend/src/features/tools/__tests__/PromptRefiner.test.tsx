@@ -31,6 +31,13 @@ describe('PromptRefiner', () => {
     expect(screen.queryByRole('button', { name: 'Improve now' })).not.toBeInTheDocument();
   });
 
+  it('shows no controls until it knows the server offers refinement', () => {
+    vi.mocked(ApiClient.getPublicRefineStatus).mockReturnValue(new Promise(() => {}));
+    render(<PromptRefiner />);
+    expect(screen.getByRole('status')).toHaveTextContent('Checking whether the free refiner is available…');
+    expect(screen.queryByRole('button', { name: 'Improve now' })).not.toBeInTheDocument();
+  });
+
   it('offers a retry when availability cannot be checked', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.getPublicRefineStatus).mockRejectedValueOnce(new Error('offline'));

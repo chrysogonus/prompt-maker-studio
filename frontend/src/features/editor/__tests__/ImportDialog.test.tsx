@@ -38,6 +38,21 @@ async function convert() {
   return user;
 }
 
+it('says original inputs are filled in only when the conversion found values', async () => {
+  await convert();
+  expect(screen.getByText(/Original inputs are filled in\./)).toBeInTheDocument();
+});
+
+it('explains empty inputs when the conversion found no values', async () => {
+  vi.mocked(ApiClient.parsePromptText).mockResolvedValue({
+    ...conversion,
+    variables: conversion.variables.map((variable) => ({ ...variable, value: '' })),
+  });
+  await convert();
+  expect(screen.queryByText(/Original inputs are filled in/)).not.toBeInTheDocument();
+  expect(screen.getByText(/No values were found for the inputs/)).toBeInTheDocument();
+});
+
 it('reviews and copies original values before changing the draft', async () => {
   const user = await convert();
   const clipboard = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();

@@ -52,6 +52,8 @@ Local/custom providers return an empty `models` array and allow manual model nam
 the `/models` endpoint discovers their advertised models, cached per user for
 15 minutes, and falls back to an empty array when discovery fails. Unknown prices
 are `null`, while Ollama/vLLM prices are zero. Prices are estimates, not quotes.
+The response's `private_urls_allowed` reports whether the server accepts a base URL
+that resolves to a private or loopback address (`ALLOW_PRIVATE_LLM_URLS`).
 
 Saving an unlisted hosted model returns HTTP 422. Existing connections using older
 models remain readable, testable and runnable until explicitly changed; they are

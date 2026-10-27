@@ -69,6 +69,23 @@ beforeEach(() => {
 });
 
 describe('LLMConnectionForm', () => {
+  it('says a local model cannot be reached when the server refuses private addresses', async () => {
+    render(<LLMConnectionForm />);
+    await userEvent.selectOptions(await screen.findByLabelText('Provider'), 'ollama');
+    expect(screen.getByText(/does not allow private or local addresses/)).toBeInTheDocument();
+    expect(screen.queryByText(/host\.docker\.internal/)).not.toBeInTheDocument();
+    // A keyless self-hosted test bills nobody.
+    expect(screen.queryByText(/may incur provider charges/)).not.toBeInTheDocument();
+  });
+
+  it('suggests a Docker-reachable address where private addresses are allowed', async () => {
+    vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({ private_urls_allowed: true }));
+    render(<LLMConnectionForm />);
+    await userEvent.selectOptions(await screen.findByLabelText('Provider'), 'ollama');
+    expect(screen.getByText(/host\.docker\.internal/)).toBeInTheDocument();
+    expect(screen.queryByText(/does not allow private or local addresses/)).not.toBeInTheDocument();
+  });
+
   it('announces successful connection tests as a status', async () => {
     vi.mocked(AuthService.testLLMConnection).mockResolvedValue({ ok: true, message: 'Connection verified' });
     render(<LLMConnectionForm />);
@@ -285,6 +302,7 @@ describe('LLMConnectionForm', () => {
   });
 
   it('does not demand a key for a self-hosted provider', async () => {
+    vi.mocked(AuthService.getLLMConnection).mockResolvedValue(connection({ private_urls_allowed: true }));
     render(<LLMConnectionForm />);
     const providerSelect = await screen.findByLabelText('Provider');
 

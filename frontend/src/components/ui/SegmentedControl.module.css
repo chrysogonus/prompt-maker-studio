@@ -11,7 +11,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 30px;
+  min-height: max(30px, var(--tap-min));
   padding: 0 var(--space-3);
   border: none;
   border-radius: 5px;

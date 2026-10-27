@@ -340,6 +340,10 @@ describe('known-good version and test results in History', () => {
     expect(ApiClient.updatePrompt).toHaveBeenCalledWith(1, expect.objectContaining({ known_good_version: 2 }));
     expect(await within(history).findByText('Version 2, current · known good')).toBeInTheDocument();
     expect(within(history).getByRole('button', { name: 'Remove known-good mark' })).toBeInTheDocument();
+    // Focus stays in the panel after the toggle, and Escape closes it.
+    expect(within(history).getByRole('heading', { name: 'History' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Version history' })).not.toBeInTheDocument();
   });
 
   it('shows no test results when the prompt was never evaluated', async () => {
@@ -386,11 +390,13 @@ describe('variable inputs and reversible import', () => {
     } }));
     await renderSaved();
     expect(screen.getByRole('button', { name: 'Copy filled prompt' })).toBeDisabled();
-    expect(screen.getByLabelText('team Required')).toHaveAttribute('aria-invalid', 'true');
+    // Not flagged before the user has been in the field.
+    expect(screen.getByLabelText('team Required')).toHaveAttribute('aria-invalid', 'false');
     await user.type(screen.getByLabelText('team Required'), '   ');
     expect(screen.getByLabelText('Prompt text')).toHaveTextContent('{{team}}');
     await user.click(screen.getByRole('button', { name: 'Copy with placeholders' }));
     expect(clipboard).toHaveBeenCalledWith(prompt().generated_prompt);
+    expect(screen.getByLabelText('team Required')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText('team Required')).toHaveValue('   ');
     await user.click(screen.getByRole('button', { name: 'Load example inputs' }));
     expect(screen.getByLabelText('team Required')).toHaveValue('Platform');
@@ -894,7 +900,7 @@ describe('PromptEditor with a saved prompt', () => {
     expect(await navigator.clipboard.readText()).toBe(prompt().generated_prompt);
   });
 
-  it('keeps edits through a conflict and loads the other session’s version on request', async () => {
+  it('keeps edits through a conflict when the user chooses to', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.updatePrompt).mockRejectedValue(new ApiError('modified elsewhere', 409));
     await renderSaved();
@@ -902,14 +908,94 @@ describe('PromptEditor with a saved prompt', () => {
     await user.type(screen.getByLabelText('Role text'), ' Mine.');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(await screen.findByText(/changed somewhere else/)).toBeInTheDocument();
+    expect(await screen.findByText(/saved somewhere else/)).toBeInTheDocument();
     vi.mocked(ApiClient.getPromptById).mockResolvedValue(
       prompt({ updated_at: '2026-07-10T00:00:00Z' }),
     );
-    await user.click(screen.getByRole('button', { name: 'Load latest version' }));
+    await user.click(screen.getByRole('button', { name: 'Keep my edits' }));
 
-    await waitFor(() => expect(screen.queryByText(/changed somewhere else/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/saved somewhere else/)).not.toBeInTheDocument());
     expect(screen.getByLabelText('Role text')).toHaveValue('You are a concise engineering lead. Mine.');
+    expect(screen.getByText(/Save to replace the version saved elsewhere/)).toBeInTheDocument();
+  });
+
+  it('compares a conflicting version and switches to it on request', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.updatePrompt).mockRejectedValue(new ApiError('modified elsewhere', 409));
+    await renderSaved();
+
+    await user.type(screen.getByLabelText('Role text'), ' Mine.');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/saved somewhere else/)).toBeInTheDocument();
+
+    const theirs = prompt({
+      updated_at: '2026-07-10T00:00:00Z',
+      fields: prompt().fields.map((field, i) => (i === 0 ? { ...field, content: 'You are a patient tutor.' } : field)),
+    });
+    vi.mocked(ApiClient.getPromptById).mockResolvedValue(theirs);
+    await user.click(screen.getByRole('button', { name: 'Compare' }));
+    const compare = await screen.findByLabelText('Saved version compared with yours');
+    expect(compare.querySelector('del')).toHaveTextContent('patient');
+    expect(compare.querySelector('ins')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Use the saved version' }));
+    await waitFor(() => expect(screen.getByLabelText('Role text')).toHaveValue('You are a patient tutor.'));
+    expect(screen.queryByText(/saved somewhere else/)).not.toBeInTheDocument();
+  });
+
+  it('switches to the saved version even when its history cannot load', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.updatePrompt).mockRejectedValue(new ApiError('modified elsewhere', 409));
+    await renderSaved();
+    await user.type(screen.getByLabelText('Role text'), ' Mine.');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/saved somewhere else/)).toBeInTheDocument();
+
+    vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ updated_at: '2026-07-10T00:00:00Z' }));
+    vi.mocked(ApiClient.getPromptVersions).mockRejectedValue(new Error('History is down.'));
+    await user.click(screen.getByRole('button', { name: 'Use the saved version' }));
+
+    await waitFor(() => expect(screen.getByLabelText('Role text')).toHaveValue('You are a concise engineering lead.'));
+    expect(screen.queryByText(/saved somewhere else/)).not.toBeInTheDocument();
+  });
+
+  it('keeps edits against the compared version, so a newer save elsewhere still conflicts', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.updatePrompt).mockRejectedValue(new ApiError('modified elsewhere', 409));
+    await renderSaved();
+    await user.type(screen.getByLabelText('Role text'), ' Mine.');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/saved somewhere else/)).toBeInTheDocument();
+
+    vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ updated_at: '2026-07-10T00:00:00Z' }));
+    await user.click(screen.getByRole('button', { name: 'Compare' }));
+    await screen.findByLabelText('Saved version compared with yours');
+    // A third save elsewhere after Compare must not be overwritten unseen.
+    vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({ updated_at: '2026-07-11T00:00:00Z' }));
+    await user.click(screen.getByRole('button', { name: 'Keep my edits' }));
+    await waitFor(() => expect(screen.queryByText(/saved somewhere else/)).not.toBeInTheDocument());
+
+    vi.mocked(ApiClient.updatePrompt).mockClear();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(ApiClient.updatePrompt).toHaveBeenCalledWith(1, expect.objectContaining({
+      last_updated_at: '2026-07-10T00:00:00Z',
+    })));
+  });
+
+  it('says when the conflicting version also has different variable settings', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.updatePrompt).mockRejectedValue(new ApiError('modified elsewhere', 409));
+    await renderSaved();
+    await user.type(screen.getByLabelText('Role text'), ' Mine.');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/saved somewhere else/)).toBeInTheDocument();
+
+    vi.mocked(ApiClient.getPromptById).mockResolvedValue(prompt({
+      updated_at: '2026-07-10T00:00:00Z',
+      variable_metadata: { team: { type: 'text', required: true } },
+    }));
+    await user.click(screen.getByRole('button', { name: 'Compare' }));
+    expect(await screen.findByText(/Variable settings .* also differ/)).toBeInTheDocument();
   });
 
   it('compares a version with the current text and restores it', async () => {

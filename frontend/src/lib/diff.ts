@@ -68,5 +68,12 @@ export function diffWords(oldText: string, newText: string): DiffToken[] {
     j++;
   }
 
-  return result;
+  // One token per run, spaces included: "tailored to" is one insertion, not three, and no
+  // change is a lone space that a screen reader announces as an empty insertion.
+  return result.reduce<DiffToken[]>((runs, token) => {
+    const last = runs.at(-1);
+    if (last?.type === token.type) last.text += token.text;
+    else runs.push({ ...token });
+    return runs;
+  }, []);
 }

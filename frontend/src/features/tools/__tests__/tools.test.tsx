@@ -71,8 +71,8 @@ describe('PromptDiff', () => {
     const user = userEvent.setup();
     render(<PromptDiff />);
     const changes = screen.getByLabelText('Changes from before to after');
-    expect([...changes.querySelectorAll('ins')].map((node) => node.textContent)).toContain('five');
-    expect([...changes.querySelectorAll('del')].map((node) => node.textContent)).toContain('few');
+    expect([...changes.querySelectorAll('ins')].map((node) => node.textContent?.trim())).toContain('five');
+    expect([...changes.querySelectorAll('del')].map((node) => node.textContent?.trim())).toContain('few');
     const before = screen.getByRole('textbox', { name: 'Before' });
     const after = screen.getByRole('textbox', { name: 'After' });
     await user.clear(before);

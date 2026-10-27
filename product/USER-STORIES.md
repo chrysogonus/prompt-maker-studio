@@ -98,7 +98,7 @@
 ### Story: Recover after an edit conflict
 **Given** the same prompt open in two tabs
 **When** one tab saves and the other then saves different edits
-**Then** the second save is rejected, its edits stay on screen, and after "Load latest version" saving deliberately replaces the other tab's version
+**Then** the second save is rejected, its edits stay on screen, Compare shows what the other tab saved, and after "Keep my edits" saving deliberately replaces it, or "Use the saved version" discards the edits
 
 ### Story: Remove a folder
 **Given** a folder with prompts in it

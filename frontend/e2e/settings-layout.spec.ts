@@ -94,7 +94,7 @@ test('sign-in keeps the highlighted repository link clear of the form', async ({
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/library');
-    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
     const link = (await page.getByRole('link', { name: 'Open source on GitHub' }).boundingBox())!;
     const content = (await page.getByRole('main').boundingBox())!;
     expect(link.y + link.height).toBeLessThan(content.y);

@@ -130,6 +130,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
                 <Button disabled={!!busy} onClick={() => setSuggesting(false)}>Cancel</Button>
                 <Button variant="primary" type="submit" disabled={!!busy || !canUseAI}>{busy === 'generate' ? 'Generating suggestions…' : 'Generate suggestions'}</Button>
               </div>
+              {busy === 'generate' && <p className={styles.hint} role="status">This can take a minute or two. Keep this page open.</p>}
             </form>
           )}
           {proposals.length > 0 && (
@@ -155,7 +156,8 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
               <p className={styles.hint}>Start with one typical example. Add difficult cases as you find them.</p>
             </div>
           ) : (
-            <section className={styles.caseList} aria-label="Saved test cases">
+            <section className={styles.caseList} aria-labelledby="saved-cases-heading">
+              <h2 id="saved-cases-heading" className={styles.visuallyHidden}>Saved test cases</h2>
               {cases.map((item, index) => {
                 const name = item.name || `Test case ${index + 1}`;
                 return <article className={styles.caseRow} key={item.id}>

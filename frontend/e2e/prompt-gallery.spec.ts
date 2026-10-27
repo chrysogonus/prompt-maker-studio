@@ -26,7 +26,7 @@ test('a template fills in with example inputs, saves into a new library and reop
   await expect(page.getByLabel('Filled prompt')).toContainText('npm test passes');
   await page.getByRole('button', { name: 'Save to my library' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   await expect(page.getByRole('status')).toContainText('save “Bug fix brief for a coding agent” to your library');
   await page.getByRole('button', { name: 'Create account' }).click();
   await page.locator('#username').fill(`gallery${suffix}`);

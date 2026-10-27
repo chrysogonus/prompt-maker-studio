@@ -84,7 +84,7 @@ test('a filled template saves into a new library after signing up', async ({ pag
   await page.getByRole('textbox', { name: 'customer_name' }).fill('Dana');
   await page.getByRole('button', { name: 'Save to my library' }).click();
   await expect(page).toHaveURL(/\/editor\/new\?import=1$/);
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   await expect(page.getByRole('status')).toContainText('Sign in or create a free account to save your prompt to your library.');
   await expect(page.getByRole('link', { name: 'Go back without signing in' })).toHaveAttribute('href', '/tools/prompt-template-filler');
   await page.getByRole('button', { name: 'Create account' }).click();

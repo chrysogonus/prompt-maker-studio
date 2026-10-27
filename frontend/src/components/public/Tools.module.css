@@ -160,13 +160,13 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-strong);
   background: var(--color-panel-raised);
   border-radius: var(--radius-sm);
 }
 
 .findings li[data-severity='problem'] {
-  border-left-color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
 .findings span {

@@ -9,7 +9,8 @@ import Dialog from '@/components/ui/Dialog';
 import { EditIcon, FolderIcon } from '@/components/ui/icon';
 import { PROMPT_NOT_FOUND_MESSAGE } from '@/lib/api';
 
-import { variablesIn } from '@/lib/sections';
+import { diffWords } from '@/lib/diff';
+import { renderSections, variablesIn } from '@/lib/sections';
 import { STARTER_TEMPLATES } from '@/lib/starterTemplates';
 import { editedAt } from '@/features/library/libraryState';
 
@@ -21,7 +22,7 @@ import SectionCard from './SectionCard';
 import VariablesPanel from './VariablesPanel';
 import styles from './PromptEditor.module.css';
 import { usePromptEditor } from './usePromptEditor';
-import { toEditorSections, uniqueName, PromptEditorProps } from './editorState';
+import { snapshot, toEditorSections, uniqueName, PromptEditorProps } from './editorState';
 
 export default function PromptEditor({ promptId, initialStarter, initialMode, openImport }: PromptEditorProps) {
   const {
@@ -55,6 +56,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
     note,
     setNote,
     conflict,
+    conflictLatest,
     notice,
     setNotice,
     draftAction,
@@ -85,7 +87,9 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
     save,
     createPrompt,
     discardEdits,
+    compareConflict,
     reloadAfterConflict,
+    takeSavedVersion,
     restore,
     markKnownGood,
     rename,
@@ -213,7 +217,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
             />
           )}
           {prompt && dirty && (
-            <Button variant="ghost" onClick={discardEdits} disabled={refineOpen}>
+            <Button variant="ghost" onClick={() => discardEdits()} disabled={refineOpen}>
               Discard
             </Button>
           )}
@@ -283,13 +287,32 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
       </div>}
 
       {conflict && (
-        <div className={`${styles.banner} ${styles.conflict}`} role="alert">
-          <span>
-            This prompt was changed somewhere else since you opened it. Your edits are still here.
+        <div className={`${styles.banner} ${styles.conflict}`}>
+          <span role="alert">
+            This prompt was saved somewhere else since you opened it. Your edits are still here.
           </span>
-          <Button variant="secondary" onClick={reloadAfterConflict}>
-            Load latest version
-          </Button>
+          <span className={styles.conflictActions}>
+            {!conflictLatest && <Button variant="ghost" onClick={compareConflict}>Compare</Button>}
+            <Button variant="secondary" onClick={reloadAfterConflict}>Keep my edits</Button>
+            <Button variant="secondary" onClick={takeSavedVersion}>Use the saved version</Button>
+          </span>
+          {conflictLatest && (
+            <div className={styles.conflictCompare}>
+              <p className={styles.diffLegend}>
+                <del>Only in the saved version</del> and <ins>only in yours</ins>. Keep my edits replaces the saved version when you save.
+              </p>
+              {snapshot([], conflictLatest.variable_metadata) !== snapshot([], metadata) && (
+                <p className={styles.diffLegend}>Variable settings (hints, required inputs, examples or choices) also differ, and Keep my edits replaces them too.</p>
+              )}
+              <div className={styles.diff} tabIndex={0} aria-label="Saved version compared with yours">
+                {diffWords(renderSections(conflictLatest.fields), renderSections(fields)).map((token, i) =>
+                  token.type === 'added' ? <ins key={i}>{token.text}</ins>
+                    : token.type === 'removed' ? <del key={i}>{token.text}</del>
+                      : <span key={i}>{token.text}</span>,
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -297,7 +320,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
         <div className={styles.banner} role="status">
           <span>Your unsaved changes were restored.</span>
           <span>This draft is stored only in this browser.</span>
-          <button type="button" className={styles.link} onClick={discardEdits}>Discard changes</button>
+          <button type="button" className={styles.link} onClick={() => discardEdits()}>Discard changes</button>
         </div>
       )}
 
@@ -479,6 +502,8 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
                 maxLength={100}
                 autoFocus
               />
+              {/* maxLength stops typing silently; say so before it does. */}
+              {saveDialog.name.length >= 80 && <small aria-live="polite">{saveDialog.name.length}/100 characters</small>}
             </label>
             <div className={styles.field}>
               <label htmlFor="save-folder">Folder</label>

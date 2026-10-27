@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ApiClient } from '@/lib/api';
 import AICallContext from '@/components/ui/AICallContext';
-import { fillVariables, renderPlainSections, renderSections, sectionTag, splitVariables } from '@/lib/sections';
+import ModelOutput from '@/components/ui/ModelOutput';
+import { fillVariables, renderPlainSections, renderSections, sectionTag, splitVariables, valueFor } from '@/lib/sections';
 import { PromptField, VariableMetadataItem, PromptsConfigResponse, TryPromptResponse } from '@/types/prompt';
 import styles from './PromptEditor.module.css';
 import { choiceList } from './editorState';
@@ -60,6 +61,8 @@ export default function PreviewPane({
   const [tryError, setTryError] = useState('');
   // Kept here so the panel and its output reopen after a Template/Filled switch.
   const [tryOpen, setTryOpen] = useState(false);
+  // A required input is flagged once the user has been in it, not before they start.
+  const [touched, setTouched] = useState<string[]>([]);
   const tryingRef = useRef(false);
   const copiedTimer = useRef<number | null>(null);
   const resultRef = useRef<HTMLElement>(null);
@@ -86,7 +89,7 @@ export default function PreviewPane({
   // A single section has nothing to separate, so its tags are noise unless chosen.
   const outputFormat = formatChoice ?? (fields.length === 1 ? 'plain' : 'sections');
   const template = outputFormat === 'plain' ? renderPlainSections(fields) : renderSections(fields);
-  const unfilled = variables.filter((name) => metadata[name]?.required ? !values[name]?.trim() : !values[name]);
+  const unfilled = variables.filter((name) => metadata[name]?.required ? !valueFor(values, name)?.trim() : !valueFor(values, name));
   const missingRequired = unfilled.filter((name) => metadata[name]?.required);
   const missingOptional = unfilled.filter((name) => !metadata[name]?.required);
   const filledValues = Object.fromEntries(Object.entries(values).map(([name, value]) => [name, value.trim() || !metadata[name]?.required ? value : '']));
@@ -158,11 +161,12 @@ export default function PreviewPane({
           )}
           {variables.map((name) => {
             const choices = choiceList(metadata[name]?.options);
-            const value = values[name] ?? '';
+            const value = valueFor(values, name) ?? '';
             const field = {
               'aria-label': `${name}${metadata[name]?.required ? ' Required' : ''}`,
               'aria-required': metadata[name]?.required || undefined,
-              'aria-invalid': missingRequired.includes(name),
+              'aria-invalid': missingRequired.includes(name) && touched.includes(name),
+              onBlur: () => setTouched((current) => (current.includes(name) ? current : [...current, name])),
               'aria-describedby': missingRequired.includes(name) ? 'required-input-warning' : undefined,
             };
             return (
@@ -205,9 +209,10 @@ export default function PreviewPane({
                     </span>
                   );
                 }
-                return filledValues[part.name!] ? (
+                const value = valueFor(filledValues, part.name!);
+                return value ? (
                   <mark key={j} className={styles.previewFilled}>
-                    {filledValues[part.name!]}
+                    {value}
                   </mark>
                 ) : (
                   <span key={j} className={styles.previewUnfilled}>
@@ -292,7 +297,7 @@ export default function PreviewPane({
               <h3>Output</h3>
               <p>{aiConfig?.provider === result.response.provider ? aiConfig.provider_label : result.response.provider} / {result.response.model}</p>
               {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier inputs. Run again to try the current prompt.</p>}
-              <pre tabIndex={0}>{result.response.output_text || 'The model returned no text.'}</pre>
+              {result.response.output_text ? <ModelOutput text={result.response.output_text} /> : <p>The model returned no text.</p>}
               {result.response.output_text && (
                 <button type="button" className={styles.copyButton} data-secondary="true" onClick={() => copy('output')}>
                   {copied === 'output' ? 'Copied' : 'Copy output'}

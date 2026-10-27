@@ -27,7 +27,7 @@ function sidebarLink(page: Page, name: string | RegExp) {
 
 async function register(page: Page, user: TestUser) {
   await page.goto('/library');
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Create account' }).click();
   await page.locator('#username').fill(user.username);
@@ -211,7 +211,7 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   const refreshed = page.waitForResponse((response) => response.url().endsWith('/api/auth/refresh'));
   const signedOut = page.waitForResponse((response) => response.url().endsWith('/api/auth/logout'));
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   releaseRefresh();
   await (await refreshed).finished();
   expect((await signedOut).status()).toBe(204);
@@ -219,7 +219,7 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   expect(await page.evaluate(() => localStorage.getItem('prompt-maker-studio:client-session-expiry'))).toBeNull();
   await page.unroute('**/api/auth/refresh');
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 
   await page.locator('#username').fill(user.username);
   await page.locator('#password').fill(user.password);
@@ -416,12 +416,16 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
   await tabB.getByRole('button', { name: 'Save', exact: true }).click();
   expect((await tabBSave).status()).toBe(409);
 
-  await expect(tabB.getByText(/changed somewhere else/)).toBeVisible();
-  await tabB.getByRole('button', { name: 'Load latest version' }).click();
-  await expect(tabB.getByText(/changed somewhere else/)).toHaveCount(0);
+  await expect(tabB.getByText(/saved somewhere else/)).toBeVisible();
+  await tabB.getByRole('button', { name: 'Compare', exact: true }).click();
+  const conflictDiff = tabB.getByLabel('Saved version compared with yours');
+  await expect(conflictDiff.locator('del')).toHaveText(['A', 'wins']);
+  await expect(conflictDiff.locator('ins')).toHaveText(['B', 'draft']);
+  await tabB.getByRole('button', { name: 'Keep my edits' }).click();
+  await expect(tabB.getByText(/saved somewhere else/)).toHaveCount(0);
   await expect(tabB.getByLabel('Task text')).toHaveValue('tab B draft {{alpha}}');
 
-  // Saving after loading the latest version overwrites it on purpose.
+  // Saving after keeping the edits overwrites the other version on purpose.
   const overwrite = promptPatch(tabB, promptId);
   await tabB.getByRole('button', { name: 'Save', exact: true }).click();
   expect((await overwrite).status()).toBe(200);

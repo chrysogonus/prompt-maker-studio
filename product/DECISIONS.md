@@ -1514,3 +1514,32 @@ retirement of variable types: choices are a separate, real control, not a revive
 
 **Sources**: `backend/app/schemas/prompts.py` (`VariableMetadataItem`),
 `frontend/src/features/editor/VariablesPanel.tsx`, `frontend/src/features/editor/PreviewPane.tsx`.
+
+---
+
+## AI Output Renders as Markdown
+
+**Status**: Accepted (2026-10-26)
+
+**Context**: Try once and evaluation results showed the model's answer as raw text. The 2026-10-26
+UI/UX test found that common answers (tables, lists, bold) arrived as pipes, dashes and `**`,
+which made the outputs these features exist to judge hard to read.
+
+**Decision**: A shared `ModelOutput` component renders model answers with `react-markdown` and
+`remark-gfm` (tables, task lists, strikethrough), with a Plain text toggle that shows the exact
+text; copying always copies the raw text. Model output is untrusted: raw HTML is not rendered
+(no `rehype-raw`), so it is dropped from the formatted view and visible only in Plain text;
+`react-markdown`'s URL check removes `javascript:` and similar links; other links open in a new
+tab with `rel="noopener noreferrer"`; images become their alt text so an answer cannot load
+remote content. Wide tables scroll inside a focusable region.
+
+**Rationale**: Markdown is what chat models write by default, and people paste it into chat
+apps that render it. A maintained, widely used renderer is safer than a hand-written subset;
+it is safe by default because it builds React elements rather than HTML strings.
+
+**Consequences**: The frontend image gains about 100 small MIT/ISC packages (the unified,
+micromark and mdast ecosystem), listed in `THIRD_PARTY_NOTICES.md`. Prompt previews, templates
+and the library are unchanged; only model answers are rendered.
+
+**Sources**: `frontend/src/components/ui/ModelOutput.tsx`, `frontend/src/features/editor/PreviewPane.tsx`,
+`frontend/src/features/evaluation/RunResults.tsx`, `frontend/src/features/evaluation/CompareResults.tsx`.

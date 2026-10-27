@@ -24,13 +24,13 @@ describe('diffWords', () => {
 
   it('detects an added word', () => {
     const result = diffWords('hello world', 'hello brave world');
-    const added = result.filter((t) => t.type === 'added').map((t) => t.text);
+    const added = result.filter((t) => t.type === 'added').map((t) => t.text.trim());
     expect(added).toContain('brave');
   });
 
   it('detects a removed word', () => {
     const result = diffWords('hello brave world', 'hello world');
-    const removed = result.filter((t) => t.type === 'removed').map((t) => t.text);
+    const removed = result.filter((t) => t.type === 'removed').map((t) => t.text.trim());
     expect(removed).toContain('brave');
   });
 
@@ -60,8 +60,22 @@ describe('diffWords', () => {
       'Write for {{audience}}.',
       'Write a persuasive description for {{audience}} today.',
     );
-    const placeholderTokens = result.filter((token) => token.text === '{{audience}}');
+    const placeholderTokens = result.filter((token) => token.text.includes('{{audience}}'));
 
-    expect(placeholderTokens).toEqual([{ type: 'unchanged', text: '{{audience}}' }]);
+    expect(placeholderTokens).toHaveLength(1);
+    expect(placeholderTokens[0].type).toBe('unchanged');
+  });
+
+  it.each([
+    ['Suggest a trip for {{city}} now.', 'Suggest a trip tailored to {{city}} now.'],
+    ['hello world', 'hello brave world'],
+    ['a few bullets', 'at most five bullets'],
+  ])('never marks a lone space as a change, and rebuilds both texts: %s', (oldText, newText) => {
+    const result = diffWords(oldText, newText);
+    expect(result.filter((t) => t.type !== 'unchanged' && !t.text.trim())).toEqual([]);
+    // Runs of the same kind are merged, so neighbours always differ.
+    expect(result.every((t, i) => i === 0 || t.type !== result[i - 1].type)).toBe(true);
+    expect(result.filter((t) => t.type !== 'added').map((t) => t.text).join('')).toBe(oldText);
+    expect(result.filter((t) => t.type !== 'removed').map((t) => t.text).join('')).toBe(newText);
   });
 });

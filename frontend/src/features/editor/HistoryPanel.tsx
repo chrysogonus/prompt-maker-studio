@@ -109,6 +109,9 @@ export default function HistoryPanel({
       setStatus({ text: result.text, error: !result.ok });
     } finally {
       setMarking(false);
+      // The button was disabled while saving, which drops focus out of the non-modal panel
+      // and with it Escape; keep focus in the panel.
+      headingRef.current?.focus();
     }
   };
   const markButton = (versionNumber: number) => (

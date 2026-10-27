@@ -56,8 +56,9 @@ stored sections are unchanged. The library menu also offers Copy as plain text.
   cleared on sign-out. Pasted source, review edits and converted input values also recover in the
   same account-scoped browser drafts, including after saving a converted prompt for the first time.
 - If the prompt was saved somewhere else since it was opened (another tab, the ChatGPT plugin),
-  the save is rejected with 409. The editor keeps the edits and offers "Load latest version";
-  saving after that deliberately replaces the other version.
+  the save is rejected with 409. The editor keeps the edits and offers **Compare** (a word diff
+  of the saved version against yours), **Keep my edits** (the next save deliberately replaces the
+  other version) and **Use the saved version** (discards your edits).
 
 ## Refinement
 

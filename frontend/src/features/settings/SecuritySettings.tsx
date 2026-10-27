@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import ChangePasswordForm from '@/features/auth/ChangePasswordForm';
 
 import Button from '@/components/ui/Button';
@@ -17,6 +19,8 @@ export function SecuritySettings({
   signOutError,
   handleSignOutEverywhere,
 }: Props) {
+  // Signs this device out too, so ask once before doing it.
+  const [confirming, setConfirming] = useState(false);
   return (
     <section className={styles.section} id="s-security" aria-labelledby="h-security">
       <div className={styles.intro}>
@@ -31,13 +35,25 @@ export function SecuritySettings({
         <div className={styles.row}>
           <div className={styles.rowLabel}>Sign out everywhere</div>
           <div className={styles.settingAction}>
-            <Button
-              variant="secondary"
-              onClick={handleSignOutEverywhere}
-              disabled={isSigningOutEverywhere}
-            >
-              {isSigningOutEverywhere ? 'Signing out…' : 'Sign out everywhere'}
-            </Button>
+            {confirming ? (
+              <div className={styles.confirmActions}>
+                <Button
+                  variant="secondary"
+                  onClick={handleSignOutEverywhere}
+                  disabled={isSigningOutEverywhere}
+                  autoFocus
+                >
+                  {isSigningOutEverywhere ? 'Signing out…' : 'Sign out all devices'}
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirming(false)} disabled={isSigningOutEverywhere}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button variant="secondary" onClick={() => setConfirming(true)}>
+                Sign out everywhere…
+              </Button>
+            )}
             <p className={styles.hint}>
               Including devices you no longer have. You will need to sign in again here.
             </p>

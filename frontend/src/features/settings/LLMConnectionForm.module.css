@@ -42,7 +42,7 @@
 }
 
 .fieldLabel {
-  font-size: 12px;
+  font-size: var(--text-sm-size);
   color: var(--text-secondary);
 }
 
@@ -52,7 +52,7 @@
 }
 
 .apiKeyInput {
-  padding-right: 42px;
+  padding-right: calc(max(38px, var(--tap-min)) + 4px);
 }
 
 .apiKeyAction {
@@ -63,7 +63,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
+  width: max(38px, var(--tap-min));
   padding: 0;
   border: 0;
   border-radius: var(--radius-md);
@@ -84,7 +84,7 @@
 }
 
 .statusConnected {
-  font-size: 11px;
+  font-size: var(--text-xs-size);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
   background: var(--success-bg);
@@ -95,7 +95,7 @@
 }
 
 .statusUnavailable {
-  font-size: 11px;
+  font-size: var(--text-xs-size);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
   background: var(--bg-tertiary);

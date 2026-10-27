@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useSyncExternalStore, FormEvent } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { AuthService } from '@/lib/auth';
+import { usernamePolicyError } from '@/features/auth/usernamePolicy';
 import { ApiClient } from '@/lib/api';
 import { downloadBlob } from '@/lib/download';
 import { User, UserUpdate } from '@/types/auth';
@@ -68,10 +69,9 @@ export function useSettings() {
       setUsernameError('Username cannot be empty.');
       return;
     }
-    if (!/^[a-zA-Z0-9_-]{3,50}$/.test(trimmed)) {
-      setUsernameError(
-        'Username must be 3-50 characters using only letters, digits, underscores, and hyphens.',
-      );
+    const policyError = usernamePolicyError(trimmed);
+    if (policyError) {
+      setUsernameError(policyError);
       return;
     }
     setUsernameError('');
@@ -137,7 +137,8 @@ export function useSettings() {
     setExportSuccess('');
     try {
       const blob = await ApiClient.exportPrompts();
-      const filename = `${APP_SLUG}-export.json`;
+      // The local date keeps repeated exports apart (en-CA formats it as YYYY-MM-DD).
+      const filename = `${APP_SLUG}-export-${new Date().toLocaleDateString('en-CA')}.json`;
       downloadBlob(blob, filename);
       setExportSuccess(`Exported your prompts to ${filename}`);
       setTimeout(() => {

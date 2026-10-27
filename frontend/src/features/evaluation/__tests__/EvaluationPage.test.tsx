@@ -284,6 +284,15 @@ it('reviews AI suggestions without saving them until the user accepts an edited 
   expect(localStorage.getItem('prompt-maker-studio:eval-suggestions:alex:1')).toBeNull();
 });
 
+it('says how long suggestions can take while they are generated', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.generateEvalCases).mockReturnValue(new Promise(() => {}));
+  await open();
+  await user.click(screen.getByRole('button', { name: 'Suggest test cases' }));
+  await user.click(screen.getByRole('button', { name: 'Generate suggestions' }));
+  expect(await screen.findByText('This can take a minute or two. Keep this page open.')).toBeInTheDocument();
+});
+
 it('keeps unsaved suggestions across a reload until they are discarded', async () => {
   const user = userEvent.setup();
   vi.mocked(ApiClient.generateEvalCases).mockResolvedValue({ proposals: [{
@@ -523,4 +532,11 @@ it('offers AI settings after an explicit run failure without linking case valida
   await user.click(screen.getByRole('button', { name: 'Save test case' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Invalid criteria.');
   expect(screen.queryByRole('link', { name: 'Open Settings' })).not.toBeInTheDocument();
+});
+
+it('nests saved case names under a heading for the case list', async () => {
+  await open([example]);
+  const list = screen.getByRole('region', { name: 'Saved test cases' });
+  expect(within(list).getByRole('heading', { level: 2, name: 'Saved test cases' })).toBeInTheDocument();
+  expect(within(list).getByRole('heading', { level: 3, name: 'Returns JSON' })).toBeInTheDocument();
 });

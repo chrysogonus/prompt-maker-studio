@@ -42,9 +42,15 @@
   }
 }
 
+@keyframes iconPulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Still reads as busy without anything moving. */
 @media (prefers-reduced-motion: reduce) {
   .spin {
-    animation-duration: 0.001ms;
-    animation-iteration-count: 1;
+    animation: iconPulse 1.6s ease-in-out infinite;
   }
 }
