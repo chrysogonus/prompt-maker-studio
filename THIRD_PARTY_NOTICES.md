@@ -29,7 +29,7 @@ byte for byte; inspect the built artifact when updating its inventory.
 | click | 8.4.2 | BSD-3-Clause |
 | cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause |
 | Deprecated | 1.3.1 | MIT |
-| dnspython | 2.8.0 | ISC |
+| dnspython | 2.9.0 | ISC |
 | email-validator | 2.3.0 | Unlicense |
 | fastapi | 0.146.0 | MIT |
 | h11 | 0.16.0 | MIT |
