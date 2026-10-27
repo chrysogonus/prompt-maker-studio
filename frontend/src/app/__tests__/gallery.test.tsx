@@ -13,8 +13,11 @@ const params = (slug: string) => ({ params: Promise.resolve({ slug }) });
 
 describe('Prompt gallery', () => {
   it('lists every template under its category, with popular ones first', () => {
-    render(<GalleryPage />);
+    const { container } = render(<GalleryPage />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Free prompt templates');
+    const index = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(index['@type']).toBe('CollectionPage');
+    expect(index.mainEntity.itemListElement).toHaveLength(GALLERY.length);
     expect(within(screen.getByRole('region', { name: 'Featured' })).getAllByRole('link')).toHaveLength(6);
     for (const category of GALLERY_CATEGORIES) {
       const section = screen.getByRole('region', { name: category.label });
@@ -53,8 +56,11 @@ describe('Prompt gallery', () => {
     vi.stubEnv('FRONTEND_URL', 'https://gallery.example');
     const { container } = render(await TemplatePage(params('bug-fix-brief')));
     const [breadcrumbs, work] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
-    expect(breadcrumbs.itemListElement.map((crumb: { name: string }) => crumb.name)).toEqual(['Templates', 'Coding agents', 'Bug fix brief for a coding agent']);
-    expect(work).toMatchObject({ '@type': 'CreativeWork', name: 'Bug fix brief for a coding agent', url: 'https://gallery.example/gallery/bug-fix-brief', isAccessibleForFree: true });
+    expect(breadcrumbs.itemListElement.map((crumb: { item: string }) => crumb.item)).toEqual(['https://gallery.example/gallery', 'https://gallery.example/gallery/bug-fix-brief']);
+    expect(work).toMatchObject({
+      '@type': 'CreativeWork', name: 'Bug fix brief for a coding agent', url: 'https://gallery.example/gallery/bug-fix-brief', isAccessibleForFree: true,
+      isPartOf: { url: 'https://gallery.example/' }, publisher: { '@type': 'Organization' },
+    });
   });
 
   it('answers an unknown template with not found', async () => {

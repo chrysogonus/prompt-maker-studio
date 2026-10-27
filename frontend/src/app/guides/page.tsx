@@ -1,7 +1,8 @@
 import GuideList from '@/components/guides/GuideList';
 import styles from '@/components/guides/Guides.module.css';
+import JsonLd, { collection } from '@/components/public/JsonLd';
 import { APP_NAME } from '@/lib/branding';
-import { GUIDES_INDEX, guideMetadata } from '@/lib/guides';
+import { GUIDES, GUIDES_INDEX, guideMetadata } from '@/lib/guides';
 
 export function generateMetadata() {
   return guideMetadata(GUIDES_INDEX);
@@ -17,6 +18,7 @@ export default function GuidesPage() {
         in {APP_NAME}: reuse them, fill in their inputs and find them again when you need them.
       </p>
       <GuideList />
+      <JsonLd data={collection(GUIDES_INDEX, Object.values(GUIDES).map(({ path }) => path))} />
       <p className={styles.intro}>
         Every guide is free to read without an account. The examples work with ChatGPT, Claude,
         Gemini, or any assistant you can paste text into.

@@ -52,6 +52,18 @@ describe('Landing page', () => {
     }
   });
 
+  it('describes the site and the app as structured data on this origin', async () => {
+    vi.stubEnv('FRONTEND_URL', 'https://prompts.example');
+    const { container } = render(await LandingPage());
+    const [site, app] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+
+    expect(site).toMatchObject({ '@type': 'WebSite', url: 'https://prompts.example/', publisher: { '@type': 'Organization' } });
+    expect(app).toMatchObject({
+      '@type': 'WebApplication', url: 'https://prompts.example/', operatingSystem: 'Web',
+      offers: { price: 0 }, author: { url: 'https://github.com/chrysogonus/prompt-maker-studio' },
+    });
+  });
+
   it('builds canonical and preview links from FRONTEND_URL at request time', async () => {
     vi.stubEnv('FRONTEND_URL', 'https://prompts.example/');
     const metadata = await generateMetadata();
@@ -73,13 +85,13 @@ describe('robots.txt and sitemap.xml', () => {
     expect(sitemap()).toEqual([
       { url: 'https://prompts.example/' },
       { url: 'https://prompts.example/guides' },
-      { url: 'https://prompts.example/guides/reusable-ai-prompts' },
-      { url: 'https://prompts.example/guides/prompt-template-variables' },
-      { url: 'https://prompts.example/guides/organize-chatgpt-prompts' },
-      { url: 'https://prompts.example/guides/what-makes-a-good-prompt' },
-      { url: 'https://prompts.example/guides/prompts-for-coding-agents' },
-      { url: 'https://prompts.example/guides/image-generation-prompts' },
-      { url: 'https://prompts.example/guides/research-and-writing-prompts' },
+      { url: 'https://prompts.example/guides/reusable-ai-prompts', lastModified: '2026-10-26' },
+      { url: 'https://prompts.example/guides/prompt-template-variables', lastModified: '2026-10-26' },
+      { url: 'https://prompts.example/guides/organize-chatgpt-prompts', lastModified: '2026-10-26' },
+      { url: 'https://prompts.example/guides/what-makes-a-good-prompt', lastModified: '2026-10-22' },
+      { url: 'https://prompts.example/guides/prompts-for-coding-agents', lastModified: '2026-10-23' },
+      { url: 'https://prompts.example/guides/image-generation-prompts', lastModified: '2026-10-23' },
+      { url: 'https://prompts.example/guides/research-and-writing-prompts', lastModified: '2026-10-22' },
       { url: 'https://prompts.example/tools' },
       { url: 'https://prompts.example/tools/prompt-template-filler' },
       { url: 'https://prompts.example/tools/prompt-linter' },

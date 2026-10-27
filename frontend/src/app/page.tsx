@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import LegalLinks from '@/components/LegalLinks';
+import JsonLd, { FREE_OFFER, PROJECT } from '@/components/public/JsonLd';
 import RepositoryLink from '@/components/RepositoryLink';
 import { ButtonLink } from '@/components/ui/Button';
 import Wordmark from '@/components/ui/Wordmark';
@@ -36,6 +37,16 @@ export async function generateMetadata(): Promise<Metadata> {
 // expired cookie lands on the library's sign-in form, which is what they need.
 export default async function LandingPage() {
   if ((await cookies()).has('access_token')) redirect('/library');
+  const url = `${siteUrl()}/`;
+  const structuredData = [
+    { '@context': 'https://schema.org', '@type': 'WebSite', name: APP_NAME, url, description: DESCRIPTION, publisher: PROJECT },
+    {
+      '@context': 'https://schema.org', '@type': 'WebApplication',
+      name: APP_NAME, url, description: DESCRIPTION,
+      applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
+      isAccessibleForFree: true, offers: FREE_OFFER, author: PROJECT,
+    },
+  ];
 
   return (
     <div className={styles.page}>
@@ -52,6 +63,7 @@ export default async function LandingPage() {
       </header>
 
       <main>
+        <JsonLd data={structuredData} />
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <h1>Save, fill in and reuse your best AI prompts.</h1>

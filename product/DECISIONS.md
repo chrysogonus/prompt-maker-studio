@@ -1543,3 +1543,34 @@ and the library are unchanged; only model answers are rendered.
 
 **Sources**: `frontend/src/components/ui/ModelOutput.tsx`, `frontend/src/features/editor/PreviewPane.tsx`,
 `frontend/src/features/evaluation/RunResults.tsx`, `frontend/src/features/evaluation/CompareResults.tsx`.
+
+---
+
+## Structured Data Credits the Project
+
+**Status**: Accepted (2026-10-27)
+
+**Context**: The 2026-10-27 SEO audit of the public deployment found no structured data on the
+home page or the guides and no author or dates anywhere, so search and AI answer engines could
+not tell what the site is or who stands behind it. The image is shared by every self-hosted
+copy, so it cannot carry one operator's identity.
+
+**Decision**: Public pages emit JSON-LD through one `JsonLd` component that escapes `<`. The
+home page is a WebSite and a free WebApplication, guides are Articles with breadcrumbs, tools are
+free WebApplications with breadcrumbs and their FAQPage, gallery templates keep their
+CreativeWork, and the three indexes are CollectionPages. Author and publisher are always the
+open-source project (an Organization named after the app, with the repository as its URL), never
+the deployment operator; URLs come from `FRONTEND_URL` at request time. Guides carry hand-kept
+published and updated dates in `lib/guides.ts`, shown on the page and used for Open Graph and the
+sitemap. No ratings or reviews are claimed.
+
+**Rationale**: The project is the one author that is true for every deployment. The operator is
+still identified where the law asks for it, in the operator-supplied Impressum. Dates kept beside
+the guide titles change with the content they describe, unlike file or build times.
+
+**Consequences**: Updating a guide's content means bumping its `updated` date. Google no longer
+shows FAQ rich results, but the FAQPage data stays because it still describes the page.
+
+**Sources**: `frontend/src/components/public/JsonLd.tsx`, `frontend/src/lib/guides.ts`,
+`frontend/src/components/guides/GuideArticle.tsx`, `frontend/src/components/public/ToolPage.tsx`,
+`frontend/src/app/sitemap.ts`.

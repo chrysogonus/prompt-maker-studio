@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import guideStyles from '@/components/guides/Guides.module.css';
+import JsonLd, { PROJECT, breadcrumbs } from '@/components/public/JsonLd';
 import styles from '@/components/public/Tools.module.css';
 import TemplateFiller from '@/features/tools/TemplateFiller';
 import { siteUrl } from '@/lib/branding';
@@ -23,18 +24,13 @@ export default async function GalleryTemplatePage({ params }: Params) {
   const related = GALLERY.filter((item) => item.category === template.category && item.slug !== template.slug).slice(0, 4);
   const url = `${siteUrl()}${galleryPath(template.slug)}`;
   const structuredData = [
-    {
-      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
-      itemListElement: [
-        { name: 'Templates', item: `${siteUrl()}/gallery` },
-        { name: category.label, item: `${siteUrl()}/gallery#${category.id}` },
-        { name: template.title, item: url },
-      ].map((crumb, index) => ({ '@type': 'ListItem', position: index + 1, ...crumb })),
-    },
+    // No category crumb: a #fragment is the same URL as the gallery itself.
+    breadcrumbs(['Templates', '/gallery'], [template.title, galleryPath(template.slug)]),
     {
       '@context': 'https://schema.org', '@type': 'CreativeWork',
       name: template.title, description: galleryDescription(template), url,
       inLanguage: 'en', isAccessibleForFree: true, genre: category.label,
+      isPartOf: { '@type': 'WebSite', url: `${siteUrl()}/` }, publisher: PROJECT,
     },
   ];
   return (
@@ -47,7 +43,7 @@ export default async function GalleryTemplatePage({ params }: Params) {
         <p className={guideStyles.intro}>{template.summary}</p>
         <p className={styles.local}>Free to use and change. Filling in and copying happen in your browser.</p>
       </header>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <JsonLd data={structuredData} />
       <section className={styles.widget} aria-label="Fill in this template">
         <TemplateFiller title={template.title} fields={template.sections} hints={template.hints} examples={template.examples} />
       </section>

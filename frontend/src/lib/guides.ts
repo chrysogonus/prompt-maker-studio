@@ -5,6 +5,9 @@ interface GuideSummary {
   path: string;
   title: string;
   description: string;
+  /** ISO dates for articles; bump `updated` when a guide's content changes. */
+  published?: string;
+  updated?: string;
 }
 
 export const GUIDES_INDEX: GuideSummary = {
@@ -18,36 +21,50 @@ export const GUIDES = {
     path: '/guides/reusable-ai-prompts',
     title: 'How to create reusable AI prompts',
     description: 'Turn a prompt you keep retyping into named sections, save it in your library, and keep improving it without losing earlier versions.',
+    published: '2026-10-15',
+    updated: '2026-10-26',
   },
   variables: {
     path: '/guides/prompt-template-variables',
     title: 'How to use variables in AI prompt templates',
     description: 'Build a weekly update template with {{variables}}, add hints and example inputs, and copy a filled prompt into your preferred AI assistant.',
+    published: '2026-10-15',
+    updated: '2026-10-26',
   },
   organize: {
     path: '/guides/organize-chatgpt-prompts',
     title: 'How to organize and reuse your ChatGPT prompts',
     description: 'Keep useful ChatGPT prompts in a personal library with clear names, folders, favourites, search and version history.',
+    published: '2026-10-15',
+    updated: '2026-10-26',
   },
   goodPrompt: {
     path: '/guides/what-makes-a-good-prompt',
     title: 'What makes a good AI prompt',
     description: 'The six parts most prompts need (role, context, task, format, constraints and examples), with a complete example and how to test and improve a prompt.',
+    published: '2026-10-22',
+    updated: '2026-10-22',
   },
   codingAgents: {
     path: '/guides/prompts-for-coding-agents',
     title: 'How to write prompts for coding agents',
     description: 'Brief Claude Code, Codex or Cursor like a work ticket: the goal, where to look, constraints, a checkable definition of done and what to report.',
+    published: '2026-10-22',
+    updated: '2026-10-23',
   },
   imagePrompts: {
     path: '/guides/image-generation-prompts',
     title: 'How to write image generation prompts',
     description: 'Describe subject, setting, composition, style, lighting and format so ChatGPT (GPT Image), Midjourney, Stable Diffusion or Gemini produce the picture you have in mind.',
+    published: '2026-10-22',
+    updated: '2026-10-23',
   },
   researchWriting: {
     path: '/guides/research-and-writing-prompts',
     title: 'Prompts for research and writing',
     description: 'Get summaries and drafts that stay close to your sources: citations, audience, tone, structure and what the model should do when information is missing.',
+    published: '2026-10-22',
+    updated: '2026-10-22',
   },
 } satisfies Record<string, GuideSummary>;
 
@@ -61,7 +78,10 @@ export function guideMetadata(guide: GuideSummary): Metadata {
     description: guide.description,
     alternates: { canonical: url },
     openGraph: {
-      type: 'website', url, siteName: APP_NAME, title,
+      ...(guide.published
+        ? { type: 'article', publishedTime: guide.published, modifiedTime: guide.updated }
+        : { type: 'website' }),
+      url, siteName: APP_NAME, title,
       description: guide.description,
       images: [{ url: image, width: 1440, height: 900 }],
     },

@@ -28,8 +28,11 @@ const tools = [
 
 describe('Free tools', () => {
   it('lists every tool on the index', () => {
-    render(<ToolsIndexPage />);
+    const { container } = render(<ToolsIndexPage />);
     for (const { path } of tools) expect(document.querySelector(`a[href="${path}"]`)).toBeInTheDocument();
+    const index = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(index['@type']).toBe('CollectionPage');
+    expect(index.mainEntity.itemListElement).toHaveLength(tools.length);
   });
 
   it.each(tools)('gives $path help, an FAQ, a way into the app and the other tools', async ({ Page, path }) => {
@@ -46,7 +49,10 @@ describe('Free tools', () => {
     const more = screen.getByRole('region', { name: 'More free tools' });
     expect(within(more).getAllByRole('link')).toHaveLength(tools.length - 1);
     expect(more.querySelector(`a[href="${path}"]`)).not.toBeInTheDocument();
-    const faq = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    const [app, crumbs, faq] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(app).toMatchObject({ '@type': 'WebApplication', isAccessibleForFree: true, offers: { price: 0 } });
+    expect(app.url).toMatch(new RegExp(`${path}$`));
+    expect(crumbs.itemListElement).toHaveLength(2);
     expect(faq['@type']).toBe('FAQPage');
     expect(faq.mainEntity.length).toBeGreaterThan(0);
   });

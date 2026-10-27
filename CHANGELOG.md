@@ -10,6 +10,13 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- Public pages describe themselves to search engines as structured data: the home page as a
+  website and free web app, guides as dated articles with breadcrumbs, each free tool as a web
+  app, and the guides, tools and gallery indexes as collections. Guides show when they were last
+  updated, and `sitemap.xml` gives each guide's last-modified date.
+
 ## [0.11.0] - 2026-10-27
 
 See the [release record](./docs/releases/0.11.0.md).

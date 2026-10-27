@@ -23,11 +23,33 @@ const articles = [
 
 describe('Public guides', () => {
   it('gives readers a route from the index to each article', () => {
-    render(<GuidesPage />);
+    vi.stubEnv('FRONTEND_URL', 'https://guides.example');
+    const { container } = render(<GuidesPage />);
 
     for (const { path } of articles) {
       expect(document.querySelector(`a[href="${path}"]`)).toBeInTheDocument();
     }
+    const index = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(index).toMatchObject({ '@type': 'CollectionPage', url: 'https://guides.example/guides' });
+    expect(index.mainEntity.itemListElement.map((item: { url: string }) => item.url))
+      .toEqual(articles.map(({ path }) => `https://guides.example${path}`));
+  });
+
+  it.each(articles)('dates $path and describes it as an article', ({ Page, path }) => {
+    vi.stubEnv('FRONTEND_URL', 'https://guides.example');
+    const { container } = render(<Page />);
+
+    const updated = container.querySelector('header time')!;
+    expect(updated.getAttribute('dateTime')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(updated.textContent).toMatch(/^\d{1,2} [A-Z][a-z]+ \d{4}$/);
+    const [crumbs, article] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(crumbs.itemListElement.map((crumb: { item: string }) => crumb.item))
+      .toEqual(['https://guides.example/guides', `https://guides.example${path}`]);
+    expect(article).toMatchObject({
+      '@type': 'Article', url: `https://guides.example${path}`, dateModified: updated.getAttribute('dateTime'),
+      author: { '@type': 'Organization' }, publisher: { '@type': 'Organization' },
+    });
+    expect(article.datePublished <= article.dateModified).toBe(true);
   });
 
   it.each(articles)('links $path to the app, the index and the other articles', ({ Page, path }) => {
@@ -54,6 +76,7 @@ describe('Public guides', () => {
     const result = metadata();
     expect(result.alternates?.canonical).toBe(`https://second.example${path}`);
     expect(result.openGraph).toMatchObject({
+      type: path === '/guides' ? 'website' : 'article',
       url: `https://second.example${path}`,
       title: result.title,
       description: result.description,
