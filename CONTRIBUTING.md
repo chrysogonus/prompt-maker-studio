@@ -199,8 +199,7 @@ into `main`, and there is no floating `latest` image. To cut a release:
    (`backend/pyproject.toml`, `backend/app/main.py`, `frontend/package.json`, the two
    entries at the top of `frontend/package-lock.json`, and `server.json`), add a release
    candidate at `docs/releases/X.Y.Z.md` (see earlier records), point the `Unreleased`
-   section of `CHANGELOG.md` and `docs/README.md` at it, and update the README's
-   *Project status*.
+   section of `CHANGELOG.md` and `docs/README.md` at it.
 2. Confirm `make ci-local` passes and record the results in the candidate.
 3. Open a release PR from `dev` into `main` and merge it with a merge commit, so `dev`'s
    history is preserved, once every check passes.
@@ -211,7 +210,8 @@ into `main`, and there is no floating `latest` image. To cut a release:
 6. Publish the GitHub release. Then move the `## [Unreleased]` heading in
    `CHANGELOG.md` to `## [X.Y.Z] - YYYY-MM-DD`, add a fresh empty `Unreleased` section
    above it and the compare/release link definitions at the foot of the file, turn the
-   candidate into the release record, and bring that commit to `main` in a docs-only PR.
+   candidate into the release record, point the README's *Project status* at it, and
+   bring that commit to `main` in a docs-only PR.
 7. Production deployment and the MCP Registry entry (`server.json`) are separate,
    separately approved steps.
 

@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.13.0; see the [release candidate](./docs/releases/0.13.0.md).
+
 ### Added
 
 - Research and everyday gallery templates show an example of a good result for their example
