@@ -18,12 +18,13 @@ import { availableLegalPages } from '@/lib/legal';
 import styles from './page.module.css';
 
 const DESCRIPTION =
-  'A prompt library and template editor: save your best AI prompts with {{variables}}, fill them in ' +
+  'A prompt template editor and library: save your best AI prompts with {{variables}}, fill them in ' +
   'and copy them into ChatGPT, Claude, Gemini or any assistant.';
 
 export async function generateMetadata(): Promise<Metadata> {
   const url = siteUrl();
-  const title = `${APP_NAME}: a prompt library and template editor`;
+  // "prompt library" belongs to the guide and the gallery; the home page leads with the editor.
+  const title = `${APP_NAME}: a prompt template editor and library`;
   const image = { url: `${url}/landing/editor.png`, width: 1440, height: 900 };
   return {
     title,

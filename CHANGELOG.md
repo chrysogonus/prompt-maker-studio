@@ -22,6 +22,10 @@ any release. See [Project status](./README.md#project-status).
 - Page titles stay within the 60 characters search results show: the app name is left out
   where it would not fit, which shortens four guide titles.
 - `/privacy` and `/imprint` redirect permanently (308) instead of temporarily.
+- `sitemap.xml` gives each free tool and gallery template its own last-modified date, kept with
+  its content; index pages and `/about` stay undated rather than guessed.
+- The home page's search title and description lead with the template editor, leaving "prompt
+  library" to the gallery and the "What is a prompt library?" guide, which the gallery now links.
 - The home page lists the ChatGPT and Claude connection second among its features, and the
   self-hosting paragraph has a Self-host it button to the deployment guide.
 

@@ -135,13 +135,13 @@ describe('robots.txt and sitemap.xml', () => {
       { url: 'https://prompts.example/guides/research-and-writing-prompts', lastModified: '2026-10-22' },
       { url: 'https://prompts.example/guides/connect-chatgpt-claude', lastModified: '2026-10-27' },
       { url: 'https://prompts.example/tools' },
-      { url: 'https://prompts.example/tools/prompt-template-filler' },
-      { url: 'https://prompts.example/tools/prompt-linter' },
-      { url: 'https://prompts.example/tools/prompt-refiner' },
-      { url: 'https://prompts.example/tools/prompt-diff' },
-      { url: 'https://prompts.example/tools/token-counter' },
+      { url: 'https://prompts.example/tools/prompt-template-filler', lastModified: '2026-10-23' },
+      { url: 'https://prompts.example/tools/prompt-linter', lastModified: '2026-10-22' },
+      { url: 'https://prompts.example/tools/prompt-refiner', lastModified: '2026-10-27' },
+      { url: 'https://prompts.example/tools/prompt-diff', lastModified: '2026-10-23' },
+      { url: 'https://prompts.example/tools/token-counter', lastModified: '2026-10-22' },
       { url: 'https://prompts.example/gallery' },
-      ...GALLERY.map(({ slug }) => ({ url: `https://prompts.example/gallery/${slug}` })),
+      ...GALLERY.map(({ slug, updated }) => ({ url: `https://prompts.example/gallery/${slug}`, lastModified: updated })),
     ]);
   });
 

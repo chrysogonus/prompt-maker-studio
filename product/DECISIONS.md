@@ -1571,7 +1571,9 @@ entity, and names its maintainer by GitHub handle (`founder`, and on `/about`), 
 project that holds on self-hosted copies too. Dates kept beside
 the guide titles change with the content they describe, unlike file or build times.
 
-**Consequences**: Updating a guide's content means bumping its `updated` date. Google no longer
+**Consequences**: Updating a guide's content means bumping its `updated` date; since 2026-10-28
+free tools (`lib/tools.ts`) and gallery templates (`lib/gallery.ts`) carry the same field for the
+sitemap, and pages without a reliable content date stay undated. Google no longer
 shows FAQ rich results, but the FAQPage data stays because it still describes the page.
 
 **Sources**: `frontend/src/components/public/JsonLd.tsx`, `frontend/src/lib/guides.ts`,

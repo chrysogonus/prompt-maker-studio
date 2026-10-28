@@ -30,6 +30,7 @@ describe('gallery data', () => {
     expect(template.outcome.length).toBeGreaterThan(40);
     expect(template.outcome.length).toBeLessThanOrEqual(200);
     expect(template.tips.length).toBeGreaterThan(0);
+    expect(template.updated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('orders featured templates and finds templates by slug and guide', () => {

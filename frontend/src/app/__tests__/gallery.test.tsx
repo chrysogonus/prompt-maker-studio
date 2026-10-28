@@ -15,6 +15,7 @@ describe('Prompt gallery', () => {
   it('lists every template under its category, with popular ones first', () => {
     const { container } = render(<GalleryPage />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Free prompt library and templates');
+    expect(screen.getByRole('link', { name: 'what a prompt library is' })).toHaveAttribute('href', '/guides/what-is-a-prompt-library');
     const index = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
     expect(index['@type']).toBe('CollectionPage');
     expect(index.mainEntity.itemListElement).toHaveLength(GALLERY.length);
