@@ -496,10 +496,9 @@ export function galleryDescription(template: GalleryTemplate): string {
 }
 
 export function galleryMetadata(template?: GalleryTemplate) {
-  // Template titles leave out the app name to stay under the ~60 characters search results show.
-  return template
-    ? guideMetadata({ path: galleryPath(template.slug), title: `${template.title}: free prompt template`, description: galleryDescription(template) }, { brand: false })
-    : guideMetadata(GALLERY_INDEX);
+  return guideMetadata(template
+    ? { path: galleryPath(template.slug), title: `${template.title}: free prompt template`, description: galleryDescription(template) }
+    : GALLERY_INDEX);
 }
 
 /** The next four templates in the category, wrapping, so every template is linked from its neighbours. */

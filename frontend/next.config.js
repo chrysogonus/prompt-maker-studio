@@ -25,10 +25,10 @@ const nextConfig = {
     ];
   },
   async redirects() {
-    // Common English guesses for the operator's legal pages; not permanent, as a deployment may add pages here later.
+    // Common English guesses for the operator's legal pages, which have fixed German paths.
     return [
-      { source: '/privacy', destination: '/datenschutz', permanent: false },
-      { source: '/imprint', destination: '/impressum', permanent: false },
+      { source: '/privacy', destination: '/datenschutz', permanent: true },
+      { source: '/imprint', destination: '/impressum', permanent: true },
     ];
   },
   async headers() {

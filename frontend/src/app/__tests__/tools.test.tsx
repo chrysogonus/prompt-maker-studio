@@ -65,6 +65,7 @@ describe('Free tools', () => {
     const result = metadata();
     expect(result.alternates?.canonical).toBe(`https://tools.example${path}`);
     expect(result.title).toMatch(/^Free /);
+    expect(String(result.title).length).toBeLessThanOrEqual(60);
     expect(result.description!.length).toBeGreaterThanOrEqual(110);
     expect(result.description!.length).toBeLessThanOrEqual(160);
   });

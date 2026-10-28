@@ -83,9 +83,11 @@ export const GUIDES = {
 } satisfies Record<string, GuideSummary>;
 
 // Called by dynamic pages so a published image uses its deployment's origin.
-export function guideMetadata(guide: GuideSummary, { brand = true } = {}): Metadata {
+export function guideMetadata(guide: GuideSummary): Metadata {
   const url = `${siteUrl()}${guide.path}`;
-  const title = brand ? `${guide.title} · ${APP_NAME}` : guide.title;
+  // The app name is added only where it fits the ~60 characters search results show.
+  const branded = `${guide.title} · ${APP_NAME}`;
+  const title = branded.length <= 60 ? branded : guide.title;
   const image = `${siteUrl()}/landing/editor.png`;
   return {
     title,

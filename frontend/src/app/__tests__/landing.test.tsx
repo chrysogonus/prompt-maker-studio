@@ -53,6 +53,9 @@ describe('Landing page', () => {
     render(await LandingPage());
 
     expect(screen.getByRole('link', { name: 'See how' })).toHaveAttribute('href', '/guides/connect-chatgpt-claude');
+    // The ChatGPT and Claude connection is the second feature, near the top of the list.
+    expect(screen.getAllByRole('term')[3]).toHaveTextContent('Your library in ChatGPT and Claude');
+    expect(screen.getByRole('link', { name: 'Self-host it' })).toHaveAttribute('href', 'https://github.com/chrysogonus/prompt-maker-studio/blob/main/docs/deployment.md');
     expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute('href', '/about');
 
     expect(screen.getByRole('link', { name: 'Guides' })).toHaveAttribute('href', '/guides');

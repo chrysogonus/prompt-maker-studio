@@ -19,6 +19,11 @@ any release. See [Project status](./README.md#project-status).
 
 - The project's structured data is one entity across all pages: it has a stable `@id`, its logo,
   the repository as `sameAs` and its maintainer, and free tool pages name it as publisher too.
+- Page titles stay within the 60 characters search results show: the app name is left out
+  where it would not fit, which shortens four guide titles.
+- `/privacy` and `/imprint` redirect permanently (308) instead of temporarily.
+- The home page lists the ChatGPT and Claude connection second among its features, and the
+  self-hosting paragraph has a Self-host it button to the deployment guide.
 
 ## [0.12.0] - 2026-10-28
 

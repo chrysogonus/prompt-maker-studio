@@ -135,6 +135,13 @@ export default async function LandingPage() {
               </dd>
             </div>
             <div>
+              <dt>Your library in ChatGPT and Claude</dt>
+              <dd>
+                Connect your account to ChatGPT or Claude to list, open, save and update prompts
+                without leaving the chat. <Link href={GUIDES.connect.path}>See how</Link>.
+              </dd>
+            </div>
+            <div>
               <dt>Copy filled prompt</dt>
               <dd>
                 Fill in the variables and copy the finished text, or copy the template as it is. The
@@ -160,13 +167,6 @@ export default async function LandingPage() {
             <div>
               <dt>Folders, favourites and search</dt>
               <dd>Find a prompt by its name, its folder or any text inside it.</dd>
-            </div>
-            <div>
-              <dt>Your library in ChatGPT and Claude</dt>
-              <dd>
-                Connect your account to ChatGPT or Claude to list, open, save and update prompts
-                without leaving the chat. <Link href={GUIDES.connect.path}>See how</Link>.
-              </dd>
             </div>
           </dl>
         </section>
@@ -217,13 +217,16 @@ export default async function LandingPage() {
           <p>
             For a team, run one copy on a server you control. Each person keeps a private library, and
             you can set up a shared AI connection, such as a local model through Ollama or vLLM, for
-            people without their own API key. The{' '}
-            <a href={`${REPOSITORY_URL}/blob/main/docs/deployment.md`}>deployment guide</a>{' '}
-            covers the setup.
+            people without their own API key.
           </p>
-          <ButtonLink href="/library" variant="primary" className={styles.cta}>
-            Open the app
-          </ButtonLink>
+          <div className={styles.actions}>
+            <ButtonLink href="/library" variant="primary" className={styles.cta}>
+              Open the app
+            </ButtonLink>
+            <ButtonLink href={`${REPOSITORY_URL}/blob/main/docs/deployment.md`} className={styles.cta}>
+              Self-host it
+            </ButtonLink>
+          </div>
         </section>
       </main>
 

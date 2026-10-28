@@ -110,6 +110,7 @@ describe('Public guides', () => {
     expect(result.alternates?.canonical).toBe(`https://second.example${path}`);
     expect(result.description!.length).toBeGreaterThanOrEqual(110);
     expect(result.description!.length).toBeLessThanOrEqual(160);
+    expect(String(result.title).length).toBeLessThanOrEqual(60);
     expect(result.openGraph).toMatchObject({
       type: path === '/guides' ? 'website' : 'article',
       url: `https://second.example${path}`,
