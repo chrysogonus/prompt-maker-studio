@@ -28,8 +28,11 @@ const tools = [
 
 describe('Free tools', () => {
   it('lists every tool on the index', () => {
-    render(<ToolsIndexPage />);
+    const { container } = render(<ToolsIndexPage />);
     for (const { path } of tools) expect(document.querySelector(`a[href="${path}"]`)).toBeInTheDocument();
+    const index = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(index['@type']).toBe('CollectionPage');
+    expect(index.mainEntity.itemListElement).toHaveLength(tools.length);
   });
 
   it.each(tools)('gives $path help, an FAQ, a way into the app and the other tools', async ({ Page, path }) => {
@@ -39,25 +42,36 @@ describe('Free tools', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     // The refiner is the one tool that sends text, and says so.
     expect(container.querySelector('header')).toHaveTextContent(path.endsWith('prompt-refiner')
-      ? /your prompt is sent to its AI provider/ : /Runs in your browser; nothing is uploaded\.$/);
+      ? /sends your prompt to this site's AI provider/ : /Runs in your browser; nothing is uploaded\.$/);
     expect(screen.getByRole('heading', { name: 'Questions' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'All tools' })).toHaveAttribute('href', '/tools');
     expect(screen.getByRole('link', { name: 'Open the app' })).toHaveAttribute('href', '/library');
     const more = screen.getByRole('region', { name: 'More free tools' });
     expect(within(more).getAllByRole('link')).toHaveLength(tools.length - 1);
     expect(more.querySelector(`a[href="${path}"]`)).not.toBeInTheDocument();
-    const faq = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    const [app, crumbs, faq] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(app).toMatchObject({
+      '@type': 'WebApplication', isAccessibleForFree: true, offers: { price: 0 },
+      author: { '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' }, publisher: { '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' },
+    });
+    expect(app.url).toMatch(new RegExp(`${path}$`));
+    expect(crumbs.itemListElement).toHaveLength(2);
     expect(faq['@type']).toBe('FAQPage');
     expect(faq.mainEntity.length).toBeGreaterThan(0);
   });
 
   it.each([{ metadata: indexMetadata, path: '/tools' }, ...tools])('builds $path metadata from the origin at request time', ({ metadata, path }) => {
     vi.stubEnv('FRONTEND_URL', 'https://tools.example');
-    expect(metadata().alternates?.canonical).toBe(`https://tools.example${path}`);
+    const result = metadata();
+    expect(result.alternates?.canonical).toBe(`https://tools.example${path}`);
+    expect(result.title).toMatch(/^Free /);
+    expect(String(result.title).length).toBeLessThanOrEqual(60);
+    expect(result.description!.length).toBeGreaterThanOrEqual(110);
+    expect(result.description!.length).toBeLessThanOrEqual(160);
   });
 
-  it('wraps tools in the public shell with Guides, Tools and the app', () => {
-    render(<ToolsLayout><p>Tool</p></ToolsLayout>);
+  it('wraps tools in the public shell with Guides, Tools and the app', async () => {
+    render(await ToolsLayout({ children: <p>Tool</p> }));
     const nav = screen.getByRole('navigation', { name: 'Main navigation' });
     expect(within(nav).getByRole('link', { name: 'Guides' })).toHaveAttribute('href', '/guides');
     expect(within(nav).getByRole('link', { name: 'Tools' })).toHaveAttribute('href', '/tools');

@@ -2,7 +2,8 @@
 
 Lightweight decision log (ADR-style). Records significant choices and their rationale to guide future development.
 
-> Reviewed against the codebase: 2026-10-16 (published 0.5.1).
+> Last full review against the codebase: 2026-10-16 (published 0.5.1). Entries added since are
+> current as of 2026-10-28 (published 0.12.0).
 > This is a historical decision log. Superseded entries describe the behavior
 > and source locations at the time; current amendments are stated explicitly.
 > Use [FEATURES.md](FEATURES.md) and the [documentation index](../docs/README.md)
@@ -1543,3 +1544,65 @@ and the library are unchanged; only model answers are rendered.
 
 **Sources**: `frontend/src/components/ui/ModelOutput.tsx`, `frontend/src/features/editor/PreviewPane.tsx`,
 `frontend/src/features/evaluation/RunResults.tsx`, `frontend/src/features/evaluation/CompareResults.tsx`.
+
+---
+
+## Structured Data Credits the Project
+
+**Status**: Accepted (2026-10-27)
+
+**Context**: The 2026-10-27 SEO audit of the public deployment found no structured data on the
+home page or the guides and no author or dates anywhere, so search and AI answer engines could
+not tell what the site is or who stands behind it. The image is shared by every self-hosted
+copy, so it cannot carry one operator's identity.
+
+**Decision**: Public pages emit JSON-LD through one `JsonLd` component that escapes `<`. The
+home page is a WebSite and a free WebApplication, guides are Articles with breadcrumbs, tools are
+free WebApplications with breadcrumbs and their FAQPage, gallery templates keep their
+CreativeWork, and the three indexes are CollectionPages. Author and publisher are always the
+open-source project (an Organization named after the app, with the repository as its URL), never
+the deployment operator; URLs come from `FRONTEND_URL` at request time. Guides carry hand-kept
+published and updated dates in `lib/guides.ts`, shown on the page and used for Open Graph and the
+sitemap. No ratings or reviews are claimed.
+
+**Rationale**: The project is the one author that is true for every deployment. The operator is
+still identified where the law asks for it, in the operator-supplied Impressum. Amended
+2026-10-28: the Organization carries a repository-based `@id`, so its copies on every page are one
+entity, and names its maintainer by GitHub handle (`founder`, and on `/about`), a fact about the
+project that holds on self-hosted copies too. Dates kept beside
+the guide titles change with the content they describe, unlike file or build times.
+
+**Consequences**: Updating a guide's content means bumping its `updated` date; since 2026-10-28
+free tools (`lib/tools.ts`) and gallery templates (`lib/gallery.ts`) carry the same field for the
+sitemap, and pages without a reliable content date stay undated. Google no longer
+shows FAQ rich results, but the FAQPage data stays because it still describes the page.
+
+**Sources**: `frontend/src/components/public/JsonLd.tsx`, `frontend/src/lib/guides.ts`,
+`frontend/src/components/guides/GuideArticle.tsx`, `frontend/src/components/public/ToolPage.tsx`,
+`frontend/src/app/sitemap.ts`.
+
+---
+
+## Public Screenshots Are Cached; Pages Are Not
+
+**Status**: Accepted (2026-10-27)
+
+**Context**: Every path outside `/_next/` is served `Cache-Control: no-store` so the Back button
+cannot show account pages after sign-out. The 2026-10-27 SEO audit found that this also made
+browsers download the 100 KB landing screenshots again on every visit.
+
+**Decision**: `/landing/*` is excluded from the `no-store` rule and served `public,
+max-age=86400`. Its files are fixed screenshots with no account data; they are not
+content-hashed, so a day bounds how long a replaced image stays stale. Every page, public ones
+included, keeps `no-store`: public pages render per request anyway, so caching their HTML would
+gain little and would need a route allowlist that a new account page could slip past. The
+screenshots are also served as WebP at 720 and 1440 pixels wide through `srcset`; the PNGs stay
+for social previews and structured data.
+
+**Rationale**: The bytes worth caching are the images; the risk the rule guards against lives in
+HTML.
+
+**Consequences**: A replaced screenshot may show the old version for up to a day. Adding another
+public asset folder that should be cached means adding it to the exclusion in `next.config.js`.
+
+**Sources**: `frontend/next.config.js`, `frontend/src/app/page.tsx`, `frontend/public/landing/`.

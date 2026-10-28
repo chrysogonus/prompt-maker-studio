@@ -1,6 +1,6 @@
 # Product Backlog
 
-> Reviewed against the codebase: 2026-10-20 (unreleased changes on `dev`; published 0.8.0).
+> Reviewed against the codebase: 2026-10-28 (published 0.12.0; later changes on `dev`).
 > Items below describe unimplemented scope. See [implemented features](FEATURES.md)
 > and the [roadmap](ROADMAP.md) for delivered work and release status.
 > Existing priorities are retained; this sync does not select new product work.
@@ -20,8 +20,8 @@ Phase 5 of the evaluate → refine loop (see [below](#evaluate--refine-loop-plan
 ### Calibrate Evaluation Scores
 
 - **Value**: Give scores an understood relationship to a user's goal.
-- **Current gap**: Users can rate AI-reviewed outputs themselves, and Run history reports how often the AI review agreed with them (within one star). Agreement is counted only over loaded history, is not shown where scores are compared, and does not yet change how AI-review scores are presented. Automatic checks are deterministic and not compared.
-- **Suggested approach**: Show the agreement next to AI-review scores wherever they are compared (run comparison, refinement checks), and warn when agreement is low. Keep automatic execution disabled.
+- **Current gap**: Users can rate AI-reviewed outputs themselves, and Run history reports how often the AI review agreed with them (within one star). Agreement is counted only over loaded history; refinement's draft check states it, but run comparison does not, and it does not yet change how AI-review scores are presented. Automatic checks are deterministic and not compared.
+- **Suggested approach**: Show the agreement next to AI-review scores in run comparison too, and warn when agreement is low. Keep automatic execution disabled.
 - **Source**: `frontend/src/features/evaluation/`, `backend/app/services/eval_service.py`.
 - **Effort**: High.
 
@@ -30,7 +30,7 @@ Phase 5 of the evaluate → refine loop (see [below](#evaluate--refine-loop-plan
 ### First-Run Onboarding With a Seeded Sample Prompt
 
 - **Value**: Make the first reusable template easier to understand.
-- **Current gap**: The empty library offers New prompt, Paste a prompt and starter templates; registration creates no sample prompt. `backend/scripts/seed_demo_user.py` is opt-in QA data, not new-account onboarding.
+- **Current gap**: The empty library leads with Add existing prompts, then New prompt and starter templates; registration creates no sample prompt. `backend/scripts/seed_demo_user.py` is opt-in QA data, not new-account onboarding.
 - **Suggested approach**: Offer a deletable sample with variables and optional evaluation cases; tags and the retired Playground are outside the current workflow.
 - **Effort**: Low.
 
@@ -61,7 +61,6 @@ Phase 5 of the evaluate → refine loop (see [below](#evaluate--refine-loop-plan
 ### Small Follow-ups from the 2026-10-23 UI/UX Test
 
 - **Open imported prompts as a batch**: after an import into several folders, Open imported prompts shows All prompts, where the new prompts lead the default recency sort. A view of exactly the imported prompts needs a new library view (the IDs or an import marker).
-- **Markdown in evaluation results**: run details show model output as raw Markdown tables; rendering it needs a Markdown renderer (none is installed).
 - **Inputs highlighted while editing**: `{{inputs}}` are highlighted in the preview only; the section text areas would need a mirrored highlight layer.
 - **Import review on phones**: a filter and "collapse all" for reviewing hundreds of notes in the small dialog.
 - **Sequential prompt IDs**: IDs reveal the total number of prompts to any user; not a vulnerability given the ownership checks, but worth deciding before a public launch.
@@ -83,11 +82,11 @@ Phase 5 of the evaluate → refine loop (see [below](#evaluate--refine-loop-plan
 - **Source**: `backend/app/services/prompts/library.py`, `frontend/src/features/library/useLibrary.ts`.
 - **Effort**: Medium.
 
-### Bulk Prompt Delete / Recovered History Cleanup
+### Duplicate Detection / Recovered History Cleanup
 
 - **Value**: Tidy large collections and recovered near-duplicates.
-- **Current gap**: Individual deletion and folder rename/removal exist; multi-select prompt deletion and duplicate detection do not. The old unnamed History tab no longer exists; migration 024 retained entries as named prompts in Recovered history.
-- **Suggested approach**: Add deliberate multi-selection to the library, preserving deletion feedback and Undo. Individual DELETE is available; confirm transaction/error behavior before choosing batch requests.
+- **Current gap**: Selecting several prompts to move or delete them together (with one Undo) and folder rename/removal exist; duplicate detection does not. The old unnamed History tab no longer exists; migration 024 retained entries as named prompts in Recovered history.
+- **Suggested approach**: Flag prompts whose sections match (after whitespace normalisation) and offer them for review in the existing multi-selection, keeping deletion feedback and Undo.
 - **Effort**: Medium.
 
 ### Multiple Output Formats
@@ -111,10 +110,10 @@ versioning by joining them into one loop instead of adding new surfaces. Decisio
 
 | Phase | Scope | Status |
 |---|---|---|
-| 1 | Rate AI-reviewed outputs; show how often AI review agrees (migration 030) | Done, unreleased |
-| 2 | Runs record the text they tested; evaluate unsaved sections (migration 031) | Done, unreleased |
-| 3 | Refine from chosen test results; check a draft against test cases before applying | Done, unreleased |
-| 4 | One known-good version; test results in History; library test status (migration 032) | Done, unreleased |
+| 1 | Rate AI-reviewed outputs; show how often AI review agrees (migration 030) | Released in 0.9.0 |
+| 2 | Runs record the text they tested; evaluate unsaved sections (migration 031) | Released in 0.9.0 |
+| 3 | Refine from chosen test results; check a draft against test cases before applying | Released in 0.9.0 |
+| 4 | One known-good version; test results in History; library test status (migration 032) | Released in 0.9.0 |
 | 5 | Direct refine instructions and per-section accept | Backlog: [Extend AI Refinement Controls](#extend-ai-refinement-controls) |
 | 6 | Persistent evaluation jobs, then a user-started "find a better version" | Backlog: [Evaluation Progress](#evaluation-progress-cancellation--partial-results), [Find a Better Version](#find-a-better-version-user-started) |
 
@@ -189,7 +188,7 @@ Phase 6 of the evaluate → refine loop. Build it when large suites hit the time
 - **Server-side evaluation summaries**: AI-review agreement is counted in the browser over loaded Run history pages, History matches the newest 100 runs, and the library status reads one row per run. Move these to SQL aggregation if histories grow long. Low effort.
 
 - **Prompt branching**: Duplication has no lineage; add parent/branch context if non-linear versioning becomes valuable. High effort.
-- **Full-fidelity backup restore through the UI**: Library JSON/Markdown import now creates new copies with title/folder preview and retries. It does not restore history, dates, notes or favorites. A complete restore would need explicit conflict and duplicate handling. Medium effort.
+- **Full-fidelity backup restore through the UI**: Library JSON/Markdown import now creates new copies with title/folder preview and retries. It copies favourites but does not restore history, dates or notes. A complete restore would need explicit conflict and duplicate handling. Medium effort.
 - **Shareable prompt links**: No public per-prompt sharing endpoint exists; copied text is the current sharing path. Medium effort.
 - **Rate-limit retry countdown**: Rate-limited routes return 429; the UI has no dedicated retry timer. Use the actual response headers and current route limits, rather than the removed generate endpoint. Low effort.
 - **Operator diagnostics administration UI**: `POST /api/admin/smtp/check` exists, but no admin page. Keep diagnostics credentials separate from normal account authorization. Medium effort.

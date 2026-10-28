@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import GuideArticle from '@/components/guides/GuideArticle';
+import styles from '@/components/guides/Guides.module.css';
 import { GUIDES, guideMetadata } from '@/lib/guides';
 import { fillVariables, renderSections } from '@/lib/sections';
+import { TOOLS } from '@/lib/tools';
 
 const template = renderSections([
   { name: 'Task', content: 'Write a weekly update for {{team}} using these notes:\n{{notes}}' },
@@ -44,6 +46,71 @@ export default function TemplateVariablesPage() {
         Use <code>{'{{project_name}}'}</code> rather than <code>{'{{project name}}'}</code>.
         Reusing the same name in several sections gives them one shared input.
       </p>
+
+      <h2>Variable syntax in other tools</h2>
+      <p>
+        Placeholders are a convention, not a standard, so check which form a tool expects before
+        moving a template between them. To fill a <code>{'{{double-brace}}'}</code> template without
+        an account, paste it into the <Link href={TOOLS.filler.path}>template filler</Link>.
+      </p>
+      <div className={styles.tableWrap} role="region" aria-label="Variable syntax by tool" tabIndex={0}>
+        <table>
+          <thead>
+            <tr><th scope="col">Where</th><th scope="col">Placeholder</th><th scope="col">Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>This app</td><td><code>{'{{team}}'}</code></td><td>Letters, numbers, underscores and hyphens; no spaces.</td></tr>
+            <tr>
+              <td>Anthropic&apos;s prompting guide</td><td><code>{'{{ANNUAL_REPORT}}'}</code></td>
+              <td>
+                Its <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices">examples</a>{' '}
+                put each input in its own XML tag around a double-brace placeholder.
+              </td>
+            </tr>
+            <tr>
+              <td>Google Vertex AI Studio</td><td><code>{'{animal_name}'}</code></td>
+              <td>
+                <a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/prompts/prompt-templates">Prompt templates</a>{' '}
+                use single braces; names cannot contain spaces.
+              </td>
+            </tr>
+            <tr>
+              <td>LangChain and LangSmith</td><td><code>{'{name}'}</code> or <code>{'{{name}}'}</code></td>
+              <td>
+                <a href="https://docs.langchain.com/langsmith/prompt-template-format">f-string or mustache</a>{' '}
+                format; mustache also supports loops and conditions.
+              </td>
+            </tr>
+            <tr><td>ChatGPT, Claude or Gemini chats</td><td>None</td><td>The chat sees plain text, so fill in every value before you paste.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Pitfalls to avoid</h2>
+      <ul>
+        <li>
+          <strong>Sending an unfilled placeholder.</strong> A model that receives{' '}
+          <code>{'{{notes}}'}</code> may invent notes or write about the placeholder itself. Mark
+          inputs the prompt cannot work without as required, so <strong>Copy filled prompt</strong>{' '}
+          waits until they have a value.
+        </li>
+        <li>
+          <strong>Pasted text that gives orders.</strong> An email or web page you paste into{' '}
+          <code>{'{{notes}}'}</code> can contain sentences that read like instructions. Keep such
+          inputs in their own section, which becomes their own tag, and say in the Task that its
+          contents are material to work with, not instructions to follow.
+        </li>
+        <li>
+          <strong>One name for two meanings.</strong> Every use of a name shares one input, so{' '}
+          <code>{'{{date}}'}</code> cannot be both a deadline and a meeting day. Use{' '}
+          <code>{'{{due_date}}'}</code> and <code>{'{{meeting_date}}'}</code>.
+        </li>
+        <li>
+          <strong>Vague names.</strong> <code>{'{{text}}'}</code> says little when you fill the
+          prompt in weeks later; <code>{'{{customer_email}}'}</code> explains itself, and a hint can
+          say the rest.
+        </li>
+      </ul>
 
       <h2>Add hints and optional settings</h2>
       <ol>

@@ -10,7 +10,86 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
-Prepared for 0.11.0; see the [release candidate](./docs/releases/0.11.0.md).
+## [0.13.0] - 2026-10-28
+
+See the [release record](./docs/releases/0.13.0.md).
+
+### Added
+
+- Research and everyday gallery templates show an example of a good result for their example
+  inputs, labelled as written to show its shape, and every template now has at least two tips.
+- The coding-agent guide has a Copy button for each template and names `AGENTS.md` and
+  `CLAUDE.md` as instruction files. The coding, image and research guides link the provider
+  guidance they draw on (Anthropic, `agents.md`, Google).
+- `/about` says who builds the project (its maintainer on GitHub), where to report problems and
+  read release notes, and how the app handles your prompts and optional AI connections.
+
+### Fixed
+
+- The project's structured data is one entity across all pages: it has a stable `@id`, its logo,
+  the repository as `sameAs` and its maintainer, and free tool pages name it as publisher too.
+- Page titles stay within the 60 characters search results show: the app name is left out
+  where it would not fit, which shortens four guide titles.
+- `/privacy` and `/imprint` redirect permanently (308) instead of temporarily.
+- `sitemap.xml` gives each free tool and gallery template its own last-modified date, kept with
+  its content; index pages and `/about` stay undated rather than guessed.
+- The token counter says how current its prices are: the date they were fetched from the live
+  price index, or when the built-in price list was last checked. `GET /api/public/model-prices`
+  adds a `prices_as_of` field per model.
+- `/about` follows the visitor's system theme when no theme is chosen, like the other public pages.
+- The variables guide shows placeholder syntax across tools and the pitfalls before the in-app
+  walkthrough, and links the template filler.
+- The home page's search title and description lead with the template editor, leaving "prompt
+  library" to the gallery and the "What is a prompt library?" guide, which the gallery now links.
+- The home page lists the ChatGPT and Claude connection second among its features, and the
+  self-hosting paragraph has a Self-host it button to the deployment guide.
+
+## [0.12.0] - 2026-10-28
+
+See the [release record](./docs/releases/0.12.0.md).
+
+### Added
+
+- Public pages describe themselves to search engines as structured data: the home page as a
+  website and free web app, guides as dated articles with breadcrumbs, each free tool as a web
+  app, and the guides, tools and gallery indexes as collections. Guides show when they were last
+  updated, and `sitemap.xml` gives each guide's last-modified date.
+- A guide, "How to use your prompt library in ChatGPT and Claude", gives the connection steps
+  with this site's own MCP address; the home page and the organizing guide link to it.
+- `/about` says what the app is, that it is open source and self-hostable, and which host runs
+  it, linking the operator's Impressum and privacy policy when the deployment provides them.
+  Public footers link to it.
+- `/llms.txt` lists the guides, tools, templates, the About page and the MCP address for AI
+  assistants, built from this site's own origin.
+- A guide, "What is a prompt library?", covers what belongs in one, what makes an entry useful,
+  and how to start from the free templates.
+- Each gallery template shows its prompt filled in with the example inputs and what a good result
+  looks like, and every template now has at least one tip.
+- The coding-agent guide includes all six coding templates, ready to copy. The variables guide
+  compares placeholder syntax in other tools, with sources, and lists common pitfalls. The guide
+  on good prompts links the Anthropic, OpenAI and Google prompting guides.
+- The home page explains how a team can run its own copy, with a shared AI connection such as a
+  local model.
+
+### Fixed
+
+- Footer links to the Impressum, privacy policy and terms are part of the page HTML on the home
+  page, guides, tools, templates and legal pages, so crawlers that do not run JavaScript find them.
+  The legal pages have their own description and canonical link, `sitemap.xml` lists the ones a
+  deployment provides, and `/privacy` and `/imprint` redirect to them.
+- Responses no longer carry an `X-Powered-By: Next.js` header.
+- Every gallery template is linked from the "More … templates" list of its category neighbours;
+  before, the last template in each category was listed nowhere else.
+- Search titles and descriptions fit what results show: gallery template titles stay under 60
+  characters, free tool titles start with "Free", the gallery is titled "Free prompt library and
+  templates", and long descriptions are shortened to 160 characters or fewer.
+- The home page and guide screenshots load as WebP at about half the bytes of the PNGs, or a
+  fifth where a 720-pixel copy is sharp enough, and the browser keeps `/landing/*` images for a
+  day instead of downloading them again on every visit. Pages themselves are still never cached.
+
+## [0.11.0] - 2026-10-27
+
+See the [release record](./docs/releases/0.11.0.md).
 
 ### Added
 
@@ -56,6 +135,13 @@ Prepared for 0.11.0; see the [release candidate](./docs/releases/0.11.0.md).
   borders or tinted backgrounds.
 - With reduced motion, loading spinners pulse instead of freezing, and notices fade without
   sliding. The full-page loading spinner turns again.
+
+### Security
+
+- The backend's `dnspython` is updated from 2.8.0 to 2.9.0 for CVE-2026-114605: a crafted DNS
+  message could make name decompression use excessive CPU. It is only pulled in by
+  `email-validator`, which the app uses without DNS lookups. Rebuilt images pick it up; no
+  configuration change.
 
 ## [0.10.0] - 2026-10-24
 
@@ -998,7 +1084,10 @@ listed below and in the commit history.
 - No multi-tenant organization or team features.
 - No published upgrade path between `0.x` releases — expect breaking changes.
 
-[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/chrysogonus/prompt-maker-studio/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.13.0
+[0.12.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.12.0
+[0.11.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.11.0
 [0.10.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.10.0
 [0.9.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.9.0
 [0.8.0]: https://github.com/chrysogonus/prompt-maker-studio/releases/tag/v0.8.0

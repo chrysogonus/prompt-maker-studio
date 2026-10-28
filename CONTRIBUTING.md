@@ -35,7 +35,9 @@ make setup
 ```
 
 The default local stack needs no further environment edits. Set
-`FRONTEND_URL=http://localhost:3000` if you are testing reset-email links; the
+`FRONTEND_URL=http://localhost:3000` if you are testing reset-email links, public-page links
+(canonical URLs, sitemap, `/llms.txt`) or MCP clients locally, since the template's value is a
+`https://yourdomain.com` placeholder; the
 [Quick Start in `README.md`](./README.md#quick-start-with-docker) explains why
 CORS is not involved. If you are touching an AI feature, connect a provider
 under Settings → AI connection or use an operator-configured server default
@@ -78,7 +80,10 @@ make lock          # both backend/requirements*.lock, from backend/pyproject.tom
 cd frontend && npm install   # frontend/package-lock.json
 ```
 
-Commit the regenerated lockfile with the change that caused it.
+Commit the regenerated lockfile with the change that caused it. If the change alters what is
+installed in an application image, update [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)
+too: CI compares it with each built image (`make check-notices` locally; see
+[licensing](./docs/licensing.md)).
 
 ## The Makefile is the interface
 
@@ -170,7 +175,7 @@ breaking changes.
 4. Link the issue with `Closes #123`.
 5. Keep PRs focused. Unrelated refactors belong in their own PR.
 
-All CI jobs must pass: backend lint/security/tests, frontend
+All CI jobs must pass: secret scan, backend lint/security/tests, frontend
 lint/security/build/tests, CodeQL static analysis, Docker build validation,
 Playwright E2E, and Compose/monitoring/backup validation. CodeQL is skipped
 for private repositories under the current workflow. Review is by the maintainer;
@@ -190,14 +195,25 @@ expect a few days.
 Publishing container images is triggered by pushing a `v*` tag, not by merging
 into `main`, and there is no floating `latest` image. To cut a release:
 
-1. Move the `## [Unreleased]` heading in `CHANGELOG.md` to `## [X.Y.Z] - YYYY-MM-DD`,
-   add a fresh empty `Unreleased` section above it, and add the compare/release
-   link definitions at the foot of the file.
-2. Confirm `make ci-local` passes.
-3. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`.
-4. The publish job builds and pushes images tagged by semver and `sha-<short>`,
-   with provenance and an SBOM. Its summary prints each image's immutable
-   `@sha256:` digest — record those in the release notes.
+1. Prepare the candidate on `dev`: set `X.Y.Z` in all six version declarations
+   (`backend/pyproject.toml`, `backend/app/main.py`, `frontend/package.json`, the two
+   entries at the top of `frontend/package-lock.json`, and `server.json`), add a release
+   candidate at `docs/releases/X.Y.Z.md` (see earlier records), point the `Unreleased`
+   section of `CHANGELOG.md` and `docs/README.md` at it.
+2. Confirm `make ci-local` passes and record the results in the candidate.
+3. Open a release PR from `dev` into `main` and merge it with a merge commit, so `dev`'s
+   history is preserved, once every check passes.
+4. Tag the merge and push: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+5. The publish job builds and pushes images tagged `X.Y.Z`, `X.Y` (which moves with
+   each patch release) and `sha-<short>`, with provenance and an SBOM. Its summary
+   prints each image's immutable `@sha256:` digest — record those in the release notes.
+6. Publish the GitHub release. Then move the `## [Unreleased]` heading in
+   `CHANGELOG.md` to `## [X.Y.Z] - YYYY-MM-DD`, add a fresh empty `Unreleased` section
+   above it and the compare/release link definitions at the foot of the file, turn the
+   candidate into the release record, point the README's *Project status* at it, and
+   bring that commit to `main` in a docs-only PR.
+7. Production deployment and the MCP Registry entry (`server.json`) are separate,
+   separately approved steps.
 
 Do not date or link a changelog version before its tag is pushed: a changelog
 that describes a release nobody can fetch, with links that 404, makes the whole

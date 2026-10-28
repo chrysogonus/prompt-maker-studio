@@ -54,7 +54,7 @@ export default function ReusablePromptsPage() {
         replaces your current sections, so choose it before writing your own example.
       </p>
       <figure>
-        <img src="/landing/editor.png" width={1440} height={900} loading="lazy"
+        <img src="/landing/editor.webp" srcSet="/landing/editor-720.webp 720w, /landing/editor.webp 1440w" sizes="(max-width: 760px) 100vw, 760px" width={1440} height={900} loading="lazy"
           alt="Prompt editor with named sections on the left and a filled weekly update preview on the right." />
         <figcaption>
           The editor keeps section text beside the preview. This saved example uses additional

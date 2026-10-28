@@ -1,6 +1,6 @@
 # Documentation
 
-Reviewed against the codebase on 2026-10-17. **0.10.0** is the latest published
+Reviewed against the codebase on 2026-10-28. **0.13.0** is the latest published
 release. Publication, MCP Registry updates and production deployment are
 separate operations.
 
@@ -28,7 +28,9 @@ separate operations.
 
 ## Operations
 
-- [Deployment](deployment.md): upgrades, HTTPS, backup, restore and rollback.
+- [Deployment](deployment.md): upgrades, HTTPS, backup, restore and rollback, plus the
+  [public pages](deployment.md#public-pages) every deployment serves (guides, tools, gallery,
+  `/about`, `/llms.txt`), its legal pages and caching.
 - [Monitoring](monitoring.md): HTTP/application/provider metrics, three Grafana
   dashboards, alerts and safe structured logs.
 - [CI pipeline](../.github/CI_PIPELINE.md) and
@@ -44,9 +46,17 @@ separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
-- [0.11.0 release candidate](releases/0.11.0.md): AI answers rendered as Markdown,
-  fixes from the 2026-10-26 UI/UX test and the design audit, dependency updates and
-  validation.
+- [0.13.0 release record](releases/0.13.0.md): one structured-data entity, a fuller
+  About page, titles and sitemap dates for search, deeper gallery templates, sourced guides,
+  dated token-counter prices, documentation synced with the code, immutable image digests
+  and validation.
+- [0.12.0 release record](releases/0.12.0.md): search and AI-assistant
+  discoverability from the 2026-10-27 SEO audit, an About page, a ChatGPT and Claude
+  connection guide, `llms.txt`, fuller gallery pages and guides, immutable image
+  digests and validation.
+- [0.11.0 release record](releases/0.11.0.md): AI answers rendered as Markdown,
+  fixes from the 2026-10-26 UI/UX test and the design audit, dependency updates,
+  immutable image digests and validation.
 - [0.10.0 release record](releases/0.10.0.md): free no-login tools, guides, a template
   gallery and an optional free refiner, input choices, re-import and editor fixes from the
   2026-10-23 UI/UX test, immutable image digests and validation.

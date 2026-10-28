@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import JsonLd, { project, breadcrumbs } from '@/components/public/JsonLd';
 import { ButtonLink } from '@/components/ui/Button';
+import { siteUrl } from '@/lib/branding';
 import { galleryPath, templatesForGuide } from '@/lib/gallery';
 import { GUIDES } from '@/lib/guides';
 import GuideList from './GuideList';
@@ -10,6 +12,16 @@ export default function GuideArticle({ guide, children }: {
   guide: (typeof GUIDES)[keyof typeof GUIDES];
   children: ReactNode;
 }) {
+  const url = `${siteUrl()}${guide.path}`;
+  const structuredData = [
+    breadcrumbs(['Guides', '/guides'], [guide.title, guide.path]),
+    {
+      '@context': 'https://schema.org', '@type': 'Article',
+      headline: guide.title, description: guide.description, url, mainEntityOfPage: url,
+      image: `${siteUrl()}/landing/editor.png`, inLanguage: 'en',
+      datePublished: guide.published, dateModified: guide.updated, author: project(), publisher: project(),
+    },
+  ];
   return (
     <article className={styles.article}>
       <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
@@ -18,7 +30,11 @@ export default function GuideArticle({ guide, children }: {
       <header>
         <h1>{guide.title}</h1>
         <p className={styles.intro}>{guide.description}</p>
+        <p className={styles.updated}>
+          Updated <time dateTime={guide.updated}>{new Date(guide.updated).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}</time>
+        </p>
       </header>
+      <JsonLd data={structuredData} />
       <div className={styles.prose}>{children}</div>
       {templatesForGuide(guide.path).length > 0 && (
         <section className={styles.next} aria-labelledby="templates-to-start-from">

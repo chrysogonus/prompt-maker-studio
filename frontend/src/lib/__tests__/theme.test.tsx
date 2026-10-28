@@ -31,8 +31,8 @@ it('applies stored choices before paint while keeping light as the default', () 
 });
 
 it('lets public pages follow the system when no theme was chosen, but not the app', () => {
-  expect(['/', '/guides', '/tools/prompt-diff', '/gallery/meal-plan', '/terms'].every(isPublicPath)).toBe(true);
-  expect(['/library', '/editor/new', '/settings', '/toolsy', '/oauth/authorize'].some(isPublicPath)).toBe(false);
+  expect(['/', '/about', '/guides', '/tools/prompt-diff', '/gallery/meal-plan', '/terms'].every(isPublicPath)).toBe(true);
+  expect(['/library', '/editor/new', '/settings', '/toolsy', '/aboutus', '/oauth/authorize'].some(isPublicPath)).toBe(false);
   for (const [path, stored, expected] of [
     ['/tools', null, 'dark'], ['/tools', 'light', 'light'], ['/library', null, 'light'], ['/library', 'system', 'dark'],
   ] as const) {

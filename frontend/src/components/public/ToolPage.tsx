@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ButtonLink } from '@/components/ui/Button';
+import { siteUrl } from '@/lib/branding';
 import type { Tool } from '@/lib/tools';
 import guideStyles from '@/components/guides/Guides.module.css';
+import JsonLd, { FREE_OFFER, project, breadcrumbs } from './JsonLd';
 import ToolList from './ToolList';
 import styles from './Tools.module.css';
 
@@ -14,6 +16,7 @@ export interface Faq {
 /**
  * A free tool: what it does, the tool itself, then server-rendered help and an
  * FAQ (also as FAQPage data) so the page is useful to readers and crawlers.
+ * FAQ rich results are gone from Google, but the data still describes the page.
  */
 export default function ToolPage({ tool, widget, faq, children, local = true }: {
   tool: Tool;
@@ -23,13 +26,22 @@ export default function ToolPage({ tool, widget, faq, children, local = true }: 
   /** Browser-only tools say so; one that calls the server does not. */
   local?: boolean;
 }) {
-  const faqData = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faq.map(({ question, answer }) => ({
-      '@type': 'Question', name: question, acceptedAnswer: { '@type': 'Answer', text: answer },
-    })),
-  };
+  const structuredData = [
+    {
+      '@context': 'https://schema.org', '@type': 'WebApplication',
+      name: tool.title, description: tool.description, url: `${siteUrl()}${tool.path}`,
+      applicationCategory: 'UtilitiesApplication', operatingSystem: 'Web',
+      isAccessibleForFree: true, offers: FREE_OFFER, author: project(), publisher: project(),
+    },
+    breadcrumbs(['Tools', '/tools'], [tool.title, tool.path]),
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faq.map(({ question, answer }) => ({
+        '@type': 'Question', name: question, acceptedAnswer: { '@type': 'Answer', text: answer },
+      })),
+    },
+  ];
   return (
     <article className={styles.toolArticle}>
       <nav aria-label="Breadcrumb" className={guideStyles.breadcrumb}>
@@ -39,7 +51,7 @@ export default function ToolPage({ tool, widget, faq, children, local = true }: 
         <h1>{tool.title}</h1>
         <p className={guideStyles.intro}>{tool.description}</p>
         {/* Local tools say so in their description. */}
-        {!local && <p className={styles.local}>When this site offers it, your prompt is sent to its AI provider to refine it and is not stored by this site.</p>}
+        {!local && <p className={styles.local}>Refining sends your prompt to this site&apos;s AI provider; this site does not store it.</p>}
       </header>
       <section className={styles.widget} aria-label={tool.title}>{widget}</section>
       <div className={guideStyles.prose}>
@@ -52,7 +64,7 @@ export default function ToolPage({ tool, widget, faq, children, local = true }: 
           </div>
         ))}
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqData) }} />
+      <JsonLd data={structuredData} />
       <section className={guideStyles.next} aria-labelledby="keep-your-prompts">
         <h2 id="keep-your-prompts">Keep your prompts</h2>
         <p>

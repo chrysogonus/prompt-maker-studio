@@ -1,11 +1,9 @@
-import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { pageTitle } from '@/lib/branding';
-import { readLegalPage } from '@/lib/legal';
+import { legalMetadata, readLegalPage } from '@/lib/legal';
 
-export const metadata: Metadata = {
-  title: pageTitle('Impressum'),
-};
+export function generateMetadata() {
+  return legalMetadata('Impressum', '/impressum', 'Legal notice: who runs this site and how to contact them.');
+}
 
 // Read on each request: the file is mounted at runtime, not built in.
 export const dynamic = 'force-dynamic';

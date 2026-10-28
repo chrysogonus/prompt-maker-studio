@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TemplateFiller from '../TemplateFiller';
 import PromptDiff from '../PromptDiff';
 import PromptLinter from '../PromptLinter';
-import TokenCounter, { estimateTokens } from '../TokenCounter';
+import TokenCounter, { estimateTokens, pricesAsOf } from '../TokenCounter';
 import { ApiClient } from '@/lib/api';
 import { openInApp } from '@/lib/openInApp';
 
@@ -108,8 +108,8 @@ describe('TokenCounter', () => {
   it('counts the prompt and prices it per model', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.getPublicModelPrices).mockResolvedValue([
-      { id: 'm', label: 'Model M', provider: 'openai', provider_label: 'OpenAI', input_price_per_1m: 2, output_price_per_1m: 8 },
-      { id: 'u', label: null, provider: 'gemini', provider_label: 'Google Gemini', input_price_per_1m: null, output_price_per_1m: null },
+      { id: 'm', label: 'Model M', provider: 'openai', provider_label: 'OpenAI', input_price_per_1m: 2, output_price_per_1m: 8, prices_as_of: '2026-10-17' },
+      { id: 'u', label: null, provider: 'gemini', provider_label: 'Google Gemini', input_price_per_1m: null, output_price_per_1m: null, prices_as_of: null },
     ]);
     render(<TokenCounter />);
     await user.type(screen.getByRole('textbox', { name: 'Your prompt' }), 'x'.repeat(40));
@@ -118,8 +118,16 @@ describe('TokenCounter', () => {
     expect(row).toHaveTextContent('$2.00');
     expect(row).toHaveTextContent('$0.0000');
     expect(screen.getByRole('row', { name: /Google Gemini · u/ })).toHaveTextContent('—');
+    expect(screen.getByText(/at list prices as of 17 October 2026/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save to my library' }));
     expect(openInApp).toHaveBeenCalledWith({ fields: [{ name: 'Task', content: 'x'.repeat(40) }] });
+  });
+
+  it('dates prices from one source, a range of sources, or none', () => {
+    const row = (prices_as_of: string | null) => ({ id: 'm', label: null, provider: 'openai', provider_label: 'OpenAI', input_price_per_1m: 1, output_price_per_1m: 1, prices_as_of });
+    expect(pricesAsOf([row('2026-10-28'), row('2026-10-28')])).toBe('as of 28 October 2026');
+    expect(pricesAsOf([row('2026-10-28'), row('2026-10-17'), row(null)])).toBe('checked between 17 October 2026 and 28 October 2026');
+    expect(pricesAsOf([row(null)])).toBe('(estimated)');
   });
 
   it('keeps counting when prices fail to load', async () => {

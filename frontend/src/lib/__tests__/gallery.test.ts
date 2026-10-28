@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GALLERY, GALLERY_CATEGORIES, featuredTemplates, galleryTemplate, templatesForGuide } from '../gallery';
+import { GALLERY, GALLERY_CATEGORIES, featuredTemplates, galleryTemplate, relatedTemplates, templatesForGuide } from '../gallery';
 import { GUIDES } from '../guides';
 import { lintPrompt } from '../promptLint';
 import { renderSections, sectionNameError, unbalancedTags, variablesIn } from '../sections';
@@ -26,6 +26,11 @@ describe('gallery data', () => {
     expect(variables.filter((name) => !template.examples[name]?.trim())).toEqual([]);
     expect(lintPrompt(renderSections(template.sections)).filter((finding) => finding.severity === 'problem')).toEqual([]);
     if (template.guide) expect(GUIDES[template.guide]).toBeDefined();
+    // Each page explains what a good result looks like and gives at least one tip.
+    expect(template.outcome.length).toBeGreaterThan(40);
+    expect(template.outcome.length).toBeLessThanOrEqual(200);
+    expect(template.tips.length).toBeGreaterThanOrEqual(2);
+    expect(template.updated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('orders featured templates and finds templates by slug and guide', () => {
@@ -34,5 +39,16 @@ describe('gallery data', () => {
     expect(galleryTemplate('missing')).toBeUndefined();
     expect(templatesForGuide(GUIDES.codingAgents.path).every((template) => template.guide === 'codingAgents')).toBe(true);
     expect(templatesForGuide('/guides/unknown')).toEqual([]);
+  });
+
+  it('links every template from the related list of its neighbours', () => {
+    const inbound = new Map<string, number>();
+    for (const template of GALLERY) {
+      const related = relatedTemplates(template);
+      expect(related.length, template.slug).toBe(Math.min(4, GALLERY.filter((item) => item.category === template.category).length - 1));
+      expect(related.every((item) => item.category === template.category && item !== template), template.slug).toBe(true);
+      for (const item of related) inbound.set(item.slug, (inbound.get(item.slug) ?? 0) + 1);
+    }
+    for (const template of GALLERY) expect(inbound.get(template.slug) ?? 0, template.slug).toBeGreaterThanOrEqual(2);
   });
 });

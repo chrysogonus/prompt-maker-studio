@@ -43,13 +43,21 @@ export default function ImagePromptsPage() {
       <h2>Iterate one change at a time</h2>
       <ul>
         <li>Generate a few images, keep the best, and change one detail, such as lighting, before generating again.</li>
-        <li>Put the most important detail early. Many models weight the start of a prompt more heavily.</li>
+        <li>Put the most important detail early, so it is not lost among the others.</li>
         <li>Avoid copying living artists&apos; names. Describe the qualities you want instead: loose brushwork, high contrast, muted colours.</li>
         <li>Keep the versions that worked. The <Link href={TOOLS.diff.path}>prompt diff</Link> shows what you changed between them.</li>
       </ul>
       <p>
         For the general structure of text prompts, read{' '}
         <Link href={GUIDES.goodPrompt.path}>what makes a good prompt</Link>.
+      </p>
+
+      <h2>Further reading</h2>
+      <p>
+        Google&apos;s <a href="https://ai.google.dev/gemini-api/docs/image-generation">image generation
+        guide</a> for Gemini has a &quot;Prompting guide and strategies&quot; section with templates for
+        photorealistic scenes, illustrations, accurate text in images, product shots and designs with
+        empty space.
       </p>
     </GuideArticle>
   );

@@ -192,8 +192,9 @@ above both panes as stored only in the current browser.
   Optional AI conversion still offers review before applying.
 - The sidebar narrows it to **Favourites**, a **folder**, or **Unfiled**.
 - Library cards expose Copy template and, for prompts with variables, Fill and copy, which opens
-  the filling view directly on desktop and phones. Each prompt's menu: Copy template, Rename,
-  Move to folder, Duplicate, Delete. Delete takes effect
+  the filling view directly on desktop and phones. Each prompt's menu: Copy template, Copy as
+  plain text (or Copy with section tags, for a single-section prompt), Rename, Move to folder,
+  Duplicate, Delete. Delete takes effect
   at once with a 10-second Undo and only then calls the server; a delete still waiting is sent if
   the page is left.
 - **Folders** are labels on prompts (`prompts.folder`). A folder exists while a prompt is filed in
@@ -216,10 +217,13 @@ interface PromptHistoryResponse {
   generated_prompt: string;      // rendered by the server from `fields`
   created_at: string;            // ISO timestamp; SQLite values are normally naive UTC
   updated_at?: string | null;    // the optimistic-concurrency token
+  content_updated_at?: string | null; // when the content last changed; recency apart from the token
   folder?: string | null;
   is_favorite?: boolean;
   current_note?: string | null;
   known_good_version?: number | null; // the version the user marked as known good
+  eval_status?: 'untested' | 'current' | 'stale' | null; // library list only: did evaluations test the current text
+  eval_score?: number | null;    // library list only: the newest such run's score
   variable_metadata?: Record<string, {
     type: string; description?: string | null; required?: boolean; example?: string | null;
     options?: string[]; // choices offered in Fill mode; omitted when there are none
@@ -238,6 +242,6 @@ optional examples and choices.
 
 ## Future enhancements
 
-See [product/BACKLOG.md](../product/BACKLOG.md). Open items closest to this area: a cleanup for
-Recovered history (bulk delete, duplicates), version milestones, a trash with restore, importing
-from a file, and a Markdown output option.
+See [product/BACKLOG.md](../product/BACKLOG.md). Open items closest to this area: finding
+duplicate prompts (selecting and deleting several at once already works), version milestones, a
+trash with restore, and a Markdown output option.

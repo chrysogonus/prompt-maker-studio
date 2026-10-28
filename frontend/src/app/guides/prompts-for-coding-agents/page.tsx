@@ -1,17 +1,10 @@
 import Link from 'next/link';
 import GuideArticle from '@/components/guides/GuideArticle';
+import CopyButton from '@/components/public/CopyButton';
+import { GALLERY, galleryPath } from '@/lib/gallery';
 import { GUIDES, guideMetadata } from '@/lib/guides';
 import { renderSections } from '@/lib/sections';
 import { TOOLS } from '@/lib/tools';
-
-const example = renderSections([
-  { name: 'Goal', content: 'Fix the bug where {{symptom}}. Expected behaviour: {{expected}}.' },
-  { name: 'Context', content: 'Repository: {{repo}}. The relevant code is in {{files}}. Read the project instructions file before you start.' },
-  { name: 'Constraints', content: 'Find the root cause before editing. Keep the change minimal and match the surrounding code. Do not change public APIs, dependencies or unrelated files. Do not commit or push.' },
-  { name: 'Done when', content: 'A regression test fails before the fix and passes after it, and {{check_command}} passes.' },
-  { name: 'Stop and ask', content: 'Before deleting data, changing a schema or touching other modules, or if the cause turns out to be different from this description.' },
-  { name: 'Report', content: 'Summarize the cause, the change, the commands you ran with their results, and anything you could not verify.' },
-]);
 
 export function generateMetadata() {
   return guideMetadata(GUIDES.codingAgents);
@@ -29,19 +22,27 @@ export default function CodingAgentPromptsPage() {
       <h2>What a coding-agent prompt should state</h2>
       <ul>
         <li><strong>The goal</strong> in one sentence, with the observable symptom for a bug: what happens, and what should happen instead.</li>
-        <li><strong>Where to look</strong>: the files, modules or commands involved, and the project instructions file if your repository has one.</li>
+        <li><strong>Where to look</strong>: the files, modules or commands involved, and the project instructions file if your repository has one, such as <code>AGENTS.md</code> or <code>CLAUDE.md</code>.</li>
         <li><strong>Constraints</strong>: what must not change, such as public APIs, dependencies, database schema or unrelated files, and whether to commit.</li>
         <li><strong>A definition of done</strong> the agent can check itself: a failing test that must pass, a command that must succeed.</li>
         <li><strong>When to stop and ask</strong>: before destructive actions, schema changes, or when the cause is not what you described.</li>
         <li><strong>What to report</strong>: what it changed, which checks it ran and their results, and what it could not verify.</li>
       </ul>
 
-      <h2>A reusable bug-fix template</h2>
-      <pre><code>{example}</code></pre>
+      <h2>Six templates for common agent tasks</h2>
       <p>
-        The variables keep the template reusable across bugs. Fill it in with the{' '}
-        <Link href={TOOLS.filler.path}>template filler</Link> before pasting it into your agent.
+        Each states the task, its limits and what to hand back, so the agent&apos;s work stays
+        reviewable. The variables keep a template reusable: open one to fill in its inputs on the
+        page, or paste your own version into the <Link href={TOOLS.filler.path}>template filler</Link>.
       </p>
+      {GALLERY.filter((template) => template.category === 'coding').map((template) => (
+        <section key={template.slug} aria-labelledby={`template-${template.slug}`}>
+          <h3 id={`template-${template.slug}`}>{template.title}</h3>
+          <p>{template.summary} <Link href={galleryPath(template.slug)}>Fill it in</Link>.</p>
+          <pre><code>{renderSections(template.sections)}</code></pre>
+          <CopyButton text={renderSections(template.sections)} label={`Copy ${template.title}`} />
+        </section>
+      ))}
 
       <h2>Common mistakes</h2>
       <ul>
@@ -54,6 +55,20 @@ export default function CodingAgentPromptsPage() {
         Check a draft with the <Link href={TOOLS.linter.path}>prompt checker</Link>, and see{' '}
         <Link href={GUIDES.goodPrompt.path}>what makes a good prompt</Link> for the general structure.
       </p>
+
+      <h2>Further reading</h2>
+      <ul>
+        <li>
+          Anthropic,{' '}
+          <a href="https://code.claude.com/docs/en/best-practices">Best practices for Claude Code</a>:
+          tell the agent what it cannot see from the code, give it a check to run, and keep project
+          rules in <code>CLAUDE.md</code>.
+        </li>
+        <li>
+          <a href="https://agents.md">AGENTS.md</a>: the shared instructions-file format that Codex,
+          Cursor, Gemini CLI, GitHub Copilot&apos;s coding agent and other agents read.
+        </li>
+      </ul>
     </GuideArticle>
   );
 }

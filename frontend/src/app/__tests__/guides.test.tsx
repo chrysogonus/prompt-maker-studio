@@ -8,10 +8,13 @@ import GoodPromptPage, { generateMetadata as goodPromptMetadata } from '../guide
 import CodingAgentsPage, { generateMetadata as codingAgentsMetadata } from '../guides/prompts-for-coding-agents/page';
 import ImagePromptsPage, { generateMetadata as imagePromptsMetadata } from '../guides/image-generation-prompts/page';
 import ResearchWritingPage, { generateMetadata as researchWritingMetadata } from '../guides/research-and-writing-prompts/page';
+import ConnectPage, { generateMetadata as connectMetadata } from '../guides/connect-chatgpt-claude/page';
+import LibraryPage, { generateMetadata as libraryMetadata } from '../guides/what-is-a-prompt-library/page';
 
 afterEach(() => vi.unstubAllEnvs());
 
 const articles = [
+  { Page: LibraryPage, metadata: libraryMetadata, path: '/guides/what-is-a-prompt-library' },
   { Page: ReusablePromptsPage, metadata: reusableMetadata, path: '/guides/reusable-ai-prompts' },
   { Page: TemplateVariablesPage, metadata: variablesMetadata, path: '/guides/prompt-template-variables' },
   { Page: OrganizePromptsPage, metadata: organizeMetadata, path: '/guides/organize-chatgpt-prompts' },
@@ -19,15 +22,82 @@ const articles = [
   { Page: CodingAgentsPage, metadata: codingAgentsMetadata, path: '/guides/prompts-for-coding-agents' },
   { Page: ImagePromptsPage, metadata: imagePromptsMetadata, path: '/guides/image-generation-prompts' },
   { Page: ResearchWritingPage, metadata: researchWritingMetadata, path: '/guides/research-and-writing-prompts' },
+  { Page: ConnectPage, metadata: connectMetadata, path: '/guides/connect-chatgpt-claude' },
 ];
 
 describe('Public guides', () => {
   it('gives readers a route from the index to each article', () => {
-    render(<GuidesPage />);
+    vi.stubEnv('FRONTEND_URL', 'https://guides.example');
+    const { container } = render(<GuidesPage />);
 
     for (const { path } of articles) {
       expect(document.querySelector(`a[href="${path}"]`)).toBeInTheDocument();
     }
+    const index = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(index).toMatchObject({ '@type': 'CollectionPage', url: 'https://guides.example/guides' });
+    expect(index.mainEntity.itemListElement.map((item: { url: string }) => item.url))
+      .toEqual(articles.map(({ path }) => `https://guides.example${path}`));
+  });
+
+  it('gives the coding-agent guide every coding template, ready to copy', () => {
+    const { container } = render(<CodingAgentsPage />);
+
+    const templates = within(container).getAllByRole('heading', { level: 3 });
+    expect(templates).toHaveLength(6);
+    for (const heading of templates) {
+      const section = heading.closest('section')!;
+      expect(within(section).getByRole('link', { name: 'Fill it in' }).getAttribute('href')).toMatch(/^\/gallery\//);
+      expect(section.querySelector('pre')!.textContent).toMatch(/\{\{\w+\}\}/);
+      expect(within(section).getByRole('button', { name: `Copy ${heading.textContent}` })).toBeInTheDocument();
+    }
+  });
+
+  it.each([
+    { Page: CodingAgentsPage, hosts: ['code.claude.com', 'agents.md'] },
+    { Page: ImagePromptsPage, hosts: ['ai.google.dev'] },
+    { Page: ResearchWritingPage, hosts: ['platform.claude.com'] },
+    { Page: GoodPromptPage, hosts: ['platform.claude.com', 'developers.openai.com', 'ai.google.dev'] },
+  ])('cites provider guidance under Further reading', ({ Page, hosts }) => {
+    render(<Page />);
+
+    const heading = screen.getByRole('heading', { name: 'Further reading' });
+    const links = [...heading.parentElement!.querySelectorAll('h2 ~ * a[href^="https://"]')]
+      .filter((link) => heading.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect([...new Set(links.map((link) => new URL(link.getAttribute('href')!).host))]).toEqual(expect.arrayContaining(hosts));
+  });
+
+  it('compares variable syntax across tools with sources', () => {
+    render(<TemplateVariablesPage />);
+
+    const table = screen.getByRole('table');
+    expect(within(table).getAllByRole('row')).toHaveLength(6);
+    expect(within(table).getAllByRole('link').map((link) => new URL(link.getAttribute('href')!).host))
+      .toEqual(['platform.claude.com', 'docs.cloud.google.com', 'docs.langchain.com']);
+  });
+
+  it("shows this deployment's own MCP address in the connector guide", () => {
+    vi.stubEnv('FRONTEND_URL', 'https://prompts.example/');
+    render(<ConnectPage />);
+
+    expect(screen.getAllByText('https://prompts.example/api/mcp').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/claude mcp add --transport http prompt-maker https:\/\/prompts\.example\/api\/mcp/)).toBeInTheDocument();
+  });
+
+  it.each(articles)('dates $path and describes it as an article', ({ Page, path }) => {
+    vi.stubEnv('FRONTEND_URL', 'https://guides.example');
+    const { container } = render(<Page />);
+
+    const updated = container.querySelector('header time')!;
+    expect(updated.getAttribute('dateTime')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(updated.textContent).toMatch(/^\d{1,2} [A-Z][a-z]+ \d{4}$/);
+    const [crumbs, article] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(crumbs.itemListElement.map((crumb: { item: string }) => crumb.item))
+      .toEqual(['https://guides.example/guides', `https://guides.example${path}`]);
+    expect(article).toMatchObject({
+      '@type': 'Article', url: `https://guides.example${path}`, dateModified: updated.getAttribute('dateTime'),
+      author: { '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' }, publisher: { '@type': 'Organization', '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' },
+    });
+    expect(article.datePublished <= article.dateModified).toBe(true);
   });
 
   it.each(articles)('links $path to the app, the index and the other articles', ({ Page, path }) => {
@@ -53,7 +123,11 @@ describe('Public guides', () => {
     vi.stubEnv('FRONTEND_URL', 'https://second.example');
     const result = metadata();
     expect(result.alternates?.canonical).toBe(`https://second.example${path}`);
+    expect(result.description!.length).toBeGreaterThanOrEqual(110);
+    expect(result.description!.length).toBeLessThanOrEqual(160);
+    expect(String(result.title).length).toBeLessThanOrEqual(60);
     expect(result.openGraph).toMatchObject({
+      type: path === '/guides' ? 'website' : 'article',
       url: `https://second.example${path}`,
       title: result.title,
       description: result.description,
