@@ -12,6 +12,11 @@ any release. See [Project status](./README.md#project-status).
 
 ### Added
 
+- Research and everyday gallery templates show an example of a good result for their example
+  inputs, labelled as written to show its shape, and every template now has at least two tips.
+- The coding-agent guide has a Copy button for each template and names `AGENTS.md` and
+  `CLAUDE.md` as instruction files. The coding, image and research guides link the provider
+  guidance they draw on (Anthropic, `agents.md`, Google).
 - `/about` says who builds the project (its maintainer on GitHub), where to report problems and
   read release notes, and how the app handles your prompts and optional AI connections.
 
@@ -24,6 +29,8 @@ any release. See [Project status](./README.md#project-status).
 - `/privacy` and `/imprint` redirect permanently (308) instead of temporarily.
 - `sitemap.xml` gives each free tool and gallery template its own last-modified date, kept with
   its content; index pages and `/about` stay undated rather than guessed.
+- The variables guide shows placeholder syntax across tools and the pitfalls before the in-app
+  walkthrough, and links the template filler.
 - The home page's search title and description lead with the template editor, leaving "prompt
   library" to the gallery and the "What is a prompt library?" guide, which the gallery now links.
 - The home page lists the ChatGPT and Claude connection second among its features, and the

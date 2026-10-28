@@ -51,6 +51,14 @@ export default function ImagePromptsPage() {
         For the general structure of text prompts, read{' '}
         <Link href={GUIDES.goodPrompt.path}>what makes a good prompt</Link>.
       </p>
+
+      <h2>Further reading</h2>
+      <p>
+        Google&apos;s <a href="https://ai.google.dev/gemini-api/docs/image-generation">image generation
+        guide</a> for Gemini has a &quot;Prompting guide and strategies&quot; section with templates for
+        photorealistic scenes, illustrations, accurate text in images, product shots and designs with
+        empty space.
+      </p>
     </GuideArticle>
   );
 }

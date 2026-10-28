@@ -28,6 +28,8 @@ export interface GalleryTemplate {
   sections: PromptField[];
   /** What a good answer to the filled-in example looks like. */
   outcome: string;
+  /** A short example of a good result for the example inputs, in Markdown like a model's answer, written to show its shape. */
+  sample?: string;
   /** ISO date of the template page's last content change, for the sitemap; bump it when that changes. */
   updated: string;
   hints: Record<string, string>;
@@ -82,8 +84,8 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { feature: 'What should be possible afterwards', reason: 'Why it is needed', related_code: 'Files, modules or similar features' },
     examples: { feature: 'export a folder of prompts as Markdown', reason: 'people want to keep prompts in their notes app', related_code: 'the existing JSON export' },
     outcome: 'You get a plan to review instead of code: the approach, the files to change, ordered steps, the tests to add and open questions for you.',
-    updated: '2026-10-27',
-    tips: ['Review the plan, then ask the agent to implement one step at a time.'],
+    updated: '2026-10-28',
+    tips: ['Review the plan, then ask the agent to implement one step at a time.', 'Name what is out of scope, so the plan does not grow into a redesign.'],
     guide: 'codingAgents',
   },
   {
@@ -101,8 +103,8 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { change: 'Branch, pull request or pasted diff', purpose: 'What the change is meant to do' },
     examples: { change: 'the diff of the current branch against main', purpose: 'let users reset their password by email' },
     outcome: 'Findings come back most severe first, each with a file and line, how it would fail and a suggested fix, or “No blocking issues” when there is nothing real to report.',
-    updated: '2026-10-27',
-    tips: ['A failure scenario per finding separates real bugs from style opinions.'],
+    updated: '2026-10-28',
+    tips: ['A failure scenario per finding separates real bugs from style opinions.', 'Point the agent at the actual diff or branch; a review of a description cannot find real bugs.'],
     guide: 'codingAgents',
   },
   {
@@ -120,8 +122,8 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { target: 'Module or function', test_location: 'Where similar tests live', edge_cases: 'Empty input, limits, unusual values', test_command: 'Command that runs the tests' },
     examples: { target: 'the CSV import of contacts', test_location: 'tests/', edge_cases: 'empty file, a quoted comma, a missing column', test_command: 'npm test' },
     outcome: 'New tests follow your existing conventions and cover the edge cases you name; a bug the agent finds is reported as an expected failure, not fixed.',
-    updated: '2026-10-27',
-    tips: ['Ask the agent to show each new test failing against a deliberately broken copy of the code, then revert it.'],
+    updated: '2026-10-28',
+    tips: ['Ask the agent to show each new test failing against a deliberately broken copy of the code, then revert it.', 'List the edge cases you already know about; the agent adds others but rarely finds yours.'],
   },
   {
     slug: 'refactor-without-behaviour-change',
@@ -137,8 +139,8 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { target: 'File, class or function', problems: 'Duplication, long functions, unclear names', test_command: 'Command that runs the tests' },
     examples: { target: 'the settings form component', problems: 'the save and preview handlers duplicate the same validation', test_command: 'npm test' },
     outcome: 'The agent works in small steps, runs your tests after each one, and flags anything it was unsure kept behaviour the same instead of changing it.',
-    updated: '2026-10-27',
-    tips: ['Make sure the area is covered by tests before refactoring; ask for those first if not.'],
+    updated: '2026-10-28',
+    tips: ['Make sure the area is covered by tests before refactoring; ask for those first if not.', 'For a large area, ask for one small step per run and review each diff before the next.'],
   },
   {
     slug: 'explain-unfamiliar-codebase',
@@ -154,8 +156,8 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { flow: 'A user action or request to trace', my_goal: 'What you want to change or understand' },
     examples: { flow: 'saving a prompt from the editor', my_goal: 'add a word count to each saved version' },
     outcome: 'You get an overview, the main directories, the flow traced through file paths and where your change would go, with no files edited.',
-    updated: '2026-10-27',
-    tips: ['Name one concrete flow; asking how everything works gets a tour too broad to act on.'],
+    updated: '2026-10-28',
+    tips: ['Name one concrete flow; asking how everything works gets a tour too broad to act on.', 'Ask for file paths at every step so you can check the explanation against the code.'],
   },
   // Image generation
   {
@@ -193,8 +195,8 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { subject: 'Who or what', action: 'What they are doing', setting: 'Where', mood: 'Calm, playful, mysterious', time_of_day: 'Dawn, noon, night', style: 'Watercolour, gouache, flat vector', palette: 'Colours' },
     examples: { subject: 'a small fox', action: 'reading a map', setting: 'a snowy forest clearing', mood: 'calm and curious', time_of_day: 'dusk', style: 'Gouache storybook illustration', palette: 'deep blue and warm orange' },
     outcome: 'A wide, text-free scene in the style and palette you name, with the subject slightly left of centre and foreground details framing it.',
-    updated: '2026-10-27',
-    tips: ['Describe qualities of a style instead of naming living artists.'],
+    updated: '2026-10-28',
+    tips: ['Describe qualities of a style instead of naming living artists.', 'Name the palette in two or three colours; a long list blurs together.'],
     guide: 'imagePrompts',
   },
   {
@@ -212,8 +214,8 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { person: 'Age, appearance (fictional)', expression: 'Laughing, thoughtful', clothing: 'What they wear', setting: 'Background', lighting: 'Window light, golden hour' },
     examples: { person: 'a woman in her sixties with short grey hair', expression: 'smiling thoughtfully', clothing: 'a green wool sweater', setting: 'a bookshop', lighting: 'Soft window light from the side' },
     outcome: 'A head-and-shoulders portrait at eye level with a softly blurred background and natural skin texture rather than a retouched look.',
-    updated: '2026-10-27',
-    tips: ['Describe fictional people; do not generate images of real people without consent.'],
+    updated: '2026-10-28',
+    tips: ['Describe fictional people; do not generate images of real people without consent.', 'Keep the Camera and Lighting sections fixed when you try different people, so results stay comparable.'],
     guide: 'imagePrompts',
   },
   {
@@ -231,8 +233,8 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { theme: 'Topic of the post', motif: 'A visual element', style: 'Flat, photographic, 3D', brand_colours: 'Colour names or hex values', text_area: 'Top, left, centre', aspect: '1:1 for posts, 9:16 for stories' },
     examples: { theme: 'a product launch', motif: 'rising paper planes', style: 'Soft 3D render', brand_colours: 'coral and deep plum', text_area: 'top', aspect: '1:1' },
     outcome: 'A calm, text-free background in your brand colours, with the part you chose left empty and evenly lit for a headline.',
-    updated: '2026-10-27',
-    tips: ['Image models can still misspell text; for exact wording, add the headline in a design tool.'],
+    updated: '2026-10-28',
+    tips: ['Image models can still misspell text; for exact wording, add the headline in a design tool.', 'Generate at the final aspect ratio; cropping later can cut into the empty area.'],
     guide: 'imagePrompts',
   },
   {
@@ -249,8 +251,8 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { subject: 'What the icon shows', line_style: 'Outline or filled', stroke: 'Thin, medium, bold', colour: 'One colour', set_description: 'What the other icons look like' },
     examples: { subject: 'a folder with a star', line_style: 'outline', stroke: 'medium', colour: 'dark plum', set_description: 'simple office objects, one colour, no fills' },
     outcome: 'One centred icon in the style you describe; reuse the prompt with a new subject for each icon so the set matches.',
-    updated: '2026-10-27',
-    tips: ['Keep everything except the subject identical across the set.'],
+    updated: '2026-10-28',
+    tips: ['Keep everything except the subject identical across the set.', 'Generate a few icons first and drop any that drift from the style before making the rest.'],
     guide: 'imagePrompts',
   },
   {
@@ -268,8 +270,8 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { room: 'Kitchen, study, bedroom', style: 'Scandinavian, mid-century, industrial', who: 'Who uses the room', materials: 'Wood, stone, fabrics', palette: 'Colours', lighting: 'Daylight, evening lamps' },
     examples: { room: 'small home office', style: 'Japandi', who: 'someone working from home', materials: 'light ash wood, linen, a wool rug', palette: 'sand, olive and off-white', lighting: 'Late-afternoon daylight from a large window' },
     outcome: 'A wide view from the doorway at eye height, with straight verticals and the materials, palette and light you describe, without people or text.',
-    updated: '2026-10-27',
-    tips: ['Keep the Camera section the same between versions so you can compare styles side by side.'],
+    updated: '2026-10-28',
+    tips: ['Keep the Camera section the same between versions so you can compare styles side by side.', 'Mention the room size and where the window is, so the layout stays plausible.'],
     guide: 'imagePrompts',
   },
   // Research & writing
@@ -289,8 +291,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { audience: 'Who will read it', sources: 'Paste each source after a number: [1] …', question: 'What you want to know', word_limit: 'For example 300' },
     examples: { audience: 'a product manager new to the topic', sources: '[1] Lithium-ion cells lose capacity in the cold because the electrolyte thickens and ions move more slowly.\n[2] Below 0 °C, charging can plate lithium on the anode, so many devices limit charging in the cold.', question: 'What limits battery life in cold weather?', word_limit: '300' },
     outcome: 'A two-sentence answer and short sections where every claim carries a source number, plus a plain note on what the sources do not answer.',
-    updated: '2026-10-27',
-    tips: ['Check the cited passages for anything you will repeat or publish.'],
+    sample: 'Cold limits battery life in two ways. The electrolyte thickens, so ions move more slowly and the cell gives up less of its capacity [1], and charging below 0 °C can plate lithium on the anode, which is why many devices limit charging in the cold [2].\n\n**Not covered by the sources**\n\nHow much capacity is lost at a given temperature, and whether it returns once the device warms up.',
+    updated: '2026-10-28',
+    tips: ['Check the cited passages for anything you will repeat or publish.', 'Number the sources yourself; each citation then points to something you can check.'],
     guide: 'researchWriting',
   },
   {
@@ -309,8 +312,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { audience: 'Readers', voice_sample: 'One or two sentences in your voice', key_points: 'Bullet list of facts and claims', title: 'Working title', word_count: 'For example 800' },
     examples: { audience: 'small-business owners', voice_sample: 'We keep things simple: you get one invoice a month, and that is it.', key_points: '- Customers asked for one predictable bill\n- Monthly billing cut support emails about invoices by a third\n- Annual plans stay available at the same discount', title: 'Why we switched to monthly billing', word_count: '700' },
     outcome: 'A draft of about the length you set: an opening that states the point, short headed sections, one next step, then a “Needs detail” list for vague points.',
-    updated: '2026-10-27',
-    tips: ['Paste a paragraph you wrote yourself as the voice sample; the draft will sound more like you.'],
+    sample: '**Why we switched to monthly billing**\n\nYou asked for one predictable bill, so that is what you get now: one invoice a month, and that is it. […]\n\n**Needs detail**\n\n- "Cut support emails about invoices by a third": over which period, and compared with when?',
+    updated: '2026-10-28',
+    tips: ['Paste a paragraph you wrote yourself as the voice sample; the draft will sound more like you.', 'List your key points in order of importance; the draft follows that order.'],
     guide: 'researchWriting',
   },
   {
@@ -328,8 +332,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { decision: 'What you are choosing', criteria: 'Ranked list of what matters', options: 'Options with any facts you have' },
     examples: { decision: 'which database to use for a small internal tool', criteria: '1. simple to run, 2. backups, 3. cost', options: 'SQLite, PostgreSQL, a hosted spreadsheet' },
     outcome: 'A table with one row per option, the main trade-off in two sentences and a recommendation with what would change it; uncertain details are marked.',
-    updated: '2026-10-27',
-    tips: ['Ranking your criteria makes the recommendation less generic.'],
+    sample: '| Option | Simple to run | Backups | Cost |\n|---|---|---|---|\n| SQLite | One file, no server | Copy the file on a schedule | Free |\n| PostgreSQL | Needs a server and updates | Built-in tools such as pg_dump | Free software, hosting costs |\n| Hosted spreadsheet | Nothing to run | The provider\'s version history | Often per user (check prices) |\n\n**Trade-off:** SQLite is the simplest but suits few people writing at the same time; PostgreSQL handles that but takes setup and upkeep.\n\n**Recommendation:** SQLite. Choose PostgreSQL if several people will edit at once.',
+    updated: '2026-10-28',
+    tips: ['Ranking your criteria makes the recommendation less generic.', 'Add facts you have checked, such as current prices, so the model does not have to guess them.'],
     guide: 'researchWriting',
   },
   {
@@ -346,8 +351,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { text: 'Paste the original', audience: 'New readers', reader_goal: 'What they will do with it', reading_level: 'For example general public', length: 'For example half the original, one paragraph' },
     examples: { text: 'From 1 December, API keys rotate every 90 days. Integrations using a static key must switch to OAuth client credentials or call the rotation endpoint before expiry.', audience: 'customers with no technical background', reader_goal: 'understand what changes for them', reading_level: 'general public', length: 'half the original' },
     outcome: 'The rewritten text at the reading level and length you set, then a short list of what was removed or simplified so you can check nothing important went.',
-    updated: '2026-10-27',
-    tips: ['Say what the readers need to do with the text; that decides what stays prominent.'],
+    sample: 'From 1 December, the keys that let other apps connect to your account change every 90 days. If an app you use connects with a fixed key, it needs an update before that key expires: ask whoever set it up to switch it to the newer sign-in method.\n\n**Removed or simplified:** "OAuth client credentials" and "rotation endpoint" are described instead of named.',
+    updated: '2026-10-28',
+    tips: ['Say what the readers need to do with the text; that decides what stays prominent.', 'Compare the result with the original and look for any number, date or name that changed.'],
     guide: 'researchWriting',
   },
   {
@@ -364,8 +370,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { paper_text: 'Paste the paper or the sections you need', purpose: 'Why you are reading it' },
     examples: { paper_text: 'Abstract: We compare 1,200 employees before and after a move to hybrid work. Self-reported focus rose, while measured output was unchanged. Limitations: one company, six months, self-reported data.', purpose: 'a literature review on remote-work productivity' },
     outcome: 'Notes under fixed headings with page or section references, the authors’ limitations kept apart from the model’s, and quotes copied word for word.',
-    updated: '2026-10-27',
-    tips: ['Long papers may exceed the model’s context; paste the sections you need.'],
+    sample: '- **Question:** Does a move to hybrid work change productivity?\n- **Method:** Before-and-after comparison of 1,200 employees at one company (abstract).\n- **Main findings:** Self-reported focus rose; measured output was unchanged (abstract).\n- **Limitations the authors state:** One company, six months, self-reported data.\n- **Limitations you notice:** The abstract does not say how output was measured or whether there was a comparison group.\n- **Open questions:** Does the focus gain last beyond six months?\n- **Useful quotes:** "Self-reported focus rose, while measured output was unchanged." (abstract)',
+    updated: '2026-10-28',
+    tips: ['Long papers may exceed the model’s context; paste the sections you need.', 'Say what the notes are for; a literature review and a seminar talk need different findings first.'],
     guide: 'researchWriting',
   },
   {
@@ -382,8 +389,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { draft: 'Paste the text to check' },
     examples: { draft: 'Our app now has 2 million users, up from 1.2 million last year, and it was named the best budgeting app of 2025.' },
     outcome: 'A table of claims, highest risk first, each with why it might be wrong and how to check it. The model points out what to verify rather than ruling on it.',
-    updated: '2026-10-27',
-    tips: ['Use it before publishing anything an AI helped write.'],
+    sample: '| Claim | Why it might be wrong | How to check | Risk |\n|---|---|---|---|\n| "named the best budgeting app of 2025" | Who named it, and in which list? | Find the publisher and the exact wording | High |\n| "2 million users" | Users may mean sign-ups, not active users | Check the analytics definition and date | High |\n| "up from 1.2 million last year" | The two figures may count differently | Same source and definition for both years | Medium |',
+    updated: '2026-10-28',
+    tips: ['Use it before publishing anything an AI helped write.', 'Paste the final version, not an early draft; claims change while editing.'],
     guide: 'researchWriting',
   },
   // Everyday work
@@ -402,8 +410,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { transcript: 'Paste the transcript or notes', word_limit: 'For example 250' },
     examples: { transcript: 'Ana: Launch moves to 14 Nov, QA needs another week.\nBen: I will update the release notes by Friday.\nAna: Pricing page still open; marketing to propose two options.', word_limit: '250' },
     outcome: 'Decisions, open questions and action items written as “Owner — task — due date”, with gaps marked “no owner” or “no date” instead of guessed.',
-    updated: '2026-10-27',
-    tips: ['Check the action items against your notes before sending; the model only knows what the notes say.'],
+    sample: '**Decisions**\n\n- Launch moves to 14 Nov; QA needs another week.\n\n**Open questions**\n\n- Pricing page: marketing to propose two options.\n\n**Action items**\n\n- Ben — update the release notes — Friday\n- Marketing — propose two pricing page options — no date',
+    updated: '2026-10-28',
+    tips: ['Check the action items against your notes before sending; the model only knows what the notes say.', 'Paste the raw notes or transcript; tidying them first can lose who said what.'],
     guide: 'goodPrompt',
   },
   {
@@ -420,8 +429,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { email: 'Paste the email', relationship: 'Client, colleague, manager', goal: 'The outcome you want', word_limit: 'For example 150' },
     examples: { email: 'Hi, we need the redesign a week earlier, by the 3rd, and we would like two extra page templates included at no cost. Thanks, Sam', relationship: 'a long-standing client', goal: 'keep the deadline without extra cost', word_limit: '150' },
     outcome: 'A short reply that acknowledges the sender’s point in one sentence, states your position plainly and proposes one concrete next step.',
-    updated: '2026-10-27',
-    tips: ['Ask for two versions with different tones and pick one.'],
+    sample: 'Hi Sam,\n\nThanks for the update; I can see why the 3rd would help. The full redesign needs the agreed date to be tested properly, so we will keep to it. The two extra page templates are outside our current scope: I can send you a quote by Wednesday, or we can plan them for the next phase. Which would you prefer?\n\nBest regards',
+    updated: '2026-10-28',
+    tips: ['Ask for two versions with different tones and pick one.', 'Paste the whole thread when earlier messages set expectations.'],
     guide: 'goodPrompt',
   },
   {
@@ -438,8 +448,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { team: 'Team or project', week: 'Dates', notes: 'Stand-up notes, ticket titles, chat snippets' },
     examples: { team: 'Payments', week: '6–10 Oct', notes: 'Shipped refund API v2. Card form bug fixed. Waiting on legal for the new terms. Load test slipped to next week.' },
     outcome: 'Three headed lists, Shipped, At risk and Asks, with at most five bullets each and no introduction, ready to paste into chat or email.',
-    updated: '2026-10-27',
-    tips: ['Paste your notes as they are; sorting them into Shipped, At risk and Asks is the model’s job.'],
+    sample: '**Shipped**\n\n- Refund API v2\n- Card form bug fixed\n\n**At risk**\n\n- New terms: waiting on legal\n- Load test: slipped to next week\n\n**Asks**\n\n- Legal: review of the new terms',
+    updated: '2026-10-28',
+    tips: ['Paste your notes as they are; sorting them into Shipped, At risk and Asks is the model’s job.', 'Keep a risk in your notes until it is resolved, so it does not drop out of the update.'],
     guide: 'reusable',
   },
   {
@@ -456,8 +467,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { topic: 'What to learn', background: 'What they already know, such as "is good with budgets but has never invested"' },
     examples: { topic: 'compound interest', background: 'is good with everyday budgeting but has never invested' },
     outcome: 'Three short steps with everyday examples and one question to check understanding; the tutor then waits for your answer before going on.',
-    updated: '2026-10-27',
-    tips: ['Answer the check question honestly; a wrong answer shows the tutor where to slow down.'],
+    sample: '1. Interest is what a bank pays you for keeping your money there. Like a small thank-you each year: 100 € at 5 % earns 5 €.\n2. Compound means next year\'s interest is worked out on 105 €, not on the original 100 €, so you earn 5.25 €. Like a snowball that picks up more snow the bigger it gets.\n3. Over many years the extra adds up: after ten years at 5 %, 100 € grows to about 163 €, not 150 €.\n\n**Check question:** If you leave 200 € at 5 % for two years, do you earn more or less than 20 € in interest?',
+    updated: '2026-10-28',
+    tips: ['Answer the check question honestly; a wrong answer shows the tutor where to slow down.', 'Say what you already know; the tutor can start from there instead of the basics.'],
     guide: 'goodPrompt',
   },
   {
@@ -473,8 +485,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { days: 'Number of dinners', people: 'How many', diet: 'Vegetarian, no restrictions', minutes: 'For example 30', avoid: 'Allergies, dislikes' },
     examples: { days: '5', people: '2', diet: 'vegetarian', minutes: '30', avoid: 'mushrooms' },
     outcome: 'A table of dinners with cooking times, then one shopping list grouped by aisle, with ingredients shared between meals so little is left over.',
-    updated: '2026-10-27',
-    tips: ['Add what is already in your fridge to the task so the plan uses it first.'],
+    sample: '| Day | Dish | Time |\n|---|---|---|\n| Mon | Chickpea and spinach curry with rice | 25 min |\n| Tue | Halloumi and roast pepper wraps | 20 min |\n| Wed | Pasta with spinach, lemon and ricotta | 20 min |\n| Thu | Rice, bean and pepper bowls | 15 min |\n| Fri | Lentil tacos with feta | 25 min |\n\n**Shopping list (excerpt)**\n\n- Vegetables: 3 peppers, 300 g spinach, 2 lemons […]',
+    updated: '2026-10-28',
+    tips: ['Add what is already in your fridge to the task so the plan uses it first.', 'Put allergies under Avoid as well as dislikes, and say which is which.'],
   },
   {
     slug: 'job-description-to-cv-match',
@@ -491,8 +504,9 @@ export const GALLERY: GalleryTemplate[] = [
     hints: { job_description: 'Paste the job ad', cv: 'Paste your CV' },
     examples: { job_description: 'Data analyst. Required: SQL, dashboards in Tableau or Power BI, 2+ years of experience. Nice to have: Python.', cv: 'Analyst, 3 years. Built weekly sales dashboards in Power BI. Daily SQL. Some Excel macros.' },
     outcome: 'A requirements table marked covered, partly or missing with evidence from the CV, then three bullet points built only from experience the CV already shows.',
-    updated: '2026-10-27',
-    tips: ['Remove personal contact details before pasting a CV into any AI tool.'],
+    sample: '| Requirement | Match | CV evidence |\n|---|---|---|\n| SQL | covered | "Daily SQL" |\n| Dashboards in Tableau or Power BI | covered | "Built weekly sales dashboards in Power BI" |\n| 2+ years of experience | covered | "Analyst, 3 years" |\n| Python (nice to have) | missing | none |\n\n**Bullets to add**\n\n- Built and maintained weekly sales dashboards in Power BI.\n- Wrote SQL queries daily to prepare data for reporting.\n- Automated recurring spreadsheet work with Excel macros.',
+    updated: '2026-10-28',
+    tips: ['Remove personal contact details before pasting a CV into any AI tool.', 'Paste the whole job ad, including the nice-to-haves; they show where a cover note can help.'],
   },
 ];
 

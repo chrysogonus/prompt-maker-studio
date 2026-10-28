@@ -36,7 +36,7 @@ export const GUIDES = {
     title: 'How to use variables in AI prompt templates',
     description: 'Build a weekly update template with {{variables}}, add hints and example inputs, and copy a filled prompt into your preferred AI assistant.',
     published: '2026-10-15',
-    updated: '2026-10-27',
+    updated: '2026-10-28',
   },
   organize: {
     path: '/guides/organize-chatgpt-prompts',
@@ -57,21 +57,21 @@ export const GUIDES = {
     title: 'How to write prompts for coding agents',
     description: 'Brief Claude Code, Codex or Cursor like a work ticket: the goal, where to look, constraints, a checkable definition of done and what to report.',
     published: '2026-10-22',
-    updated: '2026-10-27',
+    updated: '2026-10-28',
   },
   imagePrompts: {
     path: '/guides/image-generation-prompts',
     title: 'How to write image generation prompts',
     description: 'Describe subject, setting, composition, style, lighting and format so GPT Image, Midjourney, Stable Diffusion or Gemini produce the picture you have in mind.',
     published: '2026-10-22',
-    updated: '2026-10-27',
+    updated: '2026-10-28',
   },
   researchWriting: {
     path: '/guides/research-and-writing-prompts',
     title: 'Prompts for research and writing',
     description: 'Get summaries and drafts that stay close to your sources: citations, audience, tone, structure and what the model should do when information is missing.',
     published: '2026-10-22',
-    updated: '2026-10-22',
+    updated: '2026-10-28',
   },
   connect: {
     path: '/guides/connect-chatgpt-claude',
