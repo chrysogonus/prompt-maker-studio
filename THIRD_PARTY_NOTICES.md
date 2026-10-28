@@ -31,12 +31,12 @@ byte for byte; inspect the built artifact when updating its inventory.
 | Deprecated | 1.3.1 | MIT |
 | dnspython | 2.9.0 | ISC |
 | email-validator | 2.3.0 | Unlicense |
-| fastapi | 0.146.0 | MIT |
+| fastapi | 0.156.8 | MIT |
 | h11 | 0.16.0 | MIT |
 | httpcore | 1.0.9 | BSD-3-Clause |
-| httpcore2 | 2.14.0 | BSD-3-Clause |
+| httpcore2 | 2.16.0 | BSD-3-Clause |
 | httpx | 0.28.1 | BSD-3-Clause |
-| httpx2 | 2.14.0 | BSD-3-Clause |
+| httpx2 | 2.16.0 | BSD-3-Clause |
 | idna | 3.18 | BSD-3-Clause |
 | jiter | 0.16.0 | MIT |
 | jsonschema | 4.26.0 | MIT |
