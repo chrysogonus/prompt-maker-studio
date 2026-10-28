@@ -1,16 +1,16 @@
 # Product Roadmap
 
-> Reviewed against the codebase: 2026-10-20. Latest published release: 0.8.0.
+> Reviewed against the codebase: 2026-10-28. Latest published release: 0.12.0.
 
 ## Now — Current Sprint / Active Development
 - [ ] **Deployment rehearsal and approval** — Release publication does not establish production deployment. Rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations; approve deployment separately. See [deployment](../docs/deployment.md).
 
 ## Next — Coming Soon (next 1–2 sprints)
-- [ ] **Recovered history cleanup** — Let users select several prompts, or find duplicates, to tidy "Recovered history" (see BACKLOG "Bulk Prompt Delete")
+- [ ] **Recovered history cleanup** — Selecting several prompts to move or delete them already works; finding duplicates remains open (see BACKLOG "Duplicate Detection")
 - [ ] **Extend refinement controls** — Questions, test-result evidence, draft checks, section diffs and local Apply/Undo exist. Direct change instructions and individual section acceptance remain open (evaluate → refine loop, phase 5)
 
 ## Later — Quarterly Horizon
-- [ ] **Calibrate evaluation scores** — Users can now rate AI-reviewed outputs and see the agreement rate; show it wherever AI-review scores are compared
+- [ ] **Calibrate evaluation scores** — Users can rate AI-reviewed outputs and see the agreement rate in Run history and refinement's draft check; show it in run comparison too
 - [ ] **Markdown heading output option** — Plain-text copy is implemented; rendering named section headings remains open
 - [ ] **Version milestones** — One known-good version per prompt is implemented; several labelled milestones remain
 - [ ] **Persistent evaluation jobs** — Progress, cancellation and recovery for large suites; prerequisite for a user-started "find a better version" (evaluate → refine loop, phase 6)
@@ -28,6 +28,13 @@ Dates below record original delivery. Notes identify later replacements; they
 are not a list of current controls. The current inventory is [FEATURES.md](FEATURES.md).
 | Item | Completed | Notes |
 |---|---|---|
+| 0.12.0 release | 2026-10-28 | Published: SEO audit fixes — structured data, server-rendered legal links, sitemap dates, WebP landing images, `/about`, a ChatGPT and Claude connection guide, `/llms.txt`, fuller gallery pages and guides; [release record](../docs/releases/0.12.0.md) |
+| 0.11.0 release | 2026-10-27 | Published: AI answers rendered as Markdown, fixes from the 2026-10-26 UI/UX test and the design audit, dependency updates; [release record](../docs/releases/0.11.0.md) |
+| 0.10.0 release | 2026-10-24 | Published: free no-login tools, guides, template gallery and optional free refiner, input choices, UI/UX test fixes, `opentelemetry-api` security update; [release record](../docs/releases/0.10.0.md) |
+| 0.9.0 release | 2026-10-20 | Published: import fixes from the third first-time-user audit, evaluate → refine loop phases 1–4 and the Claude connector; [release record](../docs/releases/0.9.0.md) |
+| 0.8.0 release | 2026-10-19 | Published: UX report follow-up and fixes from first-time-user tests importing Notion and Obsidian prompts; [release record](../docs/releases/0.8.0.md) |
+| 0.7.0 release | 2026-10-18 | Published: operator-supplied Terms of Service at `/terms`; [release record](../docs/releases/0.7.0.md) |
+| 0.6.1 release | 2026-10-17 | Published: MCP tools declare all three safety annotations; [release record](../docs/releases/0.6.1.md) |
 | 0.6.0 release | 2026-10-17 | Published: curated AI models, optional Anthropic workspace; Responsive/focused editor, non-AI capture, retained filled inputs, collection import preview, batch filing, title/content-recency sorting, budget recovery and sidebar/system theme |
 | 0.5.1 release | 2026-10-16 | Published: shared light/dark layout, saved theme before first paint, Tools menu, Test with AI panel, responsive library cards, keyboard focus restoration and synchronized documentation; [release record](../docs/releases/0.5.1.md) |
 | 0.5.0 release | 2026-10-15 | Published: application observability, immutable auth/OAuth identities, account/session hardening, public guides, provider/billing/backup reliability and dependency updates; [release record](../docs/releases/0.5.0.md) |

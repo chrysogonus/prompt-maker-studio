@@ -32,6 +32,7 @@ any release. See [Project status](./README.md#project-status).
 - The token counter says how current its prices are: the date they were fetched from the live
   price index, or when the built-in price list was last checked. `GET /api/public/model-prices`
   adds a `prices_as_of` field per model.
+- `/about` follows the visitor's system theme when no theme is chosen, like the other public pages.
 - The variables guide shows placeholder syntax across tools and the pitfalls before the in-app
   walkthrough, and links the template filler.
 - The home page's search title and description lead with the template editor, leaving "prompt

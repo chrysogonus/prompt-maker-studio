@@ -29,12 +29,12 @@ job that can replace the project's public images — Dependabot's
 | `secret-scan` | `Repository - Secret Scan` | Pinned Gitleaks scan of every reachable commit plus tracked/non-ignored working-tree files |
 | `backend-quality` | `Backend - Lint, Security & Tests` | Lock consistency, Ruff, Bandit, pip-audit, pytest, and the 90% coverage gate |
 | `frontend-quality` | `Frontend - Lint, Security & Build` | TypeScript, ESLint, dependency audits, production build, and Vitest with the coverage floors in `frontend/vitest.config.ts` |
-| `docker-build` | `Docker - Build Validation` | Build-context secret exclusions, matrix builds, license-material checks, LGPL-bundle exclusion, no-baked-API-origin and no-package-manager checks, a Trivy vulnerability scan, and a live backend smoke check |
+| `docker-build` | `Docker - Build Validation` | Build-context secret exclusions, matrix builds, license-material checks, LGPL-bundle exclusion, no-baked-API-origin and no-package-manager checks, a Trivy vulnerability scan, the `THIRD_PARTY_NOTICES.md` inventory check, and a live backend smoke check |
 | `browser-e2e` | `Browser - End-to-End Tests` | Playwright Chromium journeys against an isolated Compose stack |
 | `compose-validate` | `Docker Compose - Config Validation` | Base, local, E2E, and GHCR production Compose combinations, Prometheus syntax/semantic tests, plus non-root backup ownership/integrity |
 | `codeql` | `Static Analysis - CodeQL` | CodeQL `security-extended` queries over the TypeScript/React sources — the counterpart to Bandit, which covers only the backend. Runs on public repositories only (see below) |
 | `all-checks-passed` | `All Quality Gates Passed` | Stable aggregate result for all required quality jobs |
-| `publish` | `Publish - <service> → GHCR` | On a `v*` tag, builds an untagged registry candidate with provenance and SBOM, scans its immutable digest, then promotes that same index to semver and `sha-<short>` tags. No rebuild or `latest` tag |
+| `publish` | `Publish - <service> → GHCR` | On a `v*` tag, builds an untagged registry candidate with provenance and SBOM, scans its immutable digest, then promotes that same index to `X.Y.Z`, `X.Y` (moves with each patch release) and `sha-<short>` tags. No rebuild or `latest` tag |
 
 Release candidates are uploaded to GHCR by digest without release tags. These
 untagged artifacts are unverified until the release scan passes; a failed scan
@@ -92,6 +92,7 @@ Run commands from the repository root:
 |---|---|
 | `make check-secrets` | Every reachable commit and tracked/non-ignored working-tree file, without opening ignored `.env` files |
 | `make check-locks` | Installed backend consistency and committed lock freshness |
+| `make check-locks-selftest` | The lock check fails closed when the lock generator fails |
 | `make lint-backend` | Ruff check and format validation |
 | `make lint-frontend` | TypeScript and ESLint |
 | `make test-cov` | Backend tests with the 90% coverage gate |

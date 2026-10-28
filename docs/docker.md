@@ -26,7 +26,9 @@ with `docker-compose.prod.yml`.
 **Follow the [Quick Start in `README.md`](../README.md#quick-start-with-docker) for
 first-time setup.** `make setup` generates the required signing key, and the
 direct local ports then work without editing domain placeholders. Set
-`FRONTEND_URL=http://localhost:3000` only when testing reset-email links.
+`FRONTEND_URL=http://localhost:3000` to test reset-email links, and to make the public
+pages' canonical links, sitemap, `/llms.txt` and MCP/OAuth discovery name your local
+address instead of the template's `https://yourdomain.com`.
 
 Once `.env` is configured:
 
@@ -91,7 +93,7 @@ docker compose down && docker compose up -d --build
 
 The base `docker-compose.yml` does **not** expose host ports for the backend or frontend directly — they communicate internally over the Docker network. Caddy exposes public HTTP/HTTPS ports:
 
-- **Caddy**: port 80 (HTTP) and 443 (HTTPS)
+- **Caddy**: port 80 (HTTP) and 443 (HTTPS, over TCP and UDP for HTTP/3)
 
 Prometheus and Grafana bind loopback-only host ports for local operator access —
 `127.0.0.1:9090` and `127.0.0.1:3010`, respectively — but only when the opt-in
@@ -123,6 +125,12 @@ The Docker setup uses:
 - `caddy_config` — Stores Caddy's runtime configuration
 - `prometheus_data` — Stores Prometheus's time-series metrics data
 - `grafana_data` — Stores Grafana's dashboards and settings
+
+It also bind-mounts host folders:
+- `${LEGAL_PAGES_PATH:-./legal}` → `/legal` (read-only, frontend) — operator-supplied
+  [legal pages](./deployment.md#legal-pages-impressum-privacy-policy)
+- `./backups` → `/backups` (db-backup service) — scheduled database backups
+- `./Caddyfile` and `./scripts` — read-only configuration and backup scripts
 
 `docker-compose.yml` also defines `prometheus` and `grafana` services behind the opt-in
 `monitoring` profile (`docker compose --profile monitoring up -d`; Grafana requires a unique, non-placeholder
@@ -255,6 +263,17 @@ BACKUP_GID=1000
   - Format: `sqlite:///` (3 slashes for protocol) + `./prompts.db` (relative path) = 3 slashes total
 
 The 4-slash version is required in Docker because the database must use an absolute path to ensure it's stored in the mounted volume at `/app/data/`.
+
+**Further optional settings** (all in [`.env.example`](../.env.example) with their defaults):
+
+| Setting | Default | Effect |
+|---|---|---|
+| `FORWARDED_ALLOW_IPS` | Docker's private ranges | Proxies trusted for `X-Forwarded-For`, so rate limits see real client addresses |
+| `REGISTER_RATE_LIMIT`, `LOGIN_RATE_LIMIT` | `5/minute`, `10/minute` | Per-client limits on sign-up and sign-in |
+| `LLM_PRICING_REFRESH` | `true` | Fetch model prices from LiteLLM's public index once a day; `false` uses only the built-in price list |
+| `LLM_PRICING_URL` | LiteLLM's index | A mirror of the price index, for hosts without outbound internet |
+| `ADMIN_DIAGNOSTICS_TOKEN` | empty (off) | Enables `POST /api/admin/smtp/check` for operators; see the [API reference](./api.md) |
+| `LEGAL_PAGES_PATH` | `./legal` | Host folder with the operator's legal pages; see the [deployment guide](./deployment.md#legal-pages-impressum-privacy-policy) |
 
 ## Networking
 

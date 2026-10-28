@@ -1,6 +1,6 @@
 # Product Vision
 
-> Last reviewed against the codebase: 2026-10-16 (latest published release 0.5.1).
+> Last reviewed against the codebase: 2026-10-28 (latest published release 0.12.0).
 
 ## One-liner
 Prompt Maker Studio is a home for the prompts you keep retyping: save them as sections, mark the parts that change, and copy a filled-in version into any chat assistant whenever you need it.
@@ -12,7 +12,8 @@ People who use ChatGPT, Claude or Gemini every day rewrite the same prompts from
 | Persona | Description | Primary Need |
 |---|---|---|
 | Frequent chat-assistant user | Writes prompts in ChatGPT, Claude or Gemini many times a week for work and personal tasks; comfortable with structure, not a prompt engineer | Keep the prompts that work, tweak them over time, and reuse them in seconds |
-| ChatGPT plugin user | The same person working from inside ChatGPT, saving and fetching prompts through the MCP plugin | One library that the web app and ChatGPT both read and write |
+| ChatGPT or Claude connector user | The same person working from inside ChatGPT or Claude, saving and fetching prompts through the MCP connector | One library that the web app and the assistant both read and write |
+| Signed-out visitor | Arrives from a search or an AI assistant looking for a prompt template, a guide or a quick tool | A useful answer without an account (free tools, templates, guides), and a reason to keep their prompts here |
 
 Out of focus: a general-purpose chat client or developer LLM workbench. Optional one-off tests and saved-prompt evaluations support improving reusable templates.
 
@@ -22,9 +23,9 @@ A prompt is a short list of named sections with `{{variables}}`. The library kee
 ## Success Metrics
 - A saved prompt can be found, filled in and copied in under 15 seconds, including on a phone
 - A new structured prompt can be written and saved in under 2 minutes, from scratch, a starter template, or pasted text
-- What the editor previews, what the ChatGPT plugin saves, and what is copied never disagree
+- What the editor previews, what the ChatGPT or Claude connector saves, and what is copied never disagree
 - Earlier versions of a prompt are reachable through Tools → History for comparison and restore
-- Nothing in the app looks precise without being true (no estimated tokens, no vanity analytics)
+- Nothing in the app looks precise without being true: estimates, such as the free token counter's, say they are estimates and how current their prices are; no vanity analytics
 
 ## Non-Goals (Out of Scope)
 - A standalone Playground or multi-model comparison workbench; Try once and explicit saved-prompt evaluations are available to check a template

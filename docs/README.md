@@ -1,6 +1,6 @@
 # Documentation
 
-Reviewed against the codebase on 2026-10-17. **0.12.0** is the latest published
+Reviewed against the codebase on 2026-10-28. **0.12.0** is the latest published
 release. Publication, MCP Registry updates and production deployment are
 separate operations.
 
@@ -28,7 +28,9 @@ separate operations.
 
 ## Operations
 
-- [Deployment](deployment.md): upgrades, HTTPS, backup, restore and rollback.
+- [Deployment](deployment.md): upgrades, HTTPS, backup, restore and rollback, plus the
+  [public pages](deployment.md#public-pages) every deployment serves (guides, tools, gallery,
+  `/about`, `/llms.txt`), its legal pages and caching.
 - [Monitoring](monitoring.md): HTTP/application/provider metrics, three Grafana
   dashboards, alerts and safe structured logs.
 - [CI pipeline](../.github/CI_PIPELINE.md) and

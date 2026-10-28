@@ -17,8 +17,8 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
-| `POST` | `/api/auth/register` | No | Register new user account |
-| `POST` | `/api/auth/login` | No | Set the session/CSRF cookies; return token type and expiry metadata |
+| `POST` | `/api/auth/register` | No | Register new user account (`REGISTER_RATE_LIMIT`, default 5/min) |
+| `POST` | `/api/auth/login` | No | Set the session/CSRF cookies; return token type and expiry metadata (`LOGIN_RATE_LIMIT`, default 10/min) |
 | `POST` | `/api/auth/refresh` | Yes | Renew a valid session within its 12-hour maximum age: a new session cookie, the same CSRF token |
 | `POST` | `/api/auth/logout` | No | End the current session by clearing its cookies. Deliberately unauthenticated so signing out works with an already-expired token |
 | `POST` | `/api/auth/logout-all` | Yes | Invalidate every session for this account, including the caller's |
@@ -144,7 +144,7 @@ Used by the free tools for signed-out visitors; no session needed.
 | `POST` | `/api/oauth/register`, `/api/oauth/token`, `/api/oauth/revoke` | No | OAuth 2.1 endpoints MCP clients such as ChatGPT use to link an account (see [docs/mcp.md](mcp.md)) |
 | `GET` | `/api/oauth/authorize` | No | Start of the OAuth flow; redirects to the consent page |
 | `GET`, `POST` | `/api/oauth/consent` | Yes | Consent-screen details and the user's allow/deny decision |
-| `POST` | `/api/admin/smtp/check` | Admin Token | Validate SMTP connectivity (requires `X-Admin-Token` header) |
+| `POST` | `/api/admin/smtp/check` | Admin Token | Validate SMTP connectivity (5/min). The `X-Admin-Token` header must match `ADMIN_DIAGNOSTICS_TOKEN`; 503 when that setting is empty, 403 on a wrong token |
 
 OAuth protocol handlers and MCP are mounted ASGI applications and do not appear
 in the generated OpenAPI schema. Discovery endpoints are documented in

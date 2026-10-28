@@ -2,7 +2,8 @@
 
 Lightweight decision log (ADR-style). Records significant choices and their rationale to guide future development.
 
-> Reviewed against the codebase: 2026-10-16 (published 0.5.1).
+> Last full review against the codebase: 2026-10-16 (published 0.5.1). Entries added since are
+> current as of 2026-10-28 (published 0.12.0).
 > This is a historical decision log. Superseded entries describe the behavior
 > and source locations at the time; current amendments are stated explicitly.
 > Use [FEATURES.md](FEATURES.md) and the [documentation index](../docs/README.md)

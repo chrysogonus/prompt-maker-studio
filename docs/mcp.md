@@ -6,6 +6,9 @@ and Claude integrations: the assistant writes and refines the prompt text in con
 on the user's own ChatGPT or Claude plan, and these tools store and retrieve it. Nothing on this endpoint calls an LLM, so users need
 no provider connection to use it.
 
+For end users, every deployment also serves a public guide at `/guides/connect-chatgpt-claude`
+with the connection steps and that site's own MCP address; this page is the technical reference.
+
 It is mounted inside the existing FastAPI app (`backend/app/api/mcp_routes.py`) and
 runs in stateless, JSON-response mode, so each request is independent.
 
