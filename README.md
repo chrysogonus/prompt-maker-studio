@@ -111,10 +111,10 @@ TypeScript; Docker Compose with Caddy, plus Prometheus and Grafana for monitorin
 
 Early-stage, `0.x`. APIs and database schemas may change between releases.
 Back up before upgrading; see the [changelog](./CHANGELOG.md). The
-[0.12.0 release record](./docs/releases/0.12.0.md) records publication, immutable
-image digests and verification for the latest release: search and AI-assistant
-discoverability, an About page, a ChatGPT and Claude connection guide and fuller public
-pages, with no migrations. Each [release record](./docs/README.md) lists its own
+[0.13.0 release record](./docs/releases/0.13.0.md) records publication, immutable
+image digests and verification for the latest release: one structured-data entity, a
+fuller About page, titles and sitemap dates for search, deeper gallery templates and
+documentation synced with the code, with no migrations. Each [release record](./docs/README.md) lists its own
 migrations and upgrade notes; follow them for every release you skip.
 Upgrades from before 0.5.0 must also follow the
 [0.5.0 upgrade checks](./docs/releases/0.5.0.md#upgrade-and-compatibility),
