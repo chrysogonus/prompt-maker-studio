@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import JsonLd, { PROJECT, breadcrumbs } from '@/components/public/JsonLd';
+import JsonLd, { project, breadcrumbs } from '@/components/public/JsonLd';
 import { ButtonLink } from '@/components/ui/Button';
 import { siteUrl } from '@/lib/branding';
 import { galleryPath, templatesForGuide } from '@/lib/gallery';
@@ -19,7 +19,7 @@ export default function GuideArticle({ guide, children }: {
       '@context': 'https://schema.org', '@type': 'Article',
       headline: guide.title, description: guide.description, url, mainEntityOfPage: url,
       image: `${siteUrl()}/landing/editor.png`, inLanguage: 'en',
-      datePublished: guide.published, dateModified: guide.updated, author: PROJECT, publisher: PROJECT,
+      datePublished: guide.published, dateModified: guide.updated, author: project(), publisher: project(),
     },
   ];
   return (

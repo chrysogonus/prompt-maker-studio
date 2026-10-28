@@ -10,6 +10,16 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- `/about` says who builds the project (its maintainer on GitHub), where to report problems and
+  read release notes, and how the app handles your prompts and optional AI connections.
+
+### Fixed
+
+- The project's structured data is one entity across all pages: it has a stable `@id`, its logo,
+  the repository as `sameAs` and its maintainer, and free tool pages name it as publisher too.
+
 ## [0.12.0] - 2026-10-28
 
 See the [release record](./docs/releases/0.12.0.md).

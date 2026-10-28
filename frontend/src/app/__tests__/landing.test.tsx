@@ -70,7 +70,7 @@ describe('Landing page', () => {
     const { container } = render(await LandingPage());
     const [site, app] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
 
-    expect(site).toMatchObject({ '@type': 'WebSite', url: 'https://prompts.example/', publisher: { '@type': 'Organization' } });
+    expect(site).toMatchObject({ '@type': 'WebSite', url: 'https://prompts.example/', publisher: { '@type': 'Organization', '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' } });
     expect(app).toMatchObject({
       '@type': 'WebApplication', url: 'https://prompts.example/', operatingSystem: 'Web',
       offers: { price: 0 }, author: { url: 'https://github.com/chrysogonus/prompt-maker-studio' },

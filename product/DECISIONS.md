@@ -1565,7 +1565,10 @@ published and updated dates in `lib/guides.ts`, shown on the page and used for O
 sitemap. No ratings or reviews are claimed.
 
 **Rationale**: The project is the one author that is true for every deployment. The operator is
-still identified where the law asks for it, in the operator-supplied Impressum. Dates kept beside
+still identified where the law asks for it, in the operator-supplied Impressum. Amended
+2026-10-28: the Organization carries a repository-based `@id`, so its copies on every page are one
+entity, and names its maintainer by GitHub handle (`founder`, and on `/about`), a fact about the
+project that holds on self-hosted copies too. Dates kept beside
 the guide titles change with the content they describe, unlike file or build times.
 
 **Consequences**: Updating a guide's content means bumping its `updated` date. Google no longer

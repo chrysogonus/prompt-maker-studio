@@ -4,7 +4,7 @@ import { ButtonLink } from '@/components/ui/Button';
 import { siteUrl } from '@/lib/branding';
 import type { Tool } from '@/lib/tools';
 import guideStyles from '@/components/guides/Guides.module.css';
-import JsonLd, { FREE_OFFER, PROJECT, breadcrumbs } from './JsonLd';
+import JsonLd, { FREE_OFFER, project, breadcrumbs } from './JsonLd';
 import ToolList from './ToolList';
 import styles from './Tools.module.css';
 
@@ -31,7 +31,7 @@ export default function ToolPage({ tool, widget, faq, children, local = true }: 
       '@context': 'https://schema.org', '@type': 'WebApplication',
       name: tool.title, description: tool.description, url: `${siteUrl()}${tool.path}`,
       applicationCategory: 'UtilitiesApplication', operatingSystem: 'Web',
-      isAccessibleForFree: true, offers: FREE_OFFER, author: PROJECT,
+      isAccessibleForFree: true, offers: FREE_OFFER, author: project(), publisher: project(),
     },
     breadcrumbs(['Tools', '/tools'], [tool.title, tool.path]),
     {

@@ -63,7 +63,7 @@ describe('Prompt gallery', () => {
     expect(breadcrumbs.itemListElement.map((crumb: { item: string }) => crumb.item)).toEqual(['https://gallery.example/gallery', 'https://gallery.example/gallery/bug-fix-brief']);
     expect(work).toMatchObject({
       '@type': 'CreativeWork', name: 'Bug fix brief for a coding agent', url: 'https://gallery.example/gallery/bug-fix-brief', isAccessibleForFree: true,
-      isPartOf: { url: 'https://gallery.example/' }, publisher: { '@type': 'Organization' },
+      isPartOf: { url: 'https://gallery.example/' }, publisher: { '@type': 'Organization', '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' },
     });
   });
 

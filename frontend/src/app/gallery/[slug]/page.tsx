@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import guideStyles from '@/components/guides/Guides.module.css';
-import JsonLd, { PROJECT, breadcrumbs } from '@/components/public/JsonLd';
+import JsonLd, { project, breadcrumbs } from '@/components/public/JsonLd';
 import styles from '@/components/public/Tools.module.css';
 import TemplateFiller from '@/features/tools/TemplateFiller';
 import { siteUrl } from '@/lib/branding';
@@ -31,7 +31,7 @@ export default async function GalleryTemplatePage({ params }: Params) {
       '@context': 'https://schema.org', '@type': 'CreativeWork',
       name: template.title, description: galleryDescription(template), url,
       inLanguage: 'en', isAccessibleForFree: true, genre: category.label,
-      isPartOf: { '@type': 'WebSite', url: `${siteUrl()}/` }, publisher: PROJECT,
+      isPartOf: { '@type': 'WebSite', url: `${siteUrl()}/` }, publisher: project(),
     },
   ];
   return (

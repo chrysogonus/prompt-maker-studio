@@ -80,7 +80,7 @@ describe('Public guides', () => {
       .toEqual(['https://guides.example/guides', `https://guides.example${path}`]);
     expect(article).toMatchObject({
       '@type': 'Article', url: `https://guides.example${path}`, dateModified: updated.getAttribute('dateTime'),
-      author: { '@type': 'Organization' }, publisher: { '@type': 'Organization' },
+      author: { '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' }, publisher: { '@type': 'Organization', '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' },
     });
     expect(article.datePublished <= article.dateModified).toBe(true);
   });
