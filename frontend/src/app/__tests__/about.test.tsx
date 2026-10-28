@@ -24,7 +24,23 @@ describe('About page', () => {
     expect(screen.getAllByRole('link', { name: 'Impressum' })[0]).toHaveAttribute('href', '/impressum');
     expect(screen.queryByRole('link', { name: 'privacy policy' })).not.toBeInTheDocument();
     const data = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
-    expect(data).toMatchObject({ '@type': 'AboutPage', url: 'https://prompts.example/about', mainEntity: { '@type': 'Organization' } });
+    expect(data).toMatchObject({
+      '@type': 'AboutPage', url: 'https://prompts.example/about',
+      mainEntity: {
+        '@type': 'Organization', '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project', logo: 'https://prompts.example/icon-512.png',
+        sameAs: ['https://github.com/chrysogonus/prompt-maker-studio'],
+        founder: { '@type': 'Person', name: 'chrysogonus', url: 'https://github.com/chrysogonus' },
+      },
+    });
+  });
+
+  it('says who builds the project and where to report problems', async () => {
+    render(await AboutPage());
+
+    expect(screen.getByRole('heading', { name: 'Who builds it' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '@chrysogonus' })).toHaveAttribute('href', 'https://github.com/chrysogonus');
+    expect(screen.getByRole('link', { name: 'GitHub issues' })).toHaveAttribute('href', 'https://github.com/chrysogonus/prompt-maker-studio/issues');
+    expect(screen.getByRole('heading', { name: 'How it handles your prompts' })).toBeInTheDocument();
   });
 
   it('says nothing about an operator when the deployment has no legal pages', async () => {
@@ -39,6 +55,7 @@ describe('About page', () => {
     const metadata = generateMetadata();
 
     expect(metadata.alternates?.canonical).toBe('https://prompts.example/about');
+    expect(metadata.description!.length).toBeGreaterThanOrEqual(110);
     expect(metadata.description!.length).toBeLessThanOrEqual(160);
   });
 });

@@ -86,6 +86,7 @@ business-operation boundary, distinguished by `channel="rest"` or `"mcp"`.
 | `prompt_create`, `prompt_update`, `prompt_duplicate`, `prompt_delete`, `prompt_restore` | Committed library mutation; duplicate is separate from create, restore is separate from update |
 | `ai_import` | Importing text through the AI parser |
 | `refine_questions`, `refine_draft` | Generating clarification questions or a draft; applying/saving it is a separate prompt mutation |
+| `public_refine_questions`, `public_refine_draft` | The same two steps in the free refiner for signed-out visitors, on the server default connection |
 | `try_once` | One playground execution |
 | `eval_generate`, `eval_run` | Generating evaluation cases or executing an evaluation run |
 | `connection_test` | Testing the configured provider connection |

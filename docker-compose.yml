@@ -106,7 +106,7 @@ services:
       # Behind Caddy this never fires; it is what makes the image work when
       # run without a reverse proxy. Runtime, not build time — deliberately.
       - API_PROXY_TARGET=${API_PROXY_TARGET:-http://backend:8000}
-      # Public origin for the landing page's canonical link, robots.txt and sitemap.
+      # Public origin for the public pages' canonical links, robots.txt, sitemap and llms.txt.
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - LEGAL_PAGES_DIR=/legal
     # Operator-supplied Impressum/privacy policy; see docs/deployment.md.

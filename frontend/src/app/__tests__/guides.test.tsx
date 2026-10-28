@@ -48,7 +48,22 @@ describe('Public guides', () => {
       const section = heading.closest('section')!;
       expect(within(section).getByRole('link', { name: 'Fill it in' }).getAttribute('href')).toMatch(/^\/gallery\//);
       expect(section.querySelector('pre')!.textContent).toMatch(/\{\{\w+\}\}/);
+      expect(within(section).getByRole('button', { name: `Copy ${heading.textContent}` })).toBeInTheDocument();
     }
+  });
+
+  it.each([
+    { Page: CodingAgentsPage, hosts: ['code.claude.com', 'agents.md'] },
+    { Page: ImagePromptsPage, hosts: ['ai.google.dev'] },
+    { Page: ResearchWritingPage, hosts: ['platform.claude.com'] },
+    { Page: GoodPromptPage, hosts: ['platform.claude.com', 'developers.openai.com', 'ai.google.dev'] },
+  ])('cites provider guidance under Further reading', ({ Page, hosts }) => {
+    render(<Page />);
+
+    const heading = screen.getByRole('heading', { name: 'Further reading' });
+    const links = [...heading.parentElement!.querySelectorAll('h2 ~ * a[href^="https://"]')]
+      .filter((link) => heading.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect([...new Set(links.map((link) => new URL(link.getAttribute('href')!).host))]).toEqual(expect.arrayContaining(hosts));
   });
 
   it('compares variable syntax across tools with sources', () => {
@@ -80,7 +95,7 @@ describe('Public guides', () => {
       .toEqual(['https://guides.example/guides', `https://guides.example${path}`]);
     expect(article).toMatchObject({
       '@type': 'Article', url: `https://guides.example${path}`, dateModified: updated.getAttribute('dateTime'),
-      author: { '@type': 'Organization' }, publisher: { '@type': 'Organization' },
+      author: { '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' }, publisher: { '@type': 'Organization', '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' },
     });
     expect(article.datePublished <= article.dateModified).toBe(true);
   });
@@ -110,6 +125,7 @@ describe('Public guides', () => {
     expect(result.alternates?.canonical).toBe(`https://second.example${path}`);
     expect(result.description!.length).toBeGreaterThanOrEqual(110);
     expect(result.description!.length).toBeLessThanOrEqual(160);
+    expect(String(result.title).length).toBeLessThanOrEqual(60);
     expect(result.openGraph).toMatchObject({
       type: path === '/guides' ? 'website' : 'article',
       url: `https://second.example${path}`,

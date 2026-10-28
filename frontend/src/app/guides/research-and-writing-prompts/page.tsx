@@ -52,6 +52,15 @@ export default function ResearchWritingPromptsPage() {
         run it through the <Link href={TOOLS.linter.path}>prompt checker</Link>, and read{' '}
         <Link href={GUIDES.goodPrompt.path}>what makes a good prompt</Link> for the general structure.
       </p>
+
+      <h2>Further reading</h2>
+      <p>
+        Anthropic&apos;s guide to{' '}
+        <a href="https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations">reducing
+        hallucinations</a> recommends the same habits: let the model say it does not know, ground
+        answers in direct quotes, and have it cite a source for each claim. It also notes that these
+        techniques reduce invented facts but do not remove them, so check anything you publish.
+      </p>
     </GuideArticle>
   );
 }

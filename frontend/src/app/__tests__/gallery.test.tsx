@@ -15,6 +15,7 @@ describe('Prompt gallery', () => {
   it('lists every template under its category, with popular ones first', () => {
     const { container } = render(<GalleryPage />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Free prompt library and templates');
+    expect(screen.getByRole('link', { name: 'what a prompt library is' })).toHaveAttribute('href', '/guides/what-is-a-prompt-library');
     const index = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
     expect(index['@type']).toBe('CollectionPage');
     expect(index.mainEntity.itemListElement).toHaveLength(GALLERY.length);
@@ -45,10 +46,16 @@ describe('Prompt gallery', () => {
     expect(example).toContain('<GOAL>\nFix this bug: saving a note with an emoji in its title returns a 500 error.');
     expect(example).not.toContain('{{');
     expect(screen.getByRole('heading', { name: 'What to expect' }).nextElementSibling).toHaveTextContent(/root cause/);
+    expect(screen.queryByLabelText('Example result')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'symptom' })).toHaveAttribute('placeholder', 'What goes wrong, and how to reproduce it');
     expect(screen.getByRole('button', { name: 'Use example inputs' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'how to write prompts for coding agents' })).toHaveAttribute('href', '/guides/prompts-for-coding-agents');
     expect(within(screen.getByRole('region', { name: 'More coding-agent templates' })).getAllByRole('link')).toHaveLength(4);
+  });
+
+  it('shows an example result for templates whose inputs decide the answer', async () => {
+    render(await TemplatePage(params('meeting-summary')));
+    expect(screen.getByLabelText('Example result')).toHaveTextContent('Ben — update the release notes — Friday');
   });
 
   it('gives every template a search-length description and structured data', async () => {
@@ -63,7 +70,7 @@ describe('Prompt gallery', () => {
     expect(breadcrumbs.itemListElement.map((crumb: { item: string }) => crumb.item)).toEqual(['https://gallery.example/gallery', 'https://gallery.example/gallery/bug-fix-brief']);
     expect(work).toMatchObject({
       '@type': 'CreativeWork', name: 'Bug fix brief for a coding agent', url: 'https://gallery.example/gallery/bug-fix-brief', isAccessibleForFree: true,
-      isPartOf: { url: 'https://gallery.example/' }, publisher: { '@type': 'Organization' },
+      isPartOf: { url: 'https://gallery.example/' }, publisher: { '@type': 'Organization', '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' },
     });
   });
 

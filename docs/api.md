@@ -17,8 +17,8 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
-| `POST` | `/api/auth/register` | No | Register new user account |
-| `POST` | `/api/auth/login` | No | Set the session/CSRF cookies; return token type and expiry metadata |
+| `POST` | `/api/auth/register` | No | Register new user account (`REGISTER_RATE_LIMIT`, default 5/min) |
+| `POST` | `/api/auth/login` | No | Set the session/CSRF cookies; return token type and expiry metadata (`LOGIN_RATE_LIMIT`, default 10/min) |
 | `POST` | `/api/auth/refresh` | Yes | Renew a valid session within its 12-hour maximum age: a new session cookie, the same CSRF token |
 | `POST` | `/api/auth/logout` | No | End the current session by clearing its cookies. Deliberately unauthenticated so signing out works with an already-expired token |
 | `POST` | `/api/auth/logout-all` | Yes | Invalidate every session for this account, including the caller's |
@@ -131,7 +131,7 @@ Used by the free tools for signed-out visitors; no session needed.
 
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
-| `GET` | `/api/public/model-prices` | No | Curated hosted models (`provider`, `provider_label`, `id`, `label`) with estimated input/output prices per million tokens (60/min) |
+| `GET` | `/api/public/model-prices` | No | Curated hosted models (`provider`, `provider_label`, `id`, `label`) with estimated input/output prices per million tokens and `prices_as_of`, the ISO date the price was fetched from the live index or last checked for the built-in snapshot (null when unpriced) (60/min) |
 | `GET` | `/api/public/refine` | No | Whether the free refiner is offered (`available`: `PUBLIC_REFINE_ENABLED` and a server default) and its `max_chars` (60/min) |
 | `POST` | `/api/public/refine/questions` | No | Clarifying questions for a pasted prompt `{text, website, force}`; `website` is a honeypot that must be empty. Uses the server default; 404 when off, 503 without a server default, 402 when the shared or public monthly budget is used up, 429 at the daily or per-IP limit (`PUBLIC_REFINE_RATE_LIMIT`, default 6/minute and 30/day, shared with `/draft`) |
 | `POST` | `/api/public/refine/draft` | No | A refined prompt `{text}` from `{text, website, qa_pairs}` (at most 5 pairs; blank answers are ignored), with the same limits. The refined text must keep the prompt's `{{variables}}` and tags |
@@ -144,7 +144,7 @@ Used by the free tools for signed-out visitors; no session needed.
 | `POST` | `/api/oauth/register`, `/api/oauth/token`, `/api/oauth/revoke` | No | OAuth 2.1 endpoints MCP clients such as ChatGPT use to link an account (see [docs/mcp.md](mcp.md)) |
 | `GET` | `/api/oauth/authorize` | No | Start of the OAuth flow; redirects to the consent page |
 | `GET`, `POST` | `/api/oauth/consent` | Yes | Consent-screen details and the user's allow/deny decision |
-| `POST` | `/api/admin/smtp/check` | Admin Token | Validate SMTP connectivity (requires `X-Admin-Token` header) |
+| `POST` | `/api/admin/smtp/check` | Admin Token | Validate SMTP connectivity (5/min). The `X-Admin-Token` header must match `ADMIN_DIAGNOSTICS_TOKEN`; 503 when that setting is empty, 403 on a wrong token |
 
 OAuth protocol handlers and MCP are mounted ASGI applications and do not appear
 in the generated OpenAPI schema. Discovery endpoints are documented in

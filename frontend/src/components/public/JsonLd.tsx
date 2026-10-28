@@ -3,8 +3,19 @@ import { APP_NAME, siteUrl } from '@/lib/branding';
 
 const CONTEXT = 'https://schema.org';
 
-// The open-source project, not this deployment's operator: every self-hosted copy serves the same image.
-export const PROJECT = { '@type': 'Organization', name: APP_NAME, url: REPOSITORY_URL };
+/** The project's maintainer, named by GitHub handle: true on every deployment, unlike the operator. */
+export const MAINTAINER = { name: 'chrysogonus', url: 'https://github.com/chrysogonus' };
+
+/**
+ * The open-source project, not this deployment's operator: every self-hosted copy serves the same
+ * image. The repository-based @id is the same everywhere, so the copies on each page merge into one.
+ */
+export function project() {
+  return {
+    '@type': 'Organization', '@id': `${REPOSITORY_URL}#project`, name: APP_NAME, url: REPOSITORY_URL,
+    logo: `${siteUrl()}/icon-512.png`, sameAs: [REPOSITORY_URL], founder: { '@type': 'Person', ...MAINTAINER },
+  };
+}
 
 export const FREE_OFFER = { '@type': 'Offer', price: 0, priceCurrency: 'USD' };
 

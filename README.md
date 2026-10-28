@@ -42,6 +42,15 @@ the effect of an edit. Keep your test cases reusable with CSV import and export.
 
 *Screenshots use synthetic demo data, including illustrative AI outputs and scores.*
 
+## Free tools, templates and guides without an account
+
+Every deployment also serves public pages for visitors who are not signed in: free
+[tools](./docs/deployment.md#public-pages) to fill in templates, check a prompt, compare two
+versions and estimate tokens and cost (plus an optional free refiner on the server's AI
+connection), a gallery of ready-to-use prompt templates, practical guides, and an About page.
+They are server-rendered with structured data, a sitemap and `/llms.txt`, so search engines
+and AI assistants can find them.
+
 Prompt management works without an AI connection. Prompt conversion, refinement,
 Try once and evaluation use your configured provider: OpenAI, Anthropic, Gemini, Ollama,
 vLLM or another OpenAI-compatible endpoint. Hosted calls may incur provider
@@ -73,7 +82,7 @@ configuration and local email testing.
 ```mermaid
 flowchart LR
     Browser[Browser] --> Edge["Caddy · HTTPS"]
-    MCP["ChatGPT / MCP client"] --> Edge
+    MCP["ChatGPT / Claude / MCP client"] --> Edge
     Edge -->|Web app| UI["Next.js · React"]
     Edge -->|REST / MCP / OAuth| API[FastAPI]
     API --> DB[(SQLite)]
@@ -83,6 +92,9 @@ flowchart LR
 Caddy handles production HTTPS and routing. Locally, Next.js proxies `/api`
 to FastAPI. SQLite stores accounts, prompts, versions and evaluation history;
 REST and MCP share the same prompt services. AI calls are optional.
+
+The stack: Python 3.12 with FastAPI and SQLAlchemy 2.1 on SQLite; Next.js 16, React 18 and
+TypeScript; Docker Compose with Caddy, plus Prometheus and Grafana for monitoring.
 
 ## Go further
 
@@ -99,10 +111,11 @@ REST and MCP share the same prompt services. AI calls are optional.
 
 Early-stage, `0.x`. APIs and database schemas may change between releases.
 Back up before upgrading; see the [changelog](./CHANGELOG.md). The
-[0.6.0 release record](./docs/releases/0.6.0.md) records publication, immutable
-image digests and verification for the latest release: collection imports,
-prompt reuse, curated AI connections and UX fixes. It includes migrations 028/029
-and a restriction on saving hosted model selections; follow its upgrade notes.
+[0.12.0 release record](./docs/releases/0.12.0.md) records publication, immutable
+image digests and verification for the latest release: search and AI-assistant
+discoverability, an About page, a ChatGPT and Claude connection guide and fuller public
+pages, with no migrations. Each [release record](./docs/README.md) lists its own
+migrations and upgrade notes; follow them for every release you skip.
 Upgrades from before 0.5.0 must also follow the
 [0.5.0 upgrade checks](./docs/releases/0.5.0.md#upgrade-and-compatibility),
 including rehearsing migrations on an isolated production-backup copy.

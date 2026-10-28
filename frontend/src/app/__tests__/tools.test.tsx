@@ -50,7 +50,10 @@ describe('Free tools', () => {
     expect(within(more).getAllByRole('link')).toHaveLength(tools.length - 1);
     expect(more.querySelector(`a[href="${path}"]`)).not.toBeInTheDocument();
     const [app, crumbs, faq] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
-    expect(app).toMatchObject({ '@type': 'WebApplication', isAccessibleForFree: true, offers: { price: 0 } });
+    expect(app).toMatchObject({
+      '@type': 'WebApplication', isAccessibleForFree: true, offers: { price: 0 },
+      author: { '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' }, publisher: { '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' },
+    });
     expect(app.url).toMatch(new RegExp(`${path}$`));
     expect(crumbs.itemListElement).toHaveLength(2);
     expect(faq['@type']).toBe('FAQPage');
@@ -62,6 +65,7 @@ describe('Free tools', () => {
     const result = metadata();
     expect(result.alternates?.canonical).toBe(`https://tools.example${path}`);
     expect(result.title).toMatch(/^Free /);
+    expect(String(result.title).length).toBeLessThanOrEqual(60);
     expect(result.description!.length).toBeGreaterThanOrEqual(110);
     expect(result.description!.length).toBeLessThanOrEqual(160);
   });

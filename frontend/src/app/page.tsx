@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import LegalLinks from '@/components/LegalLinks';
-import JsonLd, { FREE_OFFER, PROJECT } from '@/components/public/JsonLd';
+import JsonLd, { FREE_OFFER, project } from '@/components/public/JsonLd';
 import RepositoryLink, { REPOSITORY_URL } from '@/components/RepositoryLink';
 import { ButtonLink } from '@/components/ui/Button';
 import Wordmark from '@/components/ui/Wordmark';
@@ -18,12 +18,13 @@ import { availableLegalPages } from '@/lib/legal';
 import styles from './page.module.css';
 
 const DESCRIPTION =
-  'A prompt library and template editor: save your best AI prompts with {{variables}}, fill them in ' +
+  'A prompt template editor and library: save your best AI prompts with {{variables}}, fill them in ' +
   'and copy them into ChatGPT, Claude, Gemini or any assistant.';
 
 export async function generateMetadata(): Promise<Metadata> {
   const url = siteUrl();
-  const title = `${APP_NAME}: a prompt library and template editor`;
+  // "prompt library" belongs to the guide and the gallery; the home page leads with the editor.
+  const title = `${APP_NAME}: a prompt template editor and library`;
   const image = { url: `${url}/landing/editor.png`, width: 1440, height: 900 };
   return {
     title,
@@ -41,12 +42,12 @@ export default async function LandingPage() {
   if ((await cookies()).has('access_token')) redirect('/library');
   const url = `${siteUrl()}/`;
   const structuredData = [
-    { '@context': 'https://schema.org', '@type': 'WebSite', name: APP_NAME, url, description: DESCRIPTION, publisher: PROJECT },
+    { '@context': 'https://schema.org', '@type': 'WebSite', name: APP_NAME, url, description: DESCRIPTION, publisher: project() },
     {
       '@context': 'https://schema.org', '@type': 'WebApplication',
       name: APP_NAME, url, description: DESCRIPTION,
       applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
-      isAccessibleForFree: true, offers: FREE_OFFER, author: PROJECT,
+      isAccessibleForFree: true, offers: FREE_OFFER, author: project(),
     },
   ];
 
@@ -135,6 +136,13 @@ export default async function LandingPage() {
               </dd>
             </div>
             <div>
+              <dt>Your library in ChatGPT and Claude</dt>
+              <dd>
+                Connect your account to ChatGPT or Claude to list, open, save and update prompts
+                without leaving the chat. <Link href={GUIDES.connect.path}>See how</Link>.
+              </dd>
+            </div>
+            <div>
               <dt>Copy filled prompt</dt>
               <dd>
                 Fill in the variables and copy the finished text, or copy the template as it is. The
@@ -160,13 +168,6 @@ export default async function LandingPage() {
             <div>
               <dt>Folders, favourites and search</dt>
               <dd>Find a prompt by its name, its folder or any text inside it.</dd>
-            </div>
-            <div>
-              <dt>Your library in ChatGPT and Claude</dt>
-              <dd>
-                Connect your account to ChatGPT or Claude to list, open, save and update prompts
-                without leaving the chat. <Link href={GUIDES.connect.path}>See how</Link>.
-              </dd>
             </div>
           </dl>
         </section>
@@ -217,13 +218,16 @@ export default async function LandingPage() {
           <p>
             For a team, run one copy on a server you control. Each person keeps a private library, and
             you can set up a shared AI connection, such as a local model through Ollama or vLLM, for
-            people without their own API key. The{' '}
-            <a href={`${REPOSITORY_URL}/blob/main/docs/deployment.md`}>deployment guide</a>{' '}
-            covers the setup.
+            people without their own API key.
           </p>
-          <ButtonLink href="/library" variant="primary" className={styles.cta}>
-            Open the app
-          </ButtonLink>
+          <div className={styles.actions}>
+            <ButtonLink href="/library" variant="primary" className={styles.cta}>
+              Open the app
+            </ButtonLink>
+            <ButtonLink href={`${REPOSITORY_URL}/blob/main/docs/deployment.md`} className={styles.cta}>
+              Self-host it
+            </ButtonLink>
+          </div>
         </section>
       </main>
 

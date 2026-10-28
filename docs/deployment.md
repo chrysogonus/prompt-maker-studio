@@ -98,8 +98,8 @@ LLM_API_KEY=
 
 # Frontend Configuration
 # No API URL to set — browsers call /api on YOUR_DOMAIN and Caddy routes it to
-# the backend. FRONTEND_URL also supplies reset links, MCP/OAuth discovery,
-# the landing-page canonical URL, robots.txt and sitemap.
+# the backend. FRONTEND_URL also supplies reset links, MCP/OAuth discovery, and the
+# canonical links, structured data, robots.txt, sitemap and /llms.txt of the public pages.
 FRONTEND_URL=https://YOUR_DOMAIN
 
 # SMTP (required for password-reset emails)
@@ -255,9 +255,10 @@ language's heading an `<h2>`, since search engines read one main heading per pag
 
 The folder is mounted read-only into the frontend container and read on every
 request, so edits go live without a restart. A page — and its link on the homepage,
-the public guides, tools and templates, the app footer and the sign-in screen, plus its
-`sitemap.xml` entry — appears only when its file exists, so a deployment without these
-files shows neither. `/privacy` and `/imprint` redirect to `/datenschutz` and `/impressum`. The files must be readable by
+`/about`, the public guides, tools and templates, the app footer and the sign-in screen,
+plus its `sitemap.xml` entry — appears only when its file exists, so a deployment without
+these files shows neither. `/privacy` and `/imprint` redirect permanently (308) to
+`/datenschutz` and `/impressum`. The files must be readable by
 the container's non-root user (`chmod 644`). Their HTML is rendered as-is and
 treated as trusted, like the `Caddyfile`; the site's Content-Security-Policy
 still blocks external scripts, styles and images in it.
@@ -268,6 +269,29 @@ registration. Those require separate application changes.
 To keep the files versioned without forking this repository, keep them in a
 separate private repository and set `LEGAL_PAGES_PATH` to its checkout, e.g.
 `LEGAL_PAGES_PATH=/opt/prompt-maker-deploy/legal`.
+
+## Public Pages
+
+Every deployment serves these pages without sign-in, server-rendered so search engines and
+AI assistants can read them. Links, canonical URLs and structured data are built from
+`FRONTEND_URL` at request time, so a self-hosted copy names its own address.
+
+| Path | What it is |
+|---|---|
+| `/` | Landing page for signed-out visitors; a session cookie redirects to `/library` |
+| `/about` | What the app is, its maintainer and licence, how it handles prompts, and which host runs it; links the legal pages that exist |
+| `/guides`, `/guides/*` | Practical guides, including one that shows this deployment's MCP address |
+| `/tools`, `/tools/*` | Free tools; the refiner works only when `PUBLIC_REFINE_ENABLED` is set |
+| `/gallery`, `/gallery/*` | Ready-to-use prompt templates |
+| `/impressum`, `/datenschutz`, `/terms` | Operator-supplied [legal pages](#legal-pages-impressum-privacy-policy) |
+| `/robots.txt` | Allows public pages; disallows `/api/`, `/library`, `/editor`, `/settings`, `/dashboard`, `/playground`, `/oauth` and `/reset-password` |
+| `/sitemap.xml` | Public pages and the legal pages that exist; guides, tools and templates carry a last-modified date kept with their content |
+| `/llms.txt` | A plain-text map of the public pages and the MCP address for AI assistants |
+| `/legal.json` | Which legal pages exist, for the sign-in screen and app footer |
+
+**Caching:** every page is sent with `Cache-Control: no-store`, so the Back button cannot show
+account pages after sign-out. Only the screenshots under `/landing/` are cached, for a day.
+Hashed build assets under `/_next/` keep their long-lived caching.
 
 ## Service Communication
 
@@ -310,6 +334,10 @@ docker compose -f docker-compose.yml up -d --build
 docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
 ```
+
+Every release since 0.3.0 has a [release record](./README.md) with its migrations and upgrade
+notes; read the ones for every release you skip. The sections below cover the two upgrades
+that need extra steps.
 
 ### Upgrading to 0.3.0:
 

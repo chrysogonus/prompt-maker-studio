@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import guideStyles from '@/components/guides/Guides.module.css';
-import JsonLd, { PROJECT, breadcrumbs } from '@/components/public/JsonLd';
+import JsonLd, { project, breadcrumbs } from '@/components/public/JsonLd';
+import ModelOutput from '@/components/ui/ModelOutput';
 import styles from '@/components/public/Tools.module.css';
 import TemplateFiller from '@/features/tools/TemplateFiller';
 import { siteUrl } from '@/lib/branding';
@@ -31,7 +32,7 @@ export default async function GalleryTemplatePage({ params }: Params) {
       '@context': 'https://schema.org', '@type': 'CreativeWork',
       name: template.title, description: galleryDescription(template), url,
       inLanguage: 'en', isAccessibleForFree: true, genre: category.label,
-      isPartOf: { '@type': 'WebSite', url: `${siteUrl()}/` }, publisher: PROJECT,
+      isPartOf: { '@type': 'WebSite', url: `${siteUrl()}/` }, publisher: project(),
     },
   ];
   return (
@@ -60,6 +61,12 @@ export default async function GalleryTemplatePage({ params }: Params) {
         <pre>{renderSections(template.sections.map((section) => ({ ...section, content: fillVariables(section.content, template.examples) })))}</pre>
         <h2>What to expect</h2>
         <p>{template.outcome}</p>
+        {template.sample && (
+          <>
+            <p>An example of a good result for these inputs, written to show its shape rather than recorded from a model:</p>
+            <ModelOutput text={template.sample} label="Example result" />
+          </>
+        )}
         {template.tips.length > 0 && (
           <>
             <h2>Tips</h2>

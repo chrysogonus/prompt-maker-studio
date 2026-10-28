@@ -1,5 +1,7 @@
 """Schemas for the unauthenticated public tools under /api/public."""
 
+from datetime import date
+
 from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.connections import ModelPriceInfo
@@ -11,6 +13,8 @@ class PublicModelPrice(ModelPriceInfo):
 
     provider: str
     provider_label: str
+    # When the price was fetched from the live index, or last checked for the built-in snapshot.
+    prices_as_of: date | None = None
 
 
 PUBLIC_REFINE_MAX_CHARS = 8000

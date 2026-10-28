@@ -2,7 +2,8 @@
 
 Lightweight decision log (ADR-style). Records significant choices and their rationale to guide future development.
 
-> Reviewed against the codebase: 2026-10-16 (published 0.5.1).
+> Last full review against the codebase: 2026-10-16 (published 0.5.1). Entries added since are
+> current as of 2026-10-28 (published 0.12.0).
 > This is a historical decision log. Superseded entries describe the behavior
 > and source locations at the time; current amendments are stated explicitly.
 > Use [FEATURES.md](FEATURES.md) and the [documentation index](../docs/README.md)
@@ -1565,10 +1566,15 @@ published and updated dates in `lib/guides.ts`, shown on the page and used for O
 sitemap. No ratings or reviews are claimed.
 
 **Rationale**: The project is the one author that is true for every deployment. The operator is
-still identified where the law asks for it, in the operator-supplied Impressum. Dates kept beside
+still identified where the law asks for it, in the operator-supplied Impressum. Amended
+2026-10-28: the Organization carries a repository-based `@id`, so its copies on every page are one
+entity, and names its maintainer by GitHub handle (`founder`, and on `/about`), a fact about the
+project that holds on self-hosted copies too. Dates kept beside
 the guide titles change with the content they describe, unlike file or build times.
 
-**Consequences**: Updating a guide's content means bumping its `updated` date. Google no longer
+**Consequences**: Updating a guide's content means bumping its `updated` date; since 2026-10-28
+free tools (`lib/tools.ts`) and gallery templates (`lib/gallery.ts`) carry the same field for the
+sitemap, and pages without a reliable content date stay undated. Google no longer
 shows FAQ rich results, but the FAQPage data stays because it still describes the page.
 
 **Sources**: `frontend/src/components/public/JsonLd.tsx`, `frontend/src/lib/guides.ts`,

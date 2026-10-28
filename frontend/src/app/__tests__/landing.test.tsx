@@ -53,6 +53,9 @@ describe('Landing page', () => {
     render(await LandingPage());
 
     expect(screen.getByRole('link', { name: 'See how' })).toHaveAttribute('href', '/guides/connect-chatgpt-claude');
+    // The ChatGPT and Claude connection is the second feature, near the top of the list.
+    expect(screen.getAllByRole('term')[3]).toHaveTextContent('Your library in ChatGPT and Claude');
+    expect(screen.getByRole('link', { name: 'Self-host it' })).toHaveAttribute('href', 'https://github.com/chrysogonus/prompt-maker-studio/blob/main/docs/deployment.md');
     expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute('href', '/about');
 
     expect(screen.getByRole('link', { name: 'Guides' })).toHaveAttribute('href', '/guides');
@@ -70,7 +73,7 @@ describe('Landing page', () => {
     const { container } = render(await LandingPage());
     const [site, app] = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!);
 
-    expect(site).toMatchObject({ '@type': 'WebSite', url: 'https://prompts.example/', publisher: { '@type': 'Organization' } });
+    expect(site).toMatchObject({ '@type': 'WebSite', url: 'https://prompts.example/', publisher: { '@type': 'Organization', '@id': 'https://github.com/chrysogonus/prompt-maker-studio#project' } });
     expect(app).toMatchObject({
       '@type': 'WebApplication', url: 'https://prompts.example/', operatingSystem: 'Web',
       offers: { price: 0 }, author: { url: 'https://github.com/chrysogonus/prompt-maker-studio' },
@@ -124,21 +127,21 @@ describe('robots.txt and sitemap.xml', () => {
       { url: 'https://prompts.example/guides' },
       { url: 'https://prompts.example/guides/what-is-a-prompt-library', lastModified: '2026-10-27' },
       { url: 'https://prompts.example/guides/reusable-ai-prompts', lastModified: '2026-10-26' },
-      { url: 'https://prompts.example/guides/prompt-template-variables', lastModified: '2026-10-27' },
+      { url: 'https://prompts.example/guides/prompt-template-variables', lastModified: '2026-10-28' },
       { url: 'https://prompts.example/guides/organize-chatgpt-prompts', lastModified: '2026-10-26' },
       { url: 'https://prompts.example/guides/what-makes-a-good-prompt', lastModified: '2026-10-27' },
-      { url: 'https://prompts.example/guides/prompts-for-coding-agents', lastModified: '2026-10-27' },
-      { url: 'https://prompts.example/guides/image-generation-prompts', lastModified: '2026-10-27' },
-      { url: 'https://prompts.example/guides/research-and-writing-prompts', lastModified: '2026-10-22' },
+      { url: 'https://prompts.example/guides/prompts-for-coding-agents', lastModified: '2026-10-28' },
+      { url: 'https://prompts.example/guides/image-generation-prompts', lastModified: '2026-10-28' },
+      { url: 'https://prompts.example/guides/research-and-writing-prompts', lastModified: '2026-10-28' },
       { url: 'https://prompts.example/guides/connect-chatgpt-claude', lastModified: '2026-10-27' },
       { url: 'https://prompts.example/tools' },
-      { url: 'https://prompts.example/tools/prompt-template-filler' },
-      { url: 'https://prompts.example/tools/prompt-linter' },
-      { url: 'https://prompts.example/tools/prompt-refiner' },
-      { url: 'https://prompts.example/tools/prompt-diff' },
-      { url: 'https://prompts.example/tools/token-counter' },
+      { url: 'https://prompts.example/tools/prompt-template-filler', lastModified: '2026-10-23' },
+      { url: 'https://prompts.example/tools/prompt-linter', lastModified: '2026-10-22' },
+      { url: 'https://prompts.example/tools/prompt-refiner', lastModified: '2026-10-27' },
+      { url: 'https://prompts.example/tools/prompt-diff', lastModified: '2026-10-23' },
+      { url: 'https://prompts.example/tools/token-counter', lastModified: '2026-10-28' },
       { url: 'https://prompts.example/gallery' },
-      ...GALLERY.map(({ slug }) => ({ url: `https://prompts.example/gallery/${slug}` })),
+      ...GALLERY.map(({ slug, updated }) => ({ url: `https://prompts.example/gallery/${slug}`, lastModified: updated })),
     ]);
   });
 

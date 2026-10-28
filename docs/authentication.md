@@ -21,8 +21,8 @@ Overlength passwords submitted for verification are rejected safely.
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| POST | `/api/auth/register` | No | Create an account (201) |
-| POST | `/api/auth/login` | No | Set session/CSRF cookies and return expiry metadata |
+| POST | `/api/auth/register` | No | Create an account (201); `REGISTER_RATE_LIMIT`, default 5/min |
+| POST | `/api/auth/login` | No | Set session/CSRF cookies and return expiry metadata; `LOGIN_RATE_LIMIT`, default 10/min |
 | POST | `/api/auth/refresh` | Yes | Renew a still-valid JWT while the user is active |
 | POST | `/api/auth/logout` | No | Clear the current browser session cookies |
 | POST | `/api/auth/logout-all` | Yes | Revoke all account sessions and linked OAuth credentials |
@@ -32,6 +32,11 @@ Overlength passwords submitted for verification are rejected safely.
 | POST | `/api/auth/change-password` | Yes | Verify current password and set a new one |
 | POST | `/api/auth/forgot-password` | No | Request a password-reset email |
 | POST | `/api/auth/reset-password` | No | Complete password reset with a single-use token |
+| GET, PUT, DELETE | `/api/auth/me/llm-connection` | Yes | Read, set or remove the caller's AI provider connection (see [Prompt Access](#prompt-access) below and the [API reference](api.md)) |
+| GET | `/api/auth/me/llm-connection/models` | Yes | Models for the chosen provider, with estimated prices |
+| POST | `/api/auth/me/llm-connection/test` | Yes | Probe the saved connection, or unsaved form values |
+| GET | `/api/auth/me/connected-apps` | Yes | MCP clients, such as ChatGPT or Claude, still linked to the account |
+| DELETE | `/api/auth/me/connected-apps/{client_id}` | Yes | Disconnect one linked client |
 
 ### Registration
 

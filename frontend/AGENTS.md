@@ -8,9 +8,9 @@ Inner loop: `npm test` in `frontend/`. `make test-frontend` wraps `npm ci && npm
 but it's the gate that matches CI. Coverage floors live in `vitest.config.ts`.
 `make lint-frontend` also checks `e2e/` and `playwright.config.ts`; `npm run lint` checks only `src/`.
 
-API calls to the backend go through `frontend/src/lib/api.ts` — extend that rather than calling `fetch` ad hoc from components.
+API calls to the backend go through `frontend/src/lib/api.ts` — extend that rather than calling `fetch` ad hoc from components. The exceptions are `src/lib/auth.ts` (session and account endpoints) and `LegalLinks`, which reads the frontend's own `/legal.json`.
 
-Feature UI, controllers and tests live under `src/features/{editor,library,settings,auth,evaluation}/`.
+Feature UI, controllers and tests live under `src/features/{editor,library,settings,auth,evaluation,gallery,tools}/`.
 App Router pages stay thin; shared design primitives and the authenticated shell live
 under `src/components/`. Preserve presentation and browser storage keys during refactors.
 

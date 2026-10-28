@@ -29,7 +29,8 @@ describe('gallery data', () => {
     // Each page explains what a good result looks like and gives at least one tip.
     expect(template.outcome.length).toBeGreaterThan(40);
     expect(template.outcome.length).toBeLessThanOrEqual(200);
-    expect(template.tips.length).toBeGreaterThan(0);
+    expect(template.tips.length).toBeGreaterThanOrEqual(2);
+    expect(template.updated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('orders featured templates and finds templates by slug and guide', () => {

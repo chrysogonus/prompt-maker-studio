@@ -13,7 +13,9 @@ make up
 
 The direct local frontend and backend ports work without further edits. Browser
 API calls remain same-origin through the frontend proxy, so `CORS_ORIGINS` is
-not involved. To test password-reset email links locally, set:
+not involved. To test password-reset email links locally, and to have the public pages'
+canonical links, sitemap, `/llms.txt` and MCP/OAuth discovery name your local address
+instead of the template's placeholder, set:
 
 ```ini
 FRONTEND_URL=http://localhost:3000
@@ -60,7 +62,8 @@ This copies `.env.example` to `.env` and generates a real `SECRET_KEY` for you.
 It never touches an existing `.env`.
 
 No edit is required for the default local stack. Set `FRONTEND_URL` as shown
-under [Quickest Start](#quickest-start-docker) when testing reset emails.
+under [Quickest Start](#quickest-start-docker) when testing reset emails, public-page
+links or MCP clients locally.
 
 AI access normally uses each user's own connection. Register the first
 account, then connect a provider (OpenAI, Anthropic, Gemini, or a local Ollama
@@ -256,6 +259,16 @@ Safe to re-run — it replaces the account's data rather than duplicating it.
 > unless `SEED_DEMO_USER=1` is set, precisely so it cannot be run against a
 > deployed instance by accident. If you ever do seed a shared database, delete
 > the `alex` user immediately afterwards.
+
+### Refresh the documentation screenshots
+
+```bash
+make screenshots
+```
+
+Starts a throwaway Compose stack, seeds the demo account and overwrites the PNGs in
+`docs/assets/` with the standard documentation views. Review the images before committing
+them; it is separate from `make test-e2e` because it writes files.
 
 ### Adding a New Prompt Field
 

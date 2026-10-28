@@ -10,6 +10,38 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.13.0; see the [release candidate](./docs/releases/0.13.0.md).
+
+### Added
+
+- Research and everyday gallery templates show an example of a good result for their example
+  inputs, labelled as written to show its shape, and every template now has at least two tips.
+- The coding-agent guide has a Copy button for each template and names `AGENTS.md` and
+  `CLAUDE.md` as instruction files. The coding, image and research guides link the provider
+  guidance they draw on (Anthropic, `agents.md`, Google).
+- `/about` says who builds the project (its maintainer on GitHub), where to report problems and
+  read release notes, and how the app handles your prompts and optional AI connections.
+
+### Fixed
+
+- The project's structured data is one entity across all pages: it has a stable `@id`, its logo,
+  the repository as `sameAs` and its maintainer, and free tool pages name it as publisher too.
+- Page titles stay within the 60 characters search results show: the app name is left out
+  where it would not fit, which shortens four guide titles.
+- `/privacy` and `/imprint` redirect permanently (308) instead of temporarily.
+- `sitemap.xml` gives each free tool and gallery template its own last-modified date, kept with
+  its content; index pages and `/about` stay undated rather than guessed.
+- The token counter says how current its prices are: the date they were fetched from the live
+  price index, or when the built-in price list was last checked. `GET /api/public/model-prices`
+  adds a `prices_as_of` field per model.
+- `/about` follows the visitor's system theme when no theme is chosen, like the other public pages.
+- The variables guide shows placeholder syntax across tools and the pitfalls before the in-app
+  walkthrough, and links the template filler.
+- The home page's search title and description lead with the template editor, leaving "prompt
+  library" to the gallery and the "What is a prompt library?" guide, which the gallery now links.
+- The home page lists the ChatGPT and Claude connection second among its features, and the
+  self-hosting paragraph has a Self-host it button to the deployment guide.
+
 ## [0.12.0] - 2026-10-28
 
 See the [release record](./docs/releases/0.12.0.md).
