@@ -1,6 +1,6 @@
 # Documentation
 
-Reviewed against the codebase on 2026-10-28. **0.12.0** is the latest published
+Reviewed against the codebase on 2026-10-28. **0.13.0** is the latest published
 release. Publication, MCP Registry updates and production deployment are
 separate operations.
 
@@ -46,9 +46,10 @@ separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
-- [0.13.0 release candidate](releases/0.13.0.md): one structured-data entity, a fuller
+- [0.13.0 release record](releases/0.13.0.md): one structured-data entity, a fuller
   About page, titles and sitemap dates for search, deeper gallery templates, sourced guides,
-  dated token-counter prices and documentation synced with the code.
+  dated token-counter prices, documentation synced with the code, immutable image digests
+  and validation.
 - [0.12.0 release record](releases/0.12.0.md): search and AI-assistant
   discoverability from the 2026-10-27 SEO audit, an About page, a ChatGPT and Claude
   connection guide, `llms.txt`, fuller gallery pages and guides, immutable image
