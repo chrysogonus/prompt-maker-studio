@@ -58,6 +58,30 @@ def test_missing_live_pair_uses_static_then_unknown(mock_litellm_pricing):
     assert llm_pricing.cost_usd_for("openai", "not-priced", 100, 100) == 0.0
 
 
+def test_prices_say_when_they_were_fetched_or_checked(mock_litellm_pricing):
+    mock_litellm_pricing.return_value = {
+        "gpt-4o-mini": {
+            "litellm_provider": "openai",
+            "input_cost_per_token": 2e-7,
+            "output_cost_per_token": 8e-7,
+        }
+    }
+
+    live = llm_pricing.prices_as_of("openai", "gpt-4o-mini")
+    assert live is not None
+    assert live == llm_pricing._pricing_cache.fetched_at.date()
+    assert llm_pricing.prices_as_of("openai", "gpt-4o") == llm_pricing.FALLBACK_PRICING_CHECKED
+    assert llm_pricing.prices_as_of("openai", "not-priced") is None
+    assert llm_pricing.prices_as_of("ollama", "anything") is None
+
+
+def test_prices_use_the_snapshot_date_when_refresh_is_off(mock_litellm_pricing, monkeypatch):
+    monkeypatch.setenv("LLM_PRICING_REFRESH", "false")
+
+    assert llm_pricing.prices_as_of("openai", "gpt-4o") == llm_pricing.FALLBACK_PRICING_CHECKED
+    mock_litellm_pricing.assert_not_called()
+
+
 def test_self_hosted_pricing_is_always_free_without_fetch(mock_litellm_pricing):
     assert llm_pricing.rates_for("ollama", "anything") == {
         "input": 0.0,

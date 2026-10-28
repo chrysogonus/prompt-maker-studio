@@ -19,6 +19,17 @@ function usd(value: number): string {
   return value < 0.01 ? `$${value.toFixed(4)}` : `$${value.toFixed(2)}`;
 }
 
+function day(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+
+/** "as of 17 October 2026", or a range when prices come from different sources. */
+export function pricesAsOf(rows: PublicModelPrice[]): string {
+  const dates = [...new Set(rows.map((row) => row.prices_as_of).filter((value): value is string => !!value))].sort();
+  if (dates.length === 0) return '(estimated)';
+  return dates.length === 1 ? `as of ${day(dates[0])}` : `checked between ${day(dates[0])} and ${day(dates[dates.length - 1])}`;
+}
+
 export default function TokenCounter() {
   const [text, setText] = useState('');
   const [prices, setPrices] = useState<PublicModelPrice[] | null>(null);
@@ -53,7 +64,7 @@ export default function TokenCounter() {
         // Focusable: it scrolls sideways on narrow screens.
         <div className={styles.tableWrap} role="region" aria-label="Cost by model" tabIndex={0}>
           <table className={styles.table}>
-            <caption className={styles.status}>Estimated input cost of this prompt, at estimated list prices</caption>
+            <caption className={styles.status}>Estimated input cost of this prompt, at list prices {pricesAsOf(prices)}</caption>
             <thead>
               <tr><th scope="col">Model</th><th scope="col">Input per 1M tokens</th><th scope="col">This prompt</th><th scope="col">{RUNS.toLocaleString('en')} runs</th></tr>
             </thead>

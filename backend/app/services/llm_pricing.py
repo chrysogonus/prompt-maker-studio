@@ -17,6 +17,7 @@ batch, residency, temporary-discount, and long-context tiers are not modelled.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, date, datetime
 import logging
 import os
 from threading import Lock
@@ -51,8 +52,9 @@ _LITELLM_PROVIDER_MAP = {
     "anthropic": "anthropic",
 }
 
-# Current catalogue checked 2026-10-17 against official provider pricing. These values are deliberately retained as the
-# fallback tier when LiteLLM is unavailable or lacks a provider/model pair.
+# Current catalogue checked against official provider pricing on FALLBACK_PRICING_CHECKED (update both together).
+# These values are deliberately retained as the fallback tier when LiteLLM is unavailable or lacks a provider/model pair.
+FALLBACK_PRICING_CHECKED = date(2026, 10, 17)
 FALLBACK_PRICING: dict[tuple[str, str], Rates] = {
     # https://developers.openai.com/api/docs/models
     ("openai", "gpt-6-astra"): {"input": 10.00, "output": 50.00},
@@ -91,6 +93,8 @@ _FREE_PROVIDERS = frozenset({"ollama", "vllm"})
 class _PricingCache:
     index: dict[tuple[str, str], Rates] | None = field(default=None)
     expires_at: float = 0.0
+    # Wall-clock time of the last successful fetch, so prices can say how current they are.
+    fetched_at: datetime | None = None
 
 
 _pricing_cache = _PricingCache()
@@ -160,6 +164,7 @@ def _reset_pricing_cache() -> None:
     with _pricing_cache_lock:
         _pricing_cache.index = None
         _pricing_cache.expires_at = 0.0
+        _pricing_cache.fetched_at = None
 
 
 def _live_pricing_index() -> dict[tuple[str, str], Rates]:
@@ -183,6 +188,7 @@ def _live_pricing_index() -> dict[tuple[str, str], Rates]:
             return _pricing_cache.index or {}
 
         _pricing_cache.index = refreshed
+        _pricing_cache.fetched_at = datetime.now(UTC)
         _pricing_cache.expires_at = time.monotonic() + _PRICING_CACHE_TTL_SECONDS
         return _pricing_cache.index
     finally:
@@ -200,6 +206,17 @@ def rates_for(provider: str, model: str, *, refresh: bool = True) -> Rates | Non
         # Telemetry reads the last good value without waiting on an HTTP refresh.
         index = (_pricing_cache.index or {}) if pricing_refresh_enabled() else {}
     return index.get((provider, model)) or FALLBACK_PRICING.get((provider, model))
+
+
+def prices_as_of(provider: str, model: str) -> date | None:
+    """When the rates that rates_for returns were fetched or last checked; None if unpriced or free."""
+    if provider in _FREE_PROVIDERS:
+        return None
+    index = _live_pricing_index()
+    fetched_at = _pricing_cache.fetched_at
+    if (provider, model) in index and fetched_at:
+        return fetched_at.date()
+    return FALLBACK_PRICING_CHECKED if (provider, model) in FALLBACK_PRICING else None
 
 
 # Used only when a spend ceiling is configured and the real figures are

@@ -131,7 +131,7 @@ Used by the free tools for signed-out visitors; no session needed.
 
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
-| `GET` | `/api/public/model-prices` | No | Curated hosted models (`provider`, `provider_label`, `id`, `label`) with estimated input/output prices per million tokens (60/min) |
+| `GET` | `/api/public/model-prices` | No | Curated hosted models (`provider`, `provider_label`, `id`, `label`) with estimated input/output prices per million tokens and `prices_as_of`, the ISO date the price was fetched from the live index or last checked for the built-in snapshot (null when unpriced) (60/min) |
 | `GET` | `/api/public/refine` | No | Whether the free refiner is offered (`available`: `PUBLIC_REFINE_ENABLED` and a server default) and its `max_chars` (60/min) |
 | `POST` | `/api/public/refine/questions` | No | Clarifying questions for a pasted prompt `{text, website, force}`; `website` is a honeypot that must be empty. Uses the server default; 404 when off, 503 without a server default, 402 when the shared or public monthly budget is used up, 429 at the daily or per-IP limit (`PUBLIC_REFINE_RATE_LIMIT`, default 6/minute and 30/day, shared with `/draft`) |
 | `POST` | `/api/public/refine/draft` | No | A refined prompt `{text}` from `{text, website, qa_pairs}` (at most 5 pairs; blank answers are ignored), with the same limits. The refined text must keep the prompt's `{{variables}}` and tags |

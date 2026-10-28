@@ -1,6 +1,6 @@
 """Tests for the unauthenticated public-tool endpoints under /api/public."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from unittest.mock import patch
 
 from openai import OpenAIError
@@ -30,7 +30,9 @@ def test_model_prices_need_no_session(client):
         "provider_label",
         "input_price_per_1m",
         "output_price_per_1m",
+        "prices_as_of",
     }
+    assert date.fromisoformat(luna["prices_as_of"]) <= datetime.now(UTC).date()
 
 
 def test_model_prices_list_only_curated_hosted_models(client):

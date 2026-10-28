@@ -10,6 +10,8 @@ export interface PublicModelPrice {
   provider_label: string;
   input_price_per_1m: number | null;
   output_price_per_1m: number | null;
+  /** ISO date the price was fetched or last checked; null when unpriced. */
+  prices_as_of: string | null;
 }
 
 export async function getPublicModelPrices(): Promise<PublicModelPrice[]> {

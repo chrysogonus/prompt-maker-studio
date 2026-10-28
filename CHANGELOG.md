@@ -29,6 +29,9 @@ any release. See [Project status](./README.md#project-status).
 - `/privacy` and `/imprint` redirect permanently (308) instead of temporarily.
 - `sitemap.xml` gives each free tool and gallery template its own last-modified date, kept with
   its content; index pages and `/about` stay undated rather than guessed.
+- The token counter says how current its prices are: the date they were fetched from the live
+  price index, or when the built-in price list was last checked. `GET /api/public/model-prices`
+  adds a `prices_as_of` field per model.
 - The variables guide shows placeholder syntax across tools and the pitfalls before the in-app
   walkthrough, and links the template filler.
 - The home page's search title and description lead with the template editor, leaving "prompt
