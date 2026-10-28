@@ -43,7 +43,7 @@ export const TOOLS = {
     path: '/tools/token-counter',
     title: 'Prompt token counter',
     description: 'Estimate how many tokens a prompt uses and what it costs across current OpenAI, Anthropic and Gemini models. Runs in your browser; nothing is uploaded.',
-    updated: '2026-10-22',
+    updated: '2026-10-28',
   },
 } satisfies Record<string, ToolSummary>;
 

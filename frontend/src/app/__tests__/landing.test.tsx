@@ -139,7 +139,7 @@ describe('robots.txt and sitemap.xml', () => {
       { url: 'https://prompts.example/tools/prompt-linter', lastModified: '2026-10-22' },
       { url: 'https://prompts.example/tools/prompt-refiner', lastModified: '2026-10-27' },
       { url: 'https://prompts.example/tools/prompt-diff', lastModified: '2026-10-23' },
-      { url: 'https://prompts.example/tools/token-counter', lastModified: '2026-10-22' },
+      { url: 'https://prompts.example/tools/token-counter', lastModified: '2026-10-28' },
       { url: 'https://prompts.example/gallery' },
       ...GALLERY.map(({ slug, updated }) => ({ url: `https://prompts.example/gallery/${slug}`, lastModified: updated })),
     ]);

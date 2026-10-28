@@ -1,7 +1,7 @@
 export type Theme = 'light' | 'dark' | 'system';
 
 // Signed-out pages: a visitor who never chose a theme gets their system's. The app stays light.
-const PUBLIC_PATH = /^\/(?:$|(?:guides|tools|gallery|impressum|datenschutz|terms)(?:\/|$))/;
+const PUBLIC_PATH = /^\/(?:$|(?:about|guides|tools|gallery|impressum|datenschutz|terms)(?:\/|$))/;
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATH.test(pathname);
