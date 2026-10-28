@@ -77,7 +77,7 @@ The final image is installed with `npm ci --omit=dev --omit=optional`.
 
 | Package | Version | License |
 |---|---:|---|
-| @next/env | 16.4.1 | MIT |
+| @next/env | 16.4.2 | MIT |
 | @swc/helpers | 0.5.23 | Apache-2.0 |
 | @types/debug | 4.1.13 | MIT |
 | @types/estree | 1.0.9 | MIT |
@@ -118,7 +118,7 @@ The final image is installed with `npm ci --omit=dev --omit=optional`.
 | js-tokens | 4.0.0 | MIT |
 | longest-streak | 3.1.0 | MIT |
 | loose-envify | 1.4.0 | MIT |
-| lucide-react | 1.57.0 | ISC |
+| lucide-react | 1.61.0 | ISC |
 | markdown-table | 3.0.4 | MIT |
 | mdast-util-find-and-replace | 3.0.4 | MIT |
 | mdast-util-from-markdown | 2.1.0 | MIT |
@@ -166,7 +166,7 @@ The final image is installed with `npm ci --omit=dev --omit=optional`.
 | micromark-util-types | 2.0.3 | MIT |
 | ms | 2.1.3 | MIT |
 | nanoid | 3.3.18 | MIT |
-| next | 16.4.1 | MIT |
+| next | 16.4.2 | MIT |
 | parse-entities | 4.0.2 | MIT |
 | picocolors | 1.1.1 | ISC |
 | postcss | 8.5.23 | MIT |
