@@ -10,6 +10,19 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.14.0; see the [release candidate](./docs/releases/0.14.0.md).
+
+### Added
+
+- [How it works](./docs/how-it-works.md): a plain-language, visual overview of what the project
+  does and how it is built, for newcomers and talks.
+
+### Changed
+
+- Dependency updates: the backend runs `fastapi` 0.156.8 and `httpx2` 2.16.0, the frontend
+  `next` 16.4.2 and `lucide-react` 1.61.0, and CI uses current major versions of its GitHub
+  Actions. None of these is a security fix; the release record lists every version.
+
 ## [0.13.0] - 2026-10-28
 
 See the [release record](./docs/releases/0.13.0.md).
