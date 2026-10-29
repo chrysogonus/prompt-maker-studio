@@ -7,6 +7,7 @@ separate operations.
 ## Start here
 
 - [Project overview and Docker quick start](../README.md).
+- [How it works](how-it-works.md): a plain-language, visual overview for newcomers and talks.
 - [Local development](development.md): toolchains, Make targets and tests.
 - [Contributing](../CONTRIBUTING.md): conventions, quality gates and releases.
 - [Docker](docker.md): services, profiles and configuration.
