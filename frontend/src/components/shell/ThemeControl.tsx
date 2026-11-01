@@ -1,17 +1,20 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import SegmentedControl from '@/components/ui/SegmentedControl';
 import { readStoredTheme, setTheme, subscribeTheme, type Theme } from '@/lib/theme';
 import styles from './Sidebar.module.css';
 
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+] as const;
+
+// The same control as Settings → Appearance, without the icons the sidebar has no room for.
 export default function ThemeControl() {
   const theme = useSyncExternalStore(subscribeTheme, readStoredTheme, () => 'light' as Theme);
-  return <label className={styles.theme}>
-    <span>Theme</span>
-    <select value={theme} onChange={(event) => setTheme(event.target.value as Theme)}>
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
-      <option value="system">System</option>
-    </select>
-  </label>;
+  return <div className={styles.theme}>
+    <SegmentedControl aria-label="Theme" options={THEME_OPTIONS} value={theme} onChange={setTheme} />
+  </div>;
 }

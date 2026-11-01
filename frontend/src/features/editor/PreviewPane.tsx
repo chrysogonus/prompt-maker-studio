@@ -66,8 +66,11 @@ export default function PreviewPane({
   const tryingRef = useRef(false);
   const copiedTimer = useRef<number | null>(null);
   const resultRef = useRef<HTMLElement>(null);
-  // The output lands below the fold of the panel; bring it into view once.
-  useEffect(() => { if (result) resultRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); }, [result]);
+  const runningRef = useRef<HTMLParagraphElement>(null);
+  // The panel sits at the bottom of a scrolling preview, so its progress and output start below
+  // the fold: bring each into view once. The output's top, as it may be taller than the preview.
+  useEffect(() => { if (trying) runningRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); }, [trying]);
+  useEffect(() => { if (result) resultRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); }, [result]);
   useEffect(
     () => () => {
       if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
@@ -157,7 +160,7 @@ export default function PreviewPane({
       {filled && (
         <div className={styles.previewValues}>
           {variables.some((name) => metadata[name]?.example) && (
-            <button type="button" className={styles.copyButton} data-secondary="true" onClick={onLoadExamples}>Load example inputs</button>
+            <button type="button" className={styles.copyButton} data-secondary="true" onClick={onLoadExamples}>Load example values</button>
           )}
           {variables.map((name) => {
             const choices = choiceList(metadata[name]?.options);
@@ -235,7 +238,7 @@ export default function PreviewPane({
           </p>
         )}
         {filled && missingRequired.length > 0 && (
-          <p id="required-input-warning" className={styles.previewWarning}>Required inputs missing: {missingRequired.join(', ')}. Fill them in or choose Copy with placeholders.</p>
+          <p id="required-input-warning" className={styles.previewWarning}>Required variables missing: {missingRequired.join(', ')}. Fill them in or choose Copy with placeholders.</p>
         )}
         {filled && missingOptional.length > 0 && (
           <p className={styles.previewLong}>
@@ -263,10 +266,10 @@ export default function PreviewPane({
             {copied === 'placeholders' ? 'Copied with placeholders' : 'Copy with placeholders'}
           </button>
         )}
-        {filled && <button type="button" className={styles.copyButton} data-secondary="true" disabled={!Object.values(values).some(Boolean)} onClick={onClearValues}>Clear inputs</button>}
+        {filled && <button type="button" className={styles.copyButton} data-secondary="true" disabled={!Object.values(values).some(Boolean)} onClick={onClearValues}>Clear values</button>}
         </div>
         {filled && inputsRemembered && Object.values(values).some(Boolean) && (
-          <p className={styles.previewLong}>Inputs stay on this device until you clear them.</p>
+          <p className={styles.previewLong}>Values stay on this device until you clear them.</p>
         )}
         <details className={styles.outputOptions}>
           <summary>Output options</summary>
@@ -279,24 +282,29 @@ export default function PreviewPane({
           </label>
         </details>
         {(filled || variables.length === 0) && (
-          <details className={styles.tryPanel} open={tryOpen} onToggle={(event) => setTryOpen(event.currentTarget.open)}>
+          <details className={styles.tryPanel} open={tryOpen} onToggle={(event) => {
+            const panel = event.currentTarget;
+            setTryOpen(panel.open);
+            // Opening it shows Try once, which would otherwise be below the fold.
+            if (panel.open) panel.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+          }}>
             <summary>Test with AI</summary>
             <div className={styles.tryControls}>
               <>{aiConfigLoading ? <p role="status">Checking AI connection…</p> : aiConfigError ? <p role="status">Could not check the AI connection. Reload to retry.</p> : <AICallContext config={aiConfig} />}</>
               {filledText.length > TRY_PROMPT_CHARS && <p className={styles.previewWarning}>Try once accepts up to 100,000 characters. Shorten the prompt before running.</p>}
               {/* A run with only placeholders usually just asks for the inputs, wasting a call. */}
-              {variables.length > 0 && unfilled.length === variables.length && <p className={styles.previewWarning}>No inputs are filled in, so the model will see only placeholders.</p>}
+              {variables.length > 0 && unfilled.length === variables.length && <p className={styles.previewWarning}>No values are filled in, so the model will see only placeholders.</p>}
               <button type="button" className={styles.copyButton} data-secondary="true" onClick={tryOnce}
                 disabled={filledText.length > TRY_PROMPT_CHARS || trying || !hasContent || missingRequired.length > 0 || !aiConfig?.provider_connected || aiConfig.budget_exhausted}>
                 {trying ? 'Running…' : 'Try once'}
               </button>
             </div>
-            {trying && <p className={styles.tryResult} role="status">Running the filled prompt…</p>}
+            {trying && <p ref={runningRef} className={styles.tryResult} role="status">Running the filled prompt…</p>}
             {tryError && <p className={styles.tryResult} role="alert">{tryError}{tryError.includes('Settings →') && <> <Link href="/settings#s-api">Open Settings</Link></>}</p>}
             {result && <section ref={resultRef} className={styles.tryResult} aria-label="Try once output">
               <h3>Output</h3>
               <p>{aiConfig?.provider === result.response.provider ? aiConfig.provider_label : result.response.provider} / {result.response.model}</p>
-              {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier inputs. Run again to try the current prompt.</p>}
+              {result.text !== (variables.length ? filledText : template) && <p>Output is from earlier values. Run again to try the current prompt.</p>}
               {result.response.output_text ? <ModelOutput text={result.response.output_text} /> : <p>The model returned no text.</p>}
               {result.response.output_text && (
                 <button type="button" className={styles.copyButton} data-secondary="true" onClick={() => copy('output')}>

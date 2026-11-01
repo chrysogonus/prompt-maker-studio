@@ -93,7 +93,7 @@
 
 ### Story: Compare and restore a version
 **Given** a prompt saved at least twice
-**When** the user opens Tools → History, selects an earlier version and restores it
+**When** the user opens More → History, selects an earlier version and restores it
 **Then** the diff showed what changed, the restored sections are live, and the replaced state is a new version
 
 ### Story: Recover after an edit conflict

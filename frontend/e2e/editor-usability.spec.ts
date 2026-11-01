@@ -25,7 +25,7 @@ for (const width of [1440, 390]) {
     await page.getByLabel('Format text').fill('Use three bullets.');
     await page.getByText('Options for topic', { exact: true }).click();
     await page.getByLabel('Required topic', { exact: true }).check();
-    await page.getByLabel('Example input for topic').fill('Saturn');
+    await page.getByLabel('Example value for topic').fill('Saturn');
 
     const tools = page.getByRole('button', { name: /^(Move .* (up|down)|Remove (Role|Task|Format))$/ });
     for (const button of await tools.all()) {
@@ -51,7 +51,7 @@ for (const width of [1440, 390]) {
     await expect(page.getByLabel('Prompt text')).toContainText('Explain {{topic}}.');
     await page.getByRole('button', { name: 'Copy with placeholders' }).click();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Explain {{topic}}.');
-    await page.getByRole('button', { name: 'Load example inputs' }).click();
+    await page.getByRole('button', { name: 'Load example values' }).click();
     await expect(page.getByLabel('topic Required')).toHaveValue('Saturn');
     await page.getByRole('button', { name: 'Copy filled prompt' }).click();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Explain Saturn.');
@@ -63,48 +63,48 @@ for (const width of [1440, 390]) {
     await page.getByText('Test with AI', { exact: true }).click();
     await page.getByRole('button', { name: 'Try once' }).click();
     await expect(page.getByRole('region', { name: 'Try once output' })).toContainText('Saturn has rings.');
-    await expect(page.getByRole('button', { name: 'Edit template', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Edit', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
 
     await page.goto('/library');
     await expect(page.getByRole('link', { name: 'Fill and copy' })).toBeVisible();
     await page.getByRole('button', { name: 'Grid', exact: true }).click();
     const card = page.getByRole('listitem').filter({ hasText: 'Isolated UX prompt' });
-    await expect(card.getByRole('button', { name: 'Copy the Isolated UX prompt template' })).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Copy template: Isolated UX prompt' })).toBeVisible();
     await card.getByRole('link', { name: 'Fill and copy' }).click();
     await expect(page.getByLabel('topic Required')).toBeVisible();
     await expect(page).toHaveURL(/mode=filled/);
-    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+    await page.getByRole('tab', { name: 'Edit', exact: true }).click();
 
     await page.getByLabel('Task text').fill('Explain {{topic}} briefly.');
     await page.getByLabel('Version note').fill('Make it brief');
     await page.reload();
-    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+    await page.getByRole('tab', { name: 'Edit', exact: true }).click();
     await expect(page.getByText('Your unsaved changes were restored.')).toBeVisible();
     await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}} briefly.');
     await expect(page.getByLabel('Version note')).toHaveValue('Make it brief');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'History', exact: true }).click();
     await expect(page.getByText('Version 2, current').locator('..')).toContainText('Make it brief');
     await page.getByRole('button', { name: 'Close history' }).click();
     await page.getByLabel('Task text').fill('Explain {{topic}} clearly.');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'History', exact: true }).click();
     await expect(page.getByRole('button', { name: /Version 2/ })).toContainText('Make it brief');
     await page.getByRole('button', { name: 'Close history' }).click();
 
     await page.route('**/api/prompts/parse-text', (route) => route.fulfill({ json: { fields: [{ name: 'Imported', content: 'Imported draft.' }] } }));
-    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'Paste a prompt' }).click();
     const importer = page.getByRole('dialog', { name: 'Paste a prompt' });
     await expect(importer).toContainText('current draft stays as it is');
     await expect(importer).toContainText('Ollama / test-model');
     await importer.getByLabel('Prompt to convert').fill('Imported draft.');
-    await importer.getByRole('button', { name: 'Create template with AI', exact: true }).click();
+    await importer.getByRole('button', { name: 'Make reusable with AI', exact: true }).click();
     const review = page.getByRole('dialog', { name: 'Review your template' });
     await expect(review).toContainText('replace your current sections and variable settings');
     await review.getByRole('button', { name: 'Use in editor' }).click();
@@ -112,7 +112,7 @@ for (const width of [1440, 390]) {
     await expect(page.getByLabel('Imported text')).toHaveValue('Imported draft.');
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
     await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}} clearly.');
-    await expect(page.getByLabel('Example input for topic')).toHaveValue('Saturn');
+    await expect(page.getByLabel('Example value for topic')).toHaveValue('Saturn');
     await expect(page.getByLabel('Required topic', { exact: true })).toBeChecked();
     await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -120,9 +120,9 @@ for (const width of [1440, 390]) {
     await page.screenshot({ path: testInfo.outputPath(`editor-${width}.png`), fullPage: true });
     await page.goto(editorUrl);
     await expect(page.getByLabel('topic Required')).toHaveValue('Saturn');
-    await expect(page.getByText('Inputs stay on this device until you clear them.')).toBeVisible();
+    await expect(page.getByText('Values stay on this device until you clear them.')).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Review your template' })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Clear inputs', exact: true }).click();
+    await page.getByRole('button', { name: 'Clear values', exact: true }).click();
     await page.reload();
     await expect(page.getByLabel('topic Required')).toHaveValue('');
   });

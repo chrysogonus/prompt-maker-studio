@@ -10,11 +10,13 @@ import {
   AllPromptsIcon,
   FavoriteIcon,
   FolderIcon,
+  MoreIcon,
   NewIcon,
   SettingsIcon,
   UnfiledIcon,
 } from '@/components/ui/icon';
 import { useLibraryData } from '@/features/library/LibraryData';
+import { AuthService } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
 import { APP_NAME } from '@/lib/branding';
 import {
@@ -92,6 +94,13 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
 
   useEffect(() => { void load().catch(() => {}); }, [load, pathname]);
 
+  // Say so, and leave the private address (such as a prompt's) behind, as account deletion does.
+  const signOut = () => {
+    logout();
+    AuthService.setSignInNotice('You’ve signed out.');
+    window.history.replaceState(null, '', '/library');
+  };
+
   const counts = useMemo(() => {
     const prompts = library ?? [];
     const folders = new Map<string, number>();
@@ -154,13 +163,25 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
         {item({ type: 'favorites' }, 'Favourites', <FavoriteIcon tone="inherit" />, counts.favorites)}
 
         <h2 className={styles.heading}>Folders</h2>
-        {counts.folders.map(({ name, count }) =>
-          item({ type: 'folder', folder: name }, name, <FolderIcon tone="inherit" />, count),
-        )}
+        {counts.folders.map(({ name, count }) => (
+          <div key={`folder:${name}`} className={styles.folderRow}>
+            {item({ type: 'folder', folder: name }, name, <FolderIcon tone="inherit" />, count)}
+            {/* Opens the folder with its Rename/Remove menu, which lives in the library header. */}
+            <Link
+              href={`${libraryHref({ type: 'folder', folder: name })}&manage=folder`}
+              className={styles.folderActions}
+              aria-label={`Rename or remove the ${name} folder`}
+              title="Rename or remove"
+              onClick={onNavigate}
+            >
+              <MoreIcon tone="inherit" size={16} />
+            </Link>
+          </div>
+        ))}
         {counts.unfiled > 0 &&
           item({ type: 'unfiled' }, 'Unfiled', <UnfiledIcon tone="inherit" />, counts.unfiled)}
         {counts.folders.length === 0 && (
-          <p className={styles.empty}>Folders appear when you file a prompt.</p>
+          <p className={styles.empty}>No folders yet. To make one, choose Move to folder on a prompt and type a new name.</p>
         )}
       </nav>
 
@@ -198,7 +219,7 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
         </a>
         <div className={styles.account}>
           <span className={styles.user}>Signed in as {currentUser}</span>
-          <button type="button" className={styles.signOut} onClick={logout}>
+          <button type="button" className={styles.signOut} onClick={signOut}>
             Sign out
           </button>
         </div>

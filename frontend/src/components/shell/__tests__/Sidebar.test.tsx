@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AuthService } from '@/lib/auth';
 import Sidebar from '../Sidebar';
 import { ApiClient } from '@/lib/api';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
@@ -56,7 +57,8 @@ beforeEach(() => {
 function navLabels() {
   return within(screen.getByRole('navigation', { name: 'Library' }))
     .getAllByRole('link')
-    .map((link) => link.textContent);
+    .map((link) => link.textContent)
+    .filter(Boolean); // Folder action links are icon-only.
 }
 
 describe('Sidebar', () => {
@@ -94,7 +96,7 @@ describe('Sidebar', () => {
   it('lists the library views and folders with counts, Recovered history last', async () => {
     render(<Sidebar open={false} onNavigate={vi.fn()} />);
 
-    expect(await screen.findByRole('link', { name: /Work/ })).toHaveTextContent('Work2');
+    expect(await screen.findByRole('link', { name: /^Work/ })).toHaveTextContent('Work2');
     expect(navLabels()).toEqual([
       'All prompts5',
       'Favourites1',
@@ -103,9 +105,13 @@ describe('Sidebar', () => {
       'Recovered history1',
       'Unfiled1',
     ]);
-    expect(screen.getByRole('link', { name: /Learning/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /^Learning/ })).toHaveAttribute(
       'href',
       '/library?folder=Learning',
+    );
+    expect(screen.getByRole('link', { name: 'Rename or remove the Work folder' })).toHaveAttribute(
+      'href',
+      '/library?folder=Work&manage=folder',
     );
     expect(screen.getByRole('link', { name: 'New prompt' })).toHaveAttribute('href', '/editor/new');
     expect(screen.getByRole('link', { name: 'Free tools' })).toHaveAttribute('href', '/tools');
@@ -120,8 +126,8 @@ describe('Sidebar', () => {
     params = new URLSearchParams({ folder: 'Work' });
     render(<Sidebar open={false} onNavigate={vi.fn()} />);
 
-    expect(await screen.findByRole('link', { name: /Work/ })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: /All prompts/ })).not.toHaveAttribute('aria-current');
+    expect(await screen.findByRole('link', { name: /^Work/ })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /^All prompts/ })).not.toHaveAttribute('aria-current');
   });
 
   it('marks Settings while on the settings page', async () => {
@@ -129,31 +135,35 @@ describe('Sidebar', () => {
     render(<Sidebar open={false} onNavigate={vi.fn()} />);
 
     expect(await screen.findByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: /All prompts/ })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: /^All prompts/ })).not.toHaveAttribute('aria-current');
   });
 
   it('refreshes its counts when the library changes', async () => {
     render(<Sidebar open={false} onNavigate={vi.fn()} />);
-    await screen.findByRole('link', { name: /Work/ });
+    await screen.findByRole('link', { name: /^Work/ });
 
     vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([prompt(1, 'Writing')]);
     await act(async () => notifyLibraryChanged());
 
-    expect(await screen.findByRole('link', { name: /Writing/ })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Work/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /^Writing/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^Work/ })).not.toBeInTheDocument();
   });
 
   it('closes the phone drawer on navigation and signs out', async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
     render(<Sidebar open onNavigate={onNavigate} />);
-    await screen.findByRole('link', { name: /Work/ });
+    await screen.findByRole('link', { name: /^Work/ });
 
-    await user.click(screen.getByRole('link', { name: /Favourites/ }));
+    await user.click(screen.getByRole('link', { name: /^Favourites/ }));
     expect(onNavigate).toHaveBeenCalled();
 
     expect(screen.getByText('Signed in as alex')).toBeInTheDocument();
+    window.history.replaceState(null, '', '/editor/7');
+    const notice = vi.spyOn(AuthService, 'setSignInNotice');
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(logout).toHaveBeenCalled();
+    expect(notice).toHaveBeenCalledWith('You’ve signed out.');
+    expect(window.location.pathname).toBe('/library');
   });
 });

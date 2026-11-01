@@ -35,7 +35,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <div className={styles.loading}>
         <div className={styles.spinner}></div>
-        <p>Loading...</p>
+        <p>Loading…</p>
       </div>
     );
   }

@@ -95,8 +95,11 @@ test('keeps the fill-in fields when Try once returns a long output', async ({ pa
   const inputsHeight = () => team.evaluate(el => el.closest('label')!.parentElement!.clientHeight);
   const before = await inputsHeight();
   await page.getByText('Test with AI', { exact: true }).click();
+  // The panel sits at the bottom of the scrolling preview: opening it and running it scroll into view.
+  await expect(page.getByRole('button', { name: 'Try once', exact: true })).toBeInViewport({ ratio: 1 });
   await page.getByRole('button', { name: 'Try once', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Try once output' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Output' })).toBeInViewport();
   expect(await inputsHeight()).toBeGreaterThanOrEqual(before);
 });
 
@@ -109,7 +112,7 @@ for (const viewport of [{ width: 1440, height: 720 }, { width: 390, height: 844 
     })) }));
     await page.goto('/library');
     if (viewport.width <= 760) await page.getByRole('button', { name: 'Open navigation' }).click();
-    await expect(page.getByRole('link', { name: /Folder 20/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Folder 20/ })).toBeVisible();
     const button = (await page.getByRole('link', { name: 'New prompt', exact: true }).boundingBox())!;
     expect(button.height).toBeGreaterThanOrEqual(36);
   });
@@ -124,16 +127,17 @@ for (const theme of ['light', 'dark']) {
       const preview = page.getByRole('complementary', { name: 'Preview', exact: true });
       await expect(preview).toBeVisible();
       const previewBox = (await preview.boundingBox())!;
-      expect(previewBox.y).toBeLessThan(viewport.width > 760 ? 140 : 220);
+      // Narrow screens give the Edit / Fill and copy switch its own row under the header.
+      expect(previewBox.y).toBeLessThan(viewport.width > 1200 ? 140 : viewport.width > 760 ? 170 : 260);
       const textBox = (await page.getByLabel('Prompt text').boundingBox())!;
       expect(textBox.height).toBeGreaterThanOrEqual(160);
       const copyBox = (await page.getByRole('button', { name: 'Copy filled prompt' }).boundingBox())!;
       expect(copyBox.y + copyBox.height).toBeLessThanOrEqual(viewport.height);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await page.getByRole('button', { name: 'Tools', exact: true }).click();
+      await page.getByRole('button', { name: 'More', exact: true }).click();
       await expect(page.getByRole('button', { name: 'History', exact: true })).toBeVisible();
       await page.keyboard.press('Escape');
-      await expect(page.getByRole('button', { name: 'Tools', exact: true })).toBeFocused();
+      await expect(page.getByRole('button', { name: 'More', exact: true })).toBeFocused();
       await page.getByText('Test with AI', { exact: true }).click();
       await expect(page.getByRole('button', { name: 'Try once', exact: true })).toBeDisabled();
       await expect(preview.getByText(/Connect an AI provider in Settings/)).toBeVisible();
@@ -150,7 +154,7 @@ for (const theme of ['light', 'dark']) {
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(value => localStorage.setItem('theme', value), theme);
       await page.goto('/editor/1');
-      await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+      await page.getByRole('tab', { name: 'Edit', exact: true }).click();
       const edit = page.getByRole('tab', { name: 'Edit', exact: true });
       if (width <= 1200) await edit.click();
       await expect(page.getByLabel('Context text')).toBeVisible();
@@ -187,7 +191,7 @@ for (const width of [390, 1440]) {
     const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
     await expect(paste).toContainText('one Task section, which copies as plain text');
     await paste.getByLabel('Prompt to convert').fill(text);
-    await paste.getByRole('button', { name: 'Save as written' }).click();
+    await paste.getByRole('button', { name: 'Keep as written' }).click();
     const save = page.getByRole('dialog', { name: 'Save prompt', exact: true });
     await expect(save.getByLabel('Name', { exact: true })).toHaveValue('Write a weekly update.');
     await save.getByLabel('Name', { exact: true }).fill('My weekly update');
@@ -202,19 +206,16 @@ for (const width of [320, 390, 768, 1440]) {
   test(`keeps mode controls, plain output and prompt details usable at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/editor/1');
-    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
-    const useButton = page.getByRole('button', { name: 'Fill and copy', exact: true });
+    await page.getByRole('tab', { name: 'Edit', exact: true }).click();
+    // The same switch at every width, in the same place.
     const useTab = page.getByRole('tab', { name: 'Fill and copy', exact: true });
-    if (width <= 1200) {
-      await expect(useButton).not.toBeVisible();
-      await expect(useTab).toBeVisible();
-      expect((await useTab.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-      await useTab.click();
-    } else await useButton.click();
+    await expect(useTab).toBeVisible();
+    if (width <= 1200) expect((await useTab.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await useTab.click();
     await page.getByText('Output options', { exact: true }).click();
     await page.getByRole('combobox', { name: 'Output format' }).selectOption('plain');
     await expect(page.getByLabel('Prompt text')).toHaveText('Write clear updates for busy stakeholders.\n\nTeam: {{team}}\nWeek: {{week}}\nNotes: {{notes}}\n\nLead with what shipped, then risks and next steps.');
-    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'Prompt details' }).click();
     const details = page.getByRole('dialog', { name: 'Prompt details' });
     await expect(details).toContainText('Weekly status update');

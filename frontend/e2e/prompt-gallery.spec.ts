@@ -22,7 +22,7 @@ test('a template fills in with example inputs, saves into a new library and reop
   await page.goto('/gallery');
   await page.getByRole('region', { name: 'Featured' }).getByRole('link', { name: 'Bug fix brief for a coding agent' }).click();
   await expect(page).toHaveURL(/\/gallery\/bug-fix-brief$/);
-  await page.getByRole('button', { name: 'Use example inputs' }).click();
+  await page.getByRole('button', { name: 'Use example values' }).click();
   await expect(page.getByLabel('Filled prompt')).toContainText('npm test passes');
   await page.getByRole('button', { name: 'Save to my library' }).click();
 
@@ -34,7 +34,7 @@ test('a template fills in with example inputs, saves into a new library and reop
   await page.locator('#reg-email').fill(`gallery${suffix}@example.com`);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  await expect(page.getByText(/^Imported \d+ sections into draft—save to keep\.$/)).toBeVisible();
+  await expect(page.getByText('Not saved yet. Choose Save to add it to your library.')).toBeVisible();
   await expect(page.getByLabel('check_command', { exact: true })).toHaveValue('npm test');
   await expect(page.getByLabel('Goal text')).toHaveValue(/\{\{symptom\}\}/);
 
@@ -45,7 +45,7 @@ test('a template fills in with example inputs, saves into a new library and reop
   await save.getByRole('button', { name: 'Save prompt' }).click();
   await expect(page).toHaveURL(/\/editor\/\d+$/);
   await page.reload();
-  await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+  await page.getByRole('tab', { name: 'Edit', exact: true }).click();
   await expect(page.getByLabel('Goal text')).toHaveValue('Fix this bug: {{symptom}}. Expected behaviour: {{expected}}.');
   await expect(page.getByLabel('Done when text')).toHaveValue(/regression test/);
   await expect(page.getByLabel('Hint for symptom')).toHaveValue('What goes wrong, and how to reproduce it');

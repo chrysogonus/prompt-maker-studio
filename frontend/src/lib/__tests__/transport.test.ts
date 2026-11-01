@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { AuthService } from '../auth';
-import { authenticatedFetch, sessionFetch } from '../api/transport';
+import { authenticatedFetch, NETWORK_ERROR_MESSAGE, sessionFetch } from '../api/transport';
 
 beforeEach(() => vi.restoreAllMocks());
 
@@ -38,4 +38,9 @@ it('keeps callers without renewal opted out even on unauthorized responses', asy
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
   await expect(sessionFetch('/api/auth/change-password')).resolves.toBe(response);
   expect(refresh).not.toHaveBeenCalled();
+});
+
+it('turns a browser network failure into a readable error', async () => {
+  vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+  await expect(sessionFetch('/api/prompts')).rejects.toMatchObject({ name: 'ApiError', status: 0, message: NETWORK_ERROR_MESSAGE });
 });

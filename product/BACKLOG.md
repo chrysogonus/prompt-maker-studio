@@ -66,6 +66,12 @@ Phase 5 of the evaluate → refine loop (see [below](#evaluate--refine-loop-plan
 - **Sequential prompt IDs**: IDs reveal the total number of prompts to any user; not a vulnerability given the ownership checks, but worth deciding before a public launch.
 - **Source**: `prompt-maker-ux-test-2026-10-23.md` (not checked in).
 
+### Small Follow-ups from the 2026-10-31 UI/UX Test
+
+- **App shell before the session check**: on a slow link a signed-in visit shows a full-screen spinner for several seconds before the sidebar appears. Rendering the shell early needs the browser's session hint, and must not flash the shell for signed-out visitors.
+- **Test with AI beside the prompt**: Test with AI now scrolls itself and its output into view inside the preview. If that is still easy to miss, give it a header button and a side panel like Refine's.
+- **Source**: `prompt-maker-ux-test-2026-10-31.md` (not checked in), findings L12 and M5.
+
 ### Variable Defaults & Typed Validation
 
 - **Value**: Reuse predictable inputs without confusing examples with defaults.

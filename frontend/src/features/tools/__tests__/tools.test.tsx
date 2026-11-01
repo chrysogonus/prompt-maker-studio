@@ -61,7 +61,7 @@ describe('TemplateFiller', () => {
     render(<TemplateFiller title="Trip" fields={[{ name: 'Task', content: 'Plan {{days}} days.' }]} hints={{ days: 'How long?' }} examples={{ days: '3' }} />);
     expect(screen.queryByLabelText('Prompt template')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'days' })).toHaveAttribute('placeholder', 'How long?');
-    await user.click(screen.getByRole('button', { name: 'Use example inputs' }));
+    await user.click(screen.getByRole('button', { name: 'Use example values' }));
     expect(screen.getByLabelText('Filled prompt')).toHaveTextContent('Plan 3 days.');
   });
 });
@@ -116,7 +116,7 @@ describe('TokenCounter', () => {
     expect(screen.getByText('≈ 10')).toBeInTheDocument();
     const row = await screen.findByRole('row', { name: /OpenAI · Model M/ });
     expect(row).toHaveTextContent('$2.00');
-    expect(row).toHaveTextContent('$0.0000');
+    expect(row).toHaveTextContent('< $0.0001');
     expect(screen.getByRole('row', { name: /Google Gemini · u/ })).toHaveTextContent('—');
     expect(screen.getByText(/at list prices as of 17 October 2026/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save to my library' }));

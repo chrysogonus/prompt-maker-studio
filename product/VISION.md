@@ -24,7 +24,7 @@ A prompt is a short list of named sections with `{{variables}}`. The library kee
 - A saved prompt can be found, filled in and copied in under 15 seconds, including on a phone
 - A new structured prompt can be written and saved in under 2 minutes, from scratch, a starter template, or pasted text
 - What the editor previews, what the ChatGPT or Claude connector saves, and what is copied never disagree
-- Earlier versions of a prompt are reachable through Tools → History for comparison and restore
+- Earlier versions of a prompt are reachable through More → History for comparison and restore
 - Nothing in the app looks precise without being true: estimates, such as the free token counter's, say they are estimates and how current their prices are; no vanity analytics
 
 ## Non-Goals (Out of Scope)

@@ -55,7 +55,7 @@ export default function TemplateFiller({ initialText = '', fields, title, hints 
           <legend>Fill in</legend>
           {hasExamples && (
             <div className={styles.actions}>
-              <Button onClick={() => setValues({ ...values, ...exampleValues })}>Use example inputs</Button>
+              <Button onClick={() => setValues({ ...values, ...exampleValues })}>Use example values</Button>
             </div>
           )}
           {names.map((name) => (

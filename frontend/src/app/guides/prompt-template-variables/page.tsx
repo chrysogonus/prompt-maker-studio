@@ -127,7 +127,7 @@ export default function TemplateVariablesPage() {
           and select <strong>Required team</strong>. Variables are optional unless you mark them required.
         </li>
         <li>
-          In the same options, optionally fill in <strong>Example input</strong>. Choose <strong>Save</strong> to keep hints, requirements,
+          In the same options, optionally fill in <strong>Example value</strong>. Choose <strong>Save</strong> to keep hints, requirements,
           and examples with the template. Examples are not inserted automatically.
         </li>
       </ol>
@@ -144,7 +144,7 @@ export default function TemplateVariablesPage() {
           <code>notes</code>: <strong>{exampleInputs.notes}</strong>
         </li>
         <li>
-          If you saved example inputs, <strong>Load example inputs</strong> fills those values
+          If you saved example values, <strong>Load example values</strong> fills those values
           only when you choose it. It replaces the current values for variables with saved examples.
         </li>
         <li>

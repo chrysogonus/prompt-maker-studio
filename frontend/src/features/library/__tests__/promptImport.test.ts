@@ -159,6 +159,12 @@ describe('prompt import', () => {
     expect(parseCsvPrompts('Title,Notes,Long text\nA,x,The real prompt text here')[0].fields[0].content).toBe('The real prompt text here');
     expect(() => parseCsvPrompts('Name,Prompt\n')).toThrow('no rows');
   });
+  it('takes a CSV folder from a Folder column before Tags', () => {
+    expect(parseCsvPrompts('title,prompt,folder,tags\nTrip,Plan a trip,Travel,work\nOther,Do it,,home')).toEqual([
+      { name: 'Trip', folder: 'Travel', fields: [{ name: 'Prompt', content: 'Plan a trip' }] },
+      { name: 'Other', folder: 'Home', fields: [{ name: 'Prompt', content: 'Do it' }] },
+    ]);
+  });
   it('keeps prompt text stored in a Notion property and drops only the metadata', () => {
     expect(parsePromptImport('# Cold email\n\nPrompt: Write to [Name].\nTags: Sales\nAudience: Founders\n\nMore detail.')[0]).toEqual({
       name: 'Cold email', folder: 'Sales', fields: [{ name: 'Prompt', content: 'Write to [Name].\nAudience: Founders\n\nMore detail.' }],

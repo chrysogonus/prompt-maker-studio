@@ -318,9 +318,13 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
           </div>}
           <details className={styles.dialogText}>
             <summary>Format details</summary>
-            <p>A note without a heading is kept in one Prompt section. Note metadata is tidied first: YAML front matter, Notion page properties and callouts, Obsidian callouts, comments, Dataview queries, embedded files and trailing #tags are removed, [[links]], links to other Notion pages and ==highlights== read as text, the front matter title or first heading becomes the title, the first tag suggests a folder, and a Notion favourite stays a favourite. Note templates and pages of only links start unticked. You can keep the original text in the preview.</p>
-            <p>For several prompts in one note, start each with a heading and optionally add smaller headings for sections; a pasted page that starts at ## works the same way. Headings inside code fences remain text. Up to 1,000 prompts at a time.</p>
-            <p>JSON files use the Prompt Maker Studio export format: titles, sections, folders, variable settings and favourites are copied. Version history, dates and notes are not imported; this is not a full archive restore.</p>
+            <ul>
+              <li><strong>Notes</strong> (Markdown, Obsidian, Notion): a note without a heading becomes one Prompt section. Its first heading or front matter title becomes the title, its first tag suggests a folder, and a Notion favourite stays one. Note metadata, such as front matter, callouts, comments and Dataview queries, is removed; you can keep the original text in the preview.</li>
+              <li><strong>Several prompts in one note</strong>: start each with a heading, and use smaller headings for its sections. Headings inside code fences stay text.</li>
+              <li><strong>CSV</strong>: a Name or Title column, a Prompt column, and an optional Folder or Tags column. One prompt per row.</li>
+              <li><strong>JSON</strong>: the Prompt Maker Studio export. Titles, sections, folders, variable settings and favourites are copied; version history, dates and notes are not.</li>
+              <li>Up to 1,000 prompts at a time. Note templates and pages of only links start unticked.</li>
+            </ul>
           </details>
           <Button variant="primary" disabled={busy || (!source.trim() && !files.length)} onClick={() => showPreview(keepOriginal)}>Preview</Button>
         </>}
@@ -350,7 +354,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
             </div>
           </>}
           {placeholders.length > 0 && !beforeConvert && <fieldset className={styles.placeholderOffer}>
-            <legend>Found {placeholders.length === 1 ? 'a placeholder' : `${placeholders.length} placeholders`}. Choose which become inputs you fill in:</legend>
+            <legend>Found {placeholders.length === 1 ? 'a placeholder' : `${placeholders.length} placeholders`}. Choose which become variables you fill in:</legend>
             <div className={styles.placeholderChoices}>
               {placeholders.map(token => <label key={token}>
                 <input type="checkbox" checked={!unchosen.includes(token)} disabled={busy}
@@ -359,10 +363,10 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
               </label>)}
             </div>
             <Button variant="secondary" disabled={busy || !chosen.length} onClick={() => { setBeforeConvert(preview); setPreview(convertPlaceholders(preview, chosen)); }}>
-              {placeholders.length === 1 ? 'Turn it into an input' : `Turn ${chosen.length === placeholders.length ? 'them' : chosen.length} into inputs`}
+              {placeholders.length === 1 ? 'Turn it into a variable' : `Turn ${chosen.length === placeholders.length ? 'them' : chosen.length} into variables`}
             </Button>
           </fieldset>}
-          {beforeConvert && <p role="status" className={styles.dialogText}>Placeholders are now inputs you fill in before copying; their wording is kept as each input&apos;s hint.{' '}
+          {beforeConvert && <p role="status" className={styles.dialogText}>Placeholders are now variables you fill in before copying; their wording is kept as each variable&apos;s hint.{' '}
             <Button variant="ghost" disabled={busy} onClick={() => { setPreview(preview.map((item, i) => ({ ...item, fields: beforeConvert[i].fields, variable_metadata: beforeConvert[i].variable_metadata }))); setBeforeConvert(null); }}>Undo</Button>
           </p>}
           <div className={styles.importPreview}>
@@ -409,7 +413,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
               </div>;
             })}
           </div>
-          {singleNote && <p className={styles.dialogText}>Keep it as written, or let AI split it into sections and suggest inputs (needs an AI connection).</p>}
+          {singleNote && <p className={styles.dialogText}>Import it as written, or let AI split it into sections and suggest variables (needs an AI connection).</p>}
           <div className={styles.formActions}>
             <Button variant="ghost" disabled={busy} onClick={() => { setPreview(null); setBeforeConvert(null); setError(''); }}>Back</Button>
             {singleNote && <Button variant="secondary" disabled={busy} onClick={reuseWithAI}>Make reusable with AI</Button>}
@@ -417,7 +421,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
               {busy ? (count + updateCount > 1 ? `Importing ${progress} of ${count + updateCount}…` : 'Importing…')
                 : !(count + updateCount) ? (preview.every(isDuplicate) ? 'Nothing new to import' : 'Nothing selected to import')
                 : !count ? `Update ${plural(updateCount, 'prompt')}`
-                : singleNote ? 'Keep as written'
+                : singleNote ? 'Import as written'
                 : `Import ${plural(count, 'prompt')}${updateCount ? ` and update ${updateCount}` : ''}`}
             </Button>
           </div>

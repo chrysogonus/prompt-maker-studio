@@ -60,8 +60,10 @@ for (const width of [1440, 390]) {
       await page.keyboard.press('Tab');
       expect(await review.evaluate((element) => element.contains(document.activeElement))).toBe(true);
       await expect(review.getByLabel('Converted prompt preview')).toHaveText(filled);
+      // The review uses the room it asks for, not the default 460px dialog width.
+      if (width >= 1440) expect((await review.boundingBox())!.width).toBeGreaterThan(900);
       await expect(review.getByRole('button', { name: 'Copy filled prompt' })).toBeInViewport();
-      await expect(review.getByRole('checkbox', { name: 'Keep these inputs as examples' })).not.toBeChecked();
+      await expect(review.getByRole('checkbox', { name: 'Keep these values as examples' })).not.toBeChecked();
       await review.getByRole('button', { name: 'Copy filled prompt' }).click();
       expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(filled);
       await review.getByLabel('Variable name for destination').fill('city');
@@ -96,7 +98,7 @@ for (const width of [1440, 390]) {
       await page.getByRole('button', { name: 'Undo', exact: true }).click();
       await expect(page.getByLabel('Task text')).toHaveValue('');
       await page.getByRole('button', { name: 'Paste a prompt', exact: true }).click();
-      if (theme === 'dark') await review.getByRole('checkbox', { name: 'Keep these inputs as examples' }).check();
+      if (theme === 'dark') await review.getByRole('checkbox', { name: 'Keep these values as examples' }).check();
       await review.getByRole('button', { name: 'Use in editor' }).click();
       await page.reload();
       await expect(page.getByLabel('city', { exact: true })).toHaveValue('Lisbon');
@@ -111,7 +113,7 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(/\/editor\/\d+$/);
       await expect(page.getByLabel('city', { exact: true })).toHaveValue('Lisbon');
       await page.reload();
-      await expect(page.getByRole('button', { name: 'Edit template', exact: true })).toBeVisible();
+      await expect(page.getByRole('tab', { name: 'Edit', exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
       await expect(page.getByLabel('city', { exact: true })).toHaveValue('Lisbon');
       await expect(page.getByText('Your unsaved changes were restored.')).not.toBeVisible();
@@ -119,7 +121,7 @@ for (const width of [1440, 390]) {
       expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(filled);
       await page.goto('/library');
       await expect(page.getByRole('button', { name: 'Add existing prompts', exact: true })).toBeVisible();
-      await page.getByRole('button', { name: 'Copy the Converted travel prompt template' }).click();
+      await page.getByRole('button', { name: 'Copy template: Converted travel prompt' }).click();
       expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('{{city}}');
       await page.getByRole('link', { name: 'Fill and copy', exact: true }).click();
       await expect(page.getByLabel('city', { exact: true })).toHaveValue('Lisbon');
@@ -144,7 +146,7 @@ test('shows pending conversion and errors without losing the source or double ch
   // The conversion starts by itself; while it runs, the form shows the source and what it may cost.
   await openPaste(page);
   const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
-  await expect(paste.getByRole('button', { name: 'Creating template…' })).toBeDisabled();
+  await expect(paste.getByRole('button', { name: 'Making it reusable…' })).toBeDisabled();
   await expect(paste.getByLabel('Prompt to convert')).toHaveValue(source);
   await expect(paste).toContainText('Ollama / local');
   await expect(paste).toContainText('Your provider may charge for these calls');
@@ -154,7 +156,7 @@ test('shows pending conversion and errors without losing the source or double ch
   release();
   await expect(paste.getByRole('alert')).toContainText('Provider unavailable');
   await expect(paste.getByLabel('Prompt to convert')).toHaveValue(source);
-  await paste.getByRole('button', { name: 'Create template with AI' }).click();
+  await paste.getByRole('button', { name: 'Make reusable with AI' }).click();
   await expect(page.getByRole('dialog', { name: 'Review your template' })).toBeVisible();
   expect(calls).toBe(2);
 });

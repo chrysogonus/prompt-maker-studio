@@ -133,16 +133,17 @@ export default function SectionCard({
             type="button"
             className={styles.insertTool}
             onClick={startInsert}
-            aria-label={`Insert input in ${label}`}
-            title="Insert input: select text first to turn it into an input"
+            aria-label={`Insert variable in ${label}`}
+            title="Insert a {{variable}}: select text first to turn it into one"
           >
-            {'{{ }}'}
+            <span aria-hidden="true">{'{{ }}'}</span> Variable
           </button>
           <button
             type="button"
             onClick={() => onMove(-1)}
             disabled={index === 0}
             aria-label={`Move ${label} up`}
+            title="Move up"
           >
             ↑
           </button>
@@ -151,10 +152,11 @@ export default function SectionCard({
             onClick={() => onMove(1)}
             disabled={index === count - 1}
             aria-label={`Move ${label} down`}
+            title="Move down"
           >
             ↓
           </button>
-          <button type="button" onClick={onRemove} aria-label={`Remove ${label}`}>
+          <button type="button" onClick={onRemove} aria-label={`Remove ${label}`} title="Remove section">
             ×
           </button>
         </div>
@@ -178,8 +180,8 @@ export default function SectionCard({
         <form className={styles.insertForm} onSubmit={confirmInsert}>
           <label htmlFor={`insert-${section.key}`}>
             {replacing.trim()
-              ? `Input name for “${replacing.length > 40 ? `${replacing.slice(0, 40)}…` : replacing}” (kept as its example)`
-              : 'New input name'}
+              ? `Variable name for “${replacing.length > 40 ? `${replacing.slice(0, 40)}…` : replacing}” (kept as its example)`
+              : 'New variable name'}
           </label>
           <input
             id={`insert-${section.key}`}

@@ -10,6 +10,64 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.15.0; see the [release candidate](./docs/releases/0.15.0.md).
+
+### Changed
+
+- A saved prompt's header has one Edit | Fill and copy switch at every width (replacing Edit
+  template and the Fill and copy button), Refine and Evaluate as labelled buttons in both modes,
+  and a More menu (was Tools) with Prompt details, Paste a prompt and History. Refine's buttons read
+  Ask me questions first and Discard suggestion.
+- One vocabulary for prompt variables: a `{{…}}` slot is a variable everywhere ("Insert
+  variable", "New variable name", "Required variables missing"), what you type into it is a value
+  ("Load example values", "Clear values", Evaluate's Values), and "placeholder" means only the
+  `{{…}}` text that is copied as it is.
+- The editor's Paste a prompt uses the library's names, Keep as written and Make reusable with AI
+  (was Save as written and Create template with AI); the library's single-note button reads Import
+  as written. Settings refers to Test with AI instead of Try once.
+- Moving selected prompts can be undone, needs a folder name ("Move to folder"), and unfiling
+  has its own Remove from folder button; the result is a toast instead of a status line.
+- Duplicates are named "Name (copy)", then "Name (copy 2)", instead of "Name Duplicate".
+- CSV imports take the folder from a Folder column (or else, as before, the first tag), and
+  Format details lists what each file type needs, CSV included.
+- The sidebar explains how folders are made, and each sidebar folder has an action link that
+  opens its Rename/Remove menu. Its theme control is the same Light/Dark/System segmented
+  control as Settings.
+- Evaluate says why Run evaluation or Save test case is unavailable (no cases yet, a value to
+  fill in, a check without text, no AI connection). The empty test list has Add your first test
+  case and Suggest cases with AI buttons, and a test case's values show the variable's hint and
+  offer its choices as suggestions while still accepting any value.
+
+### Fixed
+
+- The landing page header has a Sign in link. Signing out says "You’ve signed out." on the
+  sign-in screen and leaves the prompt's address behind. The sign-in card no longer jumps when
+  an error appears.
+- The token counter shows "< $0.0001" for costs that are not zero but round to it.
+- A prompt arriving from "Save to my library" (or pasted into a new prompt) says "Not saved yet.
+  Choose Save to add it to your library."
+- Accessibility: library "Copy template" buttons and the legal pages' logo link have accessible
+  names that start with their visible text; links in legal pages are underlined; saved prompts
+  and the password reset page have a level-one heading (and the reset page its own title);
+  focused section text gets a clearer 2px ring; icon-only buttons in the library and section
+  toolbar show a tooltip; the sidebar Sign out button has a 44px touch target.
+- Offline or unreachable-server errors say "Can't reach the server. Check your connection and try
+  again." instead of the browser's "Failed to fetch", and a library that could not load no longer
+  claims "0 prompts".
+- Library rows keep their actions under the title below 1,100px, so titles stay readable on
+  tablets with the sidebar open.
+- The AI review after "Create template with AI" uses its full 1,040px width again instead of the
+  default 460px dialog width.
+- Test with AI scrolls into view when opened, and its progress and output scroll into view as
+  they arrive.
+- On phones and tablets the filled prompt grows with the page instead of scrolling in a short box,
+  with the copy actions kept at the bottom of the screen.
+- A restored draft of a saved prompt offers one Discard (in the header) instead of two; the editor's
+  toast sits bottom right, clear of the form; the section toolbar's insert button reads
+  "{{ }} Variable".
+- Evaluation runs and other long AI requests that take more than 30 seconds are no longer cut
+  off by the reverse proxy: Caddy's write timeout is 15 minutes instead of 30 seconds.
+
 ## [0.14.0] - 2026-10-29
 
 See the [release record](./docs/releases/0.14.0.md).

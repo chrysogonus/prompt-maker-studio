@@ -35,7 +35,7 @@ for (const width of [1440, 390, 320]) {
     await expect(folder).toBeVisible();
     expect(await folder.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     const metadata = await folder.locator('..').boundingBox();
-    const actions = await card.getByRole('button', { name: 'Copy the Customer support response template' }).boundingBox();
+    const actions = await card.getByRole('button', { name: 'Copy template: Customer support response' }).boundingBox();
     expect(metadata!.y + metadata!.height).toBeLessThanOrEqual(actions!.y);
     for (const button of [page.getByRole('button', { name: 'Grid', exact: true }), card.getByRole('button', { name: 'Add Customer support response to favourites' }), card.getByRole('button', { name: 'More actions for Customer support response' })]) {
       const box = (await button.boundingBox())!;
@@ -52,9 +52,9 @@ for (const width of [1440, 390, 320]) {
     await page.getByLabel('Search prompts').clear();
     await expect(card.getByText(/^Background\./)).toBeVisible();
     await page.getByLabel('Select Customer support response').check();
-    await page.getByLabel('File selected in folder').fill('Team');
+    await page.getByLabel('Move to folder').fill('Team');
     await page.getByRole('button', { name: 'Move selected' }).click();
-    await expect(page.getByText('Moved 1 of 1 prompts.')).toBeVisible();
+    await expect(page.getByText('Moved 1 prompt to Team.')).toBeVisible();
     await page.getByRole('button', { name: 'Add existing prompts', exact: true }).click();
     const note = '---\ntitle: New prompt\ntags: [work]\n---\nGive a useful answer.';
     await page.getByLabel('Or choose files').setInputFiles({ name: 'Daily note.md', mimeType: 'text/markdown', buffer: Buffer.from(note) });
@@ -74,7 +74,7 @@ for (const width of [1440, 390, 320]) {
     expect(await page.getByRole('dialog', { name: 'Add existing prompts' }).evaluate(d => d.scrollWidth <= d.clientWidth)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`import-${width}.png`), fullPage: true });
-    await page.getByRole('button', { name: 'Keep as written' }).click();
+    await page.getByRole('button', { name: 'Import as written' }).click();
     await expect(page.getByText(/Imported 1 prompt\./)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Open imported prompt' })).toBeVisible();
     await page.getByRole('button', { name: 'Close', exact: true }).click();

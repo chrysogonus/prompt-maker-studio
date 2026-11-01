@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import ThemeControl from '@/components/shell/ThemeControl';
@@ -57,15 +57,15 @@ it('re-applies the default when navigating from a public page into the app', () 
 
 it('keeps theme controls synchronized and follows changes from another tab', async () => {
   render(<><ThemeControl /><ThemeControl /></>);
-  const controls = screen.getAllByRole('combobox', { name: 'Theme' });
-  await userEvent.selectOptions(controls[0], 'dark');
-  expect(controls[1]).toHaveValue('dark');
+  const controls = screen.getAllByRole('radiogroup', { name: 'Theme' });
+  await userEvent.click(within(controls[0]).getByRole('radio', { name: 'Dark' }));
+  expect(within(controls[1]).getByRole('radio', { name: 'Dark' })).toBeChecked();
   expect(document.documentElement.dataset.theme).toBe('dark');
   act(() => {
     localStorage.setItem('theme', 'light');
     window.dispatchEvent(new StorageEvent('storage', { key: 'theme' }));
   });
-  expect(controls[0]).toHaveValue('light');
+  expect(within(controls[0]).getByRole('radio', { name: 'Light' })).toBeChecked();
   expect(document.documentElement.dataset.theme).toBe('light');
 });
 

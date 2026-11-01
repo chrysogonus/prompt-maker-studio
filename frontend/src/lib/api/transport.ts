@@ -2,10 +2,19 @@
 
 import { AuthService } from '../auth';
 import { CREDENTIALS, csrfHeaders } from '../authCookies';
+import { ApiError } from './errors';
 
-export function sessionFetch(url: string, init: RequestInit = {}): Promise<Response> {
+export const NETWORK_ERROR_MESSAGE = "Can't reach the server. Check your connection and try again.";
+
+export async function sessionFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const contentType = new Headers(init.headers).get('Content-Type') ?? 'application/json';
-  return fetch(url, { ...init, headers: csrfHeaders(contentType), credentials: CREDENTIALS });
+  try {
+    return await fetch(url, { ...init, headers: csrfHeaders(contentType), credentials: CREDENTIALS });
+  } catch (err) {
+    // fetch rejects with a TypeError ("Failed to fetch") when offline; aborts stay as they are.
+    if (err instanceof TypeError) throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+    throw err;
+  }
 }
 
 export async function authenticatedFetch(

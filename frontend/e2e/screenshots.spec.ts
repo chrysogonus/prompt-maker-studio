@@ -94,12 +94,12 @@ test('captures the README screenshots', async ({ page }) => {
   await page.getByLabel('team', { exact: true }).fill('Payments');
   await page.getByLabel('week', { exact: true }).fill('6–10 Oct');
   // Show the sections beside the filled preview, as the landing page describes.
-  await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+  await page.getByRole('tab', { name: 'Edit', exact: true }).click();
   await expect(page.getByLabel('Role text')).toBeVisible();
   await shoot(page, 'editor');
 
   // Comparing an earlier version with the current text.
-  await page.getByRole('button', { name: 'Tools', exact: true }).click();
+  await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('button', { name: 'History' }).click();
   const history = page.getByRole('dialog', { name: 'Version history' });
   await history.getByRole('button', { name: /^Version 1/ }).click();
@@ -111,7 +111,7 @@ test('captures the README screenshots', async ({ page }) => {
   await page.getByRole('button', { name: 'Paste a prompt' }).click();
   const importDialog = page.getByRole('dialog', { name: 'Paste a prompt' });
   await importDialog.getByLabel('Prompt to convert').fill(IMPORT_TEXT);
-  await importDialog.getByRole('button', { name: 'Create template with AI' }).click();
+  await importDialog.getByRole('button', { name: 'Make reusable with AI' }).click();
   await page.getByRole('dialog', { name: 'Review your template' }).getByRole('button', { name: 'Use in editor' }).click();
   await expect(page.getByLabel('Task text')).toHaveValue(/late order/);
   expect(importHits).toBe(1);
@@ -121,7 +121,7 @@ test('captures the README screenshots', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto('/library');
   await page.getByRole('link', { name: 'Reply to a tricky email', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Edit template', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Edit', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Copy filled prompt' })).toBeVisible();
   await shoot(page, 'phone');
 });

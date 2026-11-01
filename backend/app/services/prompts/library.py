@@ -138,20 +138,23 @@ def duplicate_prompt(prompt_id: int, db: Session, user_id: int):
     authoring configuration and eval cases. Run and version history
     intentionally remain attached only to the original."""
     original = _get_owned_prompt(prompt_id, user_id, db)
-    # 100 matches the name length cap enforced elsewhere (PromptRequest/PromptUpdateRequest).
-    base_name = f"{original.name or 'Untitled Prompt'} Duplicate"[:100]
     existing_names = {
         row[0]
         for row in db.query(Prompt.name)
         .filter(Prompt.user_id == user_id, Prompt.name.isnot(None))
         .all()
     }
-    duplicate_name = base_name
-    suffix = 1
-    while duplicate_name in existing_names:
-        suffix_text = f" {suffix}"
-        duplicate_name = f"{base_name[: 100 - len(suffix_text)]}{suffix_text}"
-        suffix += 1
+    base_name = original.name or "Untitled Prompt"
+
+    def copy_name(number: int) -> str:
+        suffix = " (copy)" if number == 1 else f" (copy {number})"
+        # 100 matches the name length cap enforced elsewhere (PromptRequest/PromptUpdateRequest).
+        return f"{base_name[: 100 - len(suffix)]}{suffix}"
+
+    number = 1
+    while copy_name(number) in existing_names:
+        number += 1
+    duplicate_name = copy_name(number)
 
     duplicated = Prompt(
         id=PromptIdService.next_id(db),

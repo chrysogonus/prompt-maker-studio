@@ -27,7 +27,6 @@ export function useLibrary() {
   const [selected, setSelected] = useState<number[]>([]);
   const [batchFolder, setBatchFolder] = useState('');
   const [batchBusy, setBatchBusy] = useState(false);
-  const [batchResult, setBatchResult] = useState('');
   const [layout, setLayout] = useState<'list' | 'grid'>('list');
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
@@ -90,6 +89,17 @@ export function useLibrary() {
     // its marked state back would skip that update.
     window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
   };
+
+  // The sidebar's folder actions link here with ?manage=folder to open this view's folder menu.
+  const manageFolder = searchParams.get('manage') === 'folder' ? searchParams.get('folder') : null;
+  const [managed, setManaged] = useState<string | null>(null);
+  if (manageFolder !== managed) {
+    setManaged(manageFolder);
+    if (manageFolder) setFolderMenuOpen(true);
+  }
+  useEffect(() => {
+    if (manageFolder) router.replace(libraryHref({ type: 'folder', folder: manageFolder }));
+  }, [manageFolder, router]);
 
   useEffect(() => {
     void load();
@@ -175,23 +185,41 @@ export function useLibrary() {
   const toggleSelected = (id: number) => setSelected(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
   // An import can also update library prompts, which move to the top instead of appearing twice.
   const addImported = (created: Prompt[]) => setPrompts(current => [...created, ...(current ?? []).filter(prompt => !created.some(item => item.id === prompt.id))]);
-  const moveSelected = async (event: FormEvent) => {
-    event.preventDefault();
+  const plural = (count: number) => `${count} prompt${count === 1 ? '' : 's'}`;
+  /** Files every selected prompt under `folder` ('' unfiles); Undo puts each back where it was. */
+  const moveSelected = async (event?: FormEvent, folder = batchFolder.trim()) => {
+    event?.preventDefault();
     if (batchBusy || !selectedPrompts.length) return;
     setBatchBusy(true);
-    setBatchResult('');
     const targets = selectedPrompts;
-    const failed: number[] = [];
+    const moved: Prompt[] = [];
     for (const prompt of targets) {
-      try { replace(await ApiClient.updatePrompt(prompt.id, { folder: batchFolder.trim() })); }
-      catch { failed.push(prompt.id); }
+      try { replace(await ApiClient.updatePrompt(prompt.id, { folder })); moved.push(prompt); }
+      catch { /* Failures stay selected for a retry. */ }
     }
-    setSelected(failed);
-    const moved = targets.length - failed.length;
-    if (moved) notifyLibraryChanged();
-    setBatchResult(`Moved ${moved} of ${targets.length} prompts.${failed.length ? ` ${failed.length} failed; still selected for retry.` : ''}`);
+    setSelected(targets.filter(prompt => !moved.includes(prompt)).map(prompt => prompt.id));
+    if (moved.length) notifyLibraryChanged();
+    const failed = targets.length - moved.length;
+    const done = folder ? `Moved ${plural(moved.length)} to ${folder}.` : `Removed ${plural(moved.length)} from their folders.`;
+    const undo = async () => {
+      let restored = 0;
+      for (const prompt of moved) {
+        try { replace(await ApiClient.updatePrompt(prompt.id, { folder: prompt.folder ?? '' })); restored += 1; }
+        catch { /* Reported below. */ }
+      }
+      notifyLibraryChanged();
+      if (restored < moved.length) showToast({ text: `Could not undo the move for ${plural(moved.length - restored)}. Try again.` });
+    };
+    showToast(
+      {
+        text: `${done}${failed ? ` ${plural(failed)} failed; still selected for retry.` : ''}`,
+        action: moved.length ? { label: 'Undo', run: () => void undo() } : undefined,
+      },
+      UNDO_MS,
+    );
     setBatchBusy(false);
   };
+  const unfileSelected = () => void moveSelected(undefined, '');
 
   const toggleFavorite = async (prompt: Prompt) => {
     replace({ ...prompt, is_favorite: !prompt.is_favorite });
@@ -309,7 +337,6 @@ export function useLibrary() {
   const deleteSelected = () => {
     removeMany(selectedPrompts);
     setSelected([]);
-    setBatchResult('');
   };
 
   const renameFolder = async (event: FormEvent) => {
@@ -351,7 +378,7 @@ export function useLibrary() {
   );
   return {
     sort, setSort, selected, toggleSelected, selectedPrompts, setSelected,
-    batchFolder, setBatchFolder, batchBusy, batchResult, moveSelected, addImported,
+    batchFolder, setBatchFolder, batchBusy, moveSelected, unfileSelected, addImported,
     router,
     view,
     title,

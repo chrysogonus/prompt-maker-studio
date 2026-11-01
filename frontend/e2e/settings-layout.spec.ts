@@ -55,7 +55,7 @@ test('sidebar source link and settings controls remain accessible across sizes a
           page.getByRole('button', { name: 'Edit username' }).boundingBox(),
           page.getByRole('button', { name: 'Edit email' }).boundingBox(),
           page.getByRole('button', { name: 'Change password' }).boundingBox(),
-          page.getByRole('radiogroup', { name: 'Theme' }).boundingBox(),
+          page.getByRole('main').getByRole('radiogroup', { name: 'Theme' }).boundingBox(),
           page.getByRole('radiogroup', { name: 'Default library view' }).boundingBox(),
           page.getByRole('combobox', { name: 'Provider', exact: true }).boundingBox(),
           page.getByRole('textbox', { name: 'Base URL', exact: true }).boundingBox(),

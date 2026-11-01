@@ -90,24 +90,27 @@ choices is a list to pick from in Fill mode. The panel links to the variables
 guide; Guides is also available in app navigation. Markup warnings are advisory and
 can be dismissed without altering the text. A hint whose variable no longer
 appears is kept, marked as unused, until removed. Variables are optional by default; required inputs
-and examples are editable settings persisted on Save. Load example inputs is explicit and examples
+and examples are editable settings persisted on Save. Load example values is explicit and examples
 never become section content. Ordinary filled inputs are temporary. Converted inputs recover in
-browser-local drafts; Keep these inputs as examples is unchecked by default and only saves example
+browser-local drafts; Keep these values as examples is unchecked by default and only saves example
 metadata when opted into and followed by Save.
 
 In the preview, open **Test with AI** to reach **Try once**. It runs the filled prompt through the configured provider without saving it or creating a
 separate Playground history. Its result includes the output text, provider and model;
 token usage is recorded in the spend ledger. Conversion, refinement and Try once show provider/model
 and billing context before execution. Saved prompts open the evaluation workspace
-from Tools → Evaluate: edit test cases, import/export case CSV, review AI suggestions,
+from the editor's Evaluate button: edit test cases, import/export case CSV, review AI suggestions,
 run explicitly, inspect and compare historical outputs, and submit manual ratings.
 Saving a prompt never starts an evaluation.
 
-At widths up to 1200px the editor has Edit and Fill and copy tabs, and saved
-prompts open on Fill and copy. Library Fill and copy links open a focused form
-on every screen size; Edit template returns to the section editor. Discarding
+A saved prompt has one Edit | Fill and copy switch at every width, beside its title, and
+opens on Fill and copy when it has variables. Library Fill and copy links open the same
+focused form; Edit returns to the section editor. New prompts show the switch only up to
+1200px, where the editor and preview no longer fit side by side. Refine and Evaluate are
+header buttons in both modes (Refine switches to Edit first); More holds Prompt details,
+Paste a prompt and History. Discarding
 template changes retains filled values for variables still in the saved prompt.
-Clear inputs resets those separately. Recovered drafts are identified
+Clear values resets those separately. Recovered drafts are identified
 above both panes as stored only in the current browser.
 
 ## Versions
@@ -116,7 +119,7 @@ above both panes as stored only in the current browser.
   entered on Save describes the resulting state, including the current version. Migration 025
   preserves original history notes as `legacy_note` while correcting their association; recovery
   notes stay with their original snapshots.
-- Open **Tools → History** on a saved prompt. The panel lists versions (newest first, the current one on top), shows a word-level
+- Open **More → History** on a saved prompt. The panel lists versions (newest first, the current one on top), shows a word-level
   diff of any version against the current text, and restores it. A restore snapshots the state it
   replaces, so it can be undone, and is unavailable while there are unsaved edits.
 - Renaming, filing or favoriting does not create a content version. REST updates
@@ -165,7 +168,8 @@ above both panes as stored only in the current browser.
 - Notion's **Export → Markdown & CSV** `.zip` can be chosen as it is: its pages are read
   (the browser unzips it; nested part zips too, up to 50 MB, without the part names
   becoming folders), and a database `.csv` becomes one prompt per row (Name or Title, a
-  Prompt/Content column or else the longest text column, Tags as the folder, and a
+  Prompt/Content column or else the longest text column, a Folder column or else the first
+  tag in Tags as the folder, and a
   Favourite status). A database's CSV is read only when its rows were not also exported as
   pages, from a zip or a chosen folder alike, and `X_all.csv` is preferred to `X.csv`.
   Property lines that hold the prompt text are kept; only metadata such as Tags, Created
@@ -186,7 +190,7 @@ above both panes as stored only in the current browser.
   `<transcript>` into inputs (each can be unticked; `[[wiki-links]]` are never offered),
   keeping each placeholder's wording as the input's hint, with Undo, and a **Folder for all prompts** field when
   several prompts are imported.
-- Paste a prompt offers Save as written without AI. The source becomes one Task
+- Paste a prompt offers Keep as written without AI. The source becomes one Task
   section, preserving its text. Prompts with a single section copy as plain text by
   default; Output options can add the section tags.
   Optional AI conversion still offers review before applying.
@@ -200,8 +204,10 @@ above both panes as stored only in the current browser.
 - **Folders** are labels on prompts (`prompts.folder`). A folder exists while a prompt is filed in
   it. A folder view can rename the folder (`PATCH /api/prompts/folders?name=`, merging onto an
   existing name) or remove it (`DELETE /api/prompts/folders?name=`), which unfiles its prompts and
-  deletes none. Neither changes the prompts' edit times.
-- **Duplicate** creates a unique name, copies sections, folder, variable settings,
+  deletes none. Neither changes the prompts' edit times. Each sidebar folder has an action link
+  that opens the folder view with this menu open. Several selected prompts can be moved to a
+  folder or removed from their folders at once; Undo puts each back where it was.
+- **Duplicate** creates a unique name ("Name (copy)", then "Name (copy 2)"), copies sections, folder, variable settings,
   legacy tags and evaluation cases, and starts without favorite status, version
   history or run history.
 - **Recovered history** holds the unnamed prompts the old History tab listed, named by date by

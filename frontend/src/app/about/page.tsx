@@ -39,7 +39,7 @@ export default async function AboutPage() {
           <h2>What it does</h2>
           <ul>
             <li>Keeps your prompts in a library with folders, favourites, search and a version history.</li>
-            <li>Turns the parts that change into inputs, so you fill in a prompt instead of rewriting it.</li>
+            <li>Turns the parts that change into variables, so you fill in a prompt instead of rewriting it.</li>
             <li>
               Connects to ChatGPT and Claude, so you can use your library from the chat; see{' '}
               <Link href={GUIDES.connect.path}>how to use your prompt library in ChatGPT and Claude</Link>.

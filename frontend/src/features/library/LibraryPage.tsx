@@ -36,7 +36,7 @@ const testLabel = (prompt: Prompt) =>
 function LibraryContent() {
   const {
     sort, setSort, selected, toggleSelected, selectedPrompts, setSelected,
-    batchFolder, setBatchFolder, batchBusy, batchResult, moveSelected, addImported,
+    batchFolder, setBatchFolder, batchBusy, moveSelected, unfileSelected, addImported,
     router,
     view,
     title,
@@ -125,6 +125,7 @@ function LibraryContent() {
         type="button"
         className={styles.iconButton}
         aria-label={`More actions for ${prompt.name}`}
+        title="More actions"
         aria-expanded={menuId === prompt.id}
         onClick={(e) => {
           e.stopPropagation();
@@ -197,6 +198,7 @@ function LibraryContent() {
       className={styles.star}
       aria-pressed={prompt.is_favorite}
       aria-label={prompt.is_favorite ? `Remove ${prompt.name} from favourites` : `Add ${prompt.name} to favourites`}
+      title={prompt.is_favorite ? 'Remove from favourites' : 'Add to favourites'}
       onClick={(e) => {
         e.stopPropagation();
         void toggleFavorite(prompt);
@@ -290,7 +292,7 @@ function LibraryContent() {
               <button
                 type="button"
                 className={styles.copyButton}
-                aria-label={`Copy the ${prompt.name} template`}
+                aria-label={`Copy template: ${prompt.name}`}
                 onClick={() => copyTemplate(prompt)}
               >
                 <CopyIcon tone="inherit" />
@@ -329,7 +331,7 @@ function LibraryContent() {
                   type="button"
                   className={styles.copyButton}
                   onClick={() => copyTemplate(prompt)}
-                  aria-label={`Copy the ${prompt.name} template`}
+                  aria-label={`Copy template: ${prompt.name}`}
                 >
                   <CopyIcon tone="inherit" />
                   Copy template
@@ -396,6 +398,7 @@ function LibraryContent() {
               type="button"
               className={styles.iconButton}
               aria-label={`Actions for the ${view.folder} folder`}
+              title="Folder actions"
               aria-expanded={folderMenuOpen}
               onClick={() => setFolderMenuOpen((open) => !open)}
             >
@@ -450,16 +453,16 @@ function LibraryContent() {
           <option value="recent">Recently edited</option>
           <option value="title">Title A–Z</option>
         </select>
-        <span className={styles.count}>
+        {!(loadError && prompts === null) && <span className={styles.count}>
           {search.trim()
             ? `${visible.length} of ${inView.length}`
             : `${inView.length} prompt${inView.length === 1 ? '' : 's'}`}
-        </span>
+        </span>}
         <div className={styles.layoutSwitch} role="group" aria-label="Layout">
-          <button type="button" aria-pressed={layout === 'list'} aria-label="List" onClick={() => setLayout('list')}>
+          <button type="button" aria-pressed={layout === 'list'} aria-label="List" title="List" onClick={() => setLayout('list')}>
             <ListViewIcon tone="inherit" />
           </button>
-          <button type="button" aria-pressed={layout === 'grid'} aria-label="Grid" onClick={() => setLayout('grid')}>
+          <button type="button" aria-pressed={layout === 'grid'} aria-label="Grid" title="Grid" onClick={() => setLayout('grid')}>
             <GridViewIcon tone="inherit" />
           </button>
         </div>
@@ -475,14 +478,14 @@ function LibraryContent() {
       {selectedPrompts.length > 0 && <form className={styles.batchForm} onSubmit={moveSelected}>
         <span>{selectedPrompts.length} selected across your library</span>
         <label className={styles.field}>
-          <span>File selected in folder</span>
-          <input aria-label="File selected in folder" value={batchFolder} onChange={event => setBatchFolder(event.target.value)} list="library-folders" maxLength={255} placeholder="Unfiled" disabled={batchBusy} />
+          <span>Move to folder</span>
+          <input aria-label="Move to folder" value={batchFolder} onChange={event => setBatchFolder(event.target.value)} list="library-folders" maxLength={255} placeholder="Folder name" disabled={batchBusy} />
         </label>
-        <Button variant="secondary" type="submit" disabled={batchBusy}>{batchBusy ? 'Moving…' : 'Move selected'}</Button>
+        <Button variant="secondary" type="submit" disabled={batchBusy || !batchFolder.trim()}>{batchBusy ? 'Moving…' : 'Move selected'}</Button>
+        {selectedPrompts.some(prompt => prompt.folder) && <Button variant="ghost" type="button" disabled={batchBusy} onClick={unfileSelected}>Remove from folder</Button>}
         <Button variant="danger" type="button" disabled={batchBusy} onClick={deleteSelected}>Delete selected</Button>
-        <small>Leave the folder empty to move to Unfiled. Deleting can be undone for a few seconds.</small>
+        <small>Type a new name to create a folder. Moving and deleting can be undone for a few seconds.</small>
       </form>}
-      {batchResult && <p className={styles.note} role="status">{batchResult}</p>}
       {body}
 
       <Dialog isOpen={moving !== null} title="Move to folder" onClose={() => setMoving(null)}>

@@ -73,9 +73,9 @@ export default function ReusablePromptsPage() {
 
       <h2>Improve the template without losing the old version</h2>
       <p>
-        When an instruction needs changing, open the saved prompt, choose <strong>Edit template</strong>,
+        When an instruction needs changing, open the saved prompt, choose <strong>Edit</strong>,
         make the change and choose <strong>Save</strong>.
-        Open <strong>Tools → History</strong> and select an earlier version to compare it with the current
+        Open <strong>More → History</strong> and select an earlier version to compare it with the current
         saved version. Added and removed words are highlighted.
       </p>
       <p>

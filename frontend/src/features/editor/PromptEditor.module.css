@@ -84,6 +84,13 @@
   min-width: 0;
 }
 
+.titleHeading {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  font-size: inherit;
+}
+
 button.title {
   cursor: pointer;
   display: inline-flex;
@@ -174,7 +181,37 @@ button.title:hover {
 }
 
 .tabs {
-  display: none;
+  display: flex;
+  gap: 2px;
+  margin-top: var(--space-2);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-raised);
+}
+
+.tabs button {
+  flex: 1;
+  height: 34px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.tabs button[aria-selected='true'] {
+  background: var(--color-panel);
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+/* Wide screens show a new prompt's editor and preview side by side, so only saved prompts switch. */
+@media (min-width: 1201px) {
+  .tabs { width: fit-content; margin-top: 0; }
+  .tabs button { flex: none; padding: 0 var(--space-4); }
+  .tabs:not([data-saved='true']) { display: none; }
 }
 
 /* Notices */
@@ -207,11 +244,11 @@ button.title:hover {
 }
 
 .notice {
+  /* Bottom right, clear of the form fields a centred toast would cover. */
   position: fixed;
-  left: 50%;
+  right: var(--space-6);
   bottom: var(--space-6);
   z-index: 60;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -245,7 +282,7 @@ button.title:hover {
 @keyframes noticeIn {
   from {
     opacity: 0;
-    transform: translate(-50%, 6px);
+    transform: translateY(6px);
   }
 }
 
@@ -368,7 +405,7 @@ button.title:hover {
 /* The edge and coral are similarly bright, so focus also thickens the outline. */
 .section:focus-within {
   border-color: var(--color-accent-tag);
-  box-shadow: var(--shadow-surface), 0 0 0 1px var(--color-accent-tag);
+  box-shadow: var(--shadow-surface), 0 0 0 2px var(--color-accent-tag);
 }
 
 .sectionHead {
@@ -426,9 +463,13 @@ button.title:hover {
 }
 
 .sectionTools .insertTool {
-  font-family: var(--font-mono);
+  width: auto;
+  padding: 0 var(--space-2);
   font-size: var(--text-xs-size);
+  white-space: nowrap;
 }
+
+.insertTool span { font-family: var(--font-mono); }
 
 .insertForm {
   display: flex;
@@ -1077,6 +1118,9 @@ button.version:hover {
     padding-bottom: var(--space-2);
   }
 
+  /* Its own full-width row under the title and actions. */
+  .tabs { order: 1; flex-basis: 100%; }
+
   .headActions {
     width: 100%;
     justify-content: flex-end;
@@ -1092,33 +1136,6 @@ button.version:hover {
   .noteInput {
     flex: 1;
     width: auto;
-  }
-
-  .tabs {
-    display: flex;
-    gap: 2px;
-    margin-top: var(--space-2);
-    padding: 2px;
-    border-radius: var(--radius-sm);
-    background: var(--color-panel-raised);
-  }
-
-  .tabs button {
-    flex: 1;
-    height: 34px;
-    border: 0;
-    border-radius: 5px;
-    background: none;
-    color: var(--text-secondary);
-    font: inherit;
-    font-weight: var(--weight-medium);
-    cursor: pointer;
-  }
-
-  .tabs button[aria-selected='true'] {
-    background: var(--color-panel);
-    color: var(--text-primary);
-    font-weight: var(--weight-semibold);
   }
 
   .body,
@@ -1153,6 +1170,11 @@ button.version:hover {
   .valueField span { margin-bottom: 2px; }
   .previewLong { font-size: var(--text-xs-size); line-height: var(--text-sm-line); }
   .previewFoot { grid-template-columns: minmax(0, 1fr); }
+  /* The page scrolls here, so the text grows with its content instead of a 160px inner box,
+     and the copy actions stay at the bottom of the screen while it does. */
+  .preview { overflow: visible; }
+  .previewText { flex: 1 0 auto; min-height: 160px; overflow-y: visible; }
+  .previewFoot { position: sticky; bottom: 0; z-index: 1; background: var(--surface-preview); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
   .tryPanel { border-top: 1px solid var(--pv-border); margin-top: var(--space-1); }
 
   .copyButton {
@@ -1210,6 +1232,9 @@ button.version:hover {
   .sectionHead { flex-wrap: wrap; }
   .sectionTools { flex-shrink: 0; margin-left: auto; }
   .sectionName { flex-basis: 8rem; }
+}
+/* The decorative tag needs the room the labelled Variable button takes beside the preview. */
+@media (max-width: 1400px) {
   .sectionTag { display: none; }
 }
 .tryResult { max-height: 35vh; overflow-y: auto; }
@@ -1236,7 +1261,6 @@ button.version:hover {
 /* A library use link keeps attention on inputs and copied output at every size. */
 .editor[data-focused='true'] .body { grid-template-columns: minmax(0, 1fr); }
 .editor[data-focused='true'] .write,
-.editor[data-focused='true'] .tabs,
 .editor[data-focused='true'] .previewToggle { display: none; }
 .editor[data-focused='true'] .preview,
 .editor[data-focused='true'] .previewClosed { grid-column: 1; width: 100%; max-width: 960px; justify-self: center; }
@@ -1285,7 +1309,6 @@ button.version:hover {
 .promptDetails dt { font-weight: var(--weight-semibold); }
 .promptDetails dd { margin: 0 0 var(--space-3); white-space: pre-wrap; }
 @media (max-width: 1200px) {
-  .headActions .useButton { display: none; }
   .tabs button { height: 44px; }
   button.title, .crumbFolder { min-height: 44px; }
 }
