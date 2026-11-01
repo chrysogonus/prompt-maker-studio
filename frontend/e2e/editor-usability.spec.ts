@@ -70,7 +70,7 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole('link', { name: 'Fill and copy' })).toBeVisible();
     await page.getByRole('button', { name: 'Grid', exact: true }).click();
     const card = page.getByRole('listitem').filter({ hasText: 'Isolated UX prompt' });
-    await expect(card.getByRole('button', { name: 'Copy the Isolated UX prompt template' })).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Copy template: Isolated UX prompt' })).toBeVisible();
     await card.getByRole('link', { name: 'Fill and copy' }).click();
     await expect(page.getByLabel('topic Required')).toBeVisible();
     await expect(page).toHaveURL(/mode=filled/);

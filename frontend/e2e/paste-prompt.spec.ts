@@ -119,7 +119,7 @@ for (const width of [1440, 390]) {
       expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(filled);
       await page.goto('/library');
       await expect(page.getByRole('button', { name: 'Add existing prompts', exact: true })).toBeVisible();
-      await page.getByRole('button', { name: 'Copy the Converted travel prompt template' }).click();
+      await page.getByRole('button', { name: 'Copy template: Converted travel prompt' }).click();
       expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('{{city}}');
       await page.getByRole('link', { name: 'Fill and copy', exact: true }).click();
       await expect(page.getByLabel('city', { exact: true })).toHaveValue('Lisbon');

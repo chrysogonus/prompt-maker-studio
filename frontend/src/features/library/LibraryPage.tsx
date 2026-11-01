@@ -125,6 +125,7 @@ function LibraryContent() {
         type="button"
         className={styles.iconButton}
         aria-label={`More actions for ${prompt.name}`}
+        title="More actions"
         aria-expanded={menuId === prompt.id}
         onClick={(e) => {
           e.stopPropagation();
@@ -197,6 +198,7 @@ function LibraryContent() {
       className={styles.star}
       aria-pressed={prompt.is_favorite}
       aria-label={prompt.is_favorite ? `Remove ${prompt.name} from favourites` : `Add ${prompt.name} to favourites`}
+      title={prompt.is_favorite ? 'Remove from favourites' : 'Add to favourites'}
       onClick={(e) => {
         e.stopPropagation();
         void toggleFavorite(prompt);
@@ -290,7 +292,7 @@ function LibraryContent() {
               <button
                 type="button"
                 className={styles.copyButton}
-                aria-label={`Copy the ${prompt.name} template`}
+                aria-label={`Copy template: ${prompt.name}`}
                 onClick={() => copyTemplate(prompt)}
               >
                 <CopyIcon tone="inherit" />
@@ -329,7 +331,7 @@ function LibraryContent() {
                   type="button"
                   className={styles.copyButton}
                   onClick={() => copyTemplate(prompt)}
-                  aria-label={`Copy the ${prompt.name} template`}
+                  aria-label={`Copy template: ${prompt.name}`}
                 >
                   <CopyIcon tone="inherit" />
                   Copy template
@@ -396,6 +398,7 @@ function LibraryContent() {
               type="button"
               className={styles.iconButton}
               aria-label={`Actions for the ${view.folder} folder`}
+              title="Folder actions"
               aria-expanded={folderMenuOpen}
               onClick={() => setFolderMenuOpen((open) => !open)}
             >
@@ -456,10 +459,10 @@ function LibraryContent() {
             : `${inView.length} prompt${inView.length === 1 ? '' : 's'}`}
         </span>
         <div className={styles.layoutSwitch} role="group" aria-label="Layout">
-          <button type="button" aria-pressed={layout === 'list'} aria-label="List" onClick={() => setLayout('list')}>
+          <button type="button" aria-pressed={layout === 'list'} aria-label="List" title="List" onClick={() => setLayout('list')}>
             <ListViewIcon tone="inherit" />
           </button>
-          <button type="button" aria-pressed={layout === 'grid'} aria-label="Grid" onClick={() => setLayout('grid')}>
+          <button type="button" aria-pressed={layout === 'grid'} aria-label="Grid" title="Grid" onClick={() => setLayout('grid')}>
             <GridViewIcon tone="inherit" />
           </button>
         </div>

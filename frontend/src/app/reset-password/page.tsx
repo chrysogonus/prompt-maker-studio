@@ -62,7 +62,7 @@ function ResetPasswordForm() {
     return (
       <div className={styles.container}>
         <div className={styles.card}>
-          <h2 className={styles.title}>Password updated</h2>
+          <h1 className={styles.title}>Password updated</h1>
           <p className={styles.subtitle}>Your password has been changed successfully.</p>
           <Link href="/" className={styles.backLink}>
             Sign in
@@ -76,7 +76,7 @@ function ResetPasswordForm() {
     return (
       <div className={styles.container}>
         <div className={styles.card}>
-          <h2 className={styles.title}>Invalid link</h2>
+          <h1 className={styles.title}>Invalid link</h1>
           <p className={styles.subtitle}>
             This reset link is missing a token. Please request a new one.
           </p>
@@ -91,7 +91,7 @@ function ResetPasswordForm() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <h2 className={styles.title}>Set a new password</h2>
+        <h1 className={styles.title}>Set a new password</h1>
         <p className={styles.subtitle}>Choose a new password for your account.</p>
 
         <form onSubmit={handleSubmit} className={styles.form}>

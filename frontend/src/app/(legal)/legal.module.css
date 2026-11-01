@@ -58,6 +58,8 @@
 
 .content a {
   color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .content hr {

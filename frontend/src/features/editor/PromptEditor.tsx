@@ -189,15 +189,17 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               }}
             />
           ) : prompt ? (
-            <button
-              type="button"
-              className={styles.title}
-              onClick={() => setRenaming(true)}
-              title="Rename"
-            >
-              <span className={styles.titleText}>{prompt.name}</span>
-              <EditIcon size={14} className={styles.titleIcon} />
-            </button>
+            <h1 className={styles.titleHeading}>
+              <button
+                type="button"
+                className={styles.title}
+                onClick={() => setRenaming(true)}
+                title="Rename"
+              >
+                <span className={styles.titleText}>{prompt.name}</span>
+                <EditIcon size={14} className={styles.titleIcon} />
+              </button>
+            </h1>
           ) : (
             <h1 className={styles.title}>New prompt</h1>
           )}

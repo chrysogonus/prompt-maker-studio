@@ -175,6 +175,9 @@
 
 .signOut {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   white-space: nowrap;
   border: 0;
   background: none;

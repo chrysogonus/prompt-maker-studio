@@ -84,6 +84,13 @@
   min-width: 0;
 }
 
+.titleHeading {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  font-size: inherit;
+}
+
 button.title {
   cursor: pointer;
   display: inline-flex;
@@ -368,7 +375,7 @@ button.title:hover {
 /* The edge and coral are similarly bright, so focus also thickens the outline. */
 .section:focus-within {
   border-color: var(--color-accent-tag);
-  box-shadow: var(--shadow-surface), 0 0 0 1px var(--color-accent-tag);
+  box-shadow: var(--shadow-surface), 0 0 0 2px var(--color-accent-tag);
 }
 
 .sectionHead {

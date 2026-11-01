@@ -10,6 +10,14 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Fixed
+
+- Accessibility: library "Copy template" buttons and the legal pages' logo link have accessible
+  names that start with their visible text; links in legal pages are underlined; saved prompts
+  and the password reset page have a level-one heading (and the reset page its own title);
+  focused section text gets a clearer 2px ring; icon-only buttons in the library and section
+  toolbar show a tooltip; the sidebar Sign out button has a 44px touch target.
+
 ## [0.14.0] - 2026-10-29
 
 See the [release record](./docs/releases/0.14.0.md).

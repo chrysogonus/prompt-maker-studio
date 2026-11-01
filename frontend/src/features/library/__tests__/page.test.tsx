@@ -529,7 +529,7 @@ describe('LibraryPage', () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.getSavedPrompts).mockResolvedValue([saved({ fields: [{ name: 'Prompt', content: 'Just {{this}}.' }], generated_prompt: '<PROMPT>\nJust {{this}}.\n</PROMPT>' })]);
     await renderLibrary();
-    await user.click(screen.getByRole('button', { name: 'Copy the Weekly status update template' }));
+    await user.click(screen.getByRole('button', { name: 'Copy template: Weekly status update' }));
     expect(await navigator.clipboard.readText()).toBe('Just {{this}}.');
     await user.click(screen.getByRole('button', { name: 'More actions for Weekly status update' }));
     expect(screen.queryByRole('button', { name: 'Copy as plain text' })).not.toBeInTheDocument();
@@ -566,7 +566,7 @@ describe('LibraryPage', () => {
     const user = userEvent.setup();
     await renderLibrary();
 
-    await user.click(screen.getByRole('button', { name: 'Copy the Weekly status update template' }));
+    await user.click(screen.getByRole('button', { name: 'Copy template: Weekly status update' }));
 
     expect(await navigator.clipboard.readText()).toBe(LIBRARY[0].generated_prompt);
     expect(screen.getByText('Copied the “Weekly status update” template')).toBeInTheDocument();

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import LegalLinks from '@/components/LegalLinks';
 import Wordmark from '@/components/ui/Wordmark';
+import { APP_NAME } from '@/lib/branding';
 import { availableLegalPages } from '@/lib/legal';
 import styles from './legal.module.css';
 
@@ -10,7 +11,7 @@ export default async function LegalLayout({ children }: { children: React.ReactN
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <Link href="/" aria-label="Back to the app">
+        <Link href="/" aria-label={`${APP_NAME} home`}>
           <Wordmark />
         </Link>
       </header>
