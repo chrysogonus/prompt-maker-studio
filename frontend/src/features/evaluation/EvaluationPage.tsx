@@ -59,6 +59,13 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
   const agreement = judgeAgreement(runs);
   const knownGood = (item: EvalRun) => item.tested_version !== null && item.tested_version === prompt?.known_good_version;
   const closeImport = () => { setImportOpen(false); setError(''); };
+  // Why Run evaluation is unavailable, when it is not just busy.
+  const runBlocked = !cases.length ? 'Add a test case first.'
+    : incomplete.length ? `Fill in the missing values in ${incomplete.length === 1 ? '1 case' : `${incomplete.length} cases`} first.`
+      : !canUseAI && !configChecking && !configError ? config?.provider_connected ? 'AI requests are paused by the budget.' : 'Connect an AI provider in Settings to run.' : '';
+  const addCase = () => { setEditing({}); setError(''); };
+  const suggestCases = () => { setSuggesting(true); setError(''); };
+  const canSuggest = !busy && !atLimit && canUseAI && !suggesting && !proposals.length;
 
   return (
     <div className={styles.page}>
@@ -72,7 +79,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
           <Button variant="primary" onClick={() => void run()} disabled={!!busy || !!editing || suggesting || !canUseAI || !cases.length || incomplete.length > 0}>
             {busy === 'run' ? 'Running evaluation…' : 'Run evaluation'}
           </Button>
-          <p className={styles.hint}>Runs {cases.length ? cases.length === 1 ? '1 case' : `all ${cases.length} cases` : 'your cases'} on the latest saved prompt.</p>
+          <p className={styles.hint}>{runBlocked || `Runs ${cases.length === 1 ? '1 case' : `all ${cases.length} cases`} on the latest saved prompt.`}</p>
         </div>
       </header>
 
@@ -113,8 +120,8 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
             <div className={styles.actions}>
               <Button variant="ghost" disabled={!!busy || suggesting} onClick={() => { setImportOpen(true); setCsv(''); setFilename(''); setError(''); }}>Import CSV</Button>
               <Button variant="ghost" disabled={!!busy || !cases.length} onClick={() => void exportCsv()}>Export CSV</Button>
-              <Button disabled={!!busy || atLimit || !canUseAI || suggesting || proposals.length > 0} onClick={() => { setSuggesting(true); setError(''); }}>Suggest test cases</Button>
-              <Button disabled={!!busy || atLimit || suggesting} onClick={() => { setEditing({}); setError(''); }}>Add test case</Button>
+              <Button disabled={!canSuggest} onClick={suggestCases}>Suggest test cases</Button>
+              <Button disabled={!!busy || atLimit || suggesting} onClick={addCase}>Add test case</Button>
             </div>
           </div>
           {atLimit && <p className={styles.hint}>You have reached the {CASE_LIMIT}-case limit. Edit or remove a case to make room.</p>}
@@ -154,6 +161,10 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
               <h2>Try your prompt with a few examples.</h2>
               <p>Add inputs you actually use, then choose what a good output should look like. Run them together after you change the prompt.</p>
               <p className={styles.hint}>Start with one typical example. Add difficult cases as you find them.</p>
+              <div className={styles.actions}>
+                <Button variant="primary" disabled={!!busy || atLimit} onClick={addCase}>Add your first test case</Button>
+                {canUseAI && <Button disabled={!canSuggest} onClick={suggestCases}>Suggest cases with AI</Button>}
+              </div>
             </div>
           ) : (
             <section className={styles.caseList} aria-labelledby="saved-cases-heading">

@@ -128,6 +128,26 @@ it('explains an empty evaluation and never starts a paid call automatically', as
   expect(ApiClient.generateEvalCases).not.toHaveBeenCalled();
 });
 
+it('says why a case cannot be saved or run yet, and starts from the empty state', async () => {
+  const user = userEvent.setup();
+  vi.mocked(ApiClient.getPromptById).mockResolvedValue({
+    id: 1, name: 'Release notes', fields: [{ name: 'Task', content: 'Write about {{topic}}' }],
+    generated_prompt: '<TASK>Write about {{topic}}</TASK>', created_at: '2026-10-01T10:00:00',
+    variable_metadata: { topic: { type: 'text', description: 'What changed?', options: ['Bug fix', 'Feature'] } },
+  });
+  await open();
+  expect(screen.getByText('Add a test case first.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Add your first test case' }));
+  const topic = screen.getByLabelText('topic');
+  expect(topic).toHaveAccessibleDescription('What changed?');
+  expect(topic).toHaveAttribute('list', 'case-choices-topic');
+  expect(screen.getByRole('button', { name: 'Save test case' })).toHaveAccessibleDescription('Fill in topic, or mark the case as intentionally blank.');
+  await user.type(topic, 'Bug fix');
+  expect(screen.getByRole('button', { name: 'Save test case' })).toHaveAccessibleDescription('Add the text to check for.');
+  await user.type(screen.getByLabelText('Text for check 1'), 'summary');
+  expect(screen.getByRole('button', { name: 'Save test case' })).toBeEnabled();
+});
+
 it('creates a case with variable values and clear scoring instructions', async () => {
   const user = userEvent.setup();
   await open();

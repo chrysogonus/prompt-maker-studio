@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import { choiceList } from '@/features/editor/editorState';
 import { variablesIn } from '@/lib/sections';
 import type { PromptHistoryResponse } from '@/types/prompt';
 import type { EvalCaseInput, EvalMethod } from '@/types/evaluation';
@@ -35,6 +36,12 @@ export default function CaseForm({ prompt, initial, isEditing, busy, error, onSa
   const promptVariables = variablesIn(prompt.fields);
   const names = [...new Set([...promptVariables, ...Object.keys(variables)])];
   const missing = promptVariables.filter((key) => typeof variables[key] !== 'string' || !variables[key].trim());
+  // Say why Save is unavailable instead of only disabling it.
+  const saveBlocked = !intentionallyEmpty && missing.length ? `Fill in ${missing.join(', ')}, or mark the case as intentionally blank.`
+    : method === 'manual' ? ''
+      : method === 'rule' && !advanced ? invalidCheck ? checks.some(({ kind, text }) => kind !== 'json' && !text.trim()) ? 'Add the text to check for.' : 'Use advanced checks for commas, brackets, backslashes, or text starting with ! or ~.' : ''
+        : !criteria.trim() ? method === 'rule' ? 'Add at least one check.' : 'Add review instructions.' : '';
+  const tooLong = method !== 'manual' && savedCriteria.length > 2000 ? 'Shorten the checks to 2,000 characters.' : '';
 
   return (
     <form className={styles.form} onSubmit={(event) => {
@@ -52,14 +59,29 @@ export default function CaseForm({ prompt, initial, isEditing, busy, error, onSa
           <section className={styles.formSection} aria-labelledby="case-inputs">
             <h3 id="case-inputs">Inputs</h3>
             <p className={styles.hint}>These values replace the variables in your saved prompt.</p>
-            {names.map((key) => (
-              <label className={styles.field} key={key}>
-                <span>{key}{!promptVariables.includes(key) && <span className={styles.hint}> (no longer in this prompt)</span>}</span>
-                <textarea value={typeof variables[key] === 'string' ? variables[key] : ''} onChange={(event) => setVariables({ ...variables, [key]: event.target.value })}
-                  placeholder={prompt.variable_metadata?.[key]?.description ?? 'Value for this example'} rows={2} maxLength={10_000}
-                  required={promptVariables.includes(key) && !intentionallyEmpty} />
-              </label>
-            ))}
+            {names.map((key) => {
+              const hint = prompt.variable_metadata?.[key]?.description;
+              // Choices are suggestions here: a test case can use any value.
+              const choices = choiceList(prompt.variable_metadata?.[key]?.options);
+              const id = `case-value-${key}`;
+              const field = {
+                id,
+                'aria-describedby': hint ? `${id}-hint` : undefined,
+                value: typeof variables[key] === 'string' ? variables[key] : '',
+                onChange: (event: { target: { value: string } }) => setVariables({ ...variables, [key]: event.target.value }),
+                placeholder: choices.length ? 'Pick a choice or type any value' : 'Value for this example',
+                maxLength: 10_000,
+                required: promptVariables.includes(key) && !intentionallyEmpty,
+              };
+              return <div className={styles.field} key={key}>
+                <label htmlFor={id}>{key}{!promptVariables.includes(key) && <span className={styles.hint}> (no longer in this prompt)</span>}</label>
+                {hint && <small id={`${id}-hint`} className={styles.hint}>{hint}</small>}
+                {choices.length ? <>
+                  <Input {...field} list={`case-choices-${key}`} />
+                  <datalist id={`case-choices-${key}`}>{choices.map((choice) => <option key={choice} value={choice} />)}</datalist>
+                </> : <textarea {...field} rows={2} />}
+              </div>;
+            })}
             <label className={styles.checkLabel}>
               <input type="checkbox" checked={intentionallyEmpty} onChange={(event) => setIntentionallyEmpty(event.target.checked)} />
               This case intentionally leaves inputs blank
@@ -120,8 +142,10 @@ export default function CaseForm({ prompt, initial, isEditing, busy, error, onSa
       </fieldset>
       {error && <p className={styles.error} role="alert">{error}</p>}
       <div className={styles.formActions}>
+        {(saveBlocked || tooLong) && <p id="save-case-blocked" className={styles.hint}>{saveBlocked || tooLong}</p>}
         <Button onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button type="submit" variant="primary" disabled={busy || (method !== 'manual' && (!savedCriteria.trim() || savedCriteria.length > 2000 || (method === 'rule' && !advanced && invalidCheck))) || (!intentionallyEmpty && missing.length > 0)}>{busy ? 'Saving…' : 'Save test case'}</Button>
+        <Button type="submit" variant="primary" disabled={busy || !!saveBlocked || !!tooLong}
+          aria-describedby={saveBlocked || tooLong ? 'save-case-blocked' : undefined}>{busy ? 'Saving…' : 'Save test case'}</Button>
       </div>
     </form>
   );

@@ -20,6 +20,10 @@ any release. See [Project status](./README.md#project-status).
 - The sidebar explains how folders are made, and each sidebar folder has an action link that
   opens its Rename/Remove menu. Its theme control is the same Light/Dark/System segmented
   control as Settings.
+- Evaluate says why Run evaluation or Save test case is unavailable (no cases yet, a value to
+  fill in, a check without text, no AI connection). The empty test list has Add your first test
+  case and Suggest cases with AI buttons, and a test case's values show the variable's hint and
+  offer its choices as suggestions while still accepting any value.
 
 ### Fixed
 
