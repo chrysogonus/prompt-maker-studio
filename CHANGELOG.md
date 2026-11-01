@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.15.0; see the [release candidate](./docs/releases/0.15.0.md).
+
 ### Changed
 
 - A saved prompt's header has one Edit | Fill and copy switch at every width (replacing Edit
@@ -63,6 +65,8 @@ any release. See [Project status](./README.md#project-status).
 - A restored draft of a saved prompt offers one Discard (in the header) instead of two; the editor's
   toast sits bottom right, clear of the form; the section toolbar's insert button reads
   "{{ }} Variable".
+- Evaluation runs and other long AI requests that take more than 30 seconds are no longer cut
+  off by the reverse proxy: Caddy's write timeout is 15 minutes instead of 30 seconds.
 
 ## [0.14.0] - 2026-10-29
 

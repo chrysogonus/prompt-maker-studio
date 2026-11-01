@@ -47,6 +47,9 @@ separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
+- [0.15.0 release candidate](releases/0.15.0.md): fixes from the 2026-10-31 UX test (a
+  reworked saved-prompt header, one vocabulary for variables and values, accessibility, library,
+  evaluation and sign-in fixes) and a 15-minute proxy write timeout for long evaluation runs.
 - [0.14.0 release record](releases/0.14.0.md): dependency updates for the backend,
   frontend and CI, and a visual how-it-works overview, with no feature or API changes.
 - [0.13.0 release record](releases/0.13.0.md): one structured-data entity, a fuller
