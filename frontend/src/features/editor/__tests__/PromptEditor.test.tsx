@@ -856,7 +856,7 @@ describe('PromptEditor with a saved prompt', () => {
 
     expect(screen.getByText('Your unsaved changes were restored.')).toBeInTheDocument();
     expect(screen.getByLabelText('Role text')).toHaveValue('Draft role');
-    await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+    await user.click(screen.getByRole('button', { name: 'Discard' }));
     expect(screen.getByLabelText('Role text')).toHaveValue('You are a concise engineering lead.');
     expect(localStorage.getItem(draftKey(1))).toBeNull();
   });
@@ -1583,7 +1583,7 @@ it('turns selected text into an input and keeps it as the example', async () => 
   const text = screen.getByLabelText('Task text') as HTMLTextAreaElement;
   await user.click(text);
   text.setSelectionRange(15, 21);
-  await user.click(screen.getByRole('button', { name: 'Insert input in Task' }));
+  await user.click(screen.getByRole('button', { name: 'Insert variable in Task' }));
   const name = screen.getByLabelText('Input name for “Lisbon” (kept as its example)');
   await user.type(name, '2 cities');
   await user.click(screen.getByRole('button', { name: 'Insert' }));
@@ -1595,10 +1595,10 @@ it('turns selected text into an input and keeps it as the example', async () => 
   expect(screen.getByLabelText('Example input for destination_city')).toHaveValue('Lisbon');
 
   // Punctuation is dropped like spaces; letters outside ASCII are not silently removed.
-  await user.click(screen.getByRole('button', { name: 'Insert input in Task' }));
+  await user.click(screen.getByRole('button', { name: 'Insert variable in Task' }));
   await user.type(screen.getByLabelText('New input name'), 'max rows!{Enter}');
   expect(text.value).toContain('{{max_rows}}');
-  await user.click(screen.getByRole('button', { name: 'Insert input in Task' }));
+  await user.click(screen.getByRole('button', { name: 'Insert variable in Task' }));
   await user.type(screen.getByLabelText('New input name'), 'Größe{Enter}');
   expect(screen.getByRole('alert')).toHaveTextContent('Start with a letter');
   expect(screen.getByLabelText('New input name')).toHaveAccessibleDescription(/Start with a letter/);
@@ -1647,7 +1647,7 @@ it('keeps recovered filled inputs after discard until explicitly cleared', async
     values: { team: 'Payments', temporary: 'Private temporary value' },
   }));
   await renderSaved();
-  await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+  await user.click(screen.getByRole('button', { name: 'Discard' }));
   await waitFor(() => expect(JSON.parse(localStorage.getItem(draftKey(1))!).values).toEqual({ team: 'Payments' }));
   expect(screen.getByLabelText('team', { exact: true })).toHaveValue('Payments');
   await user.click(screen.getByRole('button', { name: 'Clear inputs' }));

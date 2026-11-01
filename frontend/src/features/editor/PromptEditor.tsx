@@ -322,7 +322,8 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
         <div className={styles.banner} role="status">
           <span>Your unsaved changes were restored.</span>
           <span>This draft is stored only in this browser.</span>
-          <button type="button" className={styles.link} onClick={() => discardEdits()}>Discard changes</button>
+          {/* A saved prompt's header already has Discard; a new prompt's draft needs its own. */}
+          {!(prompt && dirty) && <button type="button" className={styles.link} onClick={() => discardEdits()}>Discard changes</button>}
         </div>
       )}
 

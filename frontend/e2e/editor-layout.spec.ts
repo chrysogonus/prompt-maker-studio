@@ -95,8 +95,11 @@ test('keeps the fill-in fields when Try once returns a long output', async ({ pa
   const inputsHeight = () => team.evaluate(el => el.closest('label')!.parentElement!.clientHeight);
   const before = await inputsHeight();
   await page.getByText('Test with AI', { exact: true }).click();
+  // The panel sits at the bottom of the scrolling preview: opening it and running it scroll into view.
+  await expect(page.getByRole('button', { name: 'Try once', exact: true })).toBeInViewport({ ratio: 1 });
   await page.getByRole('button', { name: 'Try once', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Try once output' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Output' })).toBeInViewport();
   expect(await inputsHeight()).toBeGreaterThanOrEqual(before);
 });
 

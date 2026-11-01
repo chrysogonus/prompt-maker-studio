@@ -133,10 +133,10 @@ export default function SectionCard({
             type="button"
             className={styles.insertTool}
             onClick={startInsert}
-            aria-label={`Insert input in ${label}`}
-            title="Insert input: select text first to turn it into an input"
+            aria-label={`Insert variable in ${label}`}
+            title="Insert a {{variable}}: select text first to turn it into one"
           >
-            {'{{ }}'}
+            <span aria-hidden="true">{'{{ }}'}</span> Variable
           </button>
           <button
             type="button"

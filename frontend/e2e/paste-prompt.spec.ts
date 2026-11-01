@@ -60,6 +60,8 @@ for (const width of [1440, 390]) {
       await page.keyboard.press('Tab');
       expect(await review.evaluate((element) => element.contains(document.activeElement))).toBe(true);
       await expect(review.getByLabel('Converted prompt preview')).toHaveText(filled);
+      // The review uses the room it asks for, not the default 460px dialog width.
+      if (width >= 1440) expect((await review.boundingBox())!.width).toBeGreaterThan(900);
       await expect(review.getByRole('button', { name: 'Copy filled prompt' })).toBeInViewport();
       await expect(review.getByRole('checkbox', { name: 'Keep these inputs as examples' })).not.toBeChecked();
       await review.getByRole('button', { name: 'Copy filled prompt' }).click();

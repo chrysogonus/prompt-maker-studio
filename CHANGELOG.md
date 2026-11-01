@@ -43,6 +43,15 @@ any release. See [Project status](./README.md#project-status).
   claims "0 prompts".
 - Library rows keep their actions under the title below 1,100px, so titles stay readable on
   tablets with the sidebar open.
+- The AI review after "Create template with AI" uses its full 1,040px width again instead of the
+  default 460px dialog width.
+- Test with AI scrolls into view when opened, and its progress and output scroll into view as
+  they arrive.
+- On phones and tablets the filled prompt grows with the page instead of scrolling in a short box,
+  with the copy actions kept at the bottom of the screen.
+- A restored draft of a saved prompt offers one Discard (in the header) instead of two; the editor's
+  toast sits bottom right, clear of the form; the section toolbar's insert button reads
+  "{{ }} Variable".
 
 ## [0.14.0] - 2026-10-29
 

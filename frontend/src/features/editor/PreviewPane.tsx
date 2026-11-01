@@ -66,8 +66,11 @@ export default function PreviewPane({
   const tryingRef = useRef(false);
   const copiedTimer = useRef<number | null>(null);
   const resultRef = useRef<HTMLElement>(null);
-  // The output lands below the fold of the panel; bring it into view once.
-  useEffect(() => { if (result) resultRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); }, [result]);
+  const runningRef = useRef<HTMLParagraphElement>(null);
+  // The panel sits at the bottom of a scrolling preview, so its progress and output start below
+  // the fold: bring each into view once. The output's top, as it may be taller than the preview.
+  useEffect(() => { if (trying) runningRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); }, [trying]);
+  useEffect(() => { if (result) resultRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); }, [result]);
   useEffect(
     () => () => {
       if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
@@ -279,7 +282,12 @@ export default function PreviewPane({
           </label>
         </details>
         {(filled || variables.length === 0) && (
-          <details className={styles.tryPanel} open={tryOpen} onToggle={(event) => setTryOpen(event.currentTarget.open)}>
+          <details className={styles.tryPanel} open={tryOpen} onToggle={(event) => {
+            const panel = event.currentTarget;
+            setTryOpen(panel.open);
+            // Opening it shows Try once, which would otherwise be below the fold.
+            if (panel.open) panel.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+          }}>
             <summary>Test with AI</summary>
             <div className={styles.tryControls}>
               <>{aiConfigLoading ? <p role="status">Checking AI connection…</p> : aiConfigError ? <p role="status">Could not check the AI connection. Reload to retry.</p> : <AICallContext config={aiConfig} />}</>
@@ -291,7 +299,7 @@ export default function PreviewPane({
                 {trying ? 'Running…' : 'Try once'}
               </button>
             </div>
-            {trying && <p className={styles.tryResult} role="status">Running the filled prompt…</p>}
+            {trying && <p ref={runningRef} className={styles.tryResult} role="status">Running the filled prompt…</p>}
             {tryError && <p className={styles.tryResult} role="alert">{tryError}{tryError.includes('Settings →') && <> <Link href="/settings#s-api">Open Settings</Link></>}</p>}
             {result && <section ref={resultRef} className={styles.tryResult} aria-label="Try once output">
               <h3>Output</h3>

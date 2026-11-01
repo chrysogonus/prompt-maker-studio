@@ -10,7 +10,9 @@
 }
 
 .dialog {
-  width: min(460px, 100%);
+  /* Callers widen a dialog with --dialog-width: a width in their own module would tie with
+     this rule, and whichever stylesheet loaded last would win. */
+  width: var(--dialog-width, min(460px, 100%));
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
