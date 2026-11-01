@@ -180,8 +180,8 @@ export default function SectionCard({
         <form className={styles.insertForm} onSubmit={confirmInsert}>
           <label htmlFor={`insert-${section.key}`}>
             {replacing.trim()
-              ? `Input name for “${replacing.length > 40 ? `${replacing.slice(0, 40)}…` : replacing}” (kept as its example)`
-              : 'New input name'}
+              ? `Variable name for “${replacing.length > 40 ? `${replacing.slice(0, 40)}…` : replacing}” (kept as its example)`
+              : 'New variable name'}
           </label>
           <input
             id={`insert-${section.key}`}

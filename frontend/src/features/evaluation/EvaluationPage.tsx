@@ -125,7 +125,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
             </div>
           </div>
           {atLimit && <p className={styles.hint}>You have reached the {CASE_LIMIT}-case limit. Edit or remove a case to make room.</p>}
-          {incomplete.length > 0 && <p className={styles.banner}>Fill in the missing inputs in {incomplete.length} {incomplete.length === 1 ? 'case' : 'cases'}, or mark them as intentionally blank, before running.</p>}
+          {incomplete.length > 0 && <p className={styles.banner}>Fill in the missing values in {incomplete.length} {incomplete.length === 1 ? 'case' : 'cases'}, or mark them as intentionally blank, before running.</p>}
           {suggesting && (
             <form className={styles.suggestionsForm} onSubmit={(event) => { event.preventDefault(); void generate(goal); }}>
               <h2>Suggest test cases</h2>
@@ -159,7 +159,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
           {!cases.length ? !suggesting && !proposals.length && (
             <div className={styles.empty}>
               <h2>Try your prompt with a few examples.</h2>
-              <p>Add inputs you actually use, then choose what a good output should look like. Run them together after you change the prompt.</p>
+              <p>Add values you actually use, then choose what a good output should look like. Run them together after you change the prompt.</p>
               <p className={styles.hint}>Start with one typical example. Add difficult cases as you find them.</p>
               <div className={styles.actions}>
                 <Button variant="primary" disabled={!!busy || atLimit} onClick={addCase}>Add your first test case</Button>
@@ -174,7 +174,7 @@ export default function EvaluationPage({ promptId }: { promptId: number }) {
                 return <article className={styles.caseRow} key={item.id}>
                   <div className={styles.caseText}>
                     <h3>{name}</h3>
-                    <div className={styles.caseMeta}><span>{METHOD_LABELS[item.method]}</span><span>{Object.keys(item.variables).length} inputs</span>{item.intentionally_empty && <span>Blank inputs allowed</span>}</div>
+                    <div className={styles.caseMeta}><span>{METHOD_LABELS[item.method]}</span><span>{Object.keys(item.variables).length} values</span>{item.intentionally_empty && <span>Blank values allowed</span>}</div>
                     {item.criteria && <p className={styles.criteria}>{item.criteria}</p>}
                   </div>
                   <div className={styles.actions}>

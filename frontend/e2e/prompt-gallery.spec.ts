@@ -22,7 +22,7 @@ test('a template fills in with example inputs, saves into a new library and reop
   await page.goto('/gallery');
   await page.getByRole('region', { name: 'Featured' }).getByRole('link', { name: 'Bug fix brief for a coding agent' }).click();
   await expect(page).toHaveURL(/\/gallery\/bug-fix-brief$/);
-  await page.getByRole('button', { name: 'Use example inputs' }).click();
+  await page.getByRole('button', { name: 'Use example values' }).click();
   await expect(page.getByLabel('Filled prompt')).toContainText('npm test passes');
   await page.getByRole('button', { name: 'Save to my library' }).click();
 

@@ -446,8 +446,8 @@ test('offers capture and connection settings when no AI connection exists', asyn
     '/settings#s-api',
   );
   await dialog.getByLabel('Prompt to convert').fill('Keep my existing prompt.');
-  await expect(dialog.getByRole('button', { name: 'Save as written' })).toBeEnabled();
-  await expect(dialog.getByRole('button', { name: 'Create template with AI', exact: true })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Keep as written' })).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: 'Make reusable with AI', exact: true })).toBeDisabled();
 });
 
 test('files prompts into folders from the library and keeps Settings preferences', async ({
@@ -488,7 +488,7 @@ test('files prompts into folders from the library and keeps Settings preferences
   // Theme is stored in the browser; the library layout on the account.
   await sidebarLink(page, 'Settings').click();
   await expect(page).toHaveURL(/\/settings$/);
-  await page.getByRole('radio', { name: 'Light' }).click();
+  await page.getByRole('main').getByRole('radio', { name: 'Light' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   const savedView = page.waitForResponse(
     (response) => response.request().method() === 'PATCH' && /\/api\/auth\/me$/.test(response.url()),

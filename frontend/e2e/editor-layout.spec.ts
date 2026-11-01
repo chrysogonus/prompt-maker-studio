@@ -190,7 +190,7 @@ for (const width of [390, 1440]) {
     const paste = page.getByRole('dialog', { name: 'Paste a prompt', exact: true });
     await expect(paste).toContainText('one Task section, which copies as plain text');
     await paste.getByLabel('Prompt to convert').fill(text);
-    await paste.getByRole('button', { name: 'Save as written' }).click();
+    await paste.getByRole('button', { name: 'Keep as written' }).click();
     const save = page.getByRole('dialog', { name: 'Save prompt', exact: true });
     await expect(save.getByLabel('Name', { exact: true })).toHaveValue('Write a weekly update.');
     await save.getByLabel('Name', { exact: true }).fill('My weekly update');

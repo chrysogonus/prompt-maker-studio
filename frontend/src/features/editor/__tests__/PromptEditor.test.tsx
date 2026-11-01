@@ -139,7 +139,7 @@ it('offers an input with choices as a list in Fill mode, keeping a value from ou
   await user.click(screen.getByRole('button', { name: 'Copy filled prompt' }));
   expect(clipboard).toHaveBeenCalledWith('Draw a cat in Disney style.');
   // An example outside the list is still shown and used, not silently dropped.
-  await user.click(screen.getByRole('button', { name: 'Load example inputs' }));
+  await user.click(screen.getByRole('button', { name: 'Load example values' }));
   expect(style).toHaveValue('Studio Ghibli');
   expect(screen.getByLabelText('Prompt text').textContent).toBe('Draw a cat in Studio Ghibli style.');
 });
@@ -212,7 +212,7 @@ it('opens full prompt details without beginning a rename', async () => {
   expect(details).toHaveTextContent('Work');
   expect(details).toHaveTextContent('Current version1');
   expect(details).toHaveTextContent('Known goodNot marked');
-  expect(details).toHaveTextContent('Inputsteam, notes');
+  expect(details).toHaveTextContent('Variablesteam, notes');
   expect(screen.queryByRole('textbox', { name: 'Prompt name' })).not.toBeInTheDocument();
 });
 
@@ -247,9 +247,9 @@ it('keeps AI testing open with its output across a Template and Filled switch', 
   vi.mocked(ApiClient.tryPrompt).mockResolvedValueOnce({ output_text: 'One output', provider: 'openai', model: 'gpt-4.1-mini' });
   await renderSaved();
   await user.click(screen.getByText('Test with AI'));
-  expect(screen.getByText('No inputs are filled in, so the model will see only placeholders.')).toBeVisible();
+  expect(screen.getByText('No values are filled in, so the model will see only placeholders.')).toBeVisible();
   await user.type(screen.getByPlaceholderText('Team or project name'), 'Platform');
-  expect(screen.queryByText('No inputs are filled in, so the model will see only placeholders.')).not.toBeInTheDocument();
+  expect(screen.queryByText('No values are filled in, so the model will see only placeholders.')).not.toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Try once' }));
   await screen.findByRole('region', { name: 'Try once output' });
   await user.click(screen.getByRole('radio', { name: 'Template' }));
@@ -376,11 +376,11 @@ describe('variable inputs and reversible import', () => {
     render(<PromptEditor />);
     fireEvent.change(screen.getByLabelText('Task text'), { target: { value: 'Explain {{topic}}.' } });
     await user.click(screen.getByLabelText('Required topic'));
-    await user.type(screen.getByLabelText('Example input for topic'), 'Space');
+    await user.type(screen.getByLabelText('Example value for topic'), 'Space');
     await user.type(screen.getByLabelText('Hint for topic'), 'Subject');
     await user.clear(screen.getByLabelText('Hint for topic'));
     expect(screen.getByLabelText('Required topic')).toBeChecked();
-    expect(screen.getByLabelText('Example input for topic')).toHaveValue('Space');
+    expect(screen.getByLabelText('Example value for topic')).toHaveValue('Space');
   });
   it('requires explicit copying with placeholders for missing required inputs and loads examples on demand', async () => {
     const user = userEvent.setup();
@@ -398,7 +398,7 @@ describe('variable inputs and reversible import', () => {
     expect(clipboard).toHaveBeenCalledWith(prompt().generated_prompt);
     expect(screen.getByLabelText('team Required')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText('team Required')).toHaveValue('   ');
-    await user.click(screen.getByRole('button', { name: 'Load example inputs' }));
+    await user.click(screen.getByRole('button', { name: 'Load example values' }));
     expect(screen.getByLabelText('team Required')).toHaveValue('Platform');
     expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Copy filled prompt' }));
@@ -409,18 +409,18 @@ describe('variable inputs and reversible import', () => {
     const user = userEvent.setup();
     render(<PromptEditor />);
     fireEvent.change(screen.getByLabelText('Task text'), { target: { value: 'Explain {{topic}}.' } });
-    await user.type(screen.getByLabelText('Example input for topic'), 'Space');
+    await user.type(screen.getByLabelText('Example value for topic'), 'Space');
     vi.mocked(ApiClient.parsePromptText).mockResolvedValue({ fields: [{ name: 'Imported', content: 'New text' }] });
     await openTool(user, 'Paste a prompt');
     expect(screen.getByText(/current draft stays as it is/)).toBeInTheDocument();
     expect(within(screen.getByRole('dialog', { name: 'Paste a prompt' })).getByText(/Uses your connection \(OpenAI \/ gpt-4.1-mini\)/)).toBeInTheDocument();
     await user.type(screen.getByLabelText('Prompt to convert'), 'New text');
-    await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
+    await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
     await user.click(await screen.findByRole('button', { name: 'Use in editor' }));
     expect(await screen.findByLabelText('Imported text')).toHaveValue('New text');
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(screen.getByLabelText('Task text')).toHaveValue('Explain {{topic}}.');
-    expect(screen.getByLabelText('Example input for topic')).toHaveValue('Space');
+    expect(screen.getByLabelText('Example value for topic')).toHaveValue('Space');
     expect(ApiClient.createPrompt).not.toHaveBeenCalled();
   });
 });
@@ -1248,7 +1248,7 @@ describe('PromptEditor with a new prompt', () => {
     await openTool(user, 'Paste a prompt');
     const dialog = await screen.findByRole('dialog', { name: 'Paste a prompt' });
     await user.type(within(dialog).getByLabelText('Prompt to convert'), 'Proofread my text, typos only');
-    await user.click(within(dialog).getByRole('button', { name: 'Create template with AI' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Make reusable with AI' }));
     await user.click(await screen.findByRole('button', { name: 'Use in editor' }));
 
     await waitFor(() => expect(screen.getByLabelText('role text')).toHaveValue('A careful proofreader'));
@@ -1272,8 +1272,8 @@ describe('PromptEditor with a new prompt', () => {
     await openTool(user, 'Paste a prompt');
 
     const dialog = await screen.findByRole('dialog', { name: 'Paste a prompt' });
-    expect(within(dialog).getByRole('button', { name: 'Save as written' })).toBeDisabled();
-    expect(within(dialog).getByRole('button', { name: 'Create template with AI' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Keep as written' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Make reusable with AI' })).toBeDisabled();
     expect(ApiClient.parsePromptText).not.toHaveBeenCalled();
   });
 });
@@ -1303,7 +1303,7 @@ it('tries filled draft once without saving and preserves output across errors', 
   expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
   vi.mocked(ApiClient.tryPrompt).mockRejectedValueOnce(new Error('Provider unavailable'));
   await user.type(screen.getByPlaceholderText('Team or project name'), ' team');
-  expect(output).toHaveTextContent('Output is from earlier inputs');
+  expect(output).toHaveTextContent('Output is from earlier values');
   await user.click(screen.getByRole('button', { name: 'Try once' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Provider unavailable');
   expect(screen.queryByRole('link', { name: 'Open Settings' })).not.toBeInTheDocument();
@@ -1324,7 +1324,7 @@ describe('paste a prompt recovery and save handoff', () => {
     vi.mocked(ApiClient.parsePromptText).mockResolvedValue(conversion);
     await openTool(user, 'Paste a prompt');
     fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: 'Plan a trip to Lisbon.' } });
-    await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
+    await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
     await screen.findByRole('button', { name: 'Use in editor' });
   }
 
@@ -1335,13 +1335,13 @@ describe('paste a prompt recovery and save handoff', () => {
     await review(user);
     fireEvent.change(screen.getByLabelText('Variable name for destination'), { target: { value: 'city' } });
     fireEvent.change(screen.getByLabelText('Value for destination'), { target: { value: 'Porto' } });
-    await user.click(screen.getByRole('checkbox', { name: 'Keep these inputs as examples' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Keep these values as examples' }));
     await waitFor(() => expect(JSON.parse(localStorage.getItem(draftKey(1))!).importSession.variables[0].value).toBe('Porto'));
     rendered.unmount();
     render(<PromptEditor promptId={1} />);
     expect(await screen.findByLabelText('Value for destination')).toHaveValue('Porto');
     expect(screen.getByLabelText('Variable name for destination')).toHaveValue('city');
-    expect(screen.getByRole('checkbox', { name: 'Keep these inputs as examples' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Keep these values as examples' })).toBeChecked();
     expect(screen.getByLabelText('Context text')).toHaveValue(prompt().fields[1].content);
     await user.click(screen.getByRole('button', { name: 'Back to source' }));
     expect(screen.getByLabelText('Prompt to convert')).toHaveValue('Plan a trip to Lisbon.');
@@ -1358,7 +1358,7 @@ describe('paste a prompt recovery and save handoff', () => {
     expect(screen.getByRole('tab', { name: 'Fill and copy' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('destination', { exact: true })).toHaveValue('Lisbon');
     expect(screen.getByLabelText('destination', { exact: true })).toHaveFocus();
-    expect(screen.getByLabelText('Example input for destination')).toHaveValue('');
+    expect(screen.getByLabelText('Example value for destination')).toHaveValue('');
     await waitFor(() => expect(JSON.parse(localStorage.getItem(draftKey('new'))!).values).toEqual({ destination: 'Lisbon' }));
     rendered.unmount();
     const recovered = render(<PromptEditor />);
@@ -1380,7 +1380,7 @@ describe('paste a prompt recovery and save handoff', () => {
     render(<PromptEditor promptId={2} />);
     expect(await screen.findByLabelText('destination', { exact: true })).toHaveValue('Lisbon');
     expect(screen.getByRole('button', { name: 'Edit template' })).toBeInTheDocument();
-    expect(screen.getByText('Inputs stay on this device until you clear them.')).toBeInTheDocument();
+    expect(screen.getByText('Values stay on this device until you clear them.')).toBeInTheDocument();
     expect(screen.queryByText('Your unsaved changes were restored.')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Prompt text')).toHaveTextContent('Plan a trip to Lisbon.');
   });
@@ -1390,9 +1390,9 @@ describe('paste a prompt recovery and save handoff', () => {
     await renderSaved();
     await user.type(screen.getByLabelText('team', { exact: true }), 'Payments');
     await review(user);
-    await user.click(screen.getByRole('checkbox', { name: 'Keep these inputs as examples' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Keep these values as examples' }));
     await user.click(screen.getByRole('button', { name: 'Use in editor' }));
-    expect(screen.getByLabelText('Example input for destination')).toHaveValue('Lisbon');
+    expect(screen.getByLabelText('Example value for destination')).toHaveValue('Lisbon');
     expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(screen.getByLabelText('team', { exact: true })).toHaveValue('Payments');
@@ -1476,8 +1476,8 @@ it('offers the library title and folder on Save and drops a stale draft notice a
   const { rerender } = render(<PromptEditor openImport />);
   expect(await screen.findByLabelText('Prompt to convert')).toHaveValue('Outline [TOPIC].');
   expect(screen.getByText('Your unsaved changes were restored.')).toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
-  expect(await screen.findByText('Some inputs have no value yet. They stay as placeholders when copied.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
+  expect(await screen.findByText('Some variables have no value yet. They stay as placeholders when copied.')).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Use in editor' }));
   // Applying drops ?import=1 from the URL, which re-renders without openImport.
   rerender(<PromptEditor />);
@@ -1497,7 +1497,7 @@ it('consumes the library import URL when applying so reload opens the recovered 
   });
   render(<PromptEditor openImport />);
   fireEvent.change(await screen.findByLabelText('Prompt to convert'), { target: { value: 'Go to Lisbon.' } });
-  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
+  await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
   await user.click(await screen.findByRole('button', { name: 'Use in editor' }));
   expect(routerReplace).toHaveBeenCalledWith('/editor/new', { scroll: false });
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -1517,10 +1517,10 @@ it('keeps import Undo available when loading unchanged example inputs', async ()
   });
   await openTool(user, 'Paste a prompt');
   fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: 'Plan a 3-day trip to Lisbon.' } });
-  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
-  await user.click(await screen.findByRole('checkbox', { name: 'Keep these inputs as examples' }));
+  await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
+  await user.click(await screen.findByRole('checkbox', { name: 'Keep these values as examples' }));
   await user.click(screen.getByRole('button', { name: 'Use in editor' }));
-  await user.click(screen.getByRole('button', { name: 'Load example inputs' }));
+  await user.click(screen.getByRole('button', { name: 'Load example values' }));
   await user.click(screen.getByRole('button', { name: 'Undo' }));
   expect(screen.getByLabelText('Context text')).toHaveValue(prompt().fields[1].content);
   expect(screen.getByLabelText('team', { exact: true })).toHaveValue('Payments');
@@ -1544,7 +1544,7 @@ it('opens saved prompts with inputs ready to fill and remembers inputs on this d
   await screen.findByRole('button', { name: 'Weekly status update' });
   expect(screen.getByLabelText('Context text').closest('fieldset')).toHaveAttribute('hidden');
   await user.type(screen.getByPlaceholderText('Team or project name'), 'Platform');
-  expect(screen.getByText('Inputs stay on this device until you clear them.')).toBeInTheDocument();
+  expect(screen.getByText('Values stay on this device until you clear them.')).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Edit template' }));
   expect(screen.getByLabelText('Context text').closest('fieldset')).not.toHaveAttribute('hidden');
   expect(screen.getByPlaceholderText('Team or project name')).toHaveValue('Platform');
@@ -1552,7 +1552,7 @@ it('opens saved prompts with inputs ready to fill and remembers inputs on this d
 
   render(<PromptEditor promptId={1} />);
   expect(await screen.findByPlaceholderText('Team or project name')).toHaveValue('Platform');
-  await user.click(screen.getByRole('button', { name: 'Clear inputs' }));
+  await user.click(screen.getByRole('button', { name: 'Clear values' }));
   expect(localStorage.getItem(draftKey(1))).toBeNull();
 });
 
@@ -1584,7 +1584,7 @@ it('turns selected text into an input and keeps it as the example', async () => 
   await user.click(text);
   text.setSelectionRange(15, 21);
   await user.click(screen.getByRole('button', { name: 'Insert variable in Task' }));
-  const name = screen.getByLabelText('Input name for “Lisbon” (kept as its example)');
+  const name = screen.getByLabelText('Variable name for “Lisbon” (kept as its example)');
   await user.type(name, '2 cities');
   await user.click(screen.getByRole('button', { name: 'Insert' }));
   expect(screen.getByRole('alert')).toHaveTextContent('Start with a letter');
@@ -1592,18 +1592,18 @@ it('turns selected text into an input and keeps it as the example', async () => 
   await user.type(name, 'Destination City{Enter}');
   expect(text).toHaveValue('Plan a trip to {{destination_city}}.');
   expect(text).toHaveFocus();
-  expect(screen.getByLabelText('Example input for destination_city')).toHaveValue('Lisbon');
+  expect(screen.getByLabelText('Example value for destination_city')).toHaveValue('Lisbon');
 
   // Punctuation is dropped like spaces; letters outside ASCII are not silently removed.
   await user.click(screen.getByRole('button', { name: 'Insert variable in Task' }));
-  await user.type(screen.getByLabelText('New input name'), 'max rows!{Enter}');
+  await user.type(screen.getByLabelText('New variable name'), 'max rows!{Enter}');
   expect(text.value).toContain('{{max_rows}}');
   await user.click(screen.getByRole('button', { name: 'Insert variable in Task' }));
-  await user.type(screen.getByLabelText('New input name'), 'Größe{Enter}');
+  await user.type(screen.getByLabelText('New variable name'), 'Größe{Enter}');
   expect(screen.getByRole('alert')).toHaveTextContent('Start with a letter');
-  expect(screen.getByLabelText('New input name')).toHaveAccessibleDescription(/Start with a letter/);
+  expect(screen.getByLabelText('New variable name')).toHaveAccessibleDescription(/Start with a letter/);
   await user.keyboard('{Escape}');
-  expect(screen.queryByLabelText('New input name')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('New variable name')).not.toBeInTheDocument();
   expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
 });
 
@@ -1628,7 +1628,7 @@ it('checks the connection before showing a disconnected warning and distinguishe
   fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: '  Write a weekly update.\nKeep formatting.  ' } });
   reject(new Error('Offline'));
   expect(await within(screen.getByRole('dialog', { name: 'Paste a prompt' })).findByText(/Could not check the AI connection/)).toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Save as written' }));
+  await user.click(screen.getByRole('button', { name: 'Keep as written' }));
   const save = screen.getByRole('dialog', { name: 'Save prompt' });
   expect(within(save).getByLabelText('Name')).toHaveValue('Write a weekly update.');
   expect(screen.getByLabelText('Task text')).toHaveValue('  Write a weekly update.\nKeep formatting.  ');
@@ -1650,7 +1650,7 @@ it('keeps recovered filled inputs after discard until explicitly cleared', async
   await user.click(screen.getByRole('button', { name: 'Discard' }));
   await waitFor(() => expect(JSON.parse(localStorage.getItem(draftKey(1))!).values).toEqual({ team: 'Payments' }));
   expect(screen.getByLabelText('team', { exact: true })).toHaveValue('Payments');
-  await user.click(screen.getByRole('button', { name: 'Clear inputs' }));
+  await user.click(screen.getByRole('button', { name: 'Clear values' }));
   expect(screen.getByLabelText('team', { exact: true })).toHaveValue('');
   await waitFor(() => expect(localStorage.getItem(draftKey(1))).toBeNull());
   expect(screen.getByRole('button', { name: 'Saved' })).toBeDisabled();

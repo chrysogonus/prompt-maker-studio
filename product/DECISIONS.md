@@ -1041,7 +1041,10 @@ and previews section text. A single pasted note offers Keep as written (no AI) o
 reusable with AI, which hands the text once through session storage to the editor's
 existing Paste a prompt flow rather than overwriting the user's new-prompt draft. The
 editor keeps Paste a prompt for new and saved prompts. JSON favorites are applied after
-creation because the create endpoint rejects extra fields.
+creation because the create endpoint rejects extra fields. Since 2026-11-01 the library's
+single-note button reads Import as written, so it says that it imports, and the editor's Paste a
+prompt uses the same Keep as written and Make reusable with AI names instead of Save as written
+and Create template with AI.
 
 **Consequences**: AI conversion from the library takes one more step (Preview), and the
 no-AI path is the default. Full archive restore remains deferred (ROADMAP Later).

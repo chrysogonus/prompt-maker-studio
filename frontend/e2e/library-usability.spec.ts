@@ -74,7 +74,7 @@ for (const width of [1440, 390, 320]) {
     expect(await page.getByRole('dialog', { name: 'Add existing prompts' }).evaluate(d => d.scrollWidth <= d.clientWidth)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`import-${width}.png`), fullPage: true });
-    await page.getByRole('button', { name: 'Keep as written' }).click();
+    await page.getByRole('button', { name: 'Import as written' }).click();
     await expect(page.getByText(/Imported 1 prompt\./)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Open imported prompt' })).toBeVisible();
     await page.getByRole('button', { name: 'Close', exact: true }).click();

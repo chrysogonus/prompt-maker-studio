@@ -342,7 +342,7 @@ export default function LLMConnectionForm() {
       <p className={styles.hint}>
         {isCurated
           ? selectionTested ? 'Text-generation test passed for this model.' : 'Use Test connection to check access, before or after saving.'
-          : compatibility === 'other' ? 'This model name indicates an operation other than text generation. Choose a chat/text model for Import, Refine, Evaluate and Try once.'
+          : compatibility === 'other' ? 'This model name indicates an operation other than text generation. Choose a chat/text model for Import, Refine, Evaluate and Test with AI.'
           : selectionTested ? 'This provider and model passed a text-generation test. Structured operations still depend on provider support.' : 'Listed models are not checked for compatibility. Use Test connection to check this one.'}
         {!isCurated && ' Model-name grouping is guidance only. Custom models remain available for self-hosted providers.'}
       </p>

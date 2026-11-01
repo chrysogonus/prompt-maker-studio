@@ -90,9 +90,9 @@ choices is a list to pick from in Fill mode. The panel links to the variables
 guide; Guides is also available in app navigation. Markup warnings are advisory and
 can be dismissed without altering the text. A hint whose variable no longer
 appears is kept, marked as unused, until removed. Variables are optional by default; required inputs
-and examples are editable settings persisted on Save. Load example inputs is explicit and examples
+and examples are editable settings persisted on Save. Load example values is explicit and examples
 never become section content. Ordinary filled inputs are temporary. Converted inputs recover in
-browser-local drafts; Keep these inputs as examples is unchecked by default and only saves example
+browser-local drafts; Keep these values as examples is unchecked by default and only saves example
 metadata when opted into and followed by Save.
 
 In the preview, open **Test with AI** to reach **Try once**. It runs the filled prompt through the configured provider without saving it or creating a
@@ -107,7 +107,7 @@ At widths up to 1200px the editor has Edit and Fill and copy tabs, and saved
 prompts open on Fill and copy. Library Fill and copy links open a focused form
 on every screen size; Edit template returns to the section editor. Discarding
 template changes retains filled values for variables still in the saved prompt.
-Clear inputs resets those separately. Recovered drafts are identified
+Clear values resets those separately. Recovered drafts are identified
 above both panes as stored only in the current browser.
 
 ## Versions
@@ -187,7 +187,7 @@ above both panes as stored only in the current browser.
   `<transcript>` into inputs (each can be unticked; `[[wiki-links]]` are never offered),
   keeping each placeholder's wording as the input's hint, with Undo, and a **Folder for all prompts** field when
   several prompts are imported.
-- Paste a prompt offers Save as written without AI. The source becomes one Task
+- Paste a prompt offers Keep as written without AI. The source becomes one Task
   section, preserving its text. Prompts with a single section copy as plain text by
   default; Output options can add the section tags.
   Optional AI conversion still offers review before applying.

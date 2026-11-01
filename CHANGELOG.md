@@ -12,6 +12,13 @@ any release. See [Project status](./README.md#project-status).
 
 ### Changed
 
+- One vocabulary for prompt variables: a `{{…}}` slot is a variable everywhere ("Insert
+  variable", "New variable name", "Required variables missing"), what you type into it is a value
+  ("Load example values", "Clear values", Evaluate's Values), and "placeholder" means only the
+  `{{…}}` text that is copied as it is.
+- The editor's Paste a prompt uses the library's names, Keep as written and Make reusable with AI
+  (was Save as written and Create template with AI); the library's single-note button reads Import
+  as written. Settings refers to Test with AI instead of Try once.
 - Moving selected prompts can be undone, needs a folder name ("Move to folder"), and unfiling
   has its own Remove from folder button; the result is a toast instead of a status line.
 - Duplicates are named "Name (copy)", then "Name (copy 2)", instead of "Name Duplicate".

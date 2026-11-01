@@ -37,7 +37,7 @@ export default function ImportReview({ session, onChange, onImport, onClose }: {
     }).join(''),
   }));
   const error = nameError || (fields.some((field) => field.content.length > 10_000)
-    ? 'A section exceeds 10,000 characters. Shorten its fixed inputs or keep them as variables.' : '');
+    ? 'A section exceeds 10,000 characters. Shorten its fixed values or keep them as variables.' : '');
   const template = renderSections(fields);
   const filled = fillVariables(template, inputs);
   const unfilled = reusable.some((variable) => !variable.value);
@@ -56,18 +56,18 @@ export default function ImportReview({ session, onChange, onImport, onClose }: {
   return <>
     <h3 ref={heading} tabIndex={-1} className={styles.reviewHeading}>Your template is ready to review</h3>
     <p>
-      {variables.some((variable) => variable.value) ? 'Original inputs are filled in.' : 'No values were found for the inputs; fill them in below or keep them as placeholders.'}
+      {variables.some((variable) => variable.value) ? 'Original values are filled in.' : 'No values were found for the variables; fill them in below or keep them as placeholders.'}
       {' '}Changes here are local; they do not make another AI request.
     </p>
     <div className={styles.reviewLayout}>
       <section aria-label="Converted prompt" className={styles.preview}>
         <SegmentedControl aria-label="Conversion preview mode" options={VIEWS} value={view} onChange={setView} />
         <pre tabIndex={0} aria-label="Converted prompt preview">{view === 'filled' ? filled : template}</pre>
-        {unfilled && <p>Some inputs have no value yet. They stay as placeholders when copied.</p>}
+        {unfilled && <p>Some variables have no value yet. They stay as placeholders when copied.</p>}
       </section>
       <section aria-label="Detected variables" className={styles.variables}>
         <h3>Detected variables</h3>
-        {!variables.length && <p>No changeable inputs were detected. You can still copy the structured prompt or add variables in the editor.</p>}
+        {!variables.length && <p>No changeable parts were detected. You can still copy the structured prompt or add variables in the editor.</p>}
         {variables.map((variable) => <div className={styles.variable} key={variable.originalName}>
           <label className={styles.reuseToggle}>
             <input type="checkbox" checked={variable.reuse} onChange={(event) => changeVariable(variable.originalName, { reuse: event.target.checked })} />
@@ -88,9 +88,9 @@ export default function ImportReview({ session, onChange, onImport, onClose }: {
     </div>
     {reusable.length > 0 && <label className={styles.reuseToggle}>
       <input type="checkbox" checked={session.keepExamples ?? false} onChange={(event) => onChange({ ...session, keepExamples: event.target.checked })} />
-      Keep these inputs as examples
+      Keep these values as examples
     </label>}
-    <p>Current inputs stay in your browser for recovery. Examples are saved with the template only when you choose this option and Save.</p>
+    <p>Current values stay in your browser for recovery. Examples are saved with the template only when you choose this option and Save.</p>
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {copyError && <p role="alert" className={styles.error}>{copyError}</p>}
     {copied && <p role="status">{copied}</p>}

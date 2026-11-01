@@ -392,7 +392,7 @@ it('keeps missing-input cases from running until intentional placeholders are ac
   await open([{ ...example, variables: {} }]);
   expect(screen.getByRole('button', { name: 'Run evaluation' })).toBeDisabled();
   await user.click(screen.getByRole('button', { name: 'Edit Returns JSON' }));
-  await user.click(screen.getByRole('checkbox', { name: 'This case intentionally leaves inputs blank' }));
+  await user.click(screen.getByRole('checkbox', { name: 'This case intentionally leaves values blank' }));
   vi.mocked(ApiClient.updateEvalCase).mockResolvedValue({ ...example, variables: {}, intentionally_empty: true });
   await user.click(screen.getByRole('button', { name: 'Save test case' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Run evaluation' })).toBeEnabled());
@@ -427,7 +427,7 @@ it('compares runs by case identity and warns when scoring has changed', async ()
   await user.click(screen.getByRole('radio', { name: 'Run history' }));
   await user.selectOptions(screen.getByRole('combobox', { name: 'Compare with' }), '11');
   expect(screen.getByText('Earlier release notes.')).toBeInTheDocument();
-  expect(screen.getByText(/inputs or scoring changed/i)).toBeInTheDocument();
+  expect(screen.getByText(/values or scoring changed/i)).toBeInTheDocument();
   expect(screen.getByText('Not included in this run.')).toBeInTheDocument();
 });
 

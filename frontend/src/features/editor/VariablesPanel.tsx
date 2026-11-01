@@ -36,7 +36,7 @@ export default function VariablesPanel({
           <Link href="/guides/prompt-template-variables">Learn about variables</Link>
         </p>
       ) : (
-        <p className={styles.variablesIntro}>Hints appear when you fill the prompt in. Required inputs and examples are optional settings; save to keep them.</p>
+        <p className={styles.variablesIntro}>Hints appear when you fill the prompt in. Required variables and example values are optional settings; save to keep them.</p>
       )}
       {variables.map((name) => (
         <div key={name} className={styles.variableRow}>
@@ -59,9 +59,9 @@ export default function VariablesPanel({
               Required {name}
             </label>
             <label className={styles.optionField}>
-              <span>Example input</span>
+              <span>Example value</span>
               <textarea value={metadata[name]?.example ?? ''} maxLength={10_000} rows={2}
-                aria-label={`Example input for ${name}`} placeholder="Used by Load example inputs"
+                aria-label={`Example value for ${name}`} placeholder="Used by Load example values"
                 onChange={(event) => onChangeMetadata(name, { example: event.target.value || null })} />
             </label>
             <label className={styles.optionField}>

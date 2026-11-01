@@ -332,7 +332,7 @@ describe('LibraryPage', () => {
     await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
     await user.type(screen.getByLabelText('Paste text'), '# Greeting\nHello');
     await user.click(screen.getByRole('button', { name: 'Preview' }));
-    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
+    await user.click(screen.getByRole('button', { name: 'Import as written' }));
     await screen.findByText(/Imported 1 prompt\./);
     await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(rowNames()).not.toContain('LinkedIn post');
@@ -446,7 +446,7 @@ describe('LibraryPage', () => {
     await user.type(screen.getByLabelText('Paste text'), '# Third\nMore');
     vi.mocked(ApiClient.createPrompt).mockResolvedValueOnce(saved({ id: 22, name: 'Third', folder: null }));
     await user.click(screen.getByRole('button', { name: 'Preview' }));
-    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
+    await user.click(screen.getByRole('button', { name: 'Import as written' }));
     await user.click(await screen.findByRole('button', { name: 'Open imported prompt' }));
     expect(push).toHaveBeenCalledWith('/editor/22');
     expect(rowNames()).toEqual(expect.arrayContaining(['First', 'Second', 'Third']));
@@ -508,14 +508,14 @@ describe('LibraryPage', () => {
     const offer = screen.getByRole('group', { name: /Found 3 placeholders/ });
     expect(within(offer).getAllByRole('checkbox').map(box => box.parentElement!.textContent)).toEqual(['[TOPIC]', '{audience}', '[PASTE CODE HERE]']);
     await user.click(within(offer).getByRole('checkbox', { name: '{audience}' }));
-    await user.click(screen.getByRole('button', { name: 'Turn 2 into inputs' }));
+    await user.click(screen.getByRole('button', { name: 'Turn 2 into variables' }));
     expect(screen.getByText('Write about {{topic}} for {audience}, see Style. Code: {{paste_code_here}}')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(screen.getByText('Write about [TOPIC] for {audience}, see Style. Code: [PASTE CODE HERE]')).toBeVisible();
     // Undo keeps the earlier choices; tick the third one back.
     await user.click(screen.getByRole('checkbox', { name: '{audience}' }));
-    await user.click(screen.getByRole('button', { name: 'Turn them into inputs' }));
-    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
+    await user.click(screen.getByRole('button', { name: 'Turn them into variables' }));
+    await user.click(screen.getByRole('button', { name: 'Import as written' }));
     await waitFor(() => expect(ApiClient.createPrompt).toHaveBeenCalledWith({
       name: 'Post', folder: null,
       fields: [{ name: 'Prompt', content: 'Write about {{topic}} for {{audience}}, see Style. Code: {{paste_code_here}}' }],
@@ -629,7 +629,7 @@ describe('LibraryPage', () => {
     await user.click(screen.getByRole('button', { name: 'Preview' }));
     expect(screen.getByRole('button', { name: 'Nothing new to import' })).toBeDisabled();
     await user.click(screen.getByRole('radio', { name: 'Import a copy' }));
-    expect(screen.getByRole('button', { name: 'Keep as written' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Import as written' })).toBeEnabled();
   });
 
   it('updates a changed library prompt as a new version when asked, and only then', async () => {
@@ -700,7 +700,7 @@ describe('LibraryPage', () => {
     await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
     await user.type(screen.getByLabelText('Paste text'), '# LinkedIn post\nWrite for [[AUDIENCE], briefly.\n# Thread\nA thread for [[AUDIENCE].');
     await user.click(screen.getByRole('button', { name: 'Preview' }));
-    await user.click(screen.getByRole('button', { name: 'Turn it into an input' }));
+    await user.click(screen.getByRole('button', { name: 'Turn it into a variable' }));
     await user.click(screen.getByRole('radio', { name: 'Update it (the current text stays in History)' }));
     await user.click(screen.getByRole('button', { name: 'Import 1 prompt and update 1' }));
     await screen.findByText(/updated 1/);
@@ -740,7 +740,7 @@ describe('LibraryPage', () => {
     expect(screen.getByLabelText('Title for prompt 1')).toHaveValue('LinkedIn post writer');
     await user.click(screen.getByRole('button', { name: 'Take it out of the text' }));
     expect(screen.queryByRole('button', { name: 'Take it out of the text' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
+    await user.click(screen.getByRole('button', { name: 'Import as written' }));
     await screen.findByText('Imported 1 prompt.');
     expect(ApiClient.createPrompt).toHaveBeenCalledWith({ name: 'LinkedIn post writer', folder: null, fields: [{ name: 'Prompt', content: 'Write a post.' }] });
   });
@@ -768,7 +768,7 @@ describe('LibraryPage', () => {
     await user.click(screen.getByRole('button', { name: 'Add existing prompts' }));
     await user.type(screen.getByLabelText('Paste text'), '# Cold email\nWrite');
     await user.click(screen.getByRole('button', { name: 'Preview' }));
-    await user.click(screen.getByRole('button', { name: 'Keep as written' }));
+    await user.click(screen.getByRole('button', { name: 'Import as written' }));
     await user.click(await screen.findByRole('button', { name: 'Import more' }));
     await user.type(screen.getByLabelText('Paste text'), '# Cold email\nWrite');
     await user.click(screen.getByRole('button', { name: 'Preview' }));

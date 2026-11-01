@@ -354,7 +354,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
             </div>
           </>}
           {placeholders.length > 0 && !beforeConvert && <fieldset className={styles.placeholderOffer}>
-            <legend>Found {placeholders.length === 1 ? 'a placeholder' : `${placeholders.length} placeholders`}. Choose which become inputs you fill in:</legend>
+            <legend>Found {placeholders.length === 1 ? 'a placeholder' : `${placeholders.length} placeholders`}. Choose which become variables you fill in:</legend>
             <div className={styles.placeholderChoices}>
               {placeholders.map(token => <label key={token}>
                 <input type="checkbox" checked={!unchosen.includes(token)} disabled={busy}
@@ -363,10 +363,10 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
               </label>)}
             </div>
             <Button variant="secondary" disabled={busy || !chosen.length} onClick={() => { setBeforeConvert(preview); setPreview(convertPlaceholders(preview, chosen)); }}>
-              {placeholders.length === 1 ? 'Turn it into an input' : `Turn ${chosen.length === placeholders.length ? 'them' : chosen.length} into inputs`}
+              {placeholders.length === 1 ? 'Turn it into a variable' : `Turn ${chosen.length === placeholders.length ? 'them' : chosen.length} into variables`}
             </Button>
           </fieldset>}
-          {beforeConvert && <p role="status" className={styles.dialogText}>Placeholders are now inputs you fill in before copying; their wording is kept as each input&apos;s hint.{' '}
+          {beforeConvert && <p role="status" className={styles.dialogText}>Placeholders are now variables you fill in before copying; their wording is kept as each variable&apos;s hint.{' '}
             <Button variant="ghost" disabled={busy} onClick={() => { setPreview(preview.map((item, i) => ({ ...item, fields: beforeConvert[i].fields, variable_metadata: beforeConvert[i].variable_metadata }))); setBeforeConvert(null); }}>Undo</Button>
           </p>}
           <div className={styles.importPreview}>
@@ -413,7 +413,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
               </div>;
             })}
           </div>
-          {singleNote && <p className={styles.dialogText}>Keep it as written, or let AI split it into sections and suggest inputs (needs an AI connection).</p>}
+          {singleNote && <p className={styles.dialogText}>Import it as written, or let AI split it into sections and suggest variables (needs an AI connection).</p>}
           <div className={styles.formActions}>
             <Button variant="ghost" disabled={busy} onClick={() => { setPreview(null); setBeforeConvert(null); setError(''); }}>Back</Button>
             {singleNote && <Button variant="secondary" disabled={busy} onClick={reuseWithAI}>Make reusable with AI</Button>}
@@ -421,7 +421,7 @@ export default function ImportPrompts({ onCreated, folders, existing = [], prima
               {busy ? (count + updateCount > 1 ? `Importing ${progress} of ${count + updateCount}…` : 'Importing…')
                 : !(count + updateCount) ? (preview.every(isDuplicate) ? 'Nothing new to import' : 'Nothing selected to import')
                 : !count ? `Update ${plural(updateCount, 'prompt')}`
-                : singleNote ? 'Keep as written'
+                : singleNote ? 'Import as written'
                 : `Import ${plural(count, 'prompt')}${updateCount ? ` and update ${updateCount}` : ''}`}
             </Button>
           </div>

@@ -13,7 +13,7 @@ function ComparisonOutput({ result, title }: { result?: EvalResult; title: strin
       {result.output_text ? <div className={styles.compareOutput}><ModelOutput text={result.output_text} /></div>
         : <pre className={styles.compareText}>{result.output_text === null ? 'No model output recorded.' : '(Empty output)'}</pre>}
       <ResultFeedback result={result} />
-      <details className={styles.runDetails}><summary>Inputs and scoring</summary>
+      <details className={styles.runDetails}><summary>Values and scoring</summary>
         <dl className={styles.metadata}>{Object.entries(result.variables ?? {}).map(([name, value]) => <div key={name}><dt>{name}</dt><dd className={styles.verbatim}>{value || '(Blank; placeholder kept)'}</dd></div>)}</dl>
         {result.criteria && <p className={styles.verbatim}>{result.criteria}</p>}
       </details>
@@ -48,7 +48,7 @@ export default function CompareResults({ selected, compared, titles }: { selecte
         Object.entries(left.variables ?? {}).some(([name, value]) => !Object.hasOwn(right.variables ?? {}, name) || right.variables?.[name] !== value));
       return <article key={`${left?.id ?? ''}:${right?.id ?? ''}`} className={styles.result}>
         <h3>{left?.label || right?.label || 'Test case'}</h3>
-        {changed && <p className={styles.banner}>Inputs or scoring changed. These scores measure different conditions.</p>}
+        {changed && <p className={styles.banner}>Values or scoring changed. These scores measure different conditions.</p>}
         <div className={styles.comparisonColumns}>
           <ComparisonOutput result={left} title={selectedTitle} />
           <ComparisonOutput result={right} title={comparedTitle} />

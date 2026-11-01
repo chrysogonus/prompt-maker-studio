@@ -57,7 +57,7 @@ export default function CaseForm({ prompt, initial, isEditing, busy, error, onSa
         </label>
         {names.length > 0 && (
           <section className={styles.formSection} aria-labelledby="case-inputs">
-            <h3 id="case-inputs">Inputs</h3>
+            <h3 id="case-inputs">Values</h3>
             <p className={styles.hint}>These values replace the variables in your saved prompt.</p>
             {names.map((key) => {
               const hint = prompt.variable_metadata?.[key]?.description;
@@ -84,9 +84,9 @@ export default function CaseForm({ prompt, initial, isEditing, busy, error, onSa
             })}
             <label className={styles.checkLabel}>
               <input type="checkbox" checked={intentionallyEmpty} onChange={(event) => setIntentionallyEmpty(event.target.checked)} />
-              This case intentionally leaves inputs blank
+              This case intentionally leaves values blank
             </label>
-            {(intentionallyEmpty || missing.length > 0) && <p className={styles.hint}>Blank inputs leave their {'{{placeholders}}'} in the text sent to the model.</p>}
+            {(intentionallyEmpty || missing.length > 0) && <p className={styles.hint}>Blank values leave their {'{{placeholders}}'} in the text sent to the model.</p>}
           </section>
         )}
         <section className={styles.formSection} aria-labelledby="case-scoring">

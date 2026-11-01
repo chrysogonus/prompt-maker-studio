@@ -304,7 +304,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
                 <del>Only in the saved version</del> and <ins>only in yours</ins>. Keep my edits replaces the saved version when you save.
               </p>
               {snapshot([], conflictLatest.variable_metadata) !== snapshot([], metadata) && (
-                <p className={styles.diffLegend}>Variable settings (hints, required inputs, examples or choices) also differ, and Keep my edits replaces them too.</p>
+                <p className={styles.diffLegend}>Variable settings (hints, required variables, examples or choices) also differ, and Keep my edits replaces them too.</p>
               )}
               <div className={styles.diff} tabIndex={0} aria-label="Saved version compared with yours">
                 {diffWords(renderSections(conflictLatest.fields), renderSections(fields)).map((token, i) =>
@@ -602,7 +602,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
             {/* Stored versions are the states before each edit; the saved prompt is one newer, as in History. */}
             <dt>Current version</dt><dd>{Math.max(0, ...versions.map((version) => version.version_number)) + 1}</dd>
             <dt>Known good</dt><dd>{prompt.known_good_version ? `Version ${prompt.known_good_version}` : 'Not marked'}</dd>
-            <dt>Inputs</dt><dd>{variablesIn(prompt.fields).join(', ') || 'None'}</dd>
+            <dt>Variables</dt><dd>{variablesIn(prompt.fields).join(', ') || 'None'}</dd>
           </>}
         </dl>
         <Button onClick={() => setDetailsOpen(false)}>Close</Button>

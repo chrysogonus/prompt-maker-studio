@@ -48,7 +48,7 @@ describe('Prompt gallery', () => {
     expect(screen.getByRole('heading', { name: 'What to expect' }).nextElementSibling).toHaveTextContent(/root cause/);
     expect(screen.queryByLabelText('Example result')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'symptom' })).toHaveAttribute('placeholder', 'What goes wrong, and how to reproduce it');
-    expect(screen.getByRole('button', { name: 'Use example inputs' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Use example values' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'how to write prompts for coding agents' })).toHaveAttribute('href', '/guides/prompts-for-coding-agents');
     expect(within(screen.getByRole('region', { name: 'More coding-agent templates' })).getAllByRole('link')).toHaveLength(4);
   });

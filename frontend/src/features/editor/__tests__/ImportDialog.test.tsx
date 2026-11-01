@@ -33,14 +33,14 @@ async function convert() {
   const user = userEvent.setup();
   render(<Host />);
   fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: source } });
-  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
+  await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
   await screen.findByRole('button', { name: 'Use in editor' });
   return user;
 }
 
 it('says original inputs are filled in only when the conversion found values', async () => {
   await convert();
-  expect(screen.getByText(/Original inputs are filled in\./)).toBeInTheDocument();
+  expect(screen.getByText(/Original values are filled in\./)).toBeInTheDocument();
 });
 
 it('explains empty inputs when the conversion found no values', async () => {
@@ -49,8 +49,8 @@ it('explains empty inputs when the conversion found no values', async () => {
     variables: conversion.variables.map((variable) => ({ ...variable, value: '' })),
   });
   await convert();
-  expect(screen.queryByText(/Original inputs are filled in/)).not.toBeInTheDocument();
-  expect(screen.getByText(/No values were found for the inputs/)).toBeInTheDocument();
+  expect(screen.queryByText(/Original values are filled in/)).not.toBeInTheDocument();
+  expect(screen.getByText(/No values were found for the variables/)).toBeInTheDocument();
 });
 
 it('reviews and copies original values before changing the draft', async () => {
@@ -59,7 +59,7 @@ it('reviews and copies original values before changing the draft', async () => {
   expect(ApiClient.parsePromptText).toHaveBeenCalledWith({ text: source, extract_variables: true });
   expect(screen.getByLabelText('Converted prompt preview')).toHaveTextContent('Plan a 3-day trip to Lisbon.');
   expect(screen.getByLabelText('Value for destination')).toHaveValue('Lisbon');
-  expect(screen.getByRole('checkbox', { name: 'Keep these inputs as examples' })).not.toBeChecked();
+  expect(screen.getByRole('checkbox', { name: 'Keep these values as examples' })).not.toBeChecked();
   await user.click(screen.getByRole('button', { name: 'Copy filled prompt' }));
   expect(clipboard).toHaveBeenCalledWith('<TASK>\nPlan a 3-day trip to Lisbon.\n</TASK>');
   expect(apply).not.toHaveBeenCalled();
@@ -78,7 +78,7 @@ it('renames variables, keeps a value fixed, and saves examples only on request w
   fireEvent.change(screen.getByLabelText('Variable name for destination'), { target: { value: 'city' } });
   await user.click(screen.getByRole('checkbox', { name: 'Use duration as a variable' }));
   fireEvent.change(screen.getByLabelText('Value for destination'), { target: { value: 'Porto' } });
-  await user.click(screen.getByRole('checkbox', { name: 'Keep these inputs as examples' }));
+  await user.click(screen.getByRole('checkbox', { name: 'Keep these values as examples' }));
   await user.click(screen.getByRole('button', { name: 'Use in editor' }));
   expect(apply).toHaveBeenCalledWith({
     fields: [{ name: 'Task', content: 'Plan a 3-day trip to {{city}}.' }],
@@ -107,10 +107,10 @@ it('keeps source text after errors and supports an explicit retry', async () => 
   vi.mocked(ApiClient.parsePromptText).mockRejectedValueOnce(new Error('Provider unavailable'));
   render(<Host />);
   fireEvent.change(screen.getByLabelText('Prompt to convert'), { target: { value: source } });
-  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
+  await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Provider unavailable');
   expect(screen.getByLabelText('Prompt to convert')).toHaveValue(source);
-  await user.click(screen.getByRole('button', { name: 'Create template with AI' }));
+  await user.click(screen.getByRole('button', { name: 'Make reusable with AI' }));
   expect(await screen.findByRole('button', { name: 'Use in editor' })).toBeEnabled();
 });
 
@@ -166,7 +166,7 @@ it('keeps pasted content exactly without AI when disconnected', async () => {
   const text = '  Write an update.\nKeep these spaces.  ';
   render(<ImportDialog isOpen aiAvailable={false} aiConfig={null} replacesContent={false}
     session={{ text }} onSessionChange={vi.fn()} onClose={vi.fn()} onImport={apply} />);
-  await user.click(screen.getByRole('button', { name: 'Save as written' }));
+  await user.click(screen.getByRole('button', { name: 'Keep as written' }));
   expect(apply).toHaveBeenCalledWith({ fields: [{ name: 'Task', content: text }], metadata: {}, values: {}, saveAsWritten: true });
   expect(ApiClient.parsePromptText).not.toHaveBeenCalled();
 });

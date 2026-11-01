@@ -104,7 +104,7 @@ export default function RunResults({ run, busy, onRate }: {
             </div>
           ) : <p className={styles.hint}>You rated this output {Math.round(result.human_score / 20)}/5.</p>)}
           <details className={styles.runDetails}>
-            <summary>Inputs and scoring used for this result</summary>
+            <summary>Values and scoring used for this result</summary>
             {result.variables && Object.keys(result.variables).length > 0 ? (
               <dl className={styles.metadata}>{Object.entries(result.variables).map(([name, value]) => <div key={name}><dt>{name}</dt><dd className={styles.verbatim}>{value || '(Blank; placeholder kept)'}</dd></div>)}</dl>
             ) : <p className={styles.hint}>No variable values were recorded.</p>}
