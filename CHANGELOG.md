@@ -10,6 +10,17 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Changed
+
+- Moving selected prompts can be undone, needs a folder name ("Move to folder"), and unfiling
+  has its own Remove from folder button; the result is a toast instead of a status line.
+- Duplicates are named "Name (copy)", then "Name (copy 2)", instead of "Name Duplicate".
+- CSV imports take the folder from a Folder column (or else, as before, the first tag), and
+  Format details lists what each file type needs, CSV included.
+- The sidebar explains how folders are made, and each sidebar folder has an action link that
+  opens its Rename/Remove menu. Its theme control is the same Light/Dark/System segmented
+  control as Settings.
+
 ### Fixed
 
 - Accessibility: library "Copy template" buttons and the legal pages' logo link have accessible
@@ -17,6 +28,11 @@ any release. See [Project status](./README.md#project-status).
   and the password reset page have a level-one heading (and the reset page its own title);
   focused section text gets a clearer 2px ring; icon-only buttons in the library and section
   toolbar show a tooltip; the sidebar Sign out button has a 44px touch target.
+- Offline or unreachable-server errors say "Can't reach the server. Check your connection and try
+  again." instead of the browser's "Failed to fetch", and a library that could not load no longer
+  claims "0 prompts".
+- Library rows keep their actions under the title below 1,100px, so titles stay readable on
+  tablets with the sidebar open.
 
 ## [0.14.0] - 2026-10-29
 

@@ -52,9 +52,9 @@ for (const width of [1440, 390, 320]) {
     await page.getByLabel('Search prompts').clear();
     await expect(card.getByText(/^Background\./)).toBeVisible();
     await page.getByLabel('Select Customer support response').check();
-    await page.getByLabel('File selected in folder').fill('Team');
+    await page.getByLabel('Move to folder').fill('Team');
     await page.getByRole('button', { name: 'Move selected' }).click();
-    await expect(page.getByText('Moved 1 of 1 prompts.')).toBeVisible();
+    await expect(page.getByText('Moved 1 prompt to Team.')).toBeVisible();
     await page.getByRole('button', { name: 'Add existing prompts', exact: true }).click();
     const note = '---\ntitle: New prompt\ntags: [work]\n---\nGive a useful answer.';
     await page.getByLabel('Or choose files').setInputFiles({ name: 'Daily note.md', mimeType: 'text/markdown', buffer: Buffer.from(note) });

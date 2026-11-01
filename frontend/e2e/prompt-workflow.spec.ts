@@ -236,7 +236,7 @@ test('registers, saves, and reloads a prompt after signing in again', async ({ p
   // Copies come from each prompt's menu; deleting one is undoable for a few
   // seconds and only then reaches the server, in both library layouts.
   await sidebarLink(page, /All prompts/).click();
-  const duplicateName = `${promptName} Duplicate`;
+  const duplicateName = `${promptName} (copy)`;
   for (const layout of ['List', 'Grid']) {
     await page.getByRole('button', { name: layout, exact: true }).click();
     await page.getByRole('button', { name: `More actions for ${promptName}`, exact: true }).click();

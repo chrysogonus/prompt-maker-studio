@@ -586,7 +586,8 @@
 .copyButton { min-height: 44px; text-decoration: none; }
 .copyButton { display: inline-flex; opacity: 1; }
 .actions { flex-wrap: wrap; }
-@media (max-width: 760px) {
+/* With the sidebar beside it, a row is too narrow for inline actions until well above tablet width. */
+@media (max-width: 1100px) {
   .rowMain { grid-column: 2 / -1; }
   .row > .actions { grid-column: 2 / -1; }
 }

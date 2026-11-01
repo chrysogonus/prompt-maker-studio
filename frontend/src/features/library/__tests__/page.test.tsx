@@ -393,11 +393,26 @@ describe('LibraryPage', () => {
     await renderLibrary();
     await user.click(screen.getByLabelText('Select Weekly status update'));
     await user.click(screen.getByLabelText('Select LinkedIn post'));
-    await user.type(screen.getByLabelText('File selected in folder'), 'Team');
+    expect(screen.getByRole('button', { name: 'Move selected' })).toBeDisabled();
+    await user.type(screen.getByLabelText('Move to folder'), 'Team');
     await user.click(screen.getByRole('button', { name: 'Move selected' }));
-    expect(await screen.findByText('Moved 1 of 2 prompts. 1 failed; still selected for retry.')).toBeInTheDocument();
+    expect(await screen.findByText('Moved 1 prompt to Team. 1 prompt failed; still selected for retry.')).toBeInTheDocument();
     expect(screen.getByLabelText('Select LinkedIn post')).toBeChecked();
     expect(screen.getByLabelText('Select Weekly status update')).not.toBeChecked();
+  });
+
+  it('undoes a bulk move by putting each prompt back in its folder', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ApiClient.updatePrompt).mockImplementation(async (id, patch) => saved({ id, folder: patch.folder || null }));
+    await renderLibrary();
+    await user.click(screen.getByLabelText('Select Weekly status update'));
+    await user.type(screen.getByLabelText('Move to folder'), 'Team');
+    await user.click(screen.getByRole('button', { name: 'Move selected' }));
+    await screen.findByText('Moved 1 prompt to Team.');
+    const original = vi.mocked(ApiClient.updatePrompt).mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(ApiClient.updatePrompt).toHaveBeenCalledTimes(original + 1));
+    expect(ApiClient.updatePrompt).toHaveBeenLastCalledWith(1, { folder: 'Work' });
   });
 
   it('previews and edits imports before creating, and never repeats successful imports', async () => {
@@ -825,7 +840,7 @@ describe('LibraryPage', () => {
   it('duplicates a prompt and offers to open the copy', async () => {
     const user = userEvent.setup();
     vi.mocked(ApiClient.duplicatePrompt).mockResolvedValue(
-      saved({ id: 9, name: 'Weekly status update Duplicate' }),
+      saved({ id: 9, name: 'Weekly status update (copy)' }),
     );
     await renderLibrary();
 
@@ -834,6 +849,12 @@ describe('LibraryPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Open copy' }));
 
     expect(push).toHaveBeenCalledWith('/editor/9');
+  });
+
+  it('opens the folder menu when the sidebar asks to manage a folder', async () => {
+    await renderLibrary('folder=Work&manage=folder');
+    expect(await screen.findByRole('button', { name: 'Rename folder' })).toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/library?folder=Work');
   });
 
   it('renames a folder and follows it to its new name', async () => {

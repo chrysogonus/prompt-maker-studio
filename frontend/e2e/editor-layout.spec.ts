@@ -109,7 +109,7 @@ for (const viewport of [{ width: 1440, height: 720 }, { width: 390, height: 844 
     })) }));
     await page.goto('/library');
     if (viewport.width <= 760) await page.getByRole('button', { name: 'Open navigation' }).click();
-    await expect(page.getByRole('link', { name: /Folder 20/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Folder 20/ })).toBeVisible();
     const button = (await page.getByRole('link', { name: 'New prompt', exact: true }).boundingBox())!;
     expect(button.height).toBeGreaterThanOrEqual(36);
   });

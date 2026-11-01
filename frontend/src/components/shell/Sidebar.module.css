@@ -100,6 +100,49 @@
   color: var(--color-plum);
 }
 
+.folderRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.folderRow > .item {
+  flex: 1;
+  min-width: 0;
+}
+
+.folderActions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.folderActions:hover {
+  background: color-mix(in srgb, var(--color-plum-wash) 60%, transparent);
+  color: var(--text-primary);
+}
+
+/* Shown on hover or focus, on the open folder, and always on touch screens. */
+.folderRow:hover .folderActions,
+.folderActions:focus-visible,
+.item[aria-current='page'] + .folderActions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .folderActions {
+    opacity: 1;
+    width: 44px;
+    min-height: 44px;
+  }
+}
+
 .heading {
   padding: var(--space-4) 10px 4px;
   font-size: var(--text-xs-size);
@@ -132,24 +175,7 @@
 }
 
 .theme {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
   padding: 0 10px var(--space-2);
-  color: var(--text-secondary);
-  font-size: var(--text-sm-size);
-}
-
-.theme select {
-  min-height: 44px;
-  max-width: 130px;
-  border: 1px solid var(--color-control-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-panel);
-  color: var(--text-primary);
-  padding: 0 var(--space-2);
-  font: inherit;
 }
 
 .sourceLink {

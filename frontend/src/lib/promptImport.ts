@@ -418,25 +418,27 @@ function csvRows(text: string): string[][] {
 /**
  * A database export (Notion, Airtable, a spreadsheet) as prompts: the Name or Title
  * column titles each row, a Prompt-like column (or else the longest text column)
- * holds its text, and Tags suggests its folder.
+ * holds its text, and Folder (or else the first tag in Tags) names its folder.
  */
 export function parseCsvPrompts(text: string): ImportPrompt[] {
   const [header, ...rows] = csvRows(text.replace(/^\uFEFF/, ''));
   if (!header || !rows.length) return fail('This CSV file has no rows.');
   const column = (pattern: RegExp) => header.findIndex(name => pattern.test(name.trim()));
   const titleAt = Math.max(0, column(/^(name|title)$/i));
+  const folderAt = column(/^folder$/i);
   const tagsAt = column(/^tags?$/i);
   let promptAt = column(PROMPT_KEY);
   if (promptAt < 0) {
-    const lengths = header.map((_, i) => i === titleAt || i === tagsAt ? -1 : rows.reduce((total, row) => total + (row[i]?.length ?? 0), 0));
+    const lengths = header.map((_, i) => i === titleAt || i === tagsAt || i === folderAt ? -1 : rows.reduce((total, row) => total + (row[i]?.length ?? 0), 0));
     promptAt = lengths.indexOf(Math.max(...lengths));
   }
   if (promptAt < 0 || promptAt === titleAt) return fail('No column with prompt text was found in this CSV file.');
   return validateImportPrompts(rows.filter(row => row[promptAt]?.trim()).map(row => {
     const tag = row[tagsAt]?.split(',')[0]?.trim();
+    const folder = row[folderAt]?.trim() || (tag ? tag[0].toUpperCase() + tag.slice(1) : null);
     return {
       name: (row[titleAt]?.trim() || suggestTitle(row[promptAt]) || 'Imported prompt').slice(0, 100),
-      folder: tag ? tag[0].toUpperCase() + tag.slice(1) : null,
+      folder,
       fields: [{ name: 'Prompt', content: row[promptAt].trim() }],
       ...(header.some((name, i) => isFavourite(name.trim(), row[i] ?? '')) && { is_favorite: true as const }),
     };

@@ -165,7 +165,8 @@ above both panes as stored only in the current browser.
 - Notion's **Export → Markdown & CSV** `.zip` can be chosen as it is: its pages are read
   (the browser unzips it; nested part zips too, up to 50 MB, without the part names
   becoming folders), and a database `.csv` becomes one prompt per row (Name or Title, a
-  Prompt/Content column or else the longest text column, Tags as the folder, and a
+  Prompt/Content column or else the longest text column, a Folder column or else the first
+  tag in Tags as the folder, and a
   Favourite status). A database's CSV is read only when its rows were not also exported as
   pages, from a zip or a chosen folder alike, and `X_all.csv` is preferred to `X.csv`.
   Property lines that hold the prompt text are kept; only metadata such as Tags, Created
@@ -200,8 +201,10 @@ above both panes as stored only in the current browser.
 - **Folders** are labels on prompts (`prompts.folder`). A folder exists while a prompt is filed in
   it. A folder view can rename the folder (`PATCH /api/prompts/folders?name=`, merging onto an
   existing name) or remove it (`DELETE /api/prompts/folders?name=`), which unfiles its prompts and
-  deletes none. Neither changes the prompts' edit times.
-- **Duplicate** creates a unique name, copies sections, folder, variable settings,
+  deletes none. Neither changes the prompts' edit times. Each sidebar folder has an action link
+  that opens the folder view with this menu open. Several selected prompts can be moved to a
+  folder or removed from their folders at once; Undo puts each back where it was.
+- **Duplicate** creates a unique name ("Name (copy)", then "Name (copy 2)"), copies sections, folder, variable settings,
   legacy tags and evaluation cases, and starts without favorite status, version
   history or run history.
 - **Recovered history** holds the unnamed prompts the old History tab listed, named by date by

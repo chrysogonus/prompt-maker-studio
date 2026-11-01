@@ -134,7 +134,7 @@ class TestDuplicatePromptEndpoint:
 
         duplicate = duplicate_prompt_route(original.id, db_session, user)
 
-        assert duplicate.name == "Original Duplicate"
+        assert duplicate.name == "Original (copy)"
         assert duplicate.folder == original.folder
         assert duplicate.tags == original.tags
         assert duplicate.variable_metadata == original.variable_metadata
@@ -146,7 +146,7 @@ class TestDuplicatePromptEndpoint:
         assert duplicate_cases[0].intentionally_empty is True
 
     def test_duplicate_name_truncates_to_the_100_char_cap(self, db_session):
-        """The generated 'X Duplicate' name must respect the same 100-char cap
+        """The generated 'X (copy)' name must respect the same 100-char cap
         enforced on user-supplied names elsewhere, not the prior 255 limit."""
         user = User(username="copy-user-2", hashed_password="x", email="copy2@example.com")
         db_session.add(user)
@@ -163,7 +163,9 @@ class TestDuplicatePromptEndpoint:
         duplicate = duplicate_prompt_route(original.id, db_session, user)
 
         assert len(duplicate.name) == 100
-        assert duplicate.name == ("a" * 95 + " Duplicate")[:100]
+        assert duplicate.name == "a" * 93 + " (copy)"
+        again = duplicate_prompt_route(original.id, db_session, user)
+        assert again.name == "a" * 91 + " (copy 2)"
 
     def test_duplicate_existing_prompt(self, client, auth_headers, db_session):
         """Test duplicating an existing prompt."""
@@ -239,7 +241,7 @@ class TestDuplicatePromptEndpoint:
         duplicate_data = duplicate_response.json()
         assert duplicate_data["folder"] == "Engineering"
         assert duplicate_data["is_favorite"] is False
-        assert duplicate_data["name"] == "Configured prompt Duplicate"
+        assert duplicate_data["name"] == "Configured prompt (copy)"
         assert duplicate_data["variable_metadata"]["count"] == {
             "type": "number",
             "description": "Item count",
