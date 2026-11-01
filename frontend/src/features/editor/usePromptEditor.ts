@@ -575,7 +575,10 @@ export function usePromptEditor({ promptId, initialStarter, initialMode, openImp
       router.replace(`/editor/new${params.size ? `?${params}` : ''}`, { scroll: false });
     }
     setDraftAction({
-      text: `Imported ${next.fields.length} section${next.fields.length === 1 ? '' : 's'} into draft—save to keep.`,
+      // A new prompt often arrives from "Save to my library" on a public page, so say it is not saved yet.
+      text: isNew
+        ? 'Not saved yet. Choose Save to add it to your library.'
+        : `Imported ${next.fields.length} section${next.fields.length === 1 ? '' : 's'} into draft—save to keep.`,
       action: { label: 'Undo', run: () => {
         if (snapshot(toFields(sectionsRef.current), metadataRef.current) !== snapshot(next.fields, next.metadata)
           || JSON.stringify(valuesRef.current) !== JSON.stringify(next.values)) {

@@ -34,7 +34,7 @@ test('a template fills in with example inputs, saves into a new library and reop
   await page.locator('#reg-email').fill(`gallery${suffix}@example.com`);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  await expect(page.getByText(/^Imported \d+ sections into draft—save to keep\.$/)).toBeVisible();
+  await expect(page.getByText('Not saved yet. Choose Save to add it to your library.')).toBeVisible();
   await expect(page.getByLabel('check_command', { exact: true })).toHaveValue('npm test');
   await expect(page.getByLabel('Goal text')).toHaveValue(/\{\{symptom\}\}/);
 

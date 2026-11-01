@@ -16,6 +16,7 @@ import {
   UnfiledIcon,
 } from '@/components/ui/icon';
 import { useLibraryData } from '@/features/library/LibraryData';
+import { AuthService } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
 import { APP_NAME } from '@/lib/branding';
 import {
@@ -92,6 +93,13 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
   const { prompts: library, load } = useLibraryData();
 
   useEffect(() => { void load().catch(() => {}); }, [load, pathname]);
+
+  // Say so, and leave the private address (such as a prompt's) behind, as account deletion does.
+  const signOut = () => {
+    logout();
+    AuthService.setSignInNotice('You’ve signed out.');
+    window.history.replaceState(null, '', '/library');
+  };
 
   const counts = useMemo(() => {
     const prompts = library ?? [];
@@ -211,7 +219,7 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
         </a>
         <div className={styles.account}>
           <span className={styles.user}>Signed in as {currentUser}</span>
-          <button type="button" className={styles.signOut} onClick={logout}>
+          <button type="button" className={styles.signOut} onClick={signOut}>
             Sign out
           </button>
         </div>

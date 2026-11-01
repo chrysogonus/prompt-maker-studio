@@ -94,7 +94,7 @@ test('a filled template saves into a new library after signing up', async ({ pag
   await page.getByRole('button', { name: 'Create account' }).click();
 
   // Already structured: straight into the draft, no review.
-  await expect(page.getByText('Imported 1 section into draft—save to keep.')).toBeVisible();
+  await expect(page.getByText('Not saved yet. Choose Save to add it to your library.')).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByLabel('customer_name', { exact: true })).toHaveValue('Dana');
   await expect(page.getByLabel('Task text')).toHaveValue(/\{\{customer_name\}\}/);

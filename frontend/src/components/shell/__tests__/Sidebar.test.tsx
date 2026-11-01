@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AuthService } from '@/lib/auth';
 import Sidebar from '../Sidebar';
 import { ApiClient } from '@/lib/api';
 import { notifyLibraryChanged } from '@/lib/libraryEvents';
@@ -158,7 +159,11 @@ describe('Sidebar', () => {
     expect(onNavigate).toHaveBeenCalled();
 
     expect(screen.getByText('Signed in as alex')).toBeInTheDocument();
+    window.history.replaceState(null, '', '/editor/7');
+    const notice = vi.spyOn(AuthService, 'setSignInNotice');
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(logout).toHaveBeenCalled();
+    expect(notice).toHaveBeenCalledWith('You’ve signed out.');
+    expect(window.location.pathname).toBe('/library');
   });
 });

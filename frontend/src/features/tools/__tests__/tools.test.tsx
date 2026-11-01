@@ -116,7 +116,7 @@ describe('TokenCounter', () => {
     expect(screen.getByText('≈ 10')).toBeInTheDocument();
     const row = await screen.findByRole('row', { name: /OpenAI · Model M/ });
     expect(row).toHaveTextContent('$2.00');
-    expect(row).toHaveTextContent('$0.0000');
+    expect(row).toHaveTextContent('< $0.0001');
     expect(screen.getByRole('row', { name: /Google Gemini · u/ })).toHaveTextContent('—');
     expect(screen.getByText(/at list prices as of 17 October 2026/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save to my library' }));

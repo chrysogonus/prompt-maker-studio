@@ -5,7 +5,8 @@
 
 .container {
   display: flex;
-  align-items: center;
+  /* Top-aligned, not centred: an error message would otherwise move the fields up. */
+  align-items: flex-start;
   justify-content: center;
   min-height: 100vh;
   min-height: 100svh;
@@ -14,7 +15,7 @@
     var(--color-canvas);
   background-size: 26px 26px;
   padding: clamp(var(--space-6), 4vh, 48px);
-  padding-top: 88px;
+  padding-top: clamp(88px, 16vh, 180px);
   position: relative;
   isolation: isolate;
   overflow-x: hidden;
@@ -460,7 +461,7 @@
 
 @media (max-width: 900px) {
   .container {
-    align-items: flex-start;
+    padding-top: 88px;
   }
 
   .authShell {

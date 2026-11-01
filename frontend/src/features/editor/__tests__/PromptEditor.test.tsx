@@ -1252,7 +1252,7 @@ describe('PromptEditor with a new prompt', () => {
     await user.click(await screen.findByRole('button', { name: 'Use in editor' }));
 
     await waitFor(() => expect(screen.getByLabelText('role text')).toHaveValue('A careful proofreader'));
-    expect(screen.getByText(/Imported 2 sections/)).toBeInTheDocument();
+    expect(screen.getByText('Not saved yet. Choose Save to add it to your library.')).toBeInTheDocument();
   });
 
   it('offers saving as written when no AI connection exists', async () => {
@@ -1456,7 +1456,7 @@ it('opens a public page hand-off straight in the draft, with its title offered o
     values: { days: '3' }, metadata: { days: { type: 'text', description: 'How long' } },
   }));
   render(<PromptEditor openImport />);
-  expect(await screen.findByText('Imported 1 section into draft—save to keep.')).toBeInTheDocument();
+  expect(await screen.findByText('Not saved yet. Choose Save to add it to your library.')).toBeInTheDocument();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(sessionStorage.getItem(pasteHandoffKey())).toBeNull();
   expect(routerReplace).toHaveBeenCalledWith('/editor/new', { scroll: false });

@@ -23,6 +23,12 @@ any release. See [Project status](./README.md#project-status).
 
 ### Fixed
 
+- The landing page header has a Sign in link. Signing out says "You’ve signed out." on the
+  sign-in screen and leaves the prompt's address behind. The sign-in card no longer jumps when
+  an error appears.
+- The token counter shows "< $0.0001" for costs that are not zero but round to it.
+- A prompt arriving from "Save to my library" (or pasted into a new prompt) says "Not saved yet.
+  Choose Save to add it to your library."
 - Accessibility: library "Copy template" buttons and the legal pages' logo link have accessible
   names that start with their visible text; links in legal pages are underlined; saved prompts
   and the password reset page have a level-one heading (and the reset page its own title);
