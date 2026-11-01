@@ -1609,3 +1609,29 @@ HTML.
 public asset folder that should be cached means adding it to the exclusion in `next.config.js`.
 
 **Sources**: `frontend/next.config.js`, `frontend/src/app/page.tsx`, `frontend/public/landing/`.
+
+---
+
+## Saved-Prompt Header Shows Mode, Refine and Evaluate
+
+**Status**: Accepted (2026-11-01)
+
+**Context**: Since 0.5.1 a saved prompt's header showed Edit template (or, in edit mode, Fill and
+copy in the same place) and a Tools menu holding Prompt details, Evaluate, Paste a prompt and
+History; Refine appeared only in edit mode as a borderless text button. A UX test on 2026-11-01
+found new users could not see the AI and quality features (spread over four places) and that the
+mode control changed its name and position when used.
+
+**Decision**: A saved prompt shows one Edit | Fill and copy switch beside its title at every width
+(new prompts keep it only up to 1200px, where the panes stop fitting side by side). Refine and
+Evaluate are labelled header buttons in both modes; Refine switches to Edit before opening, since
+it works beside the text. The menu is called More and holds Prompt details, Paste a prompt and
+History. Refine's buttons read Ask me questions first (as in the free refiner) and Discard
+suggestion; Improve without questions keeps its own name because it is a different draft mode
+from the free refiner's Improve now.
+
+**Consequences**: Amends the 0.5.1 Tools-menu layout and "Saved Prompts Open Ready to Fill":
+the focused view is chosen with the switch instead of Edit template. On narrow screens the switch
+takes its own row, so the preview starts a little lower.
+
+**Sources**: `frontend/src/features/editor/PromptEditor.tsx`, `frontend/src/features/editor/RefinePanel.tsx`

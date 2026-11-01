@@ -113,7 +113,7 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(/\/editor\/\d+$/);
       await expect(page.getByLabel('city', { exact: true })).toHaveValue('Lisbon');
       await page.reload();
-      await expect(page.getByRole('button', { name: 'Edit template', exact: true })).toBeVisible();
+      await expect(page.getByRole('tab', { name: 'Edit', exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
       await expect(page.getByLabel('city', { exact: true })).toHaveValue('Lisbon');
       await expect(page.getByText('Your unsaved changes were restored.')).not.toBeVisible();

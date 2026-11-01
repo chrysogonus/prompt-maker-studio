@@ -137,7 +137,7 @@ test.describe('accessibility audit', () => {
     await expect(page).toHaveURL(/\/editor\/\d+$/);
     await auditPage(page, 'editor saved prompt (dark)');
 
-    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'More', exact: true }).click();
 
     await page.getByRole('button', { name: 'History' }).click();
     await auditPage(page, 'editor history (dark)');
@@ -159,7 +159,7 @@ test.describe('accessibility audit', () => {
 
     await page.goto(`/editor/${promptId}`);
     await auditPage(page, 'editor focused reuse (light)');
-    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+    await page.getByRole('tab', { name: 'Edit', exact: true }).click();
     await expect(page.getByLabel('Task text')).toBeVisible();
     await auditPage(page, 'editor saved prompt (light)');
 

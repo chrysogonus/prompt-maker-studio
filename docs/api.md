@@ -111,7 +111,7 @@ preserved `legacy_note`.
 ## Evaluation Endpoints
 
 These endpoints power the saved-prompt evaluation workspace at
-`/editor/{id}/evaluate`, opened from Tools → Evaluate. Runs use the latest saved
+`/editor/{id}/evaluate`, opened from the editor's Evaluate button. Runs use the latest saved
 content and start only on explicit action; AI proposals are reviewed and
 saved through case creation rather than persisted by generation.
 

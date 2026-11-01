@@ -99,13 +99,16 @@ In the preview, open **Test with AI** to reach **Try once**. It runs the filled 
 separate Playground history. Its result includes the output text, provider and model;
 token usage is recorded in the spend ledger. Conversion, refinement and Try once show provider/model
 and billing context before execution. Saved prompts open the evaluation workspace
-from Tools → Evaluate: edit test cases, import/export case CSV, review AI suggestions,
+from the editor's Evaluate button: edit test cases, import/export case CSV, review AI suggestions,
 run explicitly, inspect and compare historical outputs, and submit manual ratings.
 Saving a prompt never starts an evaluation.
 
-At widths up to 1200px the editor has Edit and Fill and copy tabs, and saved
-prompts open on Fill and copy. Library Fill and copy links open a focused form
-on every screen size; Edit template returns to the section editor. Discarding
+A saved prompt has one Edit | Fill and copy switch at every width, beside its title, and
+opens on Fill and copy when it has variables. Library Fill and copy links open the same
+focused form; Edit returns to the section editor. New prompts show the switch only up to
+1200px, where the editor and preview no longer fit side by side. Refine and Evaluate are
+header buttons in both modes (Refine switches to Edit first); More holds Prompt details,
+Paste a prompt and History. Discarding
 template changes retains filled values for variables still in the saved prompt.
 Clear values resets those separately. Recovered drafts are identified
 above both panes as stored only in the current browser.
@@ -116,7 +119,7 @@ above both panes as stored only in the current browser.
   entered on Save describes the resulting state, including the current version. Migration 025
   preserves original history notes as `legacy_note` while correcting their association; recovery
   notes stay with their original snapshots.
-- Open **Tools → History** on a saved prompt. The panel lists versions (newest first, the current one on top), shows a word-level
+- Open **More → History** on a saved prompt. The panel lists versions (newest first, the current one on top), shows a word-level
   diff of any version against the current text, and restores it. A restore snapshots the state it
   replaces, so it can be undone, and is unavailable while there are unsaved edits.
 - Renaming, filing or favoriting does not create a content version. REST updates

@@ -181,7 +181,37 @@ button.title:hover {
 }
 
 .tabs {
-  display: none;
+  display: flex;
+  gap: 2px;
+  margin-top: var(--space-2);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-raised);
+}
+
+.tabs button {
+  flex: 1;
+  height: 34px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.tabs button[aria-selected='true'] {
+  background: var(--color-panel);
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+/* Wide screens show a new prompt's editor and preview side by side, so only saved prompts switch. */
+@media (min-width: 1201px) {
+  .tabs { width: fit-content; margin-top: 0; }
+  .tabs button { flex: none; padding: 0 var(--space-4); }
+  .tabs:not([data-saved='true']) { display: none; }
 }
 
 /* Notices */
@@ -1088,6 +1118,9 @@ button.version:hover {
     padding-bottom: var(--space-2);
   }
 
+  /* Its own full-width row under the title and actions. */
+  .tabs { order: 1; flex-basis: 100%; }
+
   .headActions {
     width: 100%;
     justify-content: flex-end;
@@ -1103,33 +1136,6 @@ button.version:hover {
   .noteInput {
     flex: 1;
     width: auto;
-  }
-
-  .tabs {
-    display: flex;
-    gap: 2px;
-    margin-top: var(--space-2);
-    padding: 2px;
-    border-radius: var(--radius-sm);
-    background: var(--color-panel-raised);
-  }
-
-  .tabs button {
-    flex: 1;
-    height: 34px;
-    border: 0;
-    border-radius: 5px;
-    background: none;
-    color: var(--text-secondary);
-    font: inherit;
-    font-weight: var(--weight-medium);
-    cursor: pointer;
-  }
-
-  .tabs button[aria-selected='true'] {
-    background: var(--color-panel);
-    color: var(--text-primary);
-    font-weight: var(--weight-semibold);
   }
 
   .body,
@@ -1255,7 +1261,6 @@ button.version:hover {
 /* A library use link keeps attention on inputs and copied output at every size. */
 .editor[data-focused='true'] .body { grid-template-columns: minmax(0, 1fr); }
 .editor[data-focused='true'] .write,
-.editor[data-focused='true'] .tabs,
 .editor[data-focused='true'] .previewToggle { display: none; }
 .editor[data-focused='true'] .preview,
 .editor[data-focused='true'] .previewClosed { grid-column: 1; width: 100%; max-width: 960px; justify-self: center; }
@@ -1304,7 +1309,6 @@ button.version:hover {
 .promptDetails dt { font-weight: var(--weight-semibold); }
 .promptDetails dd { margin: 0 0 var(--space-3); white-space: pre-wrap; }
 @media (max-width: 1200px) {
-  .headActions .useButton { display: none; }
   .tabs button { height: 44px; }
   button.title, .crumbFolder { min-height: 44px; }
 }

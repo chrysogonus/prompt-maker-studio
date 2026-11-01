@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 
@@ -23,6 +23,14 @@ import VariablesPanel from './VariablesPanel';
 import styles from './PromptEditor.module.css';
 import { usePromptEditor } from './usePromptEditor';
 import { snapshot, toEditorSections, uniqueName, PromptEditorProps } from './editorState';
+
+const NARROW_QUERY = '(max-width: 1200px)';
+function subscribeNarrow(onChange: () => void) {
+  const media = window.matchMedia?.(NARROW_QUERY);
+  media?.addEventListener('change', onChange);
+  return () => media?.removeEventListener('change', onChange);
+}
+const isNarrow = () => window.matchMedia?.(NARROW_QUERY).matches ?? false;
 
 export default function PromptEditor({ promptId, initialStarter, initialMode, openImport }: PromptEditorProps) {
   const {
@@ -102,6 +110,7 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
   } = usePromptEditor({ promptId, initialStarter, initialMode, openImport });
 
   const editorRef = useRef<HTMLDivElement>(null);
+  const narrow = useSyncExternalStore(subscribeNarrow, isNarrow, () => false);
   const toolsRef = useRef<HTMLDivElement>(null);
   const toolsButtonRef = useRef<HTMLButtonElement>(null);
   const pasteButtonRef = useRef<HTMLButtonElement>(null);
@@ -154,6 +163,9 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
   }
 
   const hasContent = fields.some((field) => field.content.trim());
+  // Wide screens show a saved prompt's fields beside the editor, so only the focused view counts
+  // as Fill there; a new prompt's switch is shown on narrow screens only.
+  const fillSelected = prompt ? focusedUse || (narrow && mobileTab === 'use') : mobileTab === 'use';
 
   return (
     <div ref={editorRef} className={styles.editor} data-tab={mobileTab} data-focused={focusedUse ? "true" : "false"}>
@@ -205,9 +217,29 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
           )}
           {dirty && <span className={styles.edited}>Edited</span>}
         </div>
+        {/* One switch in one place: for a saved prompt at every width, for a new one on narrow screens. */}
+        <div className={styles.tabs} role="tablist" aria-label="Editor mode" data-saved={prompt ? 'true' : undefined}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={!fillSelected}
+            onClick={() => { setFocusedUse(false); setMobileTab('edit'); }}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={fillSelected}
+            onClick={() => {
+              if (prompt) { setFocusedUse(true); setPreviewOpen(true); }
+              setMobileTab('use');
+            }}
+          >
+            Fill and copy
+          </button>
+        </div>
         <div className={styles.headActions}>
-          {focusedUse && <Button variant="secondary" onClick={() => { setFocusedUse(false); setMobileTab('edit'); }}>Edit template</Button>}
-          {!focusedUse && prompt && <Button className={styles.useButton} variant="secondary" onClick={() => { setFocusedUse(true); setMobileTab('use'); setPreviewOpen(true); }}>Fill and copy</Button>}
           {prompt && dirty && (
             <input
               className={styles.noteInput}
@@ -223,29 +255,30 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
               Discard
             </Button>
           )}
-          {!focusedUse && <Button
-            variant="ghost"
+          {/* Refine and Evaluate stay in the header in both modes; Refine opens beside the text, in Edit. */}
+          <Button
+            variant="secondary"
             aria-pressed={refineOpen}
             disabled={saving || !hasContent || nameErrors.some(Boolean)}
             onClick={() => { setFocusedUse(false); setMobileTab('edit'); setHistoryOpen(false); setRefineOpen((open) => !open); }}
           >
             Refine
-          </Button>}
+          </Button>
+          {prompt && (!dirty && !saving ? (
+            <ButtonLink variant="secondary" href={`/editor/${prompt.id}/evaluate`}>Evaluate</ButtonLink>
+          ) : (
+            <Button variant="secondary" disabled title="Save your changes before evaluating.">Evaluate</Button>
+          ))}
           {prompt && <div className={styles.tools} ref={toolsRef} onBlur={(event) => {
             // Safari doesn't focus clicked buttons, so a null relatedTarget is a
             // click inside the menu; outside clicks are handled on pointerdown.
             if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setToolsOpen(false);
           }}>
             <Button ref={toolsButtonRef} variant="secondary" aria-expanded={toolsOpen} aria-controls="editor-tools" onClick={() => setToolsOpen((open) => !open)}>
-              Tools <ChevronDown size={14} aria-hidden="true" />
+              More <ChevronDown size={14} aria-hidden="true" />
             </Button>
             {toolsOpen && <div id="editor-tools" className={styles.toolsMenu}>
               <Button variant="ghost" onClick={() => { setToolsOpen(false); setDetailsOpen(true); }}>Prompt details</Button>
-              {!dirty && !saving ? (
-                <ButtonLink variant="ghost" href={`/editor/${prompt.id}/evaluate`} onClick={() => setToolsOpen(false)}>Evaluate</ButtonLink>
-              ) : (
-                <Button variant="ghost" disabled title="Save your changes before evaluating.">Evaluate</Button>
-              )}
               <Button variant="ghost" disabled={refineOpen || saving} onClick={() => { setToolsOpen(false); setImportOpen(true); }}>Paste a prompt</Button>
               <Button variant="ghost" onClick={() => {
                 setToolsOpen(false);
@@ -261,24 +294,6 @@ export default function PromptEditor({ promptId, initialStarter, initialMode, op
         </div>
       </header>
 
-      <div className={styles.tabs} role="tablist" aria-label="Editor mode">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mobileTab === 'edit'}
-          onClick={() => setMobileTab('edit')}
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mobileTab === 'use'}
-          onClick={() => setMobileTab('use')}
-        >
-          Fill and copy
-        </button>
-      </div>
 
       {draftAction && <div className={styles.banner} role="status">
         <span>{draftAction.text}</span>

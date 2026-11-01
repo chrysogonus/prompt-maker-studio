@@ -65,7 +65,7 @@ for (const theme of ['light', 'dark'] as const) {
     const panel = page.getByRole('dialog', { name: 'Refine prompt' });
     expect(calls).toBe(0);
     await expect(page.getByLabel('Task text')).toBeDisabled();
-    await panel.getByRole('button', { name: 'Find questions' }).click();
+    await panel.getByRole('button', { name: 'Ask me questions first' }).click();
     await panel.getByLabel('Who will read this?').fill('Beginners');
     await panel.getByLabel('What should the answer look like?').fill('Three short paragraphs');
     await expect(panel.getByLabel('Who will read this?')).toBeVisible();
@@ -106,12 +106,12 @@ for (const theme of ['light', 'dark'] as const) {
     await save.getByRole('button', { name: 'Save prompt' }).click();
     await expect(page).toHaveURL(/\/editor\/\d+$/);
     await page.reload();
-    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+    await page.getByRole('tab', { name: 'Edit', exact: true }).click();
     await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}} to beginners in three short paragraphs.');
     await page.getByLabel('Task text').fill('Explain {{topic}} to beginners briefly.');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'History', exact: true }).click();
     await expect(page.getByRole('button', { name: /Version 1/ })).toBeVisible();
   });
@@ -282,7 +282,7 @@ test('edits a saved prompt twice and restores an earlier version', async ({ page
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   expect((await secondSave).status()).toBe(200);
 
-  await page.getByRole('button', { name: 'Tools', exact: true }).click();
+  await page.getByRole('button', { name: 'More', exact: true }).click();
 
   await page.getByRole('button', { name: 'History' }).click();
   const history = page.getByRole('dialog', { name: 'Version history' });
@@ -312,7 +312,7 @@ test('shows restore results inside History when it covers the page', async ({ pa
   await page.keyboard.press('Control+s');
   expect((await save).status()).toBe(200);
 
-  await page.getByRole('button', { name: 'Tools', exact: true }).click();
+  await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('button', { name: 'History', exact: true }).click();
   const history = page.getByRole('dialog', { name: 'Version history' });
   await expect(history).toHaveAttribute('aria-modal', 'true');
@@ -328,7 +328,7 @@ test('shows restore results inside History when it covers the page', async ({ pa
   await expect(history.getByRole('status')).toHaveText('Restored version 1');
   await expect(history.getByRole('heading', { name: 'History' })).toBeFocused();
   // Closing returns focus to Tools, whether by Escape or the close button.
-  const tools = page.getByRole('button', { name: 'Tools', exact: true });
+  const tools = page.getByRole('button', { name: 'More', exact: true });
   await page.keyboard.press('Escape');
   await expect(history).not.toBeVisible();
   await expect(tools).toBeFocused();
@@ -387,7 +387,7 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
   );
 
   // A saved prompt with inputs opens ready to fill; editing its hints is deliberate.
-  await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+  await page.getByRole('tab', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Hint for alpha').fill('The thing to handle');
   const hintSave = promptPatch(page, promptId);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -402,10 +402,10 @@ test('fills variables, keeps hints, and survives a real two-tab conflict', async
   // A genuine cross-session conflict still returns 409, and keeps the edit.
   const tabB = await context.newPage();
   await tabB.goto(`/editor/${promptId}`);
-  await tabB.getByRole('button', { name: 'Edit template', exact: true }).click();
+  await tabB.getByRole('tab', { name: 'Edit', exact: true }).click();
   await expect(tabB.getByLabel('Task text')).toHaveValue(/alpha/);
 
-  await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+  await page.getByRole('tab', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Task text').fill('tab A wins {{alpha}}');
   const tabASave = promptPatch(page, promptId);
   await page.getByRole('button', { name: 'Save', exact: true }).click();

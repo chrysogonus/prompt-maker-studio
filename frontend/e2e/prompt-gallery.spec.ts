@@ -45,7 +45,7 @@ test('a template fills in with example inputs, saves into a new library and reop
   await save.getByRole('button', { name: 'Save prompt' }).click();
   await expect(page).toHaveURL(/\/editor\/\d+$/);
   await page.reload();
-  await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+  await page.getByRole('tab', { name: 'Edit', exact: true }).click();
   await expect(page.getByLabel('Goal text')).toHaveValue('Fix this bug: {{symptom}}. Expected behaviour: {{expected}}.');
   await expect(page.getByLabel('Done when text')).toHaveValue(/regression test/);
   await expect(page.getByLabel('Hint for symptom')).toHaveValue('What goes wrong, and how to reproduce it');

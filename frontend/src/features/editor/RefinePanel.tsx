@@ -277,7 +277,7 @@ export default function RefinePanel({ open, promptId, fields, aiAvailable, aiCon
         {review && !stale ? (
           <>
             <Button variant="ghost" onClick={() => { setReview(false); setError(''); }}>{questions?.length ? 'Back to answers' : 'Back'}</Button>
-            <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Discard draft</Button>
+            <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Discard suggestion</Button>
             <Button variant="primary" disabled={!changed || !aiAvailable} onClick={() => {
               if (draft && !stale) onApply(draft);
             }}>Apply changes</Button>
@@ -290,7 +290,7 @@ export default function RefinePanel({ open, promptId, fields, aiAvailable, aiCon
                 <>
                   <Button variant="secondary" disabled={busy !== null} onClick={improve}>Improve without questions</Button>
                   <Button variant={questions === null ? 'primary' : 'secondary'} disabled={busy !== null} onClick={() => findQuestions(questions !== null)}>
-                    {questions === null ? 'Find questions' : 'Ask more questions'}
+                    {questions === null ? 'Ask me questions first' : 'Ask more questions'}
                   </Button>
                 </>
               ) : (

@@ -107,7 +107,7 @@ beforeEach(() => {
 async function renderSaved() {
   render(<PromptEditor promptId={1} />);
   await screen.findByRole('button', { name: 'Weekly status update' });
-  const edit = screen.queryByRole('button', { name: 'Edit template' });
+  const edit = screen.queryByRole('tab', { name: 'Edit', selected: false });
   if (edit) fireEvent.click(edit);
 }
 
@@ -167,7 +167,7 @@ it('saves typed choices without leaving them marked as unsaved, and reopens clea
   vi.mocked(ApiClient.updatePrompt).mockResolvedValue(stored);
   const view = render(<PromptEditor promptId={1} />);
   await screen.findByRole('button', { name: 'Weekly status update' });
-  const edit = screen.queryByRole('button', { name: 'Edit template' });
+  const edit = screen.queryByRole('tab', { name: 'Edit', selected: false });
   if (edit) await user.click(edit);
   await user.click(screen.getByText('Options for team'));
   await user.type(screen.getByLabelText('Choices for team'), 'Payments{Enter}Search{Enter}');
@@ -205,7 +205,7 @@ it('dismisses advisory markup warnings without editing the prompt', async () => 
 it('opens full prompt details without beginning a rename', async () => {
   const user = userEvent.setup();
   await renderSaved();
-  await user.click(screen.getByRole('button', { name: 'Tools' }));
+  await user.click(screen.getByRole('button', { name: 'More' }));
   await user.click(screen.getByRole('button', { name: 'Prompt details' }));
   const details = screen.getByRole('dialog', { name: 'Prompt details' });
   expect(details).toHaveTextContent('Weekly status update');
@@ -219,7 +219,7 @@ it('opens full prompt details without beginning a rename', async () => {
 it('closes secondary tools on Escape, outside input and opening history', async () => {
   const user = userEvent.setup();
   await renderSaved();
-  const tools = screen.getByRole('button', { name: 'Tools' });
+  const tools = screen.getByRole('button', { name: 'More' });
   expect(screen.queryByRole('button', { name: 'History' })).not.toBeInTheDocument();
   await user.click(tools);
   expect(screen.getByRole('link', { name: 'Evaluate' })).toHaveAttribute('href', '/editor/1/evaluate');
@@ -277,7 +277,7 @@ it('returns focus to Tools after dismissing the saved-prompt importer', async ()
   await openTool(user, 'Paste a prompt');
   await user.keyboard('{Escape}');
   expect(screen.queryByRole('dialog', { name: 'Paste a prompt' })).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Tools' })).toHaveFocus();
+  expect(screen.getByRole('button', { name: 'More' })).toHaveFocus();
 });
 
 it('opens AI testing explicitly without running or saving the prompt', async () => {
@@ -292,7 +292,7 @@ it('opens AI testing explicitly without running or saving the prompt', async () 
 });
 
 async function openTool(user: ReturnType<typeof userEvent.setup>, name: string) {
-  if (!screen.queryByRole('button', { name })) await user.click(screen.getByRole('button', { name: 'Tools' }));
+  if (!screen.queryByRole('button', { name })) await user.click(screen.getByRole('button', { name: 'More' }));
   await user.click(screen.getByRole('button', { name }));
 }
 
@@ -428,10 +428,10 @@ describe('variable inputs and reversible import', () => {
 it('only opens evaluation for a saved prompt without unsaved changes', async () => {
   const user = userEvent.setup();
   await renderSaved();
-  await user.click(screen.getByRole('button', { name: 'Tools' }));
+  await user.click(screen.getByRole('button', { name: 'More' }));
   expect(screen.getByRole('link', { name: 'Evaluate' })).toHaveAttribute('href', '/editor/1/evaluate');
   await user.type(screen.getByLabelText('Role text'), ' Updated.');
-  await user.click(screen.getByRole('button', { name: 'Tools' }));
+  await user.click(screen.getByRole('button', { name: 'More' }));
   expect(screen.queryByRole('link', { name: 'Evaluate' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Evaluate' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Evaluate' })).toHaveAttribute('title', 'Save your changes before evaluating.');
@@ -542,12 +542,12 @@ describe('prompt refinement', () => {
     await renderSaved();
     const trigger = screen.getByRole('button', { name: 'Refine' });
     await user.click(trigger);
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await screen.findByText('Finding questions…');
     fireEvent.keyDown(screen.getByRole('dialog', { name: 'Refine prompt' }), { key: 'Escape' });
     expect(trigger).toHaveFocus();
     await user.click(trigger);
-    expect(screen.getByRole('button', { name: 'Find questions' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Ask me questions first' })).toBeDisabled();
     finish({ questions: ['Audience?'] });
     await screen.findByLabelText('Audience?');
     expect(ApiClient.getRefinementQuestions).toHaveBeenCalledTimes(1);
@@ -558,9 +558,9 @@ describe('prompt refinement', () => {
     vi.mocked(ApiClient.getRefinementQuestions).mockRejectedValueOnce(new Error('Provider unavailable'));
     await renderSaved();
     await user.click(screen.getByRole('button', { name: 'Refine' }));
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Provider unavailable');
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await screen.findByLabelText('Who will read this?');
     expect(ApiClient.getRefinementQuestions).toHaveBeenCalledTimes(2);
   });
@@ -570,7 +570,7 @@ describe('prompt refinement', () => {
     vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValueOnce({ questions: ['Audience?', 'Tone?'] });
     await renderSaved();
     await user.click(screen.getByRole('button', { name: 'Refine' }));
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await screen.findByLabelText('Audience?');
     await user.click(screen.getByRole('button', { name: 'Create draft' }));
     await screen.findByRole('button', { name: 'Apply changes' });
@@ -582,7 +582,7 @@ describe('prompt refinement', () => {
     vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValueOnce({ questions: ['Audience?', 'Tone?'] });
     await renderSaved();
     await user.click(screen.getByRole('button', { name: 'Refine' }));
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await screen.findByLabelText('Audience?');
     await user.type(screen.getByLabelText('Audience?'), 'Managers');
     await user.click(screen.getByRole('button', { name: 'Create draft' }));
@@ -593,7 +593,7 @@ describe('prompt refinement', () => {
     await user.click(screen.getByRole('button', { name: 'Back to answers' }));
     expect(screen.getByLabelText('Audience?')).toHaveValue('Managers');
     await user.click(screen.getByRole('button', { name: 'Create draft' }));
-    await user.click(await screen.findByRole('button', { name: 'Discard draft' }));
+    await user.click(await screen.findByRole('button', { name: 'Discard suggestion' }));
     expect(screen.getByLabelText('Role text')).toHaveValue(prompt().fields[0].content);
     expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
   });
@@ -603,7 +603,7 @@ describe('prompt refinement', () => {
     vi.mocked(ApiClient.createRefinementDraft).mockResolvedValueOnce({ fields: prompt().fields });
     await renderSaved();
     await user.click(screen.getByRole('button', { name: 'Refine' }));
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await user.type(await screen.findByLabelText('Who will read this?'), 'Managers');
     await user.click(screen.getByRole('button', { name: 'Create draft' }));
     await screen.findByText('The draft is identical to your prompt.');
@@ -616,7 +616,7 @@ describe('prompt refinement', () => {
     const user = userEvent.setup();
     await renderSaved();
     await user.click(screen.getByRole('button', { name: 'Refine' }));
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await user.type(await screen.findByLabelText('Who will read this?'), 'Managers');
     await user.click(screen.getByRole('button', { name: 'Create draft' }));
     await user.click(await screen.findByRole('button', { name: 'Apply changes' }));
@@ -636,7 +636,7 @@ describe('prompt refinement', () => {
     expect(screen.getByLabelText('Role text')).toBeDisabled();
     fireEvent.keyDown(window, { key: 's', ctrlKey: true });
     expect(ApiClient.updatePrompt).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     expect(ApiClient.getRefinementQuestions).toHaveBeenCalledWith([
       { name: 'Role', content: 'You are a concise engineering lead. Be brief.' }, prompt().fields[1],
     ], false);
@@ -663,7 +663,7 @@ describe('prompt refinement', () => {
     render(<PromptEditor />);
     fireEvent.change(screen.getByLabelText('Task text'), { target: { value: 'Explain {{topic}}' } });
     await user.click(screen.getByRole('button', { name: 'Refine' }));
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await user.type(await screen.findByLabelText('Who will read this?'), 'Beginners');
     await user.click(screen.getByRole('button', { name: 'Close refinement' }));
     await user.click(screen.getByRole('button', { name: 'Refine' }));
@@ -686,7 +686,7 @@ describe('prompt refinement', () => {
     const user = userEvent.setup();
     await renderSaved();
     await user.click(screen.getByRole('button', { name: 'Refine' }));
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await screen.findByLabelText('Who will read this?');
     await user.click(screen.getByRole('button', { name: 'Close refinement' }));
     await user.type(screen.getByLabelText('Role text'), ' Changed.');
@@ -694,7 +694,7 @@ describe('prompt refinement', () => {
     expect(screen.getByText(/Your prompt changed/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Apply changes' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Start again' }));
-    expect(screen.getByRole('button', { name: 'Find questions' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ask me questions first' })).toBeInTheDocument();
     expect(ApiClient.getRefinementQuestions).toHaveBeenCalledTimes(1);
   });
 
@@ -703,7 +703,7 @@ describe('prompt refinement', () => {
     vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValueOnce({ questions: [] });
     await renderSaved();
     await user.click(screen.getByRole('button', { name: 'Refine' }));
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await screen.findByText('No important gaps were identified.');
     await user.click(screen.getByRole('button', { name: 'Ask more questions' }));
     await screen.findByLabelText('Who will read this?');
@@ -720,7 +720,7 @@ describe('prompt refinement', () => {
     expect(ApiClient.getRefinementQuestions).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Back' }));
     vi.mocked(ApiClient.getRefinementQuestions).mockResolvedValueOnce({ questions: [] });
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await screen.findByText('No important gaps were identified.');
     await user.click(screen.getByRole('button', { name: 'Improve without questions' }));
     await screen.findByRole('button', { name: 'Apply changes' });
@@ -731,7 +731,7 @@ describe('prompt refinement', () => {
     const user = userEvent.setup();
     await renderSaved();
     await user.click(screen.getByRole('button', { name: 'Refine' }));
-    await user.click(screen.getByRole('button', { name: 'Find questions' }));
+    await user.click(screen.getByRole('button', { name: 'Ask me questions first' }));
     await user.type(await screen.findByLabelText('Who will read this?'), 'Managers');
     await user.click(screen.getByRole('button', { name: 'Create draft' }));
     await user.click(await screen.findByRole('button', { name: 'Apply changes' }));
@@ -1021,7 +1021,7 @@ describe('PromptEditor with a saved prompt', () => {
     expect(within(history).getByRole('heading', { name: 'History' })).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'Version history' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tools' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'More' })).toHaveFocus();
   });
 
   it('keeps the comparison and says why when a restore fails', async () => {
@@ -1379,7 +1379,7 @@ describe('paste a prompt recovery and save handoff', () => {
     vi.mocked(ApiClient.getPromptById).mockResolvedValue(created);
     render(<PromptEditor promptId={2} />);
     expect(await screen.findByLabelText('destination', { exact: true })).toHaveValue('Lisbon');
-    expect(screen.getByRole('button', { name: 'Edit template' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Edit' })).toBeInTheDocument();
     expect(screen.getByText('Values stay on this device until you clear them.')).toBeInTheDocument();
     expect(screen.queryByText('Your unsaved changes were restored.')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Prompt text')).toHaveTextContent('Plan a trip to Lisbon.');
@@ -1413,7 +1413,7 @@ describe('paste a prompt recovery and save handoff', () => {
     const user = userEvent.setup();
     const rendered = render(<PromptEditor promptId={1} />);
     await screen.findByRole('button', { name: 'Weekly status update' });
-    await user.click(screen.getByRole('button', { name: 'Edit template' }));
+    await user.click(screen.getByRole('tab', { name: 'Edit' }));
     await review(user);
     await user.click(screen.getByRole('button', { name: 'Use in editor' }));
     await user.click(screen.getByRole('button', { name: 'Undo' }));
@@ -1545,7 +1545,7 @@ it('opens saved prompts with inputs ready to fill and remembers inputs on this d
   expect(screen.getByLabelText('Context text').closest('fieldset')).toHaveAttribute('hidden');
   await user.type(screen.getByPlaceholderText('Team or project name'), 'Platform');
   expect(screen.getByText('Values stay on this device until you clear them.')).toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Edit template' }));
+  await user.click(screen.getByRole('tab', { name: 'Edit' }));
   expect(screen.getByLabelText('Context text').closest('fieldset')).not.toHaveAttribute('hidden');
   expect(screen.getByPlaceholderText('Team or project name')).toHaveValue('Platform');
   first.unmount();
@@ -1573,7 +1573,7 @@ it('keeps restored template edits and prompts without inputs in the editor', asy
   render(<PromptEditor promptId={1} />);
   await screen.findByRole('button', { name: 'Weekly status update' });
   expect(screen.getByLabelText('Task text').closest('fieldset')).not.toHaveAttribute('hidden');
-  expect(screen.queryByRole('button', { name: 'Edit template' })).not.toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Edit' })).toHaveAttribute('aria-selected', 'true');
 });
 
 it('turns selected text into an input and keeps it as the example', async () => {
@@ -1611,9 +1611,9 @@ it('opens library filled links in a focused pane with an explicit edit action', 
   const user = userEvent.setup();
   render(<PromptEditor promptId={1} initialMode="filled" />);
   await screen.findByRole('button', { name: 'Weekly status update' });
-  expect(screen.getByRole('button', { name: 'Edit template' })).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Edit' })).toBeInTheDocument();
   expect(screen.getByLabelText('Context text').closest('fieldset')).toHaveAttribute('hidden');
-  await user.click(screen.getByRole('button', { name: 'Edit template' }));
+  await user.click(screen.getByRole('tab', { name: 'Edit' }));
   expect(screen.getByLabelText('Context text').closest('fieldset')).not.toHaveAttribute('hidden');
 });
 

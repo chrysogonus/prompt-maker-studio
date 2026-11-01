@@ -63,7 +63,7 @@ for (const width of [1440, 390]) {
     await page.getByText('Test with AI', { exact: true }).click();
     await page.getByRole('button', { name: 'Try once' }).click();
     await expect(page.getByRole('region', { name: 'Try once output' })).toContainText('Saturn has rings.');
-    await expect(page.getByRole('button', { name: 'Edit template', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Edit', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
 
     await page.goto('/library');
@@ -74,31 +74,31 @@ for (const width of [1440, 390]) {
     await card.getByRole('link', { name: 'Fill and copy' }).click();
     await expect(page.getByLabel('topic Required')).toBeVisible();
     await expect(page).toHaveURL(/mode=filled/);
-    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+    await page.getByRole('tab', { name: 'Edit', exact: true }).click();
 
     await page.getByLabel('Task text').fill('Explain {{topic}} briefly.');
     await page.getByLabel('Version note').fill('Make it brief');
     await page.reload();
-    await page.getByRole('button', { name: 'Edit template', exact: true }).click();
+    await page.getByRole('tab', { name: 'Edit', exact: true }).click();
     await expect(page.getByText('Your unsaved changes were restored.')).toBeVisible();
     await expect(page.getByLabel('Task text')).toHaveValue('Explain {{topic}} briefly.');
     await expect(page.getByLabel('Version note')).toHaveValue('Make it brief');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'History', exact: true }).click();
     await expect(page.getByText('Version 2, current').locator('..')).toContainText('Make it brief');
     await page.getByRole('button', { name: 'Close history' }).click();
     await page.getByLabel('Task text').fill('Explain {{topic}} clearly.');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'History', exact: true }).click();
     await expect(page.getByRole('button', { name: /Version 2/ })).toContainText('Make it brief');
     await page.getByRole('button', { name: 'Close history' }).click();
 
     await page.route('**/api/prompts/parse-text', (route) => route.fulfill({ json: { fields: [{ name: 'Imported', content: 'Imported draft.' }] } }));
-    await page.getByRole('button', { name: 'Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'Paste a prompt' }).click();
     const importer = page.getByRole('dialog', { name: 'Paste a prompt' });
     await expect(importer).toContainText('current draft stays as it is');

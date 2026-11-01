@@ -12,6 +12,10 @@ any release. See [Project status](./README.md#project-status).
 
 ### Changed
 
+- A saved prompt's header has one Edit | Fill and copy switch at every width (replacing Edit
+  template and the Fill and copy button), Refine and Evaluate as labelled buttons in both modes,
+  and a More menu (was Tools) with Prompt details, Paste a prompt and History. Refine's buttons read
+  Ask me questions first and Discard suggestion.
 - One vocabulary for prompt variables: a `{{…}}` slot is a variable everywhere ("Insert
   variable", "New variable name", "Required variables missing"), what you type into it is a value
   ("Load example values", "Clear values", Evaluate's Values), and "placeholder" means only the
