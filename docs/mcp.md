@@ -44,7 +44,10 @@ a prompt ID, required `last_updated_at`, and optional complete replacement
 `fields`, `name`, and `note`. Folder/favorite/variable-metadata edits remain on
 the REST API; the MCP detail responses include existing variable metadata.
 `list_saved_prompts` wraps summaries in `prompts`; `list_prompt_versions` wraps
-history in `versions` and excludes the current state. Listing follows creation
+history in `versions` and excludes the current state. A version is stored when the next edit
+replaces it, so its `created_at` is that replacement time; its content was written when the
+previous version was replaced (version 1: the prompt's `created_at`). The tool description says
+so, and the website's history shows the written time. Listing follows creation
 time, newest first.
 
 Delete and version restore are intentionally not exposed. Every tool has a display title and
