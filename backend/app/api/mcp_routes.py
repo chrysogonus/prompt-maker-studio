@@ -211,7 +211,9 @@ def update_prompt(
 @mcp_server.tool(title="List prompt versions", annotations=_READ_ONLY)
 def list_prompt_versions(prompt_id: int) -> VersionList:
     """List the earlier versions of a saved prompt, newest first. The current
-    content is not included; get it with get_prompt."""
+    content is not included; get it with get_prompt. Each version's
+    created_at is when the next edit replaced it; its content was written when
+    the previous version was replaced (version 1: the prompt's created_at)."""
     with _user_session() as (db, user):
         history = versions.get_prompt_versions(prompt_id=prompt_id, db=db, user_id=user.id)
         return VersionList(versions=history)

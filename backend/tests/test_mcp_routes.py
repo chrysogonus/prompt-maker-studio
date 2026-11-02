@@ -83,6 +83,16 @@ class TestMCPAuthentication:
             "list_prompt_versions": "List prompt versions",
         }
 
+    def test_version_listing_explains_its_dates(self, client, auth_headers):
+        """A version is stored when the next edit replaces it, so its created_at is
+        the replacement time; assistants must be told, or they report it as written."""
+        response = _rpc(client, auth_headers, "tools/list")
+        tools = {tool["name"]: tool for tool in response.json()["result"]["tools"]}
+        description = tools["list_prompt_versions"]["description"]
+
+        assert "created_at is when the next edit replaced it" in description
+        assert "version 1" in description
+
 
 class TestMCPPromptTools:
     def test_save_renders_and_stores_a_named_prompt(self, client, auth_headers):
