@@ -14,13 +14,13 @@ runs in stateless, JSON-response mode, so each request is independent.
 
 ## Tools
 
-| Tool | Read-only | REST equivalent |
-|---|---|---|
-| `list_saved_prompts` | Yes | `GET /api/prompts/saved` (summaries only, no prompt text; filter by `folder` or `favorite_only`) |
-| `get_prompt` | Yes | `GET /api/prompts/{id}`, including each variable's hint and any choices in `variable_metadata` |
-| `save_prompt` | No | `POST /api/prompts` |
-| `update_prompt` | No | `PATCH /api/prompts/{id}` |
-| `list_prompt_versions` | Yes | `GET /api/prompts/{id}/versions` |
+| Tool | Title | Read-only | REST equivalent |
+|---|---|---|---|
+| `list_saved_prompts` | List saved prompts | Yes | `GET /api/prompts/saved` (summaries only, no prompt text; filter by `folder` or `favorite_only`) |
+| `get_prompt` | Get prompt | Yes | `GET /api/prompts/{id}`, including each variable's hint and any choices in `variable_metadata` |
+| `save_prompt` | Save prompt | No | `POST /api/prompts` |
+| `update_prompt` | Update prompt | No | `PATCH /api/prompts/{id}` |
+| `list_prompt_versions` | List prompt versions | Yes | `GET /api/prompts/{id}/versions` |
 
 The tools call shared operations in `backend/app/services/prompts/`, as do the
 REST handlers. Ownership checks, section rules, text rendering, version snapshots
@@ -47,7 +47,9 @@ the REST API; the MCP detail responses include existing variable metadata.
 history in `versions` and excludes the current state. Listing follows creation
 time, newest first.
 
-Delete and version restore are intentionally not exposed.
+Delete and version restore are intentionally not exposed. Every tool has a display title and
+`readOnlyHint`/`destructiveHint`/`openWorldHint` annotations; Claude's connector directory
+requires both.
 
 ## Authentication
 

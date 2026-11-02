@@ -10,6 +10,11 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- The five MCP tools have display titles (List saved prompts, Get prompt, Save prompt, Update
+  prompt, List prompt versions), which Claude's connector directory requires.
+
 ## [0.15.0] - 2026-11-02
 
 See the [release record](./docs/releases/0.15.0.md).
