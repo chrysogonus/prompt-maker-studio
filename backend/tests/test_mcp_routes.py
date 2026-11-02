@@ -70,6 +70,19 @@ class TestMCPAuthentication:
             assert annotations["destructiveHint"] is (name == "update_prompt")
             assert annotations["openWorldHint"] is False
 
+    def test_every_tool_has_a_title(self, client, auth_headers):
+        """Claude's connector directory rejects tools without a title."""
+        response = _rpc(client, auth_headers, "tools/list")
+        titles = {tool["name"]: tool.get("title") for tool in response.json()["result"]["tools"]}
+
+        assert titles == {
+            "list_saved_prompts": "List saved prompts",
+            "get_prompt": "Get prompt",
+            "save_prompt": "Save prompt",
+            "update_prompt": "Update prompt",
+            "list_prompt_versions": "List prompt versions",
+        }
+
 
 class TestMCPPromptTools:
     def test_save_renders_and_stores_a_named_prompt(self, client, auth_headers):
