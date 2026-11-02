@@ -5,6 +5,7 @@ refine the wording, and test how they perform before your next edit.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/chrysogonus/prompt-maker-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/chrysogonus/prompt-maker-studio/actions/workflows/ci.yml)
+[![mcptry](https://mcptry.com/badge/io.github.chrysogonus/prompt-maker-studio)](https://mcptry.com/servers/io.github.chrysogonus/prompt-maker-studio)
 
 [Get started](#quick-start-with-docker) · [Connect ChatGPT or Claude](./docs/mcp.md) · [Contribute](./CONTRIBUTING.md)
 

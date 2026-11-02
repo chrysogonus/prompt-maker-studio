@@ -10,6 +10,18 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.16.0; see the [release candidate](./docs/releases/0.16.0.md).
+
+### Added
+
+- The five MCP tools have display titles (List saved prompts, Get prompt, Save prompt, Update
+  prompt, List prompt versions), which Claude's connector directory requires.
+
+### Changed
+
+- CI uses `actions/setup-python` with a new pinned commit, `github/codeql-action` 4.39.1 and
+  `docker/login-action` 4.7.0. None of these is a security fix.
+
 ## [0.15.0] - 2026-11-02
 
 See the [release record](./docs/releases/0.15.0.md).
