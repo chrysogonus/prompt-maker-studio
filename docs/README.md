@@ -47,7 +47,7 @@ separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
-- [0.16.0 release candidate](releases/0.16.0.md): display titles for the five MCP tools,
+- [0.16.0 release record](releases/0.16.0.md): display titles for the five MCP tools,
   which Claude's connector directory requires, and GitHub Actions updates.
 - [0.15.0 release record](releases/0.15.0.md): fixes from the 2026-10-31 UX test (a
   reworked saved-prompt header, one vocabulary for variables and values, accessibility, library,
