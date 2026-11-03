@@ -13,19 +13,19 @@ license = "Apache-2.0"
 authors = [{ name = "Christopher Filsinger" }]
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi==0.156.8",
+    "fastapi==0.162.0",
     "uvicorn==0.54.0",
-    "sqlalchemy==2.1.5",
+    "sqlalchemy==2.1.6",
     "pydantic[email]==2.14.1",
     "bcrypt==5.0.0",
     "PyJWT==2.15.1",
-    "openai==3.35.1",
+    "openai==3.39.0",
     "slowapi==0.1.10",
     "limits==5.8.0",
     "prometheus-fastapi-instrumentator==8.1.0",
-    "starlette==1.9.0",
+    "starlette==1.10.0",
     "cryptography==50.0.2",
-    "msgpack==1.2.3",
+    "msgpack==1.2.4",
     "httpx==0.28.1",
     # Shared by the provider SDK/custom transport and Starlette's TestClient.
     "httpx2==2.16.0",
@@ -40,9 +40,9 @@ Issues = "https://github.com/chrysogonus/prompt-maker-studio/issues"
 [project.optional-dependencies]
 dev = [
     "pytest==9.1.1",
-    "pytest-asyncio==1.4.0",
+    "pytest-asyncio==1.4.1",
     "pytest-cov==7.1.0",
-    "ruff==0.17.1",
+    "ruff==0.17.3",
     "bandit[toml]==1.9.4",
     "pip-audit==2.10.1",
     "pip-tools==7.6.2",
