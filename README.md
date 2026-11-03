@@ -112,9 +112,9 @@ TypeScript; Docker Compose with Caddy, plus Prometheus and Grafana for monitorin
 
 Early-stage, `0.x`. APIs and database schemas may change between releases.
 Back up before upgrading; see the [changelog](./CHANGELOG.md). The
-[0.16.0 release record](./docs/releases/0.16.0.md) records publication, immutable
-image digests and verification for the latest release: display titles for the five MCP tools,
-which Claude's connector directory requires, and GitHub Actions updates, with no migrations. Each [release record](./docs/README.md) lists its own
+[0.16.1 release record](./docs/releases/0.16.1.md) records publication, immutable
+image digests and verification for the latest release: the MCP version listing explains its
+dates, with no migrations. Each [release record](./docs/README.md) lists its own
 migrations and upgrade notes; follow them for every release you skip.
 Upgrades from before 0.5.0 must also follow the
 [0.5.0 upgrade checks](./docs/releases/0.5.0.md#upgrade-and-compatibility),
