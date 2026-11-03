@@ -10,6 +10,13 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.16.1; see the [release candidate](./docs/releases/0.16.1.md).
+
+### Changed
+
+- The MCP `list_prompt_versions` tool explains its dates: a version's `created_at` is when the
+  next edit replaced it, not when its content was written. Assistants had no way to tell.
+
 ## [0.16.0] - 2026-11-02
 
 See the [release record](./docs/releases/0.16.0.md).
