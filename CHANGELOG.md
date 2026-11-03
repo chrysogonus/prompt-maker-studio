@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.16.2; see the [release candidate](./docs/releases/0.16.2.md).
+
 ### Fixed
 
 - The MCP tool titles are also sent as `annotations.title`. Claude's connector directory reads
