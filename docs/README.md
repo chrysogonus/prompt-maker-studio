@@ -47,7 +47,7 @@ separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
-- [0.16.2 release candidate](releases/0.16.2.md): MCP tool titles are also sent as
+- [0.16.2 release record](releases/0.16.2.md): MCP tool titles are also sent as
   `annotations.title`, where Claude's connector directory reads them.
 - [0.16.1 release record](releases/0.16.1.md): the MCP version listing explains that a
   version's `created_at` is when the next edit replaced it.
