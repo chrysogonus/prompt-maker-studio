@@ -142,7 +142,13 @@ _WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHin
 _UPDATE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False)
 
 
-@mcp_server.tool(title="List saved prompts", annotations=_READ_ONLY)
+def _tool(title: str, annotations: ToolAnnotations):
+    """Register a tool with its title both top-level (MCP spec) and in its
+    annotations, which is where Claude's connector directory reads it."""
+    return mcp_server.tool(title=title, annotations=annotations.model_copy(update={"title": title}))
+
+
+@_tool("List saved prompts", _READ_ONLY)
 def list_saved_prompts(folder: str | None = None, favorite_only: bool = False) -> PromptList:
     """List the user's saved prompts, newest first, optionally filtered by
     folder or favorite status. Returns names and metadata, not prompt text."""
@@ -164,7 +170,7 @@ def list_saved_prompts(folder: str | None = None, favorite_only: bool = False) -
         )
 
 
-@mcp_server.tool(title="Get prompt", annotations=_READ_ONLY)
+@_tool("Get prompt", _READ_ONLY)
 def get_prompt(prompt_id: int) -> PromptHistoryResponse:
     """Get one saved prompt: its fields, rendered prompt text, and timestamps."""
     with _user_session() as (db, user):
@@ -172,7 +178,7 @@ def get_prompt(prompt_id: int) -> PromptHistoryResponse:
         return PromptHistoryResponse.model_validate(prompt)
 
 
-@mcp_server.tool(title="Save prompt", annotations=_WRITE)
+@_tool("Save prompt", _WRITE)
 def save_prompt(name: str, fields: list[PromptField]) -> PromptHistoryResponse:
     """Save a new prompt to the user's library under the given name. Field names
     must be unique; they may contain letters, digits, spaces, _ or -, and start
@@ -183,7 +189,7 @@ def save_prompt(name: str, fields: list[PromptField]) -> PromptHistoryResponse:
         return PromptHistoryResponse.model_validate(prompt)
 
 
-@mcp_server.tool(title="Update prompt", annotations=_UPDATE)
+@_tool("Update prompt", _UPDATE)
 def update_prompt(
     prompt_id: int,
     last_updated_at: datetime,
@@ -208,7 +214,7 @@ def update_prompt(
         return PromptHistoryResponse.model_validate(prompt)
 
 
-@mcp_server.tool(title="List prompt versions", annotations=_READ_ONLY)
+@_tool("List prompt versions", _READ_ONLY)
 def list_prompt_versions(prompt_id: int) -> VersionList:
     """List the earlier versions of a saved prompt, newest first. The current
     content is not included; get it with get_prompt. Each version's

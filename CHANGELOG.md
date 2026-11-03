@@ -10,6 +10,11 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Fixed
+
+- The MCP tool titles are also sent as `annotations.title`. Claude's connector directory reads
+  them only from there, so it flagged every tool as untitled.
+
 ## [0.16.1] - 2026-11-03
 
 See the [release record](./docs/releases/0.16.1.md).

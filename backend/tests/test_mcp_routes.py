@@ -83,6 +83,15 @@ class TestMCPAuthentication:
             "list_prompt_versions": "List prompt versions",
         }
 
+    def test_every_tool_annotation_carries_the_title(self, client, auth_headers):
+        """Claude's connector directory reads the title from annotations.title, not
+        from the tool's top-level title."""
+        response = _rpc(client, auth_headers, "tools/list")
+        tools = response.json()["result"]["tools"]
+
+        for tool in tools:
+            assert tool["annotations"].get("title") == tool["title"], tool["name"]
+
     def test_version_listing_explains_its_dates(self, client, auth_headers):
         """A version is stored when the next edit replaces it, so its created_at is
         the replacement time; assistants must be told, or they report it as written."""

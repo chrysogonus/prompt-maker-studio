@@ -52,7 +52,8 @@ time, newest first.
 
 Delete and version restore are intentionally not exposed. Every tool has a display title and
 `readOnlyHint`/`destructiveHint`/`openWorldHint` annotations; Claude's connector directory
-requires both.
+requires both. The title is set top-level (MCP spec) and again as `annotations.title`, which is
+where the directory reads it.
 
 ## Authentication
 
