@@ -76,6 +76,8 @@ LLM_PROVIDER=
 LLM_BASE_URL=
 LLM_MODEL=
 LLM_API_KEY=
+# Anthropic only; required when the key is not scoped to one workspace (wrkspc_...):
+LLM_WORKSPACE_ID=
 # This operator-trusted URL may be private without ALLOW_PRIVATE_LLM_URLS.
 # Pin the credential-encryption key so rotating SECRET_KEY does not
 # invalidate stored user provider keys:

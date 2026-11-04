@@ -190,6 +190,8 @@ LLM_PROVIDER=
 LLM_BASE_URL=
 LLM_MODEL=
 LLM_API_KEY=
+# Anthropic only; required when the key is not scoped to one workspace (wrkspc_...):
+LLM_WORKSPACE_ID=
 
 # Optional. Encrypts stored per-user provider keys. Defaults to a value
 # derived from SECRET_KEY; set it explicitly to rotate JWT signing without

@@ -10,6 +10,11 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Added
+
+- `LLM_WORKSPACE_ID` sets the Anthropic workspace for the server-default connection, as
+  users already can for their own connection.
+
 ## [0.16.2] - 2026-11-03
 
 See the [release record](./docs/releases/0.16.2.md).

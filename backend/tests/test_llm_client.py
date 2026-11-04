@@ -126,6 +126,16 @@ class TestServerDefault:
 
         assert connection.model == "other-model"
 
+    def test_anthropic_default_sends_the_operators_workspace(self, monkeypatch):
+        monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+        monkeypatch.setenv("LLM_BASE_URL", "https://api.anthropic.com/v1/")
+        monkeypatch.setenv("LLM_WORKSPACE_ID", "wrkspc_ABC123")
+        with patch("app.services.llm_client.OpenAI") as mock_openai_cls:
+            client_for(_user(llm_provider=None, llm_model=None))
+
+        headers = mock_openai_cls.call_args.kwargs["default_headers"]
+        assert headers["anthropic-workspace-id"] == "wrkspc_ABC123"
+
     def test_keyless_server_gets_the_placeholder(self, monkeypatch):
         monkeypatch.setenv("LLM_API_KEY", "")
         with patch("app.services.llm_client.OpenAI") as mock_openai_cls:

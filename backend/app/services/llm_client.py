@@ -113,6 +113,7 @@ class ServerDefault:
     base_url: str
     model: str
     api_key: str
+    workspace_id: str | None = None
 
 
 def server_default() -> ServerDefault | None:
@@ -137,6 +138,7 @@ def server_default() -> ServerDefault | None:
         base_url=base_url,
         model=model,
         api_key=os.getenv("LLM_API_KEY", "").strip(),
+        workspace_id=os.getenv("LLM_WORKSPACE_ID", "").strip() or None,
     )
 
 
@@ -204,6 +206,7 @@ def server_default_connection(model: str | None = None) -> LLMConnection | None:
         default.base_url,
         default.api_key or _LOCAL_API_KEY_PLACEHOLDER,
         trusted=True,
+        workspace_id=default.workspace_id,
     )
 
 
