@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.17.0; see the [release candidate](./docs/releases/0.17.0.md).
+
 ### Added
 
 - `LLM_WORKSPACE_ID` sets the Anthropic workspace for the server-default connection, as
