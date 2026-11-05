@@ -17,6 +17,11 @@ Prepared for 0.17.0; see the [release candidate](./docs/releases/0.17.0.md).
 - `LLM_WORKSPACE_ID` sets the Anthropic workspace for the server-default connection, as
   users already can for their own connection.
 
+### Security
+
+- The backend and backup images move to a `python:3.12-slim` base with `apt` 3.0.4, which fixes
+  CVE-2026-109518, and Python 3.12.16.
+
 ## [0.16.2] - 2026-11-03
 
 See the [release record](./docs/releases/0.16.2.md).
