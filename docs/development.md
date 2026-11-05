@@ -354,9 +354,8 @@ Consequences worth knowing:
 - Base images are pinned by digest in the Dockerfiles and `docker-compose.yml`,
   with the readable tag inline in the image reference. Dependabot's `docker`
   ecosystem covers the Dockerfiles. `docker-compose` is a separate ecosystem that
-  `.github/dependabot.yml` does not enable, and the Compose digests have not
-  changed since the initial release, so check those by hand, along with the
-  matching pins in the `Makefile` and `scripts/check_backup_worker.py`.
+  `.github/dependabot.yml` does not enable, so check the Compose digests by hand,
+  along with the matching pins in the `Makefile` and `scripts/check_backup_worker.py`.
 - Dependabot's `pip` ecosystem cannot do the same for these locks — it only
   recognises `.txt` and `.in` lockfiles, so it bumps the pins in
   `backend/pyproject.toml` and leaves `requirements*.lock` stale. Every

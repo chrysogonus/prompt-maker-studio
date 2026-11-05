@@ -14,7 +14,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PYTHON_IMAGE = (
     "python:3.12-slim@sha256:"
-    "d657ab0ade19f404a6ccc883ab399540de667aff751748ce23c07330c5a89e64"
+    "e695ab189fa2d082b1c61c69a6b888a5adeca61ceeccad107b1ed2a125721a9e"
 )
 
 
