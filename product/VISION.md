@@ -1,6 +1,6 @@
 # Product Vision
 
-> Last reviewed against the codebase: 2026-11-05 (latest published release 0.16.2).
+> Last reviewed against the codebase: 2026-11-05 (latest published release 0.17.0).
 
 ## One-liner
 Prompt Maker Studio is a home for the prompts you keep retyping: save them as sections, mark the parts that change, and copy a filled-in version into any chat assistant whenever you need it.

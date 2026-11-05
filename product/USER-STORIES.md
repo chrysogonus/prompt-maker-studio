@@ -1,6 +1,6 @@
 # User Personas & Stories
 
-> Last reviewed against the codebase: 2026-11-05 (published 0.16.2). The full inventory is
+> Last reviewed against the codebase: 2026-11-05 (published 0.17.0). The full inventory is
 > [FEATURES.md](FEATURES.md). Stories below describe implemented behavior except the explicitly planned section.
 
 ## Personas

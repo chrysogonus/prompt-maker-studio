@@ -1,7 +1,7 @@
 # Documentation
 
-Reviewed against the codebase on 2026-11-05. **0.16.2** is the latest published
-release; 0.17.0 is a candidate on `dev`. Publication, MCP Registry updates and
+Reviewed against the codebase on 2026-11-05. **0.17.0** is the latest published
+release. Publication, MCP Registry updates and
 production deployment are separate operations.
 
 ## Start here
@@ -47,7 +47,7 @@ production deployment are separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
-- [0.17.0 release candidate](releases/0.17.0.md): `LLM_WORKSPACE_ID` sets the Anthropic
+- [0.17.0 release record](releases/0.17.0.md): `LLM_WORKSPACE_ID` sets the Anthropic
   workspace for the server-default connection, and the backend and backup images move to a base
   with the fix for CVE-2026-109518.
 - [0.16.2 release record](releases/0.16.2.md): MCP tool titles are also sent as

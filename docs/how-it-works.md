@@ -332,7 +332,7 @@ steps.
 | Fact | Value |
 |---|---|
 | What it is | Self-hosted prompt library with optional AI help |
-| Latest release | 0.16.2 (early stage, `0.x`) |
+| Latest release | 0.17.0 (early stage, `0.x`) |
 | Licence | Apache 2.0, open source |
 | Backend | Python 3.12, FastAPI, SQLAlchemy, SQLite |
 | Frontend | Next.js 16, React 18, TypeScript |
