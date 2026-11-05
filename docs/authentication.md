@@ -7,8 +7,9 @@ signed with HS256 through PyJWT and expire after the configured number of minute
 
 ## User Data
 
-The `users` table stores `id`, immutable UUID `auth_subject`, normalized `username`, `hashed_password`,
-`email`, password-reset token fields, and `created_at`. Registration requires
+The `users` table's identity and sign-in columns are `id`, immutable UUID `auth_subject`, normalized
+`username`, `hashed_password`, `email`, password-reset token fields, `token_version` and `created_at`; it
+also holds preference and `llm_*` connection columns. Registration requires
 a unique username, password, and valid email address. Registration, password
 changes, and resets apply the same policy: at least 10 characters, at least one
 number, at least one special character (anything other than a letter, digit, or
@@ -70,6 +71,9 @@ cookies and returns only `{"token_type", "expires_at"}`:
 |---|---|---|
 | `access_token` | yes | The JWT; inaccessible through `document.cookie`. |
 | `csrf_token` | no | Random per issue. The client reads it and echoes it back. |
+
+Both use `Path=/`, `SameSite=Lax` and a `Max-Age` of `ACCESS_TOKEN_EXPIRE_MINUTES * 60`
+seconds; `COOKIE_SECURE` and `COOKIE_DOMAIN` set the `Secure` flag and `Domain`.
 
 The browser attaches `access_token` automatically, so every frontend request
 sets `credentials: 'include'`. `POST /api/auth/logout` clears both cookies; it
@@ -156,7 +160,7 @@ clearing cookies, and a new login waits for that cleanup. It also renews a
 still-valid session before a delayed prompt deletion, and retries an
 authenticated request once after a 401, rebuilding headers per attempt. A
 refresh keeps the CSRF token it was sent, so writes already in flight still
-match; login, password change and sign-out issue a new one. An expired session
+match; login and password change issue a new one, and sign-out clears it. An expired session
 cannot be refreshed and still requires login.
 
 Each token carries an `auth_time` claim: when the user last entered their
@@ -183,10 +187,10 @@ first, otherwise the optional operator server default. It returns
 `provider_connected` (so AI features can point at Settings instead of failing
 at call time when neither connection exists), `provider` / `provider_label` / `model`
 describing that effective connection, `available_models` (suggestions, empty
-when neither connection exists; discovery is not proof of feature compatibility), and the operator's global budget
-snapshot — `budget_exhausted` plus `global_budget_remaining_usd`, which is
-`null` when no `GLOBAL_MONTHLY_BUDGET_USD` ceiling is configured. It never
-returns the stored API key.
+when neither connection exists; discovery is not proof of feature compatibility), `uses_server_default`, and the
+budget status: `budget_exhausted` (true when the shared ceiling or the caller's own is used up), `budget_scope`,
+`budget_resets_at`, `user_budget_remaining_usd` and `global_budget_remaining_usd`, which is `null` when no
+`GLOBAL_MONTHLY_BUDGET_USD` ceiling is configured. It never returns the stored API key.
 
 The connection itself is managed through `/api/auth/me/llm-connection`
 (GET/PUT/DELETE, plus `POST .../test` for a probe and `GET .../models` for the
@@ -234,6 +238,9 @@ SMTP_PORT=587
 SMTP_USER=your-smtp-username
 SMTP_PASSWORD=your-smtp-password
 SMTP_FROM=Prompt Maker Studio <no-reply@yourdomain.com>
+# starttls (default) or implicit for a TLS-on-connect port such as 465; any other
+# value fails the send with a configuration error.
+SMTP_TLS_MODE=starttls
 ```
 
 Use HTTPS in production. The frontend holds no token at all — only

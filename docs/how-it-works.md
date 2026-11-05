@@ -1,7 +1,7 @@
 # How Prompt Maker Studio Works
 
 A plain-language, visual overview of what this project does and how it is built.
-Reviewed against the codebase on 2026-10-29.
+Reviewed against the codebase on 2026-11-05.
 
 This page simplifies on purpose. For exact behaviour, the [feature list](../product/FEATURES.md)
 and the guides linked at the end are the source of truth.
@@ -137,7 +137,7 @@ flowchart TB
     end
     subgraph Refine["Refine"]
         direction TB
-        R1["AI asks clarifying questions"] --> R2["Proposes changes per section"]
+        R1["Optional: AI asks clarifying questions"] --> R2["Proposes changes per section"]
         R2 --> R3["You see the differences,<br/>apply or undo, then save"]
     end
     subgraph Test["Evaluate"]
@@ -156,9 +156,11 @@ sequenceDiagram
     participant App as Prompt Maker Studio
     participant AI as Your AI provider
     You->>App: Click Refine
-    App->>AI: Ask for clarifying questions
-    AI-->>App: Questions
-    You->>App: Answer them
+    opt Ask me questions first
+        App->>AI: Ask for clarifying questions
+        AI-->>App: Questions
+        You->>App: Answer them
+    end
     App->>AI: Ask for an improved draft
     AI-->>App: Proposed section changes
     App-->>You: Show the changes word by word
@@ -263,7 +265,7 @@ flowchart LR
 | **Caddy** | The front door: handles HTTPS and sends each request to the right place. |
 | **Frontend (Next.js, React, TypeScript)** | The screens you see: library, editor, settings, public pages. |
 | **Backend (FastAPI, Python)** | The rules: accounts, saving prompts, versions, AI calls, the MCP plug. |
-| **SQLite** | One database file that holds all the data. Backed up regularly. |
+| **SQLite** | One database file that holds all the data, with scheduled backups as an opt-in. |
 | **AI provider** | Only used for the optional AI helpers, with the user's own connection. |
 | **Prometheus + Grafana** | Optional dashboards and alerts for the operator. |
 
@@ -330,7 +332,7 @@ steps.
 | Fact | Value |
 |---|---|
 | What it is | Self-hosted prompt library with optional AI help |
-| Latest release | 0.13.0 (early stage, `0.x`) |
+| Latest release | 0.16.2 (early stage, `0.x`) |
 | Licence | Apache 2.0, open source |
 | Backend | Python 3.12, FastAPI, SQLAlchemy, SQLite |
 | Frontend | Next.js 16, React 18, TypeScript |

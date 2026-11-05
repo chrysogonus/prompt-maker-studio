@@ -18,7 +18,7 @@ enforces that in both directions, so this table cannot silently drift.
 | `test_docker_compose_config.py` | Compose service config: neither application container mounts `.env`, the backend database stays on its persistent volume, the legacy `OPENAI_API_KEY` is absent and documented settings are forwarded, local ports default to loopback, and the backup worker is non-root with a read-only database mount |
 | `test_email_service.py` | SMTP configuration, TLS verification, and password-reset email delivery |
 | `test_error_handling.py` | Request-id correlation middleware, sanitized request-validation logging, and the catch-all handler for unhandled (non-HTTPException) exceptions |
-| `test_eval_generator_service.py` | EvalGeneratorService synthetic test-case proposal generation (standard, edge-case, adversarial, robustness, output-format) with a mocked provider connection and token/cost tracking |
+| `test_eval_generator_service.py` | EvalGeneratorService synthetic test-case proposal generation (happy-path, edge-case, adversarial) with a mocked provider connection and token/cost tracking |
 | `test_eval_routes.py` | Eval case CRUD and caps, AI proposals, atomic CSV import/export, run creation/history pagination, manual ratings, ownership/cascade isolation, and budget-ceiling rejection |
 | `test_eval_service.py` | EvalService rule/judge/manual scoring, aggregate computation, per-case PlaygroundRunError isolation, and run/result reproducibility metadata (resolved model, aggregate cost/latency/tokens, criteria/variables/judge-model snapshot) |
 | `test_go_live_smoke.py` | Production readiness smoke coverage |

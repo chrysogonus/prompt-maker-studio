@@ -1,8 +1,8 @@
 # Documentation
 
-Reviewed against the codebase on 2026-10-28. **0.13.0** is the latest published
-release. Publication, MCP Registry updates and production deployment are
-separate operations.
+Reviewed against the codebase on 2026-11-05. **0.16.2** is the latest published
+release; 0.17.0 is a candidate on `dev`. Publication, MCP Registry updates and
+production deployment are separate operations.
 
 ## Start here
 

@@ -81,6 +81,30 @@ Required checks must have run recently before GitHub offers them for selection.
 If the aggregate name is unavailable, run the CI workflow on a pull request,
 then edit the ruleset again.
 
+## Current Differences From This Guide
+
+Read from the live rulesets on 2026-11-05. The active `main` ruleset differs from
+the recommendation above:
+
+| Setting | Recommended | Live |
+|---|---|---|
+| Name | `Protect main` | `Main Rulesest` |
+| Required approvals | `0` | `1`, with stale approvals dismissed after new commits |
+| Required check | `All Quality Gates Passed` | `all-checks-passed`, the job ID |
+| Bypass | Emergency only | Repository administrators, always |
+
+The required-check difference is a mismatch to correct, not a choice. GitHub reports
+checks under the job's visible name, so nothing reports `all-checks-passed`: on pull
+request #104, no reported check counts as required. A required check that never
+reports leaves a normal merge waiting for it, even when CI passes. Change the required
+check to `All Quality Gates Passed` so that it follows the CI result.
+
+The administrator bypass is separate. It lets administrators merge past the ruleset,
+so CI blocks them only if the bypass is also removed or limited.
+
+A second active ruleset, `Protect dev`, restricts deletion of `dev`, the integration
+branch.
+
 ## Workflow Changes Checklist
 
 When editing `.github/workflows/ci.yml`:

@@ -1,7 +1,7 @@
 # User Personas & Stories
 
-> Last reviewed against the codebase: 2026-10-16 (published 0.5.1); later releases are listed in
-> [FEATURES.md](FEATURES.md) and not yet reflected here. Stories below describe implemented behavior except the explicitly planned section.
+> Last reviewed against the codebase: 2026-11-05 (published 0.16.2). The full inventory is
+> [FEATURES.md](FEATURES.md). Stories below describe implemented behavior except the explicitly planned section.
 
 ## Personas
 
@@ -10,9 +10,9 @@
 - **Context**: Writes prompts in ChatGPT, Claude or Gemini many times a week — status updates, email replies, summaries, learning, personal planning. Comfortable with structure and `{{placeholders}}`, not a prompt engineer. Mostly at a desk, sometimes grabbing a prompt on a phone
 - **Frustrations**: Good prompts get lost in old chats and notes; small improvements are not kept; adapting a prompt to today's details means editing text by hand
 
-### Alex in ChatGPT
-- **Goal**: Save and fetch library prompts without leaving ChatGPT
-- **Context**: Uses the MCP plugin to store a prompt worked out in conversation, or to pull one back in
+### Alex in ChatGPT or Claude
+- **Goal**: Save and fetch library prompts without leaving the assistant
+- **Context**: Uses the MCP connector to store a prompt worked out in conversation, or to pull one back in
 - **Frustrations**: Two copies of a prompt that disagree — one in the app, one in the chat
 
 ---
@@ -45,10 +45,12 @@
 - As **Alex**, I want to rename or remove a folder without deleting its prompts.
 - As **Alex**, I want a delete I regret to be undoable for a few seconds.
 - As **Alex**, I want my old unnamed history entries kept somewhere I can review and tidy, not silently deleted.
+- As **Alex**, I want to select several prompts and move or delete them together, with one Undo.
+- As **Alex**, I want to mark one version as known good so that I can find the version that worked.
 
-### Working from ChatGPT
-- As **Alex in ChatGPT**, I want to save, update and fetch library prompts through the plugin so that the web app and ChatGPT share one library.
-- As **Alex in ChatGPT**, I want an update to be rejected if the prompt changed elsewhere in the meantime so that I never overwrite my own edits.
+### Working from ChatGPT or Claude
+- As **Alex in ChatGPT or Claude**, I want to save, update and fetch library prompts through the connector so that the web app and the assistant share one library.
+- As **Alex in ChatGPT or Claude**, I want an update to be rejected if the prompt changed elsewhere in the meantime so that I never overwrite my own edits.
 
 ### AI connection
 - As **Alex**, I want Paste a prompt to tell me what it needs and where to set it up when no AI connection exists.
@@ -61,10 +63,15 @@
 - As **Alex**, I want to mark inputs as required and load saved examples only when I ask, so I know what I am copying or sending to AI.
 - As **Alex**, I want to point refinement at test results that went badly and check a draft against my test cases before applying it, so I know an edit is actually better.
 
+### Without an account
+- As **Alex**, before signing up, I want to fill in a template, check a prompt, compare two versions or estimate tokens in the browser, with nothing uploaded.
+- As **Alex**, before signing up, I want to browse the template gallery and guides, and save a template to my library when I decide to sign in.
+- As **Alex**, where the operator has turned it on, I want to try the free refiner on a pasted prompt without an account.
+
 ### Planned stories (not yet implemented)
 - As **Alex**, I want to give direct refinement instructions and accept individual section edits instead of applying a whole proposal.
 - As **Alex**, I want evaluation scores calibrated against human judgment so the numbers have a validated meaning.
-- As **Alex**, I want to select several recovered prompts, or find duplicates, and delete them together.
+- As **Alex**, I want duplicates among my recovered prompts found for me so that I can review and delete them.
 - As **Alex**, I want to copy a prompt with Markdown headings instead of tags.
 
 ---
@@ -74,7 +81,7 @@
 ### Story: Register and land in the library
 **Given** registration is open, or no account exists yet
 **When** they submit a valid username, password and email
-**Then** they are signed in and see an empty library offering New prompt, Paste a prompt and starter templates
+**Then** they are signed in and see an empty library offering Add existing prompts, New prompt, starter templates and the template gallery
 
 ### Story: Write and save a new prompt
 **Given** a signed-in user on New prompt
@@ -88,7 +95,7 @@
 
 ### Story: Paste a prompt
 **Given** a signed-in user with an AI connection (their own or the server default)
-**When** they paste text into Paste a prompt and choose Create template
+**When** they paste text into Paste a prompt and choose Make reusable with AI
 **Then** they review sections and extracted inputs before copying or applying to the editor with Undo; Save persists the template, and retaining example inputs is an explicit choice. Without a connection the dialog explains why and links to Settings
 
 ### Story: Compare and restore a version

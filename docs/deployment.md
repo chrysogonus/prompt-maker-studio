@@ -125,9 +125,9 @@ GRAFANA_ADMIN_PASSWORD=change-this-to-a-secure-password
 
 ### Important Settings for VM Deployment:
 
-1. **CORS_ORIGINS**: Leave this at its default for the documented Caddy
-   topology, where `/api` is same-origin. Set exact origins only when a frontend
-   on another origin calls the backend directly.
+1. **CORS_ORIGINS**: Not used in the documented Caddy topology, where `/api` is
+   same-origin, so the placeholder that `.env.example` ships is harmless. Set exact
+   origins only when a frontend on another origin calls the backend directly.
 
 2. **SECRET_KEY**: Generate a secure key:
    ```bash
@@ -303,6 +303,10 @@ All services run on the `prompt-maker-studio-network` Docker bridge network:
   `backend:8000`, rejects `/metrics*`, and sends other routes to `frontend:3000`
 - Browsers reach the API same-origin at `https://DOMAIN/api` (never via the Docker-internal name)
 
+The `Caddyfile` rejects request bodies over 10 MB and sets server timeouts of
+`read_body` 30s, `read_header` 10s, `write` 15m (for long evaluation runs) and
+`idle` 5m.
+
 ## Monitoring and Maintenance
 
 ### View logs:
@@ -378,7 +382,7 @@ schemas (see [mcp.md](./mcp.md#contract-changes-in-030)).
 
 ### Upgrading to 0.5.0
 
-0.5.0 is published; approve deployment separately before using its images.
+Approve deployment separately before using the 0.5.0 images.
 See the [release record](releases/0.5.0.md) for immutable digests, validation and
 remaining deployment gates. Upgrades from before 0.3.0 must also follow the
 earlier recovery checklist.
@@ -457,6 +461,9 @@ Create an on-demand consistent SQLite backup from the `backend-data` volume:
 make backup-db
 ```
 
+Run it while the backend is up. The database uses WAL mode and this command opens
+it through a read-only mount, which fails after a clean backend shutdown.
+
 Enable scheduled daily backups by starting Compose with the backup profile:
 
 ```bash
@@ -471,9 +478,11 @@ the same values in `.env` if the profile is managed without this one-shot
 command. On-demand backups also run as the host operator. Archives have mode
 `0600` and appear under their final name only after compression succeeds.
 
-After each run the worker deletes scheduled backups older than
+After each run the worker deletes `prompts-*` archives older than
 `BACKUP_RETENTION_DAYS` (default 14), so deleted user data does not live on
-indefinitely in old backups. If your privacy policy states a retention period,
+indefinitely in old backups. That includes `make backup-db` archives in the same
+folder, so move any you need to keep, such as a pre-upgrade backup, out of
+`./backups`. If your privacy policy states a retention period,
 keep the two in sync. Container logs are capped at 3 × 10 MB per service in
 `docker-compose.yml`; backend JSON logs exclude client IP addresses and request
 content. See [monitoring](monitoring.md#logs-and-validation) for retained fields.

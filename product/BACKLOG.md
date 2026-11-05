@@ -1,6 +1,6 @@
 # Product Backlog
 
-> Reviewed against the codebase: 2026-10-28 (published 0.12.0; later changes on `dev`).
+> Reviewed against the codebase: 2026-11-05 (published 0.16.2; later changes on `dev`).
 > Items below describe unimplemented scope. See [implemented features](FEATURES.md)
 > and the [roadmap](ROADMAP.md) for delivered work and release status.
 > Existing priorities are retained; this sync does not select new product work.
@@ -98,7 +98,7 @@ Phase 5 of the evaluate → refine loop (see [below](#evaluate--refine-loop-plan
 ### Multiple Output Formats
 
 - **Value**: Copy Markdown headings or JSON for workflows that prefer them.
-- **Current gap**: `backend/app/services/prompt_sections.py` and `frontend/src/lib/sections.ts` render XML-style tags only. There is no generate endpoint or format selector.
+- **Current gap**: `backend/app/services/prompt_sections.py` stores XML-style tags. The editor's Output options also offer plain text (`frontend/src/lib/sections.ts`, `frontend/src/features/editor/PreviewPane.tsx`). Markdown and JSON formats and a generate endpoint do not exist.
 - **Suggested approach**: Start with a Markdown copy option and keep frontend/server rendering contracts aligned.
 - **Effort**: Medium.
 
