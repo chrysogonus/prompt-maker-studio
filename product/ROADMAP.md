@@ -1,9 +1,9 @@
 # Product Roadmap
 
-> Reviewed against the codebase: 2026-11-05. Latest published release: 0.16.2.
+> Reviewed against the codebase: 2026-11-05. Latest published release: 0.17.0.
 
 ## Now — Current Sprint / Active Development
-- [ ] **Publish 0.17.0** — The candidate on `dev` adds `LLM_WORKSPACE_ID` for the server default; see the [release candidate](../docs/releases/0.17.0.md). Publication does not deploy: approve each deployment separately, and rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations. See [deployment](../docs/deployment.md).
+- [ ] **Deployment rehearsal and approval** — Release publication does not establish production deployment. Rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations; approve deployment separately. See [deployment](../docs/deployment.md).
 
 ## Next — Coming Soon (next 1–2 sprints)
 - [ ] **Recovered history cleanup** — Selecting several prompts to move or delete them already works; finding duplicates remains open (see BACKLOG "Duplicate Detection")
@@ -28,6 +28,7 @@ Dates below record original delivery. Notes identify later replacements; they
 are not a list of current controls. The current inventory is [FEATURES.md](FEATURES.md).
 | Item | Completed | Notes |
 |---|---|---|
+| 0.17.0 release | 2026-11-05 | Published: `LLM_WORKSPACE_ID` for the server default and the base image fix for CVE-2026-109518; [release record](../docs/releases/0.17.0.md) |
 | 0.16.2 release | 2026-11-03 | Published: MCP tool titles are also sent as `annotations.title`, where Claude's connector directory reads them; [release record](../docs/releases/0.16.2.md) |
 | 0.16.1 release | 2026-11-03 | Published: the MCP version listing explains that a version's `created_at` is when the next edit replaced it; [release record](../docs/releases/0.16.1.md) |
 | 0.16.0 release | 2026-11-02 | Published: display titles for the five MCP tools and GitHub Actions updates; [release record](../docs/releases/0.16.0.md) |
