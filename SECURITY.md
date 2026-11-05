@@ -3,7 +3,7 @@
 ## Supported versions
 
 Prompt Maker Studio is early-stage software. Security fixes are developed on
-`main` and published in a new release tag. There are no long-term support
+`dev` and published in a new release tag on `main`. There are no long-term support
 branches and fixes are not backported to older release lines.
 
 | Version | Supported |

@@ -131,6 +131,8 @@ It also bind-mounts host folders:
   [legal pages](./deployment.md#legal-pages-impressum-privacy-policy)
 - `./backups` → `/backups` (db-backup service) — scheduled database backups
 - `./Caddyfile` and `./scripts` — read-only configuration and backup scripts
+- `./monitoring/prometheus/prometheus.yml`, `./monitoring/prometheus/rules.json` and
+  `./monitoring/grafana/provisioning` — read-only configuration for the opt-in `monitoring` profile
 
 `docker-compose.yml` also defines `prometheus` and `grafana` services behind the opt-in
 `monitoring` profile (`docker compose --profile monitoring up -d`; Grafana requires a unique, non-placeholder
@@ -190,6 +192,8 @@ LLM_PROVIDER=
 LLM_BASE_URL=
 LLM_MODEL=
 LLM_API_KEY=
+# Anthropic only; required when the key is not scoped to one workspace (wrkspc_...):
+LLM_WORKSPACE_ID=
 
 # Optional. Encrypts stored per-user provider keys. Defaults to a value
 # derived from SECRET_KEY; set it explicitly to rotate JWT signing without
@@ -203,7 +207,8 @@ LLM_API_KEY=
 # Optional monthly usage ceilings (USD). Unset means unlimited. Users pay
 # their own provider, or use the shared server default. These bound estimated
 # spend without reserving budget across concurrent requests. Enforced before
-# billed AI work (Paste a prompt, Try once, refinement and evaluation);
+# billed AI work (Paste a prompt, Try once, connection tests, refinement and
+# evaluation);
 # GLOBAL_MONTHLY_BUDGET_USD's exhausted state is also reported by
 # GET /api/prompts/config. Operator-controlled only.
 # GLOBAL_MONTHLY_BUDGET_USD=50
@@ -270,6 +275,7 @@ The 4-slash version is required in Docker because the database must use an absol
 |---|---|---|
 | `FORWARDED_ALLOW_IPS` | Docker's private ranges | Proxies trusted for `X-Forwarded-For`, so rate limits see real client addresses |
 | `REGISTER_RATE_LIMIT`, `LOGIN_RATE_LIMIT` | `5/minute`, `10/minute` | Per-client limits on sign-up and sign-in |
+| `OAUTH_REGISTER_RATE_LIMIT`, `OAUTH_TOKEN_RATE_LIMIT` | `20/minute`, `60/minute` | Per-client limits on MCP client registration and on token exchange and revocation; see [MCP](./mcp.md) |
 | `LLM_PRICING_REFRESH` | `true` | Fetch model prices from LiteLLM's public index once a day; `false` uses only the built-in price list |
 | `LLM_PRICING_URL` | LiteLLM's index | A mirror of the price index, for hosts without outbound internet |
 | `ADMIN_DIAGNOSTICS_TOKEN` | empty (off) | Enables `POST /api/admin/smtp/check` for operators; see the [API reference](./api.md) |
@@ -319,8 +325,11 @@ make restore-db BACKUP=backups/prompts-YYYYmmddTHHMMSSZ.sqlite3.gz
 
 ### Clean slate
 ```bash
+# Compose volumes (including the database) and local images, plus .venv,
+# frontend/node_modules and frontend/.next
 make clean
-# or
+
+# Compose volumes (including the database) and local images only
 docker compose down -v --rmi local
 ```
 

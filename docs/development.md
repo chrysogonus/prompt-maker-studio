@@ -334,7 +334,7 @@ make test-cov
 make test-file FILE=tests/test_api.py
 ```
 
-**Test suites**: backend pytest (with a 90% coverage gate), frontend Vitest + React Testing Library, and Playwright browser tests covering registration and saving, the sidebar shell on desktop and phone, versioning and restore, section-name rules, filling variables and concurrent-edit handling, Paste a prompt without a connection, folders and Settings, the Content-Security-Policy, and accessibility across themes and pages. Exact counts are deliberately not listed here — they went stale within weeks last time; run `make test`, `make test-frontend`, and `make test-e2e` for current figures.
+**Test suites**: backend pytest (with a 90% coverage gate), frontend Vitest + React Testing Library, and Playwright browser tests covering registration and saving, the sidebar shell on desktop and phone, versioning and restore, section-name rules, filling variables and concurrent-edit handling, Paste a prompt without a connection, folders and Settings, the evaluation workflow, the template gallery, public guides and free tools, the Content-Security-Policy, and accessibility across themes and pages. Exact counts are deliberately not listed here — they went stale within weeks last time; run `make test`, `make test-frontend`, and `make test-e2e` for current figures.
 
 ## Dependency Locks
 
@@ -352,14 +352,19 @@ Consequences worth knowing:
   CI installs them from that lock. Local setup targets first upgrade the
   bootstrap tools, then install the pinned dev lock.
 - Base images are pinned by digest in the Dockerfiles and `docker-compose.yml`,
-  with the readable tag kept in a comment. Dependabot's `docker` ecosystem
-  updates both together.
+  with the readable tag inline in the image reference. Dependabot's `docker`
+  ecosystem covers the Dockerfiles. `docker-compose` is a separate ecosystem that
+  `.github/dependabot.yml` does not enable, and the Compose digests have not
+  changed since the initial release, so check those by hand, along with the
+  matching pins in the `Makefile` and `scripts/check_backup_worker.py`.
 - Dependabot's `pip` ecosystem cannot do the same for these locks — it only
   recognises `.txt` and `.in` lockfiles, so it bumps the pins in
   `backend/pyproject.toml` and leaves `requirements*.lock` stale. Every
   Dependabot pip PR therefore fails `make check-locks` until someone checks the
   branch out, runs `make lock`, and pushes the regenerated locks. Grouping keeps
   that to one fixup per batch rather than one per dependency.
+- `.github/dependabot.yml` sets no `target-branch`, so Dependabot PRs open against
+  `main`. Retarget them to `dev` while it is the integration branch.
 
 ## Code Style
 

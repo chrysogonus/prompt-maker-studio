@@ -1,9 +1,9 @@
 # Product Roadmap
 
-> Reviewed against the codebase: 2026-10-28. Latest published release: 0.12.0.
+> Reviewed against the codebase: 2026-11-05. Latest published release: 0.16.2.
 
 ## Now — Current Sprint / Active Development
-- [ ] **Deployment rehearsal and approval** — Release publication does not establish production deployment. Rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations; approve deployment separately. See [deployment](../docs/deployment.md).
+- [ ] **Publish 0.17.0** — The candidate on `dev` adds `LLM_WORKSPACE_ID` for the server default; see the [release candidate](../docs/releases/0.17.0.md). Publication does not deploy: approve each deployment separately, and rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations. See [deployment](../docs/deployment.md).
 
 ## Next — Coming Soon (next 1–2 sprints)
 - [ ] **Recovered history cleanup** — Selecting several prompts to move or delete them already works; finding duplicates remains open (see BACKLOG "Duplicate Detection")
@@ -28,6 +28,12 @@ Dates below record original delivery. Notes identify later replacements; they
 are not a list of current controls. The current inventory is [FEATURES.md](FEATURES.md).
 | Item | Completed | Notes |
 |---|---|---|
+| 0.16.2 release | 2026-11-03 | Published: MCP tool titles are also sent as `annotations.title`, where Claude's connector directory reads them; [release record](../docs/releases/0.16.2.md) |
+| 0.16.1 release | 2026-11-03 | Published: the MCP version listing explains that a version's `created_at` is when the next edit replaced it; [release record](../docs/releases/0.16.1.md) |
+| 0.16.0 release | 2026-11-02 | Published: display titles for the five MCP tools and GitHub Actions updates; [release record](../docs/releases/0.16.0.md) |
+| 0.15.0 release | 2026-11-02 | Published: fixes from the 2026-10-31 UX test (a reworked saved-prompt header, one vocabulary for variables and values, accessibility, library, evaluation and sign-in fixes) and a 15-minute proxy write timeout for long evaluation runs; [release record](../docs/releases/0.15.0.md) |
+| 0.14.0 release | 2026-10-29 | Published: dependency updates for the backend, frontend and CI, and a visual how-it-works overview; [release record](../docs/releases/0.14.0.md) |
+| 0.13.0 release | 2026-10-28 | Published: one structured-data entity, a fuller About page, titles and sitemap dates for search, deeper gallery templates, sourced guides and dated token-counter prices; [release record](../docs/releases/0.13.0.md) |
 | 0.12.0 release | 2026-10-28 | Published: SEO audit fixes — structured data, server-rendered legal links, sitemap dates, WebP landing images, `/about`, a ChatGPT and Claude connection guide, `/llms.txt`, fuller gallery pages and guides; [release record](../docs/releases/0.12.0.md) |
 | 0.11.0 release | 2026-10-27 | Published: AI answers rendered as Markdown, fixes from the 2026-10-26 UI/UX test and the design audit, dependency updates; [release record](../docs/releases/0.11.0.md) |
 | 0.10.0 release | 2026-10-24 | Published: free no-login tools, guides, template gallery and optional free refiner, input choices, UI/UX test fixes, `opentelemetry-api` security update; [release record](../docs/releases/0.10.0.md) |
@@ -102,7 +108,7 @@ are not a list of current controls. The current inventory is [FEATURES.md](FEATU
 | Visual version comparison | 2026-07-13 | Word-level comparison of a historical snapshot against the current saved prompt |
 | Playground cost analytics | 2026-07-13 | Total and average cost-per-run metrics on the Dashboard Retired in 0.3.0. |
 | Evaluation workflow preferences & notifications | 2026-07-14 | Library layout preference remains active; eval defaults and auto-run flags are stored but inactive, and notification delivery was retired in 0.3.0. Evaluations run only on explicit action. |
-| Field templates / starter kits | 2026-07-16 | Curated field presets ("Role-Task-Context", "Chain-of-Thought", "Persona") loadable from the field editor as a starting point Current starters are Role, task, format; Rewrite my text; Summarise something; Persona. Chain-of-Thought was replaced. |
+| Field templates / starter kits | 2026-07-16 | Curated field presets ("Role-Task-Context", "Chain-of-Thought", "Persona") loadable from the field editor as a starting point Current starters are Role, task, format; Rewrite my text; Summarize something; Persona. Chain-of-Thought was replaced. |
 | Template vs compiled copy toggle | 2026-07-16 | Original Output Panel retired in 0.3.0; the current editor preview offers Template/Filled copy controls. |
 | Legacy-account email recovery reminder | 2026-07-16 | Dismissible post-login banner for null-email accounts, linking to the Settings email editor |
 | Code snippet export | 2026-07-16 | Editor Detail generates ready-to-run Python/TypeScript OpenAI client snippets from a saved prompt's compiled template and variables Retired in 0.3.0. |

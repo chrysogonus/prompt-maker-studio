@@ -64,7 +64,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title=f"{APP_NAME} API",
         description="API for generating structured prompts",
-        version="0.16.2",
+        version="0.17.0",
         lifespan=lifespan,
     )
     configure_http(application)

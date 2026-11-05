@@ -78,9 +78,9 @@ server (`backend/app/services/oauth_provider.py`, built on the MCP SDK's handler
 | Endpoint | Purpose |
 |---|---|
 | `GET /.well-known/oauth-protected-resource/api/mcp` | Protected-resource metadata (RFC 9728) |
-| `GET /.well-known/oauth-authorization-server/api/oauth` | Authorization-server metadata (RFC 8414) |
+| `GET /.well-known/oauth-authorization-server/api/oauth` | Authorization-server metadata (RFC 8414); also served at `/api/oauth/.well-known/oauth-authorization-server` |
 | `POST /api/oauth/register` | Dynamic client registration (RFC 7591) |
-| `GET /api/oauth/authorize` | Start of the authorization-code flow |
+| `GET`, `POST /api/oauth/authorize` | Start of the authorization-code flow |
 | `POST /api/oauth/token` | Code and refresh-token exchange |
 | `POST /api/oauth/revoke` | Token revocation (RFC 7009) |
 | `GET`, `POST /api/oauth/consent` | Consent-screen details and decision (session-authenticated) |

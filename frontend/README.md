@@ -19,11 +19,17 @@ the saved theme before first paint on both public and authenticated pages.
 | `/editor/new` | The sections editor for a new prompt; `?starter=` and `?import=1` start from a template or Paste a prompt |
 | `/editor/[id]` | The same editor for a saved prompt: preview, fill and copy, versions, rename and move |
 | `/editor/[id]/evaluate` | Saved test cases, CSV import/export, AI suggestions, evaluation runs, manual ratings, and run comparison |
-| `/settings` | Profile, password and sessions, theme, library layout, AI connection, export, and account deletion |
+| `/settings` | Profile, password and sessions, theme, library layout, AI connection, ChatGPT and Claude connection, export, and account deletion |
 | `/dashboard`, `/playground/[id]` | Compatibility redirects for retired screens |
 | `/guides` | Public index of practical prompt guides |
-| `/guides/reusable-ai-prompts`, `/guides/prompt-template-variables`, `/guides/organize-chatgpt-prompts` | Public articles with examples and links into the app |
-| `/impressum`, `/datenschutz`, `/legal.json` | Deployment-configured public legal pages and their configuration endpoint |
+| `/guides/what-is-a-prompt-library`, `/guides/reusable-ai-prompts`, `/guides/prompt-template-variables`, `/guides/organize-chatgpt-prompts`, `/guides/connect-chatgpt-claude`, `/guides/what-makes-a-good-prompt`, `/guides/prompts-for-coding-agents`, `/guides/image-generation-prompts`, `/guides/research-and-writing-prompts` | Public articles with examples and links into the app |
+| `/about` | Public page about the open-source project and how data is handled |
+| `/tools` | Public index of the free tools |
+| `/tools/prompt-template-filler`, `/tools/prompt-linter`, `/tools/prompt-diff`, `/tools/token-counter` | Free tools that run in the browser |
+| `/tools/prompt-refiner` | Optional free refiner on the server default, off unless the operator enables it |
+| `/gallery`, `/gallery/[slug]` | Public template gallery and one page per template |
+| `/impressum`, `/datenschutz`, `/terms`, `/legal.json` | Deployment-configured public legal pages and their configuration endpoint |
+| `/llms.txt` | The public pages, listed for AI assistants |
 | `/reset-password` | Public password-reset completion flow |
 | `/oauth/authorize` | Consent page for linking an MCP client such as ChatGPT |
 
@@ -40,14 +46,17 @@ frontend/
 │   ├── components/
 │   │   ├── brand/         # Shared product mark
 │   │   ├── guides/        # Public guide layouts and article links
-│   │   ├── shell/         # The sidebar
+│   │   ├── public/        # Public page shell, tool layouts, and structured data
+│   │   ├── shell/         # The authenticated shell, sidebar, and theme control
 │   │   └── ui/            # Reusable design-system primitives
 │   ├── features/
 │   │   ├── auth/          # Sign-in, registration, password, and session handling
 │   │   ├── editor/        # Sections, preview, import, refinement, history, and drafts
 │   │   ├── evaluation/    # Test cases, runs, scores, and comparisons
+│   │   ├── gallery/       # Template gallery browser
 │   │   ├── library/       # Library UI, controller, and account-scoped provider
-│   │   └── settings/      # Profile, preferences, AI connection, export, and deletion
+│   │   ├── settings/      # Profile, preferences, AI connection, export, and deletion
+│   │   └── tools/         # Free public tools
 │   ├── lib/               # ApiClient facade, domain API modules, auth, and utilities
 │   └── types/             # Shared frontend domain and API shapes
 ├── playwright.config.ts
@@ -92,8 +101,9 @@ in `__tests__/` directories, while cross-stack browser tests live in `e2e/`.
 
 CSS Modules stay beside their components. Global tokens, themes, and
 base accessibility behavior live in `src/app/globals.css`; fonts and the
-pre-paint theme script live in `src/app/layout.tsx`. Light is the default;
-Settings persists the explicit light/dark choice under the `theme` key.
+pre-paint theme script live in `src/app/layout.tsx`. Light is the app default;
+with nothing stored, public pages follow the system. Settings and the sidebar
+persist the explicit light, dark or system choice under the `theme` key.
 Reuse the existing UI primitives and semantic status/error patterns before
 introducing new controls.
 

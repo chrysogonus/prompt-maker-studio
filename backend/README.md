@@ -63,8 +63,10 @@ references; avoid duplicating a full endpoint inventory here.
 - LLM client construction is isolated in `services/llm_client.py`; the parser
   and Try once, retained Playground execution, eval-generator, evaluator, and refiner
   services receive a resolved `LLMConnection` (own connection first, then the
-  optional operator server default). Every metered path checks `BudgetService` and
-  records usage through `spend_ledger`.
+  optional operator server default); `EvalService.run_evaluation` takes the user,
+  resolves the connection itself and passes it to its workers. Every signed-in
+  metered path checks `BudgetService` and records usage through `spend_ledger`; the
+  free refiner uses `BudgetService.check_public` and `PublicBilledCall` rows.
 - Evaluation cases, runs, and per-case results are durable records; evaluation
   workers do not use SQLAlchemy sessions outside the request thread.
 - Users, prompts, prompt versions, Playground runs (kept for evaluations), eval
