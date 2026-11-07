@@ -10,6 +10,12 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+### Security
+
+- The frontend image moves to a `node:22-alpine` base with `zlib` 1.3.2-r1, which fixes
+  CVE-2026-85091, and OpenSSL 3.5.9, replacing the earlier `apk upgrade` workaround for
+  CVE-2026-14456.
+
 ## [0.17.0] - 2026-11-05
 
 See the [release record](./docs/releases/0.17.0.md).

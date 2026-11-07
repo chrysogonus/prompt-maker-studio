@@ -1,5 +1,5 @@
 # Pinned by digest — see backend/Dockerfile for the rationale.
-FROM node:22-alpine@sha256:76789712cd1ae89a1225eac9077010d68987a423588042dac30446f502f1858c AS builder
+FROM node:22-alpine@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202 AS builder
 
 WORKDIR /app
 
@@ -31,14 +31,14 @@ RUN npm run build
 # application does not use next/image, so omitting optional packages keeps
 # Next's sharp/libvips native bundle (and its LGPL components) out of the
 # published image.
-FROM node:22-alpine@sha256:76789712cd1ae89a1225eac9077010d68987a423588042dac30446f502f1858c AS deps
+FROM node:22-alpine@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202 AS deps
 
 WORKDIR /app
 COPY frontend/package*.json ./
 RUN npm ci --omit=dev --omit=optional
 
 # Production image
-FROM node:22-alpine@sha256:76789712cd1ae89a1225eac9077010d68987a423588042dac30446f502f1858c
+FROM node:22-alpine@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202
 
 WORKDIR /app
 
@@ -51,10 +51,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Nothing installs anything at runtime, so npm has no reason to be here.
 RUN rm -rf /usr/local/lib/node_modules/npm \
     /usr/local/bin/npm /usr/local/bin/npx /opt/yarn-*
-
-# The pinned base image predates Alpine's OpenSSL fix for CVE-2026-14456;
-# drop this once a base digest ships libssl3/libcrypto3 3.5.8-r0 or later.
-RUN apk upgrade --no-cache libssl3 libcrypto3
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
