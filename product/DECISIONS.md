@@ -1635,3 +1635,156 @@ the focused view is chosen with the switch instead of Edit template. On narrow s
 takes its own row, so the preview starts a little lower.
 
 **Sources**: `frontend/src/features/editor/PromptEditor.tsx`, `frontend/src/features/editor/RefinePanel.tsx`
+
+---
+
+## Connector Growth Starts With First Saves and Return Visits
+
+**Status**: Accepted (2026-11-14), not yet implemented
+
+**Context**: Almost every organic account now arrives from ChatGPT through the MCP connector,
+and new accounts kept coming in every week of early November 2026. Production counts on
+2026-11-14 showed the leak sits after connecting: about a quarter of the accounts that linked
+ChatGPT ever saved a prompt, only a handful edited one or wrote again on a later day, and none
+used the web app's AI or evaluation features. The connector's read tools are not counted at
+all, so reuse cannot be measured.
+
+**Decision**: Make the connector the product's growth channel and judge it by return visits:
+a user who reuses a saved prompt in a later week. New sign-ups come second. Work in this order:
+first saves (activation), then reuse, then further capabilities. New capabilities are built for
+ChatGPT first but stay plain MCP, so Claude, Claude Code and the MCP Registry listing get them
+unchanged. Connector tools stay LLM-free: the assistant does the writing on the user's own plan,
+and the server only stores, retrieves, fills and searches. Out of scope for now: ChatGPT
+interactive widgets (optional for listing, need a CSP and their own UI) and email nudges (SMTP
+and notification settings exist; revisit once in-chat changes are measured).
+
+**Rationale**: More sign-ups only enlarge a funnel that loses three in four users before their
+first save. Return visits also drive discovery: a listed ChatGPT plugin is found only by link or
+exact name, and OpenAI reserves directory placement and in-conversation suggestions for plugins
+it judges useful and satisfying. An LLM-free connector costs nothing per call and carries no
+abuse risk.
+
+**Consequences**: Connector work moves ahead of the existing backlog. The sequence is the 0.17.1
+security patch, then measurement and listing prerequisites (see "Measure Connector Use Before
+New Tools Ship"), then new tools (see "Connector Tools for Templates, Filling and Search"),
+then the ChatGPT plugin submission (see "List the Connector in ChatGPT's Plugin Directory").
+Success is checked four weeks after the tools ship: at least 40% of connected accounts have
+saved a prompt (about 26% on 2026-11-14), and at least 25% of savers call a tool in a later
+week (baseline measured from 0.18.0).
+
+**Sources**: `backend/app/api/mcp_routes.py`, `backend/app/metrics.py`, `docs/mcp.md`.
+
+---
+
+## Measure Connector Use Before New Tools Ship
+
+**Status**: Accepted (2026-11-14), not yet implemented
+
+**Context**: `pms_operations_total{channel="mcp"}` counts only prompt creates and updates;
+listing, fetching and version calls leave no trace, and nothing records when an account last
+used the connector. How ChatGPT users find the app is unknown, because the connect flow starts
+on chatgpt.com and carries no referrer.
+
+**Decision**: Release 0.18.0 adds measurement ahead of the new tools, so at least a week of
+baseline exists to compare against:
+- a counter of every MCP tool call by tool name and outcome, read tools included;
+- a last-connector-use date per account: a date only, no time and no per-call log, written at
+  most once per account per day;
+- an optional "How did you hear about us?" choice at sign-up, including sign-up inside the
+  connect flow, with the options ChatGPT (search or plugin directory), Claude, a search engine,
+  social media or video, a friend or colleague, an MCP directory, and Other. No free text; the
+  answer is stored on the account and shown nowhere in the app.
+
+The operator's privacy policy is extended for the referral answer, the last-use date, OpenAI as
+a recipient once the plugin is listed, and the `id` and `updated_at` fields in tool responses,
+and goes live before 0.18.0 is deployed.
+
+**Rationale**: Without a before-and-after comparison the tools in 0.19.0 cannot be judged. A
+daily date answers "did they come back in a later week" with the least data and no write per
+call. A fixed list keeps the referral answer analysable and free of personal text.
+
+**Consequences**: One schema migration for the two account columns. No tracking scripts or
+third-party analytics. The privacy-policy text lives on the deployment, not in this repository.
+
+**Sources**: `backend/app/metrics.py`, `backend/app/api/mcp_routes.py`, `backend/app/database/migrations/`.
+
+---
+
+## Connector Tools for Templates, Filling and Search
+
+**Status**: Accepted (2026-11-14), not yet implemented
+
+**Context**: The connector offers five tools: list, get, save, update and list versions. A
+newly connected user with an empty library has nothing to start from; reusing a prompt means
+ChatGPT copying text and replacing `{{variables}}` itself; and a library of dozens of prompts can
+be browsed only by folder or favourite. The server instructions say "Save only when the user
+asks to", so ChatGPT does not offer saving on its own.
+
+**Decision**: Release 0.19.0, after the measurement baseline:
+- **Templates**: `browse_templates` and `get_template` expose the gallery's curated templates.
+  Their data moves from `frontend/src/lib/gallery.ts` into `contracts/gallery-templates.json`,
+  read by both frontend and backend; page-only copy such as tips and sample results stays in the
+  frontend. `get_template` returns sections and hints in the shape `save_prompt` accepts, so no
+  separate save-template tool is needed.
+- **Filling**: a read-only `use_prompt` takes a prompt ID and values, returns the filled text,
+  leaves any unfilled placeholder in place and lists it with its hint and choices, so the
+  assistant can ask for it. It never saves.
+- **Search**: an optional `query` argument on `list_saved_prompts`, not a separate tool;
+  case-insensitive over name, folder and prompt text, with name matches first.
+- **Organizing**: optional `folder` and `favorite` arguments on `update_prompt`.
+- **Wording**: drop "Save only when the user asks to" from the server instructions and describe
+  each tool plainly in OpenAI's recommended style ("Use this when…", with when not to), saying
+  what saving gives the user without telling the assistant how to behave.
+- **Responses**: keep `id` (needed to chain calls) and `updated_at` (needed for edit-conflict
+  checks), disclose both in the privacy policy, and drop any other field a tool does not need.
+
+Still not exposed: delete and version restore. Deferred: a rule-based `check_prompt` tool,
+because the checker exists only in the frontend's TypeScript.
+
+**Rationale**: Templates target the activation leak, filling and search target reuse, and both
+work without an LLM. One search parameter instead of another tool leaves the assistant fewer
+overlapping choices, which OpenAI's review also checks. Plain descriptions are what both
+OpenAI's and Anthropic's directories accept; a "save only when asked" rule and an "offer to
+save" rule are both steering.
+
+**Consequences**: The backend image needs to copy `contracts/gallery-templates.json`. The tool
+catalogue changes, so connected clients must refresh it, and Anthropic is told about the
+change (mcp-review@anthropic.com) after release instead of holding the tools back for the
+Claude directory review. Folder and favourite edits stop being REST-only, as `docs/mcp.md`
+describes them today; variable-metadata edits stay on the REST API.
+
+**Sources**: `backend/app/api/mcp_routes.py`, `frontend/src/lib/gallery.ts`, `contracts/`, `docs/mcp.md`.
+
+---
+
+## List the Connector in ChatGPT's Plugin Directory
+
+**Status**: Accepted (2026-11-14), not yet implemented
+
+**Context**: ChatGPT users connect the server today as a custom developer-mode connector at a
+URL they have to know. OpenAI now calls apps "plugins" and reviews submissions at
+platform.openai.com/plugins. Its requirements include a verified individual or business, the
+RFC 9207 `iss` parameter on every authorization response, a domain challenge at
+`/.well-known/openai-apps-challenge`, explicit tool annotations, a privacy policy covering the
+data tools return, a test account with sample data and no MFA, five positive and three negative
+test cases and a demo video. The server lacks `iss` and the challenge route.
+
+**Decision**: Submit as a verified individual, under the same name as the Impressum and the
+Claude directory entry. Release 0.18.0 adds `iss` to every authorization response (success and
+error) with `authorization_response_iss_parameter_supported`, and a Caddy route for the domain
+challenge beside the existing `/.well-known/oauth-*` routes. Client ID metadata documents stay
+unimplemented, since dynamic registration is still accepted. Submit after 0.19.0 ships, so
+review sees the stronger toolset once. Review uses its own seeded `openai-reviewer` account;
+the Claude reviewer account stays untouched while Anthropic's review runs.
+
+**Rationale**: Listing makes the connector findable by name and is the precondition for the
+directory placement and suggestions OpenAI grants to useful plugins. Fixing the hard rejection
+reasons first avoids a wasted review round.
+
+**Consequences**: The listing name may not end in "MCP" or "Plugin". Not verified from an
+official source: developer fees, and whether ChatGPT asks before each write call in listed
+plugins. The submission material (listing copy, test cases, video) is prepared outside the
+codebase.
+
+**Sources**: `backend/app/services/oauth_provider.py`, `backend/app/api/oauth_routes.py`, `Caddyfile`,
+https://developers.openai.com/plugins/deploy/submission, https://developers.openai.com/plugins/plugin-guidelines.

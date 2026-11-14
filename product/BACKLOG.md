@@ -4,6 +4,43 @@
 > Items below describe unimplemented scope. See [implemented features](FEATURES.md)
 > and the [roadmap](ROADMAP.md) for delivered work and release status.
 > Existing priorities are retained; this sync does not select new product work.
+> 2026-11-14: the connector growth plan below was chosen and comes before the other priorities.
+
+## Connector Growth (plan of 2026-11-14)
+
+Almost all organic users arrive from ChatGPT through the MCP connector, but only about a quarter
+of connected accounts ever save a prompt and few come back. The plan aims at return visits:
+first saves, then reuse, then further capabilities. Decisions and targets are in
+[DECISIONS.md](DECISIONS.md#connector-growth-starts-with-first-saves-and-return-visits).
+Order: 0.17.1 security patch → 0.18.0 → at least a week of baseline → 0.19.0 → plugin submission.
+
+### Connector Measurement and Listing Prerequisites (0.18.0)
+
+- **Value**: Know whether connector changes bring users back, learn where they come from, and remove the hard blockers for ChatGPT's plugin directory.
+- **Current gap**: Only MCP creates and updates are counted; read tools and per-account connector use are not recorded, and the referral source is unknown. The OAuth server returns no RFC 9207 `iss`, and Caddy routes no `/.well-known/openai-apps-challenge`.
+- **Suggested approach**: Counter of every MCP tool call by tool and outcome; a last-connector-use date per account, written at most once a day; an optional fixed-choice "How did you hear about us?" at sign-up, including inside the connect flow; `iss` on every authorization response plus `authorization_response_iss_parameter_supported`; the challenge route beside `/.well-known/oauth-*`. The operator's privacy-policy additions go live before deployment. See [DECISIONS.md](DECISIONS.md#measure-connector-use-before-new-tools-ship).
+- **Source**: `backend/app/metrics.py`, `backend/app/api/mcp_routes.py`, `backend/app/services/oauth_provider.py`, `Caddyfile`, `frontend/src/features/auth/AuthForm.tsx`.
+- **Effort**: Medium.
+
+### Connector Tools for Templates, Filling and Search (0.19.0)
+
+- **Value**: Give a newly connected user something to save straight away, and make reusing a saved prompt the main thing to do with the connector.
+- **Current gap**: Five storage tools only. Gallery templates, filling `{{variables}}`, search and folder/favourite edits are not reachable through MCP, and the server instructions keep ChatGPT from offering to save.
+- **Suggested approach**: `browse_templates` / `get_template` over `contracts/gallery-templates.json` (moved out of `frontend/src/lib/gallery.ts`); read-only `use_prompt` that fills values and lists missing variables with hints and choices; a `query` argument on `list_saved_prompts`; `folder` and `favorite` on `update_prompt`; plain "Use this when…" descriptions without the "Save only when the user asks" instruction; trimmed responses that keep `id` and `updated_at`. Delete and restore stay out. See [DECISIONS.md](DECISIONS.md#connector-tools-for-templates-filling-and-search).
+- **Source**: `backend/app/api/mcp_routes.py`, `backend/app/services/prompts/`, `frontend/src/lib/gallery.ts`, `contracts/`, `backend/Dockerfile`.
+- **Effort**: Medium to high (the template move touches frontend and backend).
+
+### ChatGPT Plugin Directory Submission
+
+- **Value**: Let ChatGPT users find the connector by name instead of needing its URL and developer mode, and qualify for OpenAI's directory placement.
+- **Current gap**: Connected only as a custom developer-mode connector; no submission made.
+- **Suggested approach**: After 0.19.0, submit at platform.openai.com/plugins as a verified individual with a seeded `openai-reviewer` account, five positive and three negative test cases and a demo video; tell Anthropic (mcp-review@anthropic.com) about the tool changes. Check developer fees and write-confirmation behaviour on the portal first. See [DECISIONS.md](DECISIONS.md#list-the-connector-in-chatgpts-plugin-directory).
+- **Effort**: Low engineering, medium preparation.
+
+### Later Connector Capabilities
+
+- **Prompt checker tool**: a rule-based `check_prompt` (role, format, length, examples, broken variables and tags) needs the checker ported from `frontend/src/lib/promptLint.ts` or shared. Medium effort.
+- **Out of scope for now**: ChatGPT interactive widgets, email nudges for inactive accounts, and server-side LLM tools on the connector.
 
 ## Priority: High
 
