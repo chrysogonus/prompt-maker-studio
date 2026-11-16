@@ -10,6 +10,8 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.17.1; see the [release candidate](./docs/releases/0.17.1.md).
+
 ### Security
 
 - The frontend image moves to a `node:22-alpine` base with `zlib` 1.3.2-r1, which fixes
