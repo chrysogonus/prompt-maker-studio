@@ -5,9 +5,12 @@ FROM python:3.12-slim@sha256:e695ab189fa2d082b1c61c69a6b888a5adeca61ceeccad107b1
 
 WORKDIR /app
 
-# Install curl for health checks.
+# Install curl for health checks. zlib1g is upgraded explicitly because the
+# pinned base image predates Debian's fix for CVE-2026-85091; drop it once a
+# base digest ships 1:1.3.dfsg+really1.3.1-1+deb13u1 or later.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends --only-upgrade zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
 # Install runtime dependencies from the transitive lock rather than resolving
