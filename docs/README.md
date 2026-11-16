@@ -47,6 +47,9 @@ production deployment are separate operations.
 - [Decision log](../product/DECISIONS.md): accepted choices and explicitly
   superseded history.
 - [Changelog](../CHANGELOG.md): pending and published release changes.
+- [0.17.1 release candidate](releases/0.17.1.md): the frontend image moves to a base with
+  the fix for CVE-2026-85091 in `zlib`, the backend image upgrades `zlib1g` for the same CVE,
+  and the backend updates `opentelemetry-api` and `dnspython` for two denial-of-service CVEs.
 - [0.17.0 release record](releases/0.17.0.md): `LLM_WORKSPACE_ID` sets the Anthropic
   workspace for the server-default connection, and the backend and backup images move to a base
   with the fix for CVE-2026-109518.

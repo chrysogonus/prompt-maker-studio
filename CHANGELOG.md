@@ -10,6 +10,25 @@ any release. See [Project status](./README.md#project-status).
 
 ## [Unreleased]
 
+Prepared for 0.17.1; see the [release candidate](./docs/releases/0.17.1.md).
+
+### Security
+
+- The frontend image moves to a `node:22-alpine` base with `zlib` 1.3.2-r1, which fixes
+  CVE-2026-85091, and OpenSSL 3.5.9, replacing the earlier `apk upgrade` workaround for
+  CVE-2026-14456.
+- The backend image upgrades `zlib1g` to `1:1.3.dfsg+really1.3.1-1+deb13u1` for the same
+  CVE-2026-85091, because no `python:3.12-slim` digest ships the fix yet.
+- The backend's `opentelemetry-api` is updated from 1.45.1 to 1.45.2 for CVE-2026-126360: a
+  crafted `traceparent` could make trace-context extraction use excessive CPU. The MCP SDK
+  extracts it from each MCP request's `_meta`, so any signed-in MCP client could reach it.
+- The backend's `dnspython` is updated from 2.9.0 to 2.9.2 for CVE-2026-128089: a crafted zone
+  file could exhaust memory. It is only pulled in by `email-validator`, which the app uses
+  without DNS lookups.
+- The frontend's `next` is updated from 16.4.2 to 16.4.5 for GHSA-mfr8-8qww-v76h: a `'use cache'`
+  function called through `unstable_cache()` could disclose data across root params. The app
+  uses neither, so it was not affected.
+
 ## [0.17.0] - 2026-11-05
 
 See the [release record](./docs/releases/0.17.0.md).

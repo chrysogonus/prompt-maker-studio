@@ -29,7 +29,7 @@ byte for byte; inspect the built artifact when updating its inventory.
 | click | 8.4.2 | BSD-3-Clause |
 | cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause |
 | Deprecated | 1.3.1 | MIT |
-| dnspython | 2.9.0 | ISC |
+| dnspython | 2.9.2 | ISC |
 | email-validator | 2.3.0 | Unlicense |
 | fastapi | 0.156.8 | MIT |
 | h11 | 0.16.0 | MIT |
@@ -46,7 +46,7 @@ byte for byte; inspect the built artifact when updating its inventory.
 | mcp-types | 2.3.0 | MIT |
 | msgpack | 1.2.3 | Apache-2.0 |
 | openai | 3.35.1 | Apache-2.0 |
-| opentelemetry-api | 1.45.1 | Apache-2.0 |
+| opentelemetry-api | 1.45.2 | Apache-2.0 |
 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause |
 | prometheus-fastapi-instrumentator | 8.1.0 | ISC |
 | prometheus_client | 0.26.0 | Apache-2.0 AND BSD-2-Clause |
@@ -77,7 +77,7 @@ The final image is installed with `npm ci --omit=dev --omit=optional`.
 
 | Package | Version | License |
 |---|---:|---|
-| @next/env | 16.4.2 | MIT |
+| @next/env | 16.4.5 | MIT |
 | @swc/helpers | 0.5.23 | Apache-2.0 |
 | @types/debug | 4.1.13 | MIT |
 | @types/estree | 1.0.9 | MIT |
@@ -166,7 +166,7 @@ The final image is installed with `npm ci --omit=dev --omit=optional`.
 | micromark-util-types | 2.0.3 | MIT |
 | ms | 2.1.3 | MIT |
 | nanoid | 3.3.18 | MIT |
-| next | 16.4.2 | MIT |
+| next | 16.4.5 | MIT |
 | parse-entities | 4.0.2 | MIT |
 | picocolors | 1.1.1 | ISC |
 | postcss | 8.5.23 | MIT |
