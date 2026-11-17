@@ -4,7 +4,6 @@
 > 2026-11-14: connector growth plan added to Now and Next; see [DECISIONS.md](DECISIONS.md#connector-growth-starts-with-first-saves-and-return-visits).
 
 ## Now — Current Sprint / Active Development
-- [ ] **0.17.1 security patch** — Release the minimatch override and the frontend base image with the fixed `zlib` (CVE-2026-85091) already on `dev`
 - [ ] **Connector measurement and listing prerequisites (0.18.0)** — Count every MCP tool call, record a daily last-connector-use date, ask an optional "How did you hear about us?" at sign-up, add RFC 9207 `iss` and the `/.well-known/openai-apps-challenge` route; privacy-policy additions go live first (see BACKLOG "Connector Growth")
 - [ ] **Deployment rehearsal and approval** — Release publication does not establish production deployment. Rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations; approve deployment separately. See [deployment](../docs/deployment.md).
 
