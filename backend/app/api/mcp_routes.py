@@ -12,7 +12,8 @@ API's own bearer JWT is accepted too, for scripts and local testing.
 
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
+from functools import wraps
 
 import anyio.to_thread
 from fastapi import HTTPException
@@ -24,12 +25,14 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from pydantic import BaseModel, ValidationError
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.auth.dependencies import user_from_token
 from app.branding import APP_NAME
 from app.database.connection import SessionLocal
+from app.metrics import MCP_TOOL_OUTCOMES, mcp_tool_calls_total
 from app.models.user import User
 from app.schemas.prompts import (
     PromptCreateRequest,
@@ -101,6 +104,20 @@ def _access_for_token(token: str) -> AccessToken | None:
     return None
 
 
+def _record_daily_use(db: Session, user: User) -> None:
+    """Store today's UTC date as the account's latest connector use, at most once a day."""
+    today = datetime.now(UTC).date()
+    if user.last_mcp_use_date is not None and user.last_mcp_use_date >= today:
+        return
+    # Conditional, so parallel calls write once and one delayed past midnight
+    # cannot move a newer date back.
+    db.query(User).filter(
+        User.id == user.id,
+        or_(User.last_mcp_use_date.is_(None), User.last_mcp_use_date < today),
+    ).update({User.last_mcp_use_date: today}, synchronize_session=False)
+    db.commit()
+
+
 @contextmanager
 def _user_session() -> Iterator[tuple[Session, User]]:
     """Open a database session for the authenticated caller, translating the
@@ -111,6 +128,7 @@ def _user_session() -> Iterator[tuple[Session, User]]:
         if user is None:
             msg = "Account not found"
             raise ToolError(msg)
+        _record_daily_use(db, user)
         yield db, user
     except (HTTPException, OperationError) as exc:
         raise ToolError(str(exc.detail)) from exc
@@ -144,8 +162,32 @@ _UPDATE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHin
 
 def _tool(title: str, annotations: ToolAnnotations):
     """Register a tool with its title both top-level (MCP spec) and in its
-    annotations, which is where Claude's connector directory reads it."""
-    return mcp_server.tool(title=title, annotations=annotations.model_copy(update={"title": title}))
+    annotations, which is where Claude's connector directory reads it, and
+    count each call by outcome."""
+    register = mcp_server.tool(
+        title=title, annotations=annotations.model_copy(update={"title": title})
+    )
+
+    def decorate(function):
+        for outcome in MCP_TOOL_OUTCOMES:
+            mcp_tool_calls_total.labels(function.__name__, outcome)
+
+        @wraps(function)
+        def counted(*args, **kwargs):
+            outcome = "error"
+            try:
+                result = function(*args, **kwargs)
+                outcome = "success"
+                return result
+            except ToolError:
+                outcome = "rejected"
+                raise
+            finally:
+                mcp_tool_calls_total.labels(function.__name__, outcome).inc()
+
+        return register(counted)
+
+    return decorate
 
 
 @_tool("List saved prompts", _READ_ONLY)

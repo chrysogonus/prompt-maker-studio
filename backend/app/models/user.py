@@ -5,7 +5,7 @@ User model for authentication.
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database.connection import Base
@@ -39,6 +39,12 @@ class User(Base):
     # matches, which is what makes account recovery actually recover the
     # account — a stolen token used to stay valid until it expired on its own.
     token_version = Column(Integer, nullable=False, default=0, server_default="0")
+
+    # Connector measurement: the UTC day of the latest MCP tool call (a date, no
+    # time or per-call log; written at most once a day) and the optional
+    # sign-up answer to "How did you hear about us?". Neither is shown in the app.
+    last_mcp_use_date = Column(Date, nullable=True)
+    referral_source = Column(String(30), nullable=True)
 
     # Settings preferences.
     # Superseded by `llm_model` below — the model is now part of the user's

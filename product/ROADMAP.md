@@ -5,7 +5,7 @@
 > 2026-11-18: extended into a sign-in-only prompt hub; see [DECISIONS.md](DECISIONS.md#the-connector-becomes-a-prompt-hub-sign-in-only).
 
 ## Now — Current Sprint / Active Development
-- [ ] **Connector measurement and listing prerequisites (0.18.0)** — Count every MCP tool call, record a daily last-connector-use date, ask an optional "How did you hear about us?" at sign-up, add RFC 9207 `iss` and the `/.well-known/openai-apps-challenge` route; privacy-policy additions go live first (see BACKLOG "Connector Growth")
+- [ ] **Connector measurement and listing prerequisites (0.18.0)** — Count every MCP tool call, record a daily last-connector-use date, ask an optional "How did you hear about us?" at sign-up, add RFC 9207 `iss`; privacy-policy additions go live first (see BACKLOG "Connector Growth")
 - [ ] **Deployment rehearsal and approval** — Release publication does not establish production deployment. Rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations; approve deployment separately. See [deployment](../docs/deployment.md).
 
 ## Next — Coming Soon (next 1–2 sprints)

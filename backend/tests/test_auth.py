@@ -22,6 +22,7 @@ from app.auth.utils import (
     is_insecure_secret_key,
     verify_password,
 )
+from app.models.user import User
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -76,6 +77,33 @@ def test_register_user(client):
     assert "id" in data
     assert "created_at" in data
     assert "password" not in data  # Password should not be returned
+
+
+@pytest.mark.parametrize("source", ["chatgpt", "mcp_directory", None])
+def test_register_stores_optional_referral_source(client, db_session, source):
+    body = {"username": "referred", "password": "testpass123!", "email": "referred@example.com"}
+    if source:
+        body["referral_source"] = source
+
+    response = client.post("/api/auth/register", json=body)
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert "referral_source" not in response.json()  # stored, shown nowhere
+    user = db_session.query(User).filter_by(username="referred").one()
+    assert user.referral_source == source
+
+
+def test_register_rejects_unknown_referral_source(client):
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "username": "referred",
+            "password": "testpass123!",
+            "email": "referred@example.com",
+            "referral_source": "a newsletter I write",
+        },
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 def test_register_duplicate_user(client):

@@ -143,6 +143,17 @@ class TestDiscovery:
         # ChatGPT relies on refresh tokens only when this scope is advertised.
         assert metadata["scopes_supported"] == ["offline_access"]
 
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/.well-known/oauth-authorization-server/api/oauth",
+            "/api/oauth/.well-known/oauth-authorization-server",
+        ],
+    )
+    def test_metadata_announces_issuer_in_authorization_responses(self, client, path):
+        # RFC 9207: clients may then reject responses without a matching `iss`.
+        assert client.get(path).json()["authorization_response_iss_parameter_supported"] is True
+
 
 class TestRegistration:
     def test_chatgpt_redirect_is_accepted(self, client):
@@ -197,6 +208,12 @@ class TestAuthorizationFlow:
         assert tokens["scope"] == "offline_access"
         assert tokens["refresh_token"]
 
+    def test_approval_names_the_issuer(self, client, auth_headers):
+        client_id = _register(client).json()["client_id"]
+        _, challenge = _pkce()
+        query = _approve(client, auth_headers, _pending_request(client, client_id, challenge))
+        assert query["iss"] == ISSUER_URL
+
     def test_state_is_returned_to_the_client(self, client, auth_headers):
         client_id = _register(client).json()["client_id"]
         _, challenge = _pkce()
@@ -241,14 +258,16 @@ class TestAuthorizationFlow:
         query = parse_qs(urlparse(response.json()["redirect_url"]).query)
         assert query["error"] == ["access_denied"]
         assert query["state"] == ["state-123"]
+        assert query["iss"] == [ISSUER_URL]
         assert "code" not in query
 
     def test_foreign_resource_is_refused(self, client):
         client_id = _register(client).json()["client_id"]
         _, challenge = _pkce()
         response = _authorize(client, client_id, challenge, resource="https://other.example/mcp")
-        error = parse_qs(urlparse(response.headers["location"]).query)["error"]
-        assert error == ["invalid_request"]
+        query = parse_qs(urlparse(response.headers["location"]).query)
+        assert query["error"] == ["invalid_request"]
+        assert query["iss"] == [ISSUER_URL]
 
     def test_code_is_single_use(self, client, auth_headers):
         client_id = _register(client).json()["client_id"]

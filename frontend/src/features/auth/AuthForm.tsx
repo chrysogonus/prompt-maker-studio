@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AuthService } from '@/lib/auth';
+import type { ReferralSource } from '@/types/auth';
 import { APP_NAME, pageTitle } from '@/lib/branding';
 import Wordmark from '@/components/ui/Wordmark';
 import LegalLinks from '@/components/LegalLinks';
@@ -32,6 +33,16 @@ type FieldErrors = Partial<Record<FieldName, string>>;
 /** Focus order, so the first *visible* offending field is the one focused. */
 const FIELD_ORDER: FieldName[] = ['username', 'password', 'email'];
 
+const REFERRAL_OPTIONS: [ReferralSource, string][] = [
+  ['chatgpt', 'ChatGPT'],
+  ['claude', 'Claude'],
+  ['search_engine', 'Search engine'],
+  ['social_video', 'Social media or video'],
+  ['friend', 'Friend or colleague'],
+  ['mcp_directory', 'MCP directory'],
+  ['other', 'Other'],
+];
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps) {
@@ -39,6 +50,7 @@ export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps)
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
+  const [referralSource, setReferralSource] = useState<ReferralSource | ''>('');
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
@@ -130,7 +142,12 @@ export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps)
         AuthService.clearSessionExpiry?.();
         onSuccess();
       } else if (view === 'register') {
-        await AuthService.register({ username: username.trim(), password, email: email.trim() });
+        await AuthService.register({
+          username: username.trim(),
+          password,
+          email: email.trim(),
+          ...(referralSource && { referral_source: referralSource }),
+        });
         // Auto-login after registration
         await AuthService.login({ username: username.trim(), password });
         AuthService.clearSessionExpiry?.();
@@ -342,6 +359,25 @@ export default function AuthForm({ onSuccess, notice, backHref }: AuthFormProps)
                 {fieldErrors.email}
               </p>
             )}
+          </div>
+        )}
+
+        {view === 'register' && (
+          <div className={styles.field}>
+            <label htmlFor="reg-referral" className={styles.label}>
+              How did you hear about us? (optional)
+            </label>
+            <select
+              id="reg-referral"
+              value={referralSource}
+              onChange={(e) => setReferralSource(e.target.value as ReferralSource | '')}
+              className={styles.input}
+            >
+              <option value="">Prefer not to say</option>
+              {REFERRAL_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
           </div>
         )}
 

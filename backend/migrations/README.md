@@ -69,6 +69,7 @@ Migration 020 preserves the pre-025 note schema during its rebuild, so an upgrad
 - `031_eval_tested_prompt` — adds nullable `eval_runs.tested_prompt`, the exact template text a run tested, so a run can be matched to the saved version with the same text or recognised as an unsaved draft. Existing runs are not backfilled: they keep only their recorded version number, which older releases could record off by one.
 - `032_prompt_known_good_version` — adds nullable `prompts.known_good_version`, the version number a user marked as known good. Existing prompts have none; text, versions and timestamps are untouched.
 - `033_public_billed_calls` — creates `public_billed_calls`, the spend ledger for AI calls made without an account (the free refiner). It stores source, provider, model, token counts, cost and time only — no user, IP address or prompt text. No existing table changes.
+- `034_user_connector_tracking` — adds nullable `users.last_mcp_use_date` (the UTC day of the account's latest MCP tool call, written at most once a day) and nullable `users.referral_source` (the optional sign-up answer to "How did you hear about us?"). Existing accounts have neither; nothing else changes.
 
 ## Production Migration Checklist
 

@@ -19,10 +19,10 @@ ChatGPT; new tools reach it through OpenAI's daily scan, whose sign-in must be v
 
 ### Connector Measurement and Listing Prerequisites (0.18.0)
 
-- **Value**: Know whether connector changes bring users back, learn where they come from, and add the RFC 9207 `iss` and domain-challenge route.
-- **Current gap**: Only MCP creates and updates are counted; read tools and per-account connector use are not recorded, and the referral source is unknown. The OAuth server returns no RFC 9207 `iss`, and Caddy routes no `/.well-known/openai-apps-challenge`.
-- **Suggested approach**: Counter of every MCP tool call by tool and outcome; a last-connector-use date per account, written at most once a day; an optional fixed-choice "How did you hear about us?" at sign-up, including inside the connect flow; `iss` on every authorization response plus `authorization_response_iss_parameter_supported`; the challenge route beside `/.well-known/oauth-*`. The operator's privacy-policy additions go live before deployment. See [DECISIONS.md](DECISIONS.md#measure-connector-use-before-new-tools-ship).
-- **Source**: `backend/app/metrics.py`, `backend/app/api/mcp_routes.py`, `backend/app/services/oauth_provider.py`, `Caddyfile`, `frontend/src/features/auth/AuthForm.tsx`.
+- **Value**: Know whether connector changes bring users back, learn where they come from, and add the RFC 9207 `iss`.
+- **Current gap**: Only MCP creates and updates are counted; read tools and per-account connector use are not recorded, and the referral source is unknown. The OAuth server returns no RFC 9207 `iss`.
+- **Suggested approach**: Counter of every MCP tool call by tool and outcome; a last-connector-use date per account, written at most once a day; an optional fixed-choice "How did you hear about us?" at sign-up, including inside the connect flow; `iss` on every authorization response plus `authorization_response_iss_parameter_supported`. No challenge route: the domain is already verified, and production serves the challenge from a server-only Caddyfile edit. The operator's privacy-policy additions go live before deployment. See [DECISIONS.md](DECISIONS.md#measure-connector-use-before-new-tools-ship).
+- **Source**: `backend/app/metrics.py`, `backend/app/api/mcp_routes.py`, `backend/app/services/oauth_provider.py`, `frontend/src/features/auth/AuthForm.tsx`.
 - **Effort**: Medium.
 
 ### Connector Tools for Templates, Filling and Search (0.19.0)

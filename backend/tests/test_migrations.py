@@ -183,6 +183,7 @@ def test_run_migrations_adds_current_columns_to_legacy_database(tmp_path):
             "031_eval_tested_prompt",
             "032_prompt_known_good_version",
             "033_public_billed_calls",
+            "034_user_connector_tracking",
         }
         assert "updated_at" in _columns(connection, "prompts")
         assert _table_exists(connection, "prompt_versions")
@@ -338,7 +339,7 @@ def test_run_migrations_is_idempotent_on_current_database(tmp_path):
 
     with engine.connect() as connection:
         versions = connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
-        assert len(versions) == 33
+        assert len(versions) == 34
         assert {
             "fields",
             "user_id",
@@ -882,3 +883,25 @@ def test_workspace_migration_is_idempotent_and_preserves_users():
             connection.execute(text("SELECT llm_workspace_id FROM users")).scalar()
             == "wrkspc_ABC123"
         )
+
+
+def test_connector_tracking_migration_is_idempotent_and_preserves_users():
+    from app.database.migrations.v034_user_connector_tracking import (
+        _migration_034_user_connector_tracking,
+    )
+
+    engine = create_engine("sqlite://")
+    with engine.begin() as connection:
+        _migration_034_user_connector_tracking(connection)
+        connection.execute(text("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT)"))
+        connection.execute(text("INSERT INTO users VALUES (1, 'existing')"))
+        _migration_034_user_connector_tracking(connection)
+        row = connection.execute(text("SELECT last_mcp_use_date, referral_source FROM users")).one()
+        assert tuple(row) == (None, None)
+        connection.execute(
+            text("UPDATE users SET last_mcp_use_date = '2026-11-18', referral_source = 'chatgpt'")
+        )
+        _migration_034_user_connector_tracking(connection)
+        row = connection.execute(text("SELECT last_mcp_use_date, referral_source FROM users")).one()
+        assert tuple(row) == ("2026-11-18", "chatgpt")
+    engine.dispose()

@@ -13,14 +13,17 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from limits import RateLimitItem, parse
-from mcp.server.auth.routes import build_metadata, create_auth_routes
+from mcp.server.auth.handlers.metadata import MetadataHandler
+from mcp.server.auth.provider import construct_redirect_uri
+from mcp.server.auth.routes import build_metadata, cors_middleware, create_auth_routes
 from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 from pydantic import AnyHttpUrl, BaseModel
 from sqlalchemy.orm import Session
 from starlette.applications import Starlette
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.routing import Route
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.api.deps import call_service
 from app.auth.dependencies import get_current_user
@@ -29,6 +32,7 @@ from app.limiter import _rate_limit_key, limiter
 from app.models.user import User
 from app.services.oauth_provider import (
     ISSUER_URL,
+    PUBLIC_URL,
     OAuthProvider,
     approve_authorization,
     decode_authorization_request,
@@ -46,6 +50,13 @@ _REGISTRATION = ClientRegistrationOptions(
     enabled=True, valid_scopes=["offline_access"], default_scopes=["offline_access"]
 )
 _REVOCATION = RevocationOptions(enabled=True)
+# RFC 9207: every authorization response names this issuer, so a client talking
+# to several servers can tell which one answered (mix-up attack defence).
+_METADATA = build_metadata(_ISSUER, None, _REGISTRATION, _REVOCATION).model_copy(
+    update={"authorization_response_iss_parameter_supported": True}
+)
+_METADATA_PATH = "/.well-known/oauth-authorization-server"
+_CONSENT_PAGE = f"{PUBLIC_URL}/oauth/authorize"
 
 # Per client address, like every other limit in the API. ChatGPT calls these
 # from OpenAI's servers, whose addresses all of its users share, so they are
@@ -81,6 +92,36 @@ class _RateLimited:
         await self.app(scope, receive, send)
 
 
+class _IssuerOnClientRedirects:
+    """Add `iss` to the SDK's authorization error redirects back to the client.
+
+    Responses this app builds itself (consent approval and denial) add it in
+    oauth_provider; the hand-off to the consent page is not a client response.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        async def send_with_issuer(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = [
+                    (name, _with_issuer(value) if name == b"location" else value)
+                    for name, value in message.get("headers", [])
+                ]
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, send_with_issuer)
+
+
+def _with_issuer(location: bytes) -> bytes:
+    url = location.decode()
+    if url.startswith(_CONSENT_PAGE):
+        return location
+    return construct_redirect_uri(url, iss=ISSUER_URL).encode()
+
+
 def _protocol_routes():
     routes = create_auth_routes(
         OAuthProvider(),
@@ -88,7 +129,16 @@ def _protocol_routes():
         client_registration_options=_REGISTRATION,
         revocation_options=_REVOCATION,
     )
-    for route in routes:
+    for index, route in enumerate(routes):
+        if route.path == _METADATA_PATH:
+            # Same handler as the SDK's, serving metadata that carries the RFC 9207 flag.
+            routes[index] = Route(
+                _METADATA_PATH,
+                endpoint=cors_middleware(MetadataHandler(_METADATA).handle, ["GET", "OPTIONS"]),
+                methods=["GET", "OPTIONS"],
+            )
+        if route.path == "/authorize":
+            route.app = _IssuerOnClientRedirects(route.app)
         if route.path in _PROTOCOL_RATE_LIMITS:
             limit = parse(_PROTOCOL_RATE_LIMITS[route.path])
             route.app = _RateLimited(route.app, route.path, limit)
@@ -106,8 +156,7 @@ well_known_router = APIRouter(include_in_schema=False)
 def authorization_server_metadata() -> dict:
     """RFC 8414 metadata. For an issuer with a path, clients look it up at the
     well-known prefix followed by that path."""
-    metadata = build_metadata(_ISSUER, None, _REGISTRATION, _REVOCATION)
-    return metadata.model_dump(mode="json", exclude_none=True)
+    return _METADATA.model_dump(mode="json", exclude_none=True)
 
 
 class ConsentDetails(BaseModel):

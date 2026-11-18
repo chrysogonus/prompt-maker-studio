@@ -7,10 +7,14 @@ export interface LoginRequest {
   password: string;
 }
 
+/** Fixed answers to the optional sign-up question; the backend accepts only these. */
+export type ReferralSource = 'chatgpt' | 'claude' | 'search_engine' | 'social_video' | 'friend' | 'mcp_directory' | 'other';
+
 export interface RegisterRequest {
   username: string;
   password: string;
   email: string;
+  referral_source?: ReferralSource;
 }
 
 /**

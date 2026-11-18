@@ -239,6 +239,37 @@ describe('AuthForm — register view', () => {
       expect(mockOnSuccess).toHaveBeenCalledOnce();
     });
   });
+
+  it('sends the optional "How did you hear about us?" answer when one is chosen', async () => {
+    vi.mocked(AuthService.register).mockResolvedValueOnce({
+      id: 1, username: 'bob', created_at: '2026-01-01T00:00:00Z',
+    });
+    vi.mocked(AuthService.login).mockResolvedValueOnce({
+      token_type: 'bearer',
+      expires_at: new Date(Date.now() + 1_800_000).toISOString(),
+    });
+
+    render(<AuthForm onSuccess={mockOnSuccess} />);
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+    await userEvent.type(screen.getByLabelText(/username/i), 'bob');
+    await userEvent.type(screen.getByLabelText(/^password$/i), 'password99!');
+    await userEvent.type(screen.getByLabelText(/email address/i), 'bob@example.com');
+    const source = screen.getByRole('combobox', { name: /how did you hear about us\? \(optional\)/i });
+    expect(source).toHaveValue('');
+    await userEvent.selectOptions(source, 'ChatGPT');
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(AuthService.register).toHaveBeenCalledWith({
+        username: 'bob', password: 'password99!', email: 'bob@example.com', referral_source: 'chatgpt',
+      });
+    });
+  });
+
+  it('does not ask how the visitor heard about us when signing in', () => {
+    render(<AuthForm onSuccess={mockOnSuccess} />);
+    expect(screen.queryByRole('combobox', { name: /how did you hear about us/i })).not.toBeInTheDocument();
+  });
 });
 
 // ---------------------------------------------------------------------------

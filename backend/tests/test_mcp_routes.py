@@ -1,6 +1,11 @@
 """Tests for the MCP endpoint that exposes the saved-prompt library as tools."""
 
+from datetime import UTC, date, datetime, timedelta
+
+from prometheus_client import REGISTRY
 import pytest
+
+from app.models.user import User
 
 MCP_HEADERS = {"Accept": "application/json, text/event-stream"}
 TASK_FIELDS = [{"name": "task", "content": "Summarize the text"}]
@@ -199,3 +204,67 @@ class TestMCPPromptTools:
         )
 
         assert text.endswith("Prompt not found")
+
+
+def _tool_calls(tool: str, outcome: str) -> float:
+    labels = {"tool": tool, "outcome": outcome}
+    return REGISTRY.get_sample_value("pms_mcp_tool_calls_total", labels) or 0
+
+
+def _last_use(db_session) -> date | None:
+    db_session.expire_all()
+    return db_session.query(User).filter_by(username="testuser").one().last_mcp_use_date
+
+
+class TestConnectorUsage:
+    def test_successful_read_tool_call_is_counted(self, client, auth_headers):
+        before = _tool_calls("list_saved_prompts", "success")
+        _ok(client, auth_headers, "list_saved_prompts")
+        assert _tool_calls("list_saved_prompts", "success") == before + 1
+
+    def test_refused_tool_call_is_counted_as_rejected(self, client, auth_headers):
+        before = _tool_calls("get_prompt", "rejected")
+        _error_text(client, auth_headers, "get_prompt", prompt_id=999999)
+        assert _tool_calls("get_prompt", "rejected") == before + 1
+
+    def test_tool_call_records_todays_date(self, client, auth_headers, db_session):
+        assert _last_use(db_session) is None
+        _ok(client, auth_headers, "list_saved_prompts")
+        assert _last_use(db_session) == datetime.now(UTC).date()
+
+    def test_a_later_day_replaces_the_date(self, client, auth_headers, db_session):
+        user = db_session.query(User).filter_by(username="testuser").one()
+        user.last_mcp_use_date = datetime.now(UTC).date() - timedelta(days=3)
+        db_session.commit()
+        _ok(client, auth_headers, "list_saved_prompts")
+        assert _last_use(db_session) == datetime.now(UTC).date()
+
+    def test_listing_tools_alone_is_not_a_use(self, client, auth_headers, db_session):
+        # Clients refresh the tool list on their own; only tool calls count as use.
+        _rpc(client, auth_headers, "tools/list")
+        assert _last_use(db_session) is None
+
+
+class TestDailyUseIsConditional:
+    """Two sessions stand in for parallel tool calls on one account."""
+
+    def test_stale_session_does_not_move_a_newer_date_back(self, client, auth_headers, test_db):
+        from app.api.mcp_routes import _record_daily_use
+
+        stale, current = test_db(), test_db()
+        try:
+            user = stale.query(User).filter_by(username="testuser").one()
+            assert user.last_mcp_use_date is None
+            tomorrow = datetime.now(UTC).date() + timedelta(days=1)
+            current.query(User).filter_by(username="testuser").one().last_mcp_use_date = tomorrow
+            current.commit()
+
+            _record_daily_use(stale, user)
+
+            current.expire_all()
+            assert current.query(User).filter_by(username="testuser").one().last_mcp_use_date == (
+                tomorrow
+            )
+        finally:
+            stale.close()
+            current.close()

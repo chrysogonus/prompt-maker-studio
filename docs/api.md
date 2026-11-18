@@ -17,7 +17,7 @@ scripts and CI can still send `Authorization: Bearer <token>`. See
 
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
-| `POST` | `/api/auth/register` | No | Register new user account (`REGISTER_RATE_LIMIT`, default 5/min) |
+| `POST` | `/api/auth/register` | No | Register new user account (`REGISTER_RATE_LIMIT`, default 5/min). Optional `referral_source`: one of `chatgpt`, `claude`, `search_engine`, `social_video`, `friend`, `mcp_directory`, `other`; stored on the account and never returned |
 | `POST` | `/api/auth/login` | No | Set the session/CSRF cookies; return token type and expiry metadata (`LOGIN_RATE_LIMIT`, default 10/min) |
 | `POST` | `/api/auth/refresh` | Yes | Renew a valid session within its 12-hour maximum age: a new session cookie, the same CSRF token (10/min) |
 | `POST` | `/api/auth/logout` | No | End the current session by clearing its cookies. Deliberately unauthenticated so signing out works with an already-expired token |
