@@ -112,10 +112,9 @@ TypeScript; Docker Compose with Caddy, plus Prometheus and Grafana for monitorin
 
 Early-stage, `0.x`. APIs and database schemas may change between releases.
 Back up before upgrading; see the [changelog](./CHANGELOG.md). The
-[0.17.0 release record](./docs/releases/0.17.0.md) records publication, immutable
-image digests and verification for the latest release: `LLM_WORKSPACE_ID` sets the Anthropic
-workspace for the server default, and the backend and backup images move to a base with the
-fix for CVE-2026-109518, with no migrations. Each [release record](./docs/README.md) lists its own
+[0.17.1 release record](./docs/releases/0.17.1.md) records publication, immutable
+image digests and verification for the latest release: a security patch for `zlib` in both
+images, `opentelemetry-api`, `dnspython` and `next`, with no migrations. Each [release record](./docs/README.md) lists its own
 migrations and upgrade notes; follow them for every release you skip.
 Upgrades from before 0.5.0 must also follow the
 [0.5.0 upgrade checks](./docs/releases/0.5.0.md#upgrade-and-compatibility),
