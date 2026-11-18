@@ -192,7 +192,9 @@ def approve_authorization(db: Session, request: dict, user: User) -> str:
         )
     )
     db.commit()
-    return construct_redirect_uri(request["redirect_uri"], code=code, state=request["state"])
+    return construct_redirect_uri(
+        request["redirect_uri"], code=code, state=request["state"], iss=ISSUER_URL
+    )
 
 
 def connected_apps(db: Session, user: User) -> list[dict]:
@@ -239,6 +241,7 @@ def deny_authorization(request: dict) -> str:
         error="access_denied",
         error_description="The user declined the request",
         state=request["state"],
+        iss=ISSUER_URL,
     )
 
 

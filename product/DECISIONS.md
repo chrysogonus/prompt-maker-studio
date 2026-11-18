@@ -1795,7 +1795,8 @@ without a new plugin version; listing text, assets and skills still need a new v
 review. OpenAI reported on 2026-11-02 that the scan's sign-in had failed; until it is reconnected
 (plugins page → MCPs → Reconnect), tool changes do not reach the listing. Whether it has been
 reconnected since was not known on 2026-11-18. `iss` and the challenge route were not needed
-for approval; they stay in 0.18.0 as standards work.
+for approval. `iss` stays in 0.18.0 as standards work; the challenge route is dropped, since
+the domain is verified and production serves the challenge from a server-only Caddyfile edit.
 
 **Sources**: `backend/app/services/oauth_provider.py`, `backend/app/api/oauth_routes.py`, `Caddyfile`,
 https://developers.openai.com/plugins/deploy/submission, https://developers.openai.com/plugins/plugin-guidelines.

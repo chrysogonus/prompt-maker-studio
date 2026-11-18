@@ -72,6 +72,10 @@ operation_duration = Histogram(
 operations_in_progress = Gauge(
     "pms_operations_in_progress", "Application operations currently running.", ["operation"]
 )
+mcp_tool_calls_total = Counter(
+    "pms_mcp_tool_calls_total", "MCP tool calls by tool and outcome.", ["tool", "outcome"]
+)
+MCP_TOOL_OUTCOMES = ("success", "rejected", "error")
 eval_cases_total = Counter(
     "pms_eval_cases_total", "Committed evaluation case outcomes.", ["method", "outcome"]
 )

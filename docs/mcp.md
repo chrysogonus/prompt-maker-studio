@@ -75,6 +75,10 @@ server (`backend/app/services/oauth_provider.py`, built on the MCP SDK's handler
    `/api/oauth/token` for a 1-hour access token and a 30-day refresh token. Refresh
    tokens rotate on every use.
 
+Every authorization response back to the client, success or error, carries
+`iss=<FRONTEND_URL>/api/oauth` (RFC 9207), and both metadata documents announce it with
+`authorization_response_iss_parameter_supported: true`.
+
 | Endpoint | Purpose |
 |---|---|
 | `GET /.well-known/oauth-protected-resource/api/mcp` | Protected-resource metadata (RFC 9728) |
@@ -109,6 +113,11 @@ the resource identifier, and the consent-page URL. Caddy routes `/.well-known/oa
 to the backend; everything else lives under `/api`.
 
 The endpoint also accepts the REST API's own bearer JWT, for scripts and local testing.
+
+Each tool call records the UTC date in `users.last_mcp_use_date`, written at most once
+per account per day (migration `034_user_connector_tracking`); there is no per-call log.
+Listing the tools does not count as use. Calls are counted in
+`pms_mcp_tool_calls_total{tool,outcome}` (see [monitoring](monitoring.md)).
 
 The only scope is `offline_access`, advertised in the metadata and granted by default.
 Refresh tokens are issued either way; ChatGPT looks for the scope before relying on them.

@@ -49,6 +49,9 @@ from app.database.migrations.v032_prompt_known_good_version import (
     _migration_032_prompt_known_good_version,
 )
 from app.database.migrations.v033_public_billed_calls import _migration_033_public_billed_calls
+from app.database.migrations.v034_user_connector_tracking import (
+    _migration_034_user_connector_tracking,
+)
 
 Migration = tuple[str, Callable]
 
@@ -86,4 +89,5 @@ _MIGRATIONS: tuple[Migration, ...] = (
     ("031_eval_tested_prompt", _migration_031_eval_tested_prompt),
     ("032_prompt_known_good_version", _migration_032_prompt_known_good_version),
     ("033_public_billed_calls", _migration_033_public_billed_calls),
+    ("034_user_connector_tracking", _migration_034_user_connector_tracking),
 )

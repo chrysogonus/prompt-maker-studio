@@ -98,6 +98,14 @@ therefore accompany a partial evaluation. A poor score is not an operational
 failure. `pms_operation_duration_seconds{operation}` measures the entire operation
 and `pms_operations_in_progress{operation}` shows active work.
 
+`pms_mcp_tool_calls_total{tool,outcome}` counts every MCP tool call, read tools
+included, with `success`, `rejected` (the tool returned an error the model can read,
+such as an unknown prompt or an edit conflict) or `error` (an unexpected failure).
+Calls the SDK refuses before the tool runs (malformed arguments, missing
+authentication) are not counted, and listing the tools is not a call. Prompt
+mutations made through MCP are also counted in `pms_operations_total` with
+`channel="mcp"`.
+
 `pms_eval_cases_total{method,outcome}` distinguishes methods `rule`, `judge` and
 `manual`, and outcomes `scored`, `pending_manual`, `execution_error` and
 `judge_error`. A successfully scored low-quality answer still counts as `scored`.
@@ -133,7 +141,7 @@ A forgot-password request is not a completed password reset. Unknown email
 addresses deliberately do not produce a `password_reset_email` operation;
 successful delivery is measured separately from successful token completion.
 
-Metrics label only fixed operations, outcomes, channels, providers and methods.
+Metrics label only fixed operations, outcomes, channels, providers, methods and MCP tool names.
 Model names, identities, prompt IDs/content, URLs and error text are not labels.
 HTTP labels retain exact numeric statuses and templated handlers.
 

@@ -57,7 +57,10 @@ def register(user_data: UserCreate, db: Session):
         )
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
-        username=normalized_username, hashed_password=hashed_password, email=normalized_email
+        username=normalized_username,
+        hashed_password=hashed_password,
+        email=normalized_email,
+        referral_source=user_data.referral_source,
     )
     try:
         db.add(new_user)

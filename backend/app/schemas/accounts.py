@@ -25,6 +25,12 @@ def _validate_new_password(value: str) -> str:
 NewPassword = Annotated[str, AfterValidator(_validate_new_password)]
 
 
+# Fixed choices keep the answer analysable and free of personal text.
+ReferralSource = Literal[
+    "chatgpt", "claude", "search_engine", "social_video", "friend", "mcp_directory", "other"
+]
+
+
 class UserCreate(BaseModel):
     """Schema for user registration."""
 
@@ -39,6 +45,9 @@ class UserCreate(BaseModel):
     password: NewPassword = Field(..., min_length=10, max_length=72, description="Password")
     email: EmailStr = Field(
         ..., max_length=254, description="Email address used for password reset"
+    )
+    referral_source: ReferralSource | None = Field(
+        None, description='Optional answer to "How did you hear about us?"'
     )
 
     @field_validator("username", mode="before")
