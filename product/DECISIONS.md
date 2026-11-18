@@ -1667,7 +1667,8 @@ abuse risk.
 **Consequences**: Connector work moves ahead of the existing backlog. The sequence is the 0.17.1
 security patch, then measurement and listing prerequisites (see "Measure Connector Use Before
 New Tools Ship"), then new tools (see "Connector Tools for Templates, Filling and Search"),
-then the ChatGPT plugin submission (see "List the Connector in ChatGPT's Plugin Directory").
+then the ChatGPT plugin submission (see "List the Connector in ChatGPT's Plugin Directory";
+superseded on 2026-11-18 by a listing update, see "The Connector Becomes a Prompt Hub, Sign-in Only").
 Success is checked four weeks after the tools ship: at least 40% of connected accounts have
 saved a prompt (about 26% on 2026-11-14), and at least 25% of savers call a tool in a later
 week (baseline measured from 0.18.0).
@@ -1759,7 +1760,9 @@ describes them today; variable-metadata edits stay on the REST API.
 
 ## List the Connector in ChatGPT's Plugin Directory
 
-**Status**: Accepted (2026-11-14), not yet implemented
+**Status**: Superseded (2026-11-18) by "The Connector Becomes a Prompt Hub, Sign-in Only" below. The
+premise was wrong: the plugin was submitted on 2026-10-18, approved on 2026-10-30 and is already
+published in ChatGPT's plugin directory.
 
 **Context**: ChatGPT users connect the server today as a custom developer-mode connector at a
 URL they have to know. OpenAI now calls apps "plugins" and reviews submissions at
@@ -1786,5 +1789,75 @@ official source: developer fees, and whether ChatGPT asks before each write call
 plugins. The submission material (listing copy, test cases, video) is prepared outside the
 codebase.
 
+**Amendment — already listed (2026-11-18)**: No submission is needed. After publication OpenAI
+scans the MCP server daily and puts new or changed tools live once they pass automated checks,
+without a new plugin version; listing text, assets and skills still need a new version and a
+review. OpenAI reported on 2026-11-02 that the scan's sign-in had failed; until it is reconnected
+(plugins page → MCPs → Reconnect), tool changes do not reach the listing. Whether it has been
+reconnected since was not known on 2026-11-18. `iss` and the challenge route were not needed
+for approval; they stay in 0.18.0 as standards work.
+
 **Sources**: `backend/app/services/oauth_provider.py`, `backend/app/api/oauth_routes.py`, `Caddyfile`,
 https://developers.openai.com/plugins/deploy/submission, https://developers.openai.com/plugins/plugin-guidelines.
+
+---
+
+## The Connector Becomes a Prompt Hub, Sign-in Only
+
+**Status**: Accepted (2026-11-18), not yet implemented
+
+**Context**: The goal is to make the connector more useful to ChatGPT and Claude users and easier
+to find when they ask about managing, refining or reusing prompts. ChatGPT users mostly find a
+listed plugin by exact name, link or @-mention; OpenAI alone chooses plugins for directory
+placement and in-chat suggestions, by usefulness and satisfaction, and ChatGPT picks tools from
+their metadata. Claude's directory offers every listed connector as a usage-ranked suggested
+connector. Both platforms allow tools that work before account linking, and both now render one
+MCP Apps interface. The Claude directory submission was made on 2026-11-03 and was awaiting review when last checked;
+no decision email had arrived by 2026-11-18.
+
+**Decision**: Extend the connector growth plan instead of replacing it; 0.18.0 measurement and
+a baseline week still come first.
+- **Hub**: curated templates plus each user's private library. No public publishing, ratings or
+  marketplace for now.
+- **Sign-in only**: every MCP tool keeps requiring a linked account. No anonymous tools, even
+  read-only ones over public templates.
+- **LLM-free**: no server-side refine tool. Refinement requests are served by the host model
+  with the help of templates and a rule-based checker.
+- **0.19.0** (delivered by the daily scan): the tools in "Connector Tools for Templates, Filling
+  and Search", plus about 60 curated templates (writing and email, marketing, coding, study and
+  research, career, image generation, assistant system prompts), each with category, tags and
+  variable hints, drafted by the developer's assistant and approved by the operator, from one
+  data file that feeds both the gallery pages and MCP. When `list_saved_prompts` finds an empty
+  library it adds a short pointer to `browse_templates` and three suggested templates. Every
+  `/gallery/[slug]` page gains a "Use this template in ChatGPT or Claude" section linking the
+  plugin and the connect guide with the sentence to say.
+- **0.20.0** (daily scan): `check_prompt`, ported to Python with a shared file of test cases the
+  TypeScript checker must also pass.
+- **ChatGPT listing update**: a new plugin version with revised listing text and up to three
+  starter prompts, submitted once 0.19.0's tools are live in ChatGPT. Before 0.19.0 ships, the
+  scan's sign-in is checked and, if needed, reconnected with a dedicated scanner account.
+- **Claude listing**: one-liner, description, categories and use cases are revised only after
+  Anthropic approves the current submission. Templates as MCP prompts (Claude's attach menu)
+  wait for that approval too.
+- **Tool selection tests**: about 20 direct, indirect and negative requests in `docs/mcp.md`,
+  run by hand in ChatGPT developer mode before each MCP release; per-tool call counts from
+  0.18.0 are reviewed weekly.
+- **Widgets**: still out of scope through 0.19.0; decided again on 0.19.0's results.
+- **Targets**: the existing activation and return targets, plus new ChatGPT-connected accounts
+  per week (from sign-ups and the 0.18.0 referral answer) above the 37–41 of weeks 45–46.
+
+**Rationale**: Templates and the empty-library pointer give a newly connected user a first
+save; gallery pages that name the connector reach people through web search, which does not
+depend on OpenAI's placement. Shipping tools through the daily scan avoids a review per release,
+and bundling the listing text into one later version keeps reviews to one. Keeping every tool
+behind sign-in keeps one auth model and no anonymous traffic to police.
+
+**Consequences**: The template data move gains roughly 35 new templates and their pages. The
+listing copy, starter prompts and test requests are drafted for operator approval. Users can try
+nothing before linking an account, so the connect flow stays the first step.
+
+**Sources**: `backend/app/api/mcp_routes.py`, `frontend/src/lib/gallery.ts`,
+`frontend/src/app/gallery/[slug]/page.tsx`, `frontend/src/lib/promptLint.ts`, `docs/mcp.md`,
+https://developers.openai.com/plugins/deploy/submission,
+https://developers.openai.com/plugins/guides/optimize-metadata,
+https://claude.com/docs/connectors/directory.

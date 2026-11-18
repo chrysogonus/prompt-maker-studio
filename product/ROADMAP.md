@@ -2,14 +2,16 @@
 
 > Reviewed against the codebase: 2026-11-05. Latest published release: 0.17.1.
 > 2026-11-14: connector growth plan added to Now and Next; see [DECISIONS.md](DECISIONS.md#connector-growth-starts-with-first-saves-and-return-visits).
+> 2026-11-18: extended into a sign-in-only prompt hub; see [DECISIONS.md](DECISIONS.md#the-connector-becomes-a-prompt-hub-sign-in-only).
 
 ## Now — Current Sprint / Active Development
 - [ ] **Connector measurement and listing prerequisites (0.18.0)** — Count every MCP tool call, record a daily last-connector-use date, ask an optional "How did you hear about us?" at sign-up, add RFC 9207 `iss` and the `/.well-known/openai-apps-challenge` route; privacy-policy additions go live first (see BACKLOG "Connector Growth")
 - [ ] **Deployment rehearsal and approval** — Release publication does not establish production deployment. Rehearse forward-only migrations on an isolated production-backup copy before upgrading older installations; approve deployment separately. See [deployment](../docs/deployment.md).
 
 ## Next — Coming Soon (next 1–2 sprints)
-- [ ] **Connector tools for templates, filling and search (0.19.0)** — After at least a week of 0.18.0 baseline: gallery templates over MCP, read-only `use_prompt`, `query` on `list_saved_prompts`, folder/favourite on `update_prompt`, plain tool descriptions. Judged four weeks later: ≥40% of connected accounts save a prompt, ≥25% of savers return in a later week
-- [ ] **ChatGPT plugin directory submission** — After 0.19.0, as a verified individual with a seeded reviewer account, test cases and a demo video; notify Anthropic of the tool changes
+- [ ] **Connector tools for templates, filling and search (0.19.0)** — After at least a week of 0.18.0 baseline: gallery templates over MCP, read-only `use_prompt`, `query` on `list_saved_prompts`, folder/favourite on `update_prompt`, plain tool descriptions, about 60 curated templates, an empty-library pointer, and a ChatGPT/Claude section on every gallery page. Judged four weeks later: ≥40% of connected accounts save a prompt, ≥25% of savers return in a later week
+- [ ] **ChatGPT listing update** — The plugin is already listed; after 0.19.0 is live in ChatGPT, submit a new version with revised listing text and up to three starter prompts. Before 0.19.0 ships, check the daily tool scan's sign-in and reconnect it if needed; notify Anthropic of the tool changes
+- [ ] **Prompt checker tool (0.20.0)** — Rule-based `check_prompt`, sign-in required, ported to Python with shared test cases
 - [ ] **Recovered history cleanup** — Selecting several prompts to move or delete them already works; finding duplicates remains open (see BACKLOG "Duplicate Detection")
 - [ ] **Extend refinement controls** — Questions, test-result evidence, draft checks, section diffs and local Apply/Undo exist. Direct change instructions and individual section acceptance remain open (evaluate → refine loop, phase 5)
 

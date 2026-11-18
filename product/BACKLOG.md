@@ -5,6 +5,7 @@
 > and the [roadmap](ROADMAP.md) for delivered work and release status.
 > Existing priorities are retained; this sync does not select new product work.
 > 2026-11-14: the connector growth plan below was chosen and comes before the other priorities.
+> 2026-11-18: extended into a sign-in-only prompt hub; see [DECISIONS.md](DECISIONS.md#the-connector-becomes-a-prompt-hub-sign-in-only).
 
 ## Connector Growth (plan of 2026-11-14)
 
@@ -12,11 +13,13 @@ Almost all organic users arrive from ChatGPT through the MCP connector, but only
 of connected accounts ever save a prompt and few come back. The plan aims at return visits:
 first saves, then reuse, then further capabilities. Decisions and targets are in
 [DECISIONS.md](DECISIONS.md#connector-growth-starts-with-first-saves-and-return-visits).
-Order: 0.17.1 security patch → 0.18.0 → at least a week of baseline → 0.19.0 → plugin submission.
+Order: 0.18.0 → at least a week of baseline → 0.19.0 → ChatGPT listing update → 0.20.0.
+Every tool requires sign-in, and the server stays LLM-free. The plugin is already listed in
+ChatGPT; new tools reach it through OpenAI's daily scan, whose sign-in must be verified first.
 
 ### Connector Measurement and Listing Prerequisites (0.18.0)
 
-- **Value**: Know whether connector changes bring users back, learn where they come from, and remove the hard blockers for ChatGPT's plugin directory.
+- **Value**: Know whether connector changes bring users back, learn where they come from, and add the RFC 9207 `iss` and domain-challenge route.
 - **Current gap**: Only MCP creates and updates are counted; read tools and per-account connector use are not recorded, and the referral source is unknown. The OAuth server returns no RFC 9207 `iss`, and Caddy routes no `/.well-known/openai-apps-challenge`.
 - **Suggested approach**: Counter of every MCP tool call by tool and outcome; a last-connector-use date per account, written at most once a day; an optional fixed-choice "How did you hear about us?" at sign-up, including inside the connect flow; `iss` on every authorization response plus `authorization_response_iss_parameter_supported`; the challenge route beside `/.well-known/oauth-*`. The operator's privacy-policy additions go live before deployment. See [DECISIONS.md](DECISIONS.md#measure-connector-use-before-new-tools-ship).
 - **Source**: `backend/app/metrics.py`, `backend/app/api/mcp_routes.py`, `backend/app/services/oauth_provider.py`, `Caddyfile`, `frontend/src/features/auth/AuthForm.tsx`.
@@ -25,22 +28,29 @@ Order: 0.17.1 security patch → 0.18.0 → at least a week of baseline → 0.19
 ### Connector Tools for Templates, Filling and Search (0.19.0)
 
 - **Value**: Give a newly connected user something to save straight away, and make reusing a saved prompt the main thing to do with the connector.
-- **Current gap**: Five storage tools only. Gallery templates, filling `{{variables}}`, search and folder/favourite edits are not reachable through MCP, and the server instructions keep ChatGPT from offering to save.
-- **Suggested approach**: `browse_templates` / `get_template` over `contracts/gallery-templates.json` (moved out of `frontend/src/lib/gallery.ts`); read-only `use_prompt` that fills values and lists missing variables with hints and choices; a `query` argument on `list_saved_prompts`; `folder` and `favorite` on `update_prompt`; plain "Use this when…" descriptions without the "Save only when the user asks" instruction; trimmed responses that keep `id` and `updated_at`. Delete and restore stay out. See [DECISIONS.md](DECISIONS.md#connector-tools-for-templates-filling-and-search).
-- **Source**: `backend/app/api/mcp_routes.py`, `backend/app/services/prompts/`, `frontend/src/lib/gallery.ts`, `contracts/`, `backend/Dockerfile`.
+- **Current gap**: Five storage tools only, and only 24 gallery templates. Gallery templates, filling `{{variables}}`, search and folder/favourite edits are not reachable through MCP, and the server instructions keep ChatGPT from offering to save.
+- **Suggested approach**: `browse_templates` / `get_template` over `contracts/gallery-templates.json` (moved out of `frontend/src/lib/gallery.ts`); read-only `use_prompt` that fills values and lists missing variables with hints and choices; a `query` argument on `list_saved_prompts`; `folder` and `favorite` on `update_prompt`; plain "Use this when…" descriptions without the "Save only when the user asks" instruction; trimmed responses that keep `id` and `updated_at`. Delete and restore stay out. Also: grow the templates to about 60 (writing and email, marketing, coding, study and research, career, image generation, assistant system prompts) with category, tags and variable hints, drafted for operator approval; an empty-library pointer to `browse_templates` with three suggested templates from `list_saved_prompts`; a "Use this template in ChatGPT or Claude" section on every `/gallery/[slug]` page; about 20 tool-selection test requests in `docs/mcp.md`, run in ChatGPT developer mode before release. See [DECISIONS.md](DECISIONS.md#connector-tools-for-templates-filling-and-search) and [the hub decision](DECISIONS.md#the-connector-becomes-a-prompt-hub-sign-in-only).
+- **Source**: `backend/app/api/mcp_routes.py`, `backend/app/services/prompts/`, `frontend/src/lib/gallery.ts`, `frontend/src/app/gallery/[slug]/page.tsx`, `contracts/`, `backend/Dockerfile`, `docs/mcp.md`.
 - **Effort**: Medium to high (the template move touches frontend and backend).
 
-### ChatGPT Plugin Directory Submission
+### ChatGPT Listing Update
 
-- **Value**: Let ChatGPT users find the connector by name instead of needing its URL and developer mode, and qualify for OpenAI's directory placement.
-- **Current gap**: Connected only as a custom developer-mode connector; no submission made.
-- **Suggested approach**: After 0.19.0, submit at platform.openai.com/plugins as a verified individual with a seeded `openai-reviewer` account, five positive and three negative test cases and a demo video; tell Anthropic (mcp-review@anthropic.com) about the tool changes. Check developer fees and write-confirmation behaviour on the portal first. See [DECISIONS.md](DECISIONS.md#list-the-connector-in-chatgpts-plugin-directory).
-- **Effort**: Low engineering, medium preparation.
+- **Value**: Listing text and starter prompts that name what users ask for (prompt library, templates, checking or reusing a prompt), so the plugin is picked for the right requests.
+- **Current gap**: The listing copy predates templates, filling and search; OpenAI reported on 2026-11-02 that the daily tool scan's sign-in had failed; whether it has been reconnected since is unknown.
+- **Suggested approach**: Before 0.19.0 ships, check the scan's status on the plugins page (MCPs tab) and reconnect it with a dedicated scanner account if needed. Once 0.19.0's tools are live in ChatGPT, submit a new plugin version with revised listing text and up to three starter prompts, drafted for operator approval, following OpenAI's metadata and plugin guidelines. Tell Anthropic (mcp-review@anthropic.com) about the tool changes after 0.19.0. See [DECISIONS.md](DECISIONS.md#the-connector-becomes-a-prompt-hub-sign-in-only).
+- **Effort**: Low engineering, low preparation.
+
+### Prompt Checker Tool (0.20.0)
+
+- **Value**: Gives "improve my prompt" requests a concrete tool without a server-side LLM.
+- **Current gap**: The rule-based checker exists only in `frontend/src/lib/promptLint.ts`.
+- **Suggested approach**: `check_prompt` (role, format, length, examples, broken variables and tags), sign-in required, ported to Python with a shared file of test cases that the TypeScript checker must also pass. Ships through the daily scan.
+- **Effort**: Medium.
 
 ### Later Connector Capabilities
 
-- **Prompt checker tool**: a rule-based `check_prompt` (role, format, length, examples, broken variables and tags) needs the checker ported from `frontend/src/lib/promptLint.ts` or shared. Medium effort.
-- **Out of scope for now**: ChatGPT interactive widgets, email nudges for inactive accounts, and server-side LLM tools on the connector.
+- **Claude listing and prompt menu**: after Anthropic approves the directory submission, revise the one-liner, description, categories and use cases, and expose templates as MCP prompts for Claude's attach menu.
+- **Out of scope for now**: anonymous (no sign-in) tools, public prompt publishing or a marketplace, ChatGPT/MCP Apps widgets (decided again on 0.19.0's results), email nudges for inactive accounts, and server-side LLM tools on the connector.
 
 ## Priority: High
 
